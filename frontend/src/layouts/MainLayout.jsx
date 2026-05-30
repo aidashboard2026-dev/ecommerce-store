@@ -4,9 +4,10 @@ import Header from '../components/layout/Header'
 
 const pageTitles = {
   '/': 'Dashboard',
-  '/users': 'Users',
   '/products': 'Products',
-  '/analytics': 'Analytics',
+  '/orders': 'Orders',
+  '/offers': 'Offers',
+  '/customers': 'Customers',
   '/settings': 'Settings',
 }
 

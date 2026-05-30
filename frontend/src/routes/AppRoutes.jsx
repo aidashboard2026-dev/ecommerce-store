@@ -4,9 +4,10 @@ import { useAuth } from '../hooks/useAuth'
 import MainLayout from '../layouts/MainLayout'
 import LoginPage from '../pages/LoginPage'
 import DashboardPage from '../pages/DashboardPage'
-import UsersPage from '../pages/UsersPage'
 import ProductsPage from '../pages/ProductsPage'
-import AnalyticsPage from '../pages/AnalyticsPage'
+import OrdersPage from '../pages/OrdersPage'
+import OffersPage from '../pages/OffersPage'
+import CustomersPage from '../pages/CustomersPage'
 import SettingsPage from '../pages/SettingsPage'
 
 function ProtectedRoute({ children }) {
@@ -39,9 +40,10 @@ export default function AppRoutes() {
         }
       >
         <Route index element={<DashboardPage />} />
-        <Route path="users" element={<UsersPage />} />
         <Route path="products" element={<ProductsPage />} />
-        <Route path="analytics" element={<AnalyticsPage />} />
+        <Route path="orders" element={<OrdersPage />} />
+        <Route path="offers" element={<OffersPage />} />
+        <Route path="customers" element={<CustomersPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

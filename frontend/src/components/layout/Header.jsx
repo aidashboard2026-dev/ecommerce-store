@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
 import {
-  LayoutDashboard, Users, Package, BarChart3, Settings,
+  LayoutDashboard, Package, ShoppingCart, Tags, UserRound, Settings,
   Sun, Moon, LogOut, ChevronDown, Menu, X, Zap
 } from 'lucide-react'
 import { useAuth, useTheme } from '../../hooks/useAuth'
@@ -11,9 +11,10 @@ import clsx from 'clsx'
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/users', label: 'Users', icon: Users },
   { to: '/products', label: 'Products', icon: Package },
-  { to: '/analytics', label: 'Analytics', icon: BarChart3 },
+  { to: '/orders', label: 'Orders', icon: ShoppingCart },
+  { to: '/offers', label: 'Offers', icon: Tags },
+  { to: '/customers', label: 'Customers', icon: UserRound },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
