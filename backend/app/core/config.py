@@ -28,9 +28,9 @@ class Settings(BaseSettings):
         )
 
     # Initial admin account
-    INITIAL_ADMIN_NAME: str = os.getenv("INITIAL_ADMIN_NAME", "Administrator")
-    INITIAL_ADMIN_EMAIL: str = os.getenv("INITIAL_ADMIN_EMAIL", "")
-    INITIAL_ADMIN_PASSWORD: str = os.getenv("INITIAL_ADMIN_PASSWORD", "")
+    INITIAL_ADMIN_NAME: str = "Admin"
+    INITIAL_ADMIN_EMAIL: str = "admin@mail.com"
+    INITIAL_ADMIN_PASSWORD: str = "admin1234"
 
     # JWT
     SECRET_KEY: str = "super-secret-key-change-in-production-please"
@@ -44,9 +44,9 @@ class Settings(BaseSettings):
         "http://frontend:5173",
     ]
 
-    class Config:
-        case_sensitive = True
-        env_file = (".env", "../.env")
+    # class Config:
+    #     case_sensitive = True
+    #     env_file = (".env", "../.env")
 
 
 settings = Settings()

@@ -15,7 +15,11 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     if not result:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            # detail="Incorrect email or password",
+             detail=(
+                "Invalid admin email or password. Use INITIAL_ADMIN_EMAIL "
+                "and INITIAL_ADMIN_PASSWORD from your .env file."
+            ),
         )
     return result
 
