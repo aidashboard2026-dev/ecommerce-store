@@ -1,9 +1,6 @@
-version: "3.9"
-
 services:
   db:
     image: postgres:16-alpine
-    container_name: admindash_db
     restart: unless-stopped
     environment:
       POSTGRES_USER: admin
@@ -23,15 +20,20 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: admindash_backend
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       POSTGRES_SERVER: db
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: adminpass
       POSTGRES_DB: admindb
-      SECRET_KEY: ${SECRET_KEY:-change-me-in-production-please-use-a-long-random-string}
+      # SECRET_KEY: ${SECRET_KEY:-change-me-in-production-please-use-a-long-random-string}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in your .env file}
       ACCESS_TOKEN_EXPIRE_MINUTES: 1440
+      INITIAL_ADMIN_NAME: ${INITIAL_ADMIN_NAME:-Administrator}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:?Set INITIAL_ADMIN_EMAIL in your .env file}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:?Set INITIAL_ADMIN_PASSWORD in your .env file}
     ports:
       - "8000:8000"
     depends_on:
@@ -46,7 +48,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: admindash_frontend
     restart: unless-stopped
     environment:
       - VITE_API_URL=/api/v1

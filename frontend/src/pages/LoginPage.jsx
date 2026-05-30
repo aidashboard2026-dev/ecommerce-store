@@ -67,7 +67,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@admindash.com"
+                placeholder="admin@example.com"
                 className="input-field"
                 autoComplete="email"
                 required
@@ -111,26 +111,6 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          <div className="mt-6 pt-5 border-t border-app">
-            <p className="text-xs text-muted text-center font-medium mb-2">Demo credentials</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => { setEmail('admin@admindash.com'); setPassword('admin123') }}
-                className="text-xs bg-surface hover:bg-brand-50 dark:hover:bg-brand-950/30 text-muted hover:text-brand-500 py-2 px-3 rounded-xl border border-app transition-all"
-              >
-                Super Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => { setEmail('jane@admindash.com'); setPassword('jane123') }}
-                className="text-xs bg-surface hover:bg-brand-50 dark:hover:bg-brand-950/30 text-muted hover:text-brand-500 py-2 px-3 rounded-xl border border-app transition-all"
-              >
-                Admin
-              </button>
-            </div>
-          </div>
         </div>
 
         <p className="text-center text-xs text-muted mt-5">

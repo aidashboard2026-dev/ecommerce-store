@@ -1,18 +1,24 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
-import os
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        case_sensitive=True,
+        env_file=(".env", "../.env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
     PROJECT_NAME: str = "AdminDash Pro"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
 
     # Database
-    POSTGRES_SERVER: str = os.getenv("POSTGRES_SERVER", "db")
-    POSTGRES_USER: str = os.getenv("POSTGRES_USER", "admin")
-    POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "adminpass")
-    POSTGRES_DB: str = os.getenv("POSTGRES_DB", "admindb")
+    POSTGRES_SERVER: str = "db"
+    POSTGRES_USER: str = "admin"
+    POSTGRES_PASSWORD: str = "adminpass"
+    POSTGRES_DB: str = "admindb"
 
     @property
     def DATABASE_URL(self) -> str:
@@ -21,8 +27,13 @@ class Settings(BaseSettings):
             f"@{self.POSTGRES_SERVER}/{self.POSTGRES_DB}"
         )
 
+    # Initial admin account
+    INITIAL_ADMIN_NAME: str = os.getenv("INITIAL_ADMIN_NAME", "Administrator")
+    INITIAL_ADMIN_EMAIL: str = os.getenv("INITIAL_ADMIN_EMAIL", "")
+    INITIAL_ADMIN_PASSWORD: str = os.getenv("INITIAL_ADMIN_PASSWORD", "")
+
     # JWT
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "super-secret-key-change-in-production-please")
+    SECRET_KEY: str = "super-secret-key-change-in-production-please"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
 
@@ -35,6 +46,7 @@ class Settings(BaseSettings):
 
     class Config:
         case_sensitive = True
+        env_file = (".env", "../.env")
 
 
 settings = Settings()
