@@ -8,6 +8,7 @@ from app.database.session import engine
 from app.database.base import Base
 from app.api.v1.router import api_router
 from app.database.init_db import init_db
+import app.models  # noqa: F401 — register all models with Base.metadata
 
 
 @asynccontextmanager
