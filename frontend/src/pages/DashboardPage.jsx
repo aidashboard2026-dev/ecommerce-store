@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Users, Package, DollarSign, Activity, UserPlus, Clock, AlertTriangle, TrendingUp } from 'lucide-react'
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, Legend
-} from 'recharts'
+
 import { dashboardAPI } from '../services/api'
 import StatCard from '../components/dashboard/StatCard'
+import SalesDashboard from '../components/dashboard/SalesDashboard'
+import OrderStatusAnalytics from '../components/dashboard/OrderStatusAnalytics'
 import { PageLoader } from '../components/common/Spinner'
-import { useAuth } from '../hooks/useAuth'
-import { useTheme } from '../hooks/useAuth'
+import { useAuth, useTheme } from '../hooks/useAuth'
 
 const activityIcons = {
   user_created: UserPlus,
@@ -29,49 +28,84 @@ const activityColors = {
 export default function DashboardPage() {
   const { admin } = useAuth()
   const { isDark } = useTheme()
+  const navigate = useNavigate()
   const [stats, setStats] = useState(null)
-  const [chartData, setChartData] = useState([])
   const [activity, setActivity] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let active = true
+
     async function load() {
       try {
-        const [statsRes, chartRes, actRes] = await Promise.all([
+        const [statsRes, actRes] = await Promise.all([
           dashboardAPI.stats(),
-          dashboardAPI.chartData(),
           dashboardAPI.recentActivity(),
         ])
-        setStats(statsRes.data)
-        setChartData(chartRes.data.monthly)
-        setActivity(actRes.data.activities)
+        if (active) {
+          setStats(statsRes.data)
+          setActivity(actRes.data.activities)
+        }
       } catch (e) {
         console.error(e)
       } finally {
-        setLoading(false)
+        if (active) setLoading(false)
       }
     }
+
     load()
+
+    const refreshTimer = window.setInterval(load, 15000)
+    window.addEventListener('focus', load)
+
+    return () => {
+      active = false
+      window.clearInterval(refreshTimer)
+      window.removeEventListener('focus', load)
+    }
   }, [])
 
-  const gridColor = isDark ? '#1e2535' : '#f1f5f9'
-  const textColor = isDark ? '#64748b' : '#94a3b8'
+  const adminFirstName = admin?.name?.split(' ')[0] || 'Admin'
+  const liveProductCount = stats?.total_products ?? 4
 
   if (loading) return <PageLoader />
 
   return (
     <div className="space-y-6 py-6">
-      {/* Greeting */}
-      <div>
-        <h1 className="font-display font-bold text-2xl text-app">
-          Good day, {admin?.name?.split(' ')[0]} 👋
-        </h1>
-        <p className="text-muted text-sm mt-1">Here's what's happening across your platform.</p>
+      <div className="mx-auto w-[80%] gap-20 rounded-[10px] bg-blue-600 p-10 text-white shadow-sm sm:p-9">
+        <div className="flex flex-col gap-5 sm:flex-col sm:items-start sm:justify-between">
+          <div>
+            <span className="inline-flex items-center rounded-[10px] bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
+              Live Merchant
+            </span>
+            <h1 className="mt-4 font-display text-2xl font-bold text-white">
+              Greetings, {adminFirstName}
+            </h1>
+            <p className="mt-1 text-sm text-blue-50">
+              Your catalog features {liveProductCount} live products online. Review real-time sales trends, resolve Physical variant shortages, and deploy custom discount offers.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => navigate('/settings')}
+              className="rounded-[10px] bg-white px-10 py-2.5 text-sm font-semibold text-blue-700 transition-colors duration-150 hover:bg-blue-50 active:scale-95"
+            >
+              Manage catalog
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/Products')}
+              className="rounded-[10px] border border-white/40 bg-blue-700 px-10 py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-blue-800 active:scale-95"
+            >
+              Preview store..!!
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Stats grid */}
       {stats && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             title="Total Users"
             value={stats.total_users}
@@ -88,7 +122,7 @@ export default function DashboardPage() {
           />
           <StatCard
             title="Total Revenue"
-            value={stats.total_revenue.toFixed(0)}
+            value={Number(stats.total_revenue || 0).toFixed(0)}
             change={stats.revenue_growth}
             icon={DollarSign}
             color="bg-gradient-to-br from-emerald-500 to-emerald-700"
@@ -104,73 +138,11 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        {/* Revenue area chart */}
-        <div className="card p-6 xl:col-span-2">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="font-display font-bold text-lg text-app">Revenue Overview</h2>
-              <p className="text-muted text-sm">Monthly revenue for 2024</p>
-            </div>
-            <span className="text-xs bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-full font-semibold">
-              ↑ 12.5%
-            </span>
-          </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#5865f2" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#5865f2" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-              <XAxis dataKey="month" tick={{ fill: textColor, fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: textColor, fontSize: 11 }} axisLine={false} tickLine={false} width={50} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: isDark ? '#16192A' : '#fff',
-                  border: `1px solid ${isDark ? '#242a37' : '#e2e8f0'}`,
-                  borderRadius: '12px',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-                  color: isDark ? '#f1f5f9' : '#0f172a',
-                  fontSize: '12px',
-                }}
-                formatter={(v) => [`$${v.toLocaleString()}`, 'Revenue']}
-              />
-              <Area type="monotone" dataKey="revenue" stroke="#5865f2" strokeWidth={2.5} fill="url(#revenueGrad)" dot={false} activeDot={{ r: 5, fill: '#5865f2' }} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* User growth bar chart */}
-        <div className="card p-6">
-          <div className="mb-6">
-            <h2 className="font-display font-bold text-lg text-app">User Growth</h2>
-            <p className="text-muted text-sm">New users per month</p>
-          </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={chartData.slice(-6)} barSize={12}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-              <XAxis dataKey="month" tick={{ fill: textColor, fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: textColor, fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: isDark ? '#16192A' : '#fff',
-                  border: `1px solid ${isDark ? '#242a37' : '#e2e8f0'}`,
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  color: isDark ? '#f1f5f9' : '#0f172a',
-                }}
-              />
-              <Bar dataKey="users" fill="#7c3aed" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <SalesDashboard isDark={isDark} />
+        <OrderStatusAnalytics isDark={isDark} />
       </div>
 
-      {/* Recent activity */}
       <div className="card p-6">
         <div className="flex items-center gap-2 mb-5">
           <Clock size={18} className="text-muted" />

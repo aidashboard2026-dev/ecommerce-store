@@ -45,7 +45,17 @@ export const adminsAPI = {
 export const dashboardAPI = {
   stats: () => api.get('/dashboard/stats'),
   chartData: () => api.get('/dashboard/chart-data'),
+  salesChart: (period = 'weekly', anchorDate) => api.get('/dashboard/sales-chart', {
+    params: { period, anchor_date: anchorDate },
+  }),
   recentActivity: () => api.get('/dashboard/recent-activity'),
+}
+
+export const ordersAPI = {
+  list: (skip = 0, limit = 100) => api.get(`/orders/?skip=${skip}&limit=${limit}`),
+  create: (data) => api.post('/orders/', data),
+  update: (id, data) => api.put(`/orders/${id}`, data),
+  cancel: (id) => api.post(`/orders/${id}/cancel`),
 }
 
 export default api
