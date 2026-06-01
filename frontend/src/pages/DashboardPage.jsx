@@ -72,20 +72,21 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 py-6">
-      <div className="mx-auto w-[80%] gap-20 rounded-[10px] bg-blue-600 p-10 text-white shadow-sm sm:p-9">
+      <div className="mx-auto min-w-[80%] max-w-6xl gap-20 rounded-[10px] bg-blue-600  text-white shadow-sm  p-4 md:p-6 lg:p-9">
         <div className="flex flex-col gap-5 sm:flex-col sm:items-start sm:justify-between">
           <div>
             <span className="inline-flex items-center rounded-[10px] bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
               Live Merchant
             </span>
-            <h1 className="mt-4 font-display text-2xl font-bold text-white">
-              Greetings, {adminFirstName}
+            <h1 className="mt-4 font-display text-white">
+              <span className="text-sm pl-0 pb-2">Greetings, </span>
+              <span className="text-3xl pl-2 font-bold">{adminFirstName}</span>
             </h1>
-            <p className="mt-1 text-sm text-blue-50">
+            <p className="mt-1 text-sm md:text-base lg:text-base text-blue-50">
               Your catalog features {liveProductCount} live products online. Review real-time sales trends, resolve Physical variant shortages, and deploy custom discount offers.
             </p>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex flex-col gap-3 min-[460px]:flex-row ">
             <button
               type="button"
               onClick={() => navigate('/settings')}
