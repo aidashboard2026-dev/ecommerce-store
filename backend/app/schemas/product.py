@@ -1,6 +1,7 @@
-from pydantic import BaseModel
-from typing import Optional, List
+from pydantic import BaseModel, field_validator
+from typing import Optional, List, Any
 from datetime import datetime
+from decimal import Decimal
 
 
 # ── Variant Schemas ──────────────────────────────────────────────────────────
@@ -9,7 +10,7 @@ class VariantBase(BaseModel):
     size: str
     color: Optional[str] = None
     color_hex: Optional[str] = None
-    sku: str
+    sku: Optional[str] = None
     original_price: float
     selling_price: float
     discount_percentage: float = 0
@@ -26,6 +27,14 @@ class VariantResponse(VariantBase):
     product_id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+    # Coerce Numeric/Decimal from DB → float for safe JSON serialization
+    @field_validator('original_price', 'selling_price', 'discount_percentage', mode='before')
+    @classmethod
+    def coerce_decimal_to_float(cls, v):
+        if isinstance(v, Decimal):
+            return float(v)
+        return v
 
     class Config:
         from_attributes = True
@@ -64,14 +73,32 @@ class ProductResponse(ProductBase):
     id: int
     slug: str
     thumbnail: Optional[str] = None
+    images: List[Any] = []        # MVP: empty list; prevents frontend crashes
     total_stock: int = 0
     min_price: Optional[float] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     variants: List[VariantResponse] = []
 
+    # Ensure status enum serializes as plain string ("draft", not ProductStatus.draft)
+    @field_validator('status', mode='before')
+    @classmethod
+    def coerce_status_to_str(cls, v):
+        if hasattr(v, 'value'):
+            return v.value
+        return v
+
+    # Coerce Decimal min_price → float
+    @field_validator('min_price', mode='before')
+    @classmethod
+    def coerce_min_price(cls, v):
+        if isinstance(v, Decimal):
+            return float(v)
+        return v
+
     class Config:
         from_attributes = True
+        use_enum_values = True
 
 
 class ProductListResponse(BaseModel):
