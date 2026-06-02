@@ -1,6 +1,18 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, Package, DollarSign, Activity, UserPlus, Clock, AlertTriangle, TrendingUp } from 'lucide-react'
+import {
+  Users,
+  Package,
+  DollarSign,
+  Activity,
+  UserPlus,
+  Clock,
+  AlertTriangle,
+  TrendingUp,
+  Banknote,
+  Smartphone,
+  Shirt,
+} from 'lucide-react'
 
 import { dashboardAPI } from '../services/api'
 import StatCard from '../components/dashboard/StatCard'
@@ -23,6 +35,114 @@ const activityColors = {
   login: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/40',
   revenue: 'text-amber-500 bg-amber-50 dark:bg-amber-950/40',
   alert: 'text-red-500 bg-red-50 dark:bg-red-950/40',
+}
+
+const currencyFormatter = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  maximumFractionDigits: 0,
+})
+
+const numberFormatter = new Intl.NumberFormat('en-IN', {
+  maximumFractionDigits: 0,
+})
+
+function formatCurrency(value) {
+  return currencyFormatter.format(Number(value || 0))
+}
+
+function formatNumber(value) {
+  return numberFormatter.format(Number(value || 0))
+}
+
+function SettlementCard({ title, value, description, footerLabel, footerValue, icon: Icon, iconClassName }) {
+  return (
+    <div className="min-h-[176px] rounded-lg border border-app bg-surface p-5 shadow-card transition-shadow duration-200 hover:shadow-md dark:shadow-card-dark">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <p className="font-display text-base font-bold uppercase text-muted sm:text-lg">
+            {title}
+          </p>
+          <p className="mt-2 font-display text-3xl font-bold leading-none text-app">
+            {value}
+          </p>
+        </div>
+        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-md ${iconClassName}`}>
+          <Icon size={24} />
+        </div>
+      </div>
+      <p className="text-sm font-semibold text-muted">
+        {description}
+      </p>
+      <div className="mt-7 flex items-center justify-between gap-3 text-sm">
+        <span className="text-muted">{footerLabel}</span>
+        <span className="font-display font-bold text-app">{footerValue}</span>
+      </div>
+    </div>
+  )
+}
+
+function TopCategoriesCard({ categories = [] }) {
+  const rows = categories.length
+    ? categories
+    : [{ name: 'No categories', styles: 0 }]
+
+  return (
+    <div className="min-h-[176px] rounded-lg border border-app bg-surface p-5 shadow-card transition-shadow duration-200 hover:shadow-md dark:shadow-card-dark">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <p className="font-display text-base font-bold uppercase text-muted sm:text-lg">
+          Top Categories
+        </p>
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+          <Shirt size={24} />
+        </div>
+      </div>
+      <div className="space-y-2.5">
+        {rows.map((category) => (
+          <div key={category.name} className="flex items-center justify-between gap-3 text-sm">
+            <span className="min-w-0 truncate font-semibold text-muted">{category.name}</span>
+            <span className="shrink-0 font-display font-bold text-app">
+              {formatNumber(category.styles)} {category.styles === 1 ? 'style' : 'styles'}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function LowStockProductsCard({ count = 0, products = [] }) {
+  const rows = products.length
+    ? products
+    : [{ id: 'empty', title: 'All products stocked', stock: 0, variants: 0 }]
+
+  return (
+    <div className="min-h-[176px] rounded-lg border border-app bg-surface p-5 shadow-card transition-shadow duration-200 hover:shadow-md dark:shadow-card-dark">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <p className="font-display text-base font-bold uppercase text-muted sm:text-lg">
+            Low Stock Products
+          </p>
+          <p className="mt-2 font-display text-3xl font-bold leading-none text-app">
+            {formatNumber(count)}
+          </p>
+        </div>
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300">
+          <AlertTriangle size={24} />
+        </div>
+      </div>
+      <div className="mt-5 space-y-2">
+        {rows.slice(0, 3).map((product) => (
+          <div key={product.id} className="flex items-center justify-between gap-3 text-sm">
+            <span className="min-w-0 truncate font-semibold text-muted">{product.title}</span>
+            <span className="shrink-0 font-display font-bold text-app">
+              {formatNumber(product.stock)} left
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export default function DashboardPage() {
@@ -82,7 +202,7 @@ export default function DashboardPage() {
               <span className="text-sm pl-0 pb-2">Greetings, </span>
               <span className="text-3xl pl-2 font-bold">{adminFirstName}</span>
             </h1>
-            <p className="mt-1 text-sm md:text-base lg:text-base text-blue-50">
+            <p className="mt-1 text-sm md:text-base lg:text-base text-blue-50 ">
               Your catalog features {liveProductCount} live products online. Review real-time sales trends, resolve Physical variant shortages, and deploy custom discount offers.
             </p>
           </div>
@@ -130,9 +250,9 @@ export default function DashboardPage() {
             prefix="$"
           />
           <StatCard
-            title="Active Sessions"
-            value={stats.active_sessions}
-            change={stats.session_growth}
+            title="Published Products"
+            value={stats.published_products}
+            change={stats.published_growth}
             icon={Activity}
             color="bg-gradient-to-br from-amber-500 to-orange-600"
           />
@@ -143,7 +263,33 @@ export default function DashboardPage() {
         <SalesDashboard isDark={isDark} />
         <OrderStatusAnalytics isDark={isDark} />
       </div>
-
+      {stats && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <SettlementCard
+            title="Cash Revenue"
+            value={formatCurrency(stats.cash_revenue)}
+            description="Total cash settled offline"
+            footerLabel="Average Order:"
+            footerValue={formatNumber(stats.cash_average_order)}
+            icon={Banknote}
+            iconClassName="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+          />
+          <SettlementCard
+            title="UPI Revenue"
+            value={formatCurrency(stats.upi_revenue)}
+            description="Total cash settled online"
+            footerLabel="Average Order:"
+            footerValue={formatNumber(stats.upi_average_order)}
+            icon={Smartphone}
+            iconClassName="bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300"
+          />
+          <TopCategoriesCard categories={stats.top_categories} />
+          <LowStockProductsCard
+            count={stats.low_stock_product_count}
+            products={stats.low_stock_products}
+          />
+        </div>
+      )}
       <div className="card p-6">
         <div className="flex items-center gap-2 mb-5">
           <Clock size={18} className="text-muted" />
