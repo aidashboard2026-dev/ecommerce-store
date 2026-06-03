@@ -283,6 +283,17 @@ def get_products_count(db: Session) -> int:
     )
 
 
+def get_published_products_count(db: Session) -> int:
+    return (
+        db.query(Product)
+        .filter(
+            Product.deleted_at.is_(None),
+            Product.status == ProductStatus.published,
+        )
+        .count()
+    )
+
+
 def get_products_paginated(
     db: Session,
     *,

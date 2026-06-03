@@ -1,9 +1,20 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, Package, DollarSign, Activity, UserPlus, Clock, AlertTriangle, TrendingUp } from 'lucide-react'
+import {
+  Users,
+  Package,
+  DollarSign,
+  Activity,
+  UserPlus,
+  Clock,
+  AlertTriangle,
+  TrendingUp,
+  Banknote,
+  Smartphone,
+} from 'lucide-react'
 
 import { dashboardAPI } from '../services/api'
-import StatCard from '../components/dashboard/StatCard'
+import StatCard, { TopCategoriesCard, LowStockProductsCard, SettlementCard } from '../components/dashboard/StatCard'
 import SalesDashboard from '../components/dashboard/SalesDashboard'
 import OrderStatusAnalytics from '../components/dashboard/OrderStatusAnalytics'
 import { PageLoader } from '../components/common/Spinner'
@@ -24,6 +35,27 @@ const activityColors = {
   revenue: 'text-amber-500 bg-amber-50 dark:bg-amber-950/40',
   alert: 'text-red-500 bg-red-50 dark:bg-red-950/40',
 }
+
+const currencyFormatter = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  maximumFractionDigits: 0,
+})
+
+const numberFormatter = new Intl.NumberFormat('en-IN', {
+  maximumFractionDigits: 0,
+})
+
+function formatCurrency(value) {
+  return currencyFormatter.format(Number(value || 0))
+}
+
+function formatNumber(value) {
+  return numberFormatter.format(Number(value || 0))
+}
+
+
+
 
 export default function DashboardPage() {
   const { admin } = useAuth()
@@ -82,7 +114,7 @@ export default function DashboardPage() {
               <span className="text-sm pl-0 pb-2">Greetings, </span>
               <span className="text-3xl pl-2 font-bold">{adminFirstName}</span>
             </h1>
-            <p className="mt-1 text-sm md:text-base lg:text-base text-blue-50">
+            <p className="mt-1 text-sm md:text-base lg:text-base text-blue-50 ">
               Your catalog features {liveProductCount} live products online. Review real-time sales trends, resolve Physical variant shortages, and deploy custom discount offers.
             </p>
           </div>
@@ -112,29 +144,31 @@ export default function DashboardPage() {
             value={stats.total_users}
             change={stats.user_growth}
             icon={Users}
-            color="bg-gradient-to-br from-brand-500 to-brand-700"
+            iconClassName="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+            onClick={() => navigate('/Customers')}
           />
           <StatCard
             title="Total Products"
             value={stats.total_products}
             change={stats.product_growth}
             icon={Package}
-            color="bg-gradient-to-br from-violet-500 to-violet-700"
+            iconClassName="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+            onClick={() => navigate('/Products')}
           />
+         
           <StatCard
-            title="Total Revenue"
-            value={Number(stats.total_revenue || 0).toFixed(0)}
-            change={stats.revenue_growth}
-            icon={DollarSign}
-            color="bg-gradient-to-br from-emerald-500 to-emerald-700"
-            prefix="$"
-          />
-          <StatCard
-            title="Active Sessions"
-            value={stats.active_sessions}
-            change={stats.session_growth}
+            title="Published Products"
+            value={stats.published_products}
+            change={stats.published_growth}
             icon={Activity}
-            color="bg-gradient-to-br from-amber-500 to-orange-600"
+            iconClassName="bg-gradient-to-br from-amber-500 to-orange-600"
+            onClick={() => navigate('/Products')}
+          />
+          <LowStockProductsCard
+            title="Low Stock Products"
+            count={stats.low_stock_product_count}
+            products={stats.low_stock_products}
+            onClick={() => navigate('/Products')}
           />
         </div>
       )}
@@ -143,7 +177,45 @@ export default function DashboardPage() {
         <SalesDashboard isDark={isDark} />
         <OrderStatusAnalytics isDark={isDark} />
       </div>
-
+      {stats && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          
+           <StatCard
+            title="Total Revenue"
+            value={Number(stats.total_revenue || 0).toFixed(0)}
+            change={stats.revenue_growth}
+            icon={DollarSign}
+            iconClassName="bg-gradient-to-br from-emerald-500 to-emerald-700"
+            prefix="$"
+            onClick={() => navigate('/Orders')}
+          />
+          <SettlementCard
+            title="Cash Revenue"
+            value={formatCurrency(stats.cash_revenue)}
+            description="Total cash settled offline"
+            change={stats.cash_revenue_growth || 0}
+            icon={Banknote}
+            iconClassName="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+            onClick={() => navigate('/Orders')}
+          />
+          <SettlementCard
+            title="UPI Revenue"
+            value={formatCurrency(stats.upi_revenue)}
+            description="Total cash settled online"
+            change={stats.upi_revenue_growth || 0}
+            icon={Smartphone}
+            iconClassName="bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300"
+            onClick={() => navigate('/Orders')}
+          />
+          <TopCategoriesCard 
+            title="Top Categories" 
+            categories={stats.top_categories} 
+            onClick={() => navigate('/Products')}
+          />
+          
+        </div>
+      )}
+      
       <div className="card p-6">
         <div className="flex items-center gap-2 mb-5">
           <Clock size={18} className="text-muted" />

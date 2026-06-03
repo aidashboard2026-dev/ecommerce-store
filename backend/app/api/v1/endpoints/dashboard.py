@@ -3,8 +3,6 @@ from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 
-import random
-
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -13,12 +11,17 @@ from app.auth.dependencies import get_current_admin
 from app.database.session import get_db
 from app.models.admin import Admin
 from app.models.order import Order
+from app.models.product import Product, ProductVariant
 from app.services.admin_service import get_admins_count
-from app.services.product_service import get_products_count
+from app.services.product_service import get_products_count, get_published_products_count
 
 router = APIRouter()
 
 ACTIVE_SALES_STATUSES = ("pending", "processing", "shipped", "delivered")
+REVENUE_STATUS = "delivered"
+REVENUE_PAYMENT = "paid"
+CASH_PAYMENT_METHODS = ("cod", "cash", "cash on delivery")
+UPI_PAYMENT_METHODS = ("paid", "upi", "online", "razorpay")
 WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 
@@ -56,14 +59,31 @@ def _orders_between(db: Session, start_at: datetime, end_at: datetime) -> list[O
     )
 
 
+def _revenue_filter():
+    return (
+        func.lower(Order.status) == REVENUE_STATUS,
+        func.lower(Order.payment) == REVENUE_PAYMENT,
+    )
+
+
+def _revenue_orders_between(db: Session, start_at: datetime, end_at: datetime) -> list[Order]:
+    return (
+        db.query(Order)
+        .filter(
+            *_revenue_filter(),
+            Order.ordered_at >= start_at,
+            Order.ordered_at < end_at,
+        )
+        .all()
+    )
+
+
 def _sum_orders(
     db: Session,
     start_at: Optional[datetime] = None,
     end_at: Optional[datetime] = None,
 ) -> float:
-    query = db.query(func.coalesce(func.sum(Order.total), 0)).filter(
-        Order.status.in_(ACTIVE_SALES_STATUSES)
-    )
+    query = db.query(func.coalesce(func.sum(Order.total), 0)).filter(*_revenue_filter())
 
     if start_at:
         query = query.filter(Order.ordered_at >= start_at)
@@ -74,6 +94,96 @@ def _sum_orders(
     return _money(query.scalar())
 
 
+def _payment_revenue_summary(db: Session, payment_methods: tuple[str, ...], start_at: Optional[datetime] = None, end_at: Optional[datetime] = None) -> dict:
+    query = db.query(
+        func.coalesce(func.sum(Order.total), 0),
+        func.count(Order.id),
+    ).filter(
+        func.lower(Order.status) == REVENUE_STATUS,
+        func.lower(Order.payment).in_(payment_methods),
+    )
+    
+    if start_at:
+        query = query.filter(Order.ordered_at >= start_at)
+    if end_at:
+        query = query.filter(Order.ordered_at < end_at)
+
+    total, count = query.one()
+
+    revenue = _money(total)
+    order_count = int(count or 0)
+
+    return {
+        "revenue": revenue,
+        "average_order": round(revenue / order_count, 2) if order_count else 0,
+        "orders": order_count,
+    }
+
+
+def _top_categories(db: Session) -> list[dict]:
+    category_name = func.coalesce(func.nullif(Product.collection, ""), "Uncategorized")
+
+    rows = (
+        db.query(
+            category_name.label("name"),
+            func.count(Product.id).label("styles"),
+        )
+        .filter(Product.deleted_at.is_(None))
+        .group_by(category_name)
+        .order_by(func.count(Product.id).desc(), category_name.asc())
+        .limit(3)
+        .all()
+    )
+
+    return [
+        {
+            "name": name,
+            "styles": int(styles or 0),
+        }
+        for name, styles in rows
+    ]
+
+
+def _low_stock_products(db: Session) -> tuple[int, list[dict]]:
+    low_stock_filter = ProductVariant.stock_quantity <= ProductVariant.low_stock_threshold
+
+    low_stock_count = (
+        db.query(func.count(func.distinct(Product.id)))
+        .join(ProductVariant)
+        .filter(Product.deleted_at.is_(None), low_stock_filter)
+        .scalar()
+    )
+
+    total_stock = func.coalesce(func.sum(ProductVariant.stock_quantity), 0)
+
+    rows = (
+        db.query(
+            Product.id,
+            Product.title,
+            total_stock.label("stock"),
+            func.count(ProductVariant.id).label("variants"),
+        )
+        .join(ProductVariant)
+        .filter(Product.deleted_at.is_(None), low_stock_filter)
+        .group_by(Product.id, Product.title)
+        .order_by(total_stock.asc(), Product.title.asc())
+        .limit(3)
+        .all()
+    )
+
+    products = [
+        {
+            "id": product_id,
+            "title": title,
+            "stock": int(stock or 0),
+            "variants": int(variants or 0),
+        }
+        for product_id, title, stock, variants in rows
+    ]
+
+    return int(low_stock_count or 0), products
+
+
 @router.get("/stats")
 def get_dashboard_stats(
     db: Session = Depends(get_db),
@@ -81,6 +191,7 @@ def get_dashboard_stats(
 ):
     user_count = get_admins_count(db)
     product_count = get_products_count(db)
+    published_product_count = get_published_products_count(db)
 
     order_count = db.query(Order).filter(
         Order.status.in_(ACTIVE_SALES_STATUSES)
@@ -98,17 +209,43 @@ def get_dashboard_stats(
         previous_window_start,
         current_window_start,
     )
+    
+    # Calculate current and previous cash revenue
+    current_cash_summary = _payment_revenue_summary(db, CASH_PAYMENT_METHODS, current_window_start, now)
+    previous_cash_summary = _payment_revenue_summary(db, CASH_PAYMENT_METHODS, previous_window_start, current_window_start)
+    
+    # Calculate current and previous UPI revenue
+    current_upi_summary = _payment_revenue_summary(db, UPI_PAYMENT_METHODS, current_window_start, now)
+    previous_upi_summary = _payment_revenue_summary(db, UPI_PAYMENT_METHODS, previous_window_start, current_window_start)
+    
+    # Get overall summaries too
+    cash_summary = _payment_revenue_summary(db, CASH_PAYMENT_METHODS)
+    upi_summary = _payment_revenue_summary(db, UPI_PAYMENT_METHODS)
+    low_stock_count, low_stock_products = _low_stock_products(db)
 
     return {
         "total_users": user_count,
         "total_products": product_count,
         "total_revenue": total_revenue,
         "total_orders": order_count,
-        "active_sessions": random.randint(45, 120),
+        "published_products": published_product_count,
+        "active_sessions": published_product_count,
         "revenue_growth": _growth(current_revenue, previous_revenue),
         "user_growth": 8.2,
         "product_growth": 3.7,
-        "session_growth": -2.1,
+        "published_growth": 0.0,
+        "session_growth": 0.0,
+        "cash_revenue": cash_summary["revenue"],
+        "cash_average_order": cash_summary["average_order"],
+        "cash_orders": cash_summary["orders"],
+        "cash_revenue_growth": _growth(current_cash_summary["revenue"], previous_cash_summary["revenue"]),
+        "upi_revenue": upi_summary["revenue"],
+        "upi_average_order": upi_summary["average_order"],
+        "upi_orders": upi_summary["orders"],
+        "upi_revenue_growth": _growth(current_upi_summary["revenue"], previous_upi_summary["revenue"]),
+        "top_categories": _top_categories(db),
+        "low_stock_products": low_stock_products,
+        "low_stock_product_count": low_stock_count,
     }
 
 
@@ -121,7 +258,7 @@ def get_chart_data(
     year_start = date(today.year, 1, 1)
     year_end = date(today.year + 1, 1, 1)
 
-    orders = _orders_between(
+    orders = _revenue_orders_between(
         db,
         _start_of_day(year_start),
         _start_of_day(year_end),
@@ -171,7 +308,7 @@ def get_sales_chart(
         start_date = anchor - timedelta(days=anchor.weekday())
         end_date = start_date + timedelta(days=7)
 
-        orders = _orders_between(
+        orders = _revenue_orders_between(
             db,
             _start_of_day(start_date),
             _start_of_day(end_date),
@@ -201,7 +338,7 @@ def get_sales_chart(
     start_month = _add_months(anchor_month, -11)
     end_month = _add_months(anchor_month, 1)
 
-    orders = _orders_between(
+    orders = _revenue_orders_between(
         db,
         _start_of_day(start_month),
         _start_of_day(end_month),
