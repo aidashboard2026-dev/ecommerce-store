@@ -9,6 +9,7 @@ import OrdersPage from '../pages/OrdersPage'
 import OffersPage from '../pages/OffersPage'
 import CustomersPage from '../pages/CustomersPage'
 import SettingsPage from '../pages/SettingsPage'
+import AddOfferPage from "../pages/AddOfferPage";
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth()
@@ -45,6 +46,7 @@ export default function AppRoutes() {
         <Route path="offers" element={<OffersPage />} />
         <Route path="customers" element={<CustomersPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="add-offer" element={<AddOfferPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

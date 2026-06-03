@@ -17,10 +17,27 @@ export default function LoginPage() {
     dispatch(clearError())
   }, [dispatch])
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!email || !password) return
-    dispatch(loginThunk({ email, password }))
+
+    console.log("LOGIN BUTTON CLICKED")
+
+    const result = await dispatch(
+      loginThunk({
+        email,
+        password,
+      })
+    )
+
+    console.log("RESULT =", result)
+
+    alert("LOGIN SUCCESS BLOCK")
+
+    console.log("BEFORE REDIRECT")
+
+    window.location.href = "/"
+
+    console.log("AFTER REDIRECT")
   }
 
   return (
