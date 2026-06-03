@@ -6,11 +6,23 @@ export const loginThunk = createAsyncThunk(
   async ({ email, password }, { rejectWithValue }) => {
     try {
       const res = await authAPI.login(email, password)
+      console.log("EMAIL SENT =", email)
+      console.log("PASSWORD SENT =", password)
+      console.log("LOGIN RESPONSE =", res.data)
+      
       localStorage.setItem('token', res.data.access_token)
       localStorage.setItem('admin', JSON.stringify(res.data.admin))
+
+      console.log("TOKEN SAVED =", localStorage.getItem("token"))
+      console.log("ADMIN SAVED =", localStorage.getItem("admin"))
       return res.data
     } catch (err) {
-      return rejectWithValue(err.response?.data?.detail || 'Login failed')
+      console.log("LOGIN ERROR =", err.response?.data)
+      console.log("STATUS =", err.response?.status)
+
+      return rejectWithValue(
+        err.response?.data?.detail || 'Login failed'
+      )
     }
   }
 )

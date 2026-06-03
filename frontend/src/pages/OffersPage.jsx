@@ -1,75 +1,549 @@
-import React, { useState } from 'react'
-import { Plus, Search, Tags, CalendarDays, Percent } from 'lucide-react'
-import Badge from '../components/common/Badge'
+import React, { useState } from "react";
+import { Search, Plus } from "lucide-react";
 
-const OFFERS = [
-  { id: 1, name: 'Summer Sale', code: 'SUMMER25', discount: '25%', status: 'active', ends: 'Jun 30' },
-  { id: 2, name: 'First Order', code: 'WELCOME10', discount: '10%', status: 'active', ends: 'Dec 31' },
-  { id: 3, name: 'Clearance Deal', code: 'CLEAR40', discount: '40%', status: 'scheduled', ends: 'Jul 15' },
-  { id: 4, name: 'Free Shipping', code: 'FREESHIP', discount: 'Shipping', status: 'paused', ends: 'Aug 01' },
-]
 
-const statusBadge = {
-  active: 'success',
-  scheduled: 'info',
-  paused: 'warning',
-}
+const OFFERS = [];
 
 export default function OffersPage() {
-  const [search, setSearch] = useState('')
-  const filtered = OFFERS.filter((offer) =>
-    `${offer.name} ${offer.code} ${offer.status}`.toLowerCase().includes(search.toLowerCase())
-  )
+
+
+
+  const [search, setSearch] = useState("");
+  const [showAddOffer, setShowAddOffer] = useState(false);
+  const [banner, setBanner] = useState(null);
+  const [extraImages, setExtraImages] = useState(Array(5).fill(null));
+  const [showThumbs, setShowThumbs] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(null);
+  const [showImagePopup, setShowImagePopup] =
+  useState(false);
+
+
+
+
+    
+  const filteredOffers = OFFERS.filter((offer) =>
+    offer.title?.toLowerCase().includes(search.toLowerCase())
+  );
+  
+  
 
   return (
-    <div className="space-y-6 py-6">
-      <div className="flex items-start justify-between gap-4">
+    <div
+      style={{
+        padding: "24px",
+        background: "#111827",
+        minHeight: "100vh",
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: "30px",
+          flexWrap: "wrap",
+          gap: "20px",
+        }}
+      >
         <div>
-          <h1 className="font-display font-bold text-2xl text-app">Offers</h1>
-          <p className="text-muted text-sm mt-1">Manage discounts, coupons, and campaign windows</p>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: "42px",
+              fontWeight: "800",
+              color: "#ffffff",
+              letterSpacing: "-1px",
+            }}
+          >
+            Offers & Promo
+          </h1>
+
+          <p
+            style={{
+              marginTop: "8px",
+              fontSize: "14px",
+              color: "#94a3b8",
+            }}
+          >
+            Manage promotional offers and campaigns
+          </p>
         </div>
-        <button className="btn-primary flex items-center gap-2 flex-shrink-0">
-          <Plus size={16} />
-          Add Offer
-        </button>
-      </div>
 
-      <div className="relative max-w-sm">
-        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-        <input
-          className="input-field pl-10"
-          placeholder="Search offers..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+          }}
+        >
+          {/* Search Box */}
+          <div
+            style={{
+              position: "relative",
+            }}
+          >
+            <Search
+              size={18}
+              style={{
+                position: "absolute",
+                left: "12px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "#94a3b8",
+              }}
+            />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {filtered.map((offer) => (
-          <div key={offer.id} className="card p-5 space-y-4 hover:-translate-y-0.5 transition-transform duration-200">
-            <div className="flex items-start justify-between">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                <Tags size={18} />
-              </div>
-              <Badge label={offer.status} variant={statusBadge[offer.status]} />
-            </div>
-            <div>
-              <p className="font-semibold text-app text-sm">{offer.name}</p>
-              <p className="text-xs text-muted mt-0.5">{offer.code}</p>
-            </div>
-            <div className="flex items-center justify-between pt-3 border-t border-app text-sm">
-              <span className="flex items-center gap-1.5 text-app font-semibold">
-                <Percent size={14} className="text-muted" />
-                {offer.discount}
-              </span>
-              <span className="flex items-center gap-1.5 text-muted text-xs">
-                <CalendarDays size={14} />
-                {offer.ends}
-              </span>
-            </div>
+            <input
+              type="text"
+              placeholder="Search Offer"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{
+                width: "260px",
+                height: "42px",
+                border: "1px solid #334155",
+                borderRadius: "8px",
+                paddingLeft: "40px",
+                background: "#1e293b",
+                color: "#ffffff",
+                outline: "none",
+              }}
+            />
           </div>
-        ))}
+
+          {/* Add Offer Button */}
+          <button
+            onClick={() => {
+              setBanner(null);
+              setExtraImages(Array(5).fill(null));
+              setShowAddOffer(true);
+            }}
+                      style={{
+              height: "42px",
+              padding: "0 20px",
+              border: "none",
+              borderRadius: "8px",
+              background: "#2563eb",
+              color: "#ffffff",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              cursor: "pointer",
+              fontWeight: "700",
+              
+            }}
+          >
+            <Plus size={16} />
+            Add Offer
+          </button>
+        </div>
       </div>
-    </div>
-  )
+
+      {/* Empty State */}
+      {filteredOffers.length === 0 && (
+        <div
+          style={{
+            height: "450px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "column",
+            border: "1px dashed #334155",
+            borderRadius: "12px",
+            background: "#1e293b",
+          }}
+        >
+          <h2
+            style={{
+              color: "#ffffff",
+              fontSize: "26px",
+              fontWeight: "700",
+              marginBottom: "10px",
+            }}
+          >
+            No Offers & Promo Found
+          </h2>
+
+          <p
+            style={{
+              color: "#94a3b8",
+              fontSize: "14px",
+            }}
+          >
+            Click Add Offer to create your first promotional campaign.
+          </p>
+        </div>
+      )}
+
+      
+    {showAddOffer && (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.7)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 9999,
+        }}
+      >
+        <div
+          style={{
+            width: "580px",
+            background: "#1f2937",
+            borderRadius: "12px",
+            padding: "15px",
+            border: "1px solid #374151",
+          }}
+        >
+          <h2
+            style={{
+              color: "#fff",
+              marginBottom: "20px",
+            }}
+          >
+            Add Offer
+          </h2>
+
+          {/* Upload Section */}
+
+          <div
+            style={{
+              display: "flex",
+              gap: "12px",
+              marginBottom: "12px",
+              alignItems: "center",
+            }}
+          >
+            {/* Main Banner */}
+
+            <div
+              onClick={() => setShowImagePopup(true)}
+              style={{
+                width: "100%",
+                height: "120px",
+                border: "2px solid #60a5fa",
+                borderRadius: "6px",
+                cursor: "pointer",
+                overflow: "hidden",
+                background: "#111827",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+            </div>
+              {banner ? (
+                <img
+                  src={banner}
+                  alt=""
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
+                />
+              ) : (
+                <Plus size={40} color="#94a3b8" />
+              )}
+            </div>
+          {/* Offer Name */}
+
+          <input
+            placeholder="Offer Name"
+            style={{
+              width: "100%",
+              height: "34px",
+              marginBottom: "8px",
+              border: "1px solid #4b5563",
+              borderRadius: "4px",
+              background: "#111827",
+              color: "#fff",
+              padding: "0 10px",
+            }}
+          />
+
+
+          <input
+            placeholder="Offer Percentage (Ex: 50%)"
+            style={{
+              width: "100%",
+              height: "34px",
+              marginBottom: "8px",
+              border: "1px solid #4b5563",
+              borderRadius: "4px",
+              background: "#111827",
+              color: "#fff",
+              padding: "0 10px",
+            }}
+          />
+          {/* Description */}
+
+          <textarea
+            placeholder="Description"
+            rows="3"
+            style={{
+              width: "100%",
+              marginBottom: "8px",
+              border: "1px solid #4b5563",
+              borderRadius: "4px",
+              background: "#111827",
+              color: "#fff",
+              padding: "8px",
+              resize: "none",
+            }}
+          />
+
+          {/* Dates */}
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "8px",
+              marginBottom: "12px",
+            }}
+          >
+            <input type="date" />
+            <input type="time" />
+
+            <input type="date" />
+            <input type="time" />
+          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
+            }}
+          >
+            <button
+              style={{
+                flex: 1,
+                background: "#22c55e",
+                color: "#fff",
+                height: "36px",
+                border: "none",
+                borderRadius: "6px",
+                fontWeight: "600",
+                cursor: "pointer",
+              }}
+            >
+              Save
+            </button>
+
+            <button
+              style={{
+                flex: 1,
+                background: "#3b82f6",
+                color: "#fff",
+                height: "36px",
+                border: "none",
+                borderRadius: "6px",
+                fontWeight: "600",
+                cursor: "pointer",
+              }}
+            >
+              Publish
+            </button>
+
+
+            <button
+              onClick={() => setShowAddOffer(false)}
+              style={{
+                flex: 1,
+                background: "#ef4444",
+                color: "#fff",
+                height: "36px",
+                border: "none",
+                borderRadius: "6px",
+                fontWeight: "600",
+                cursor: "pointer",
+              }}
+            >
+              Cancel
+            </button>
+
+            {showImagePopup && (
+              <div
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  background: "rgba(0,0,0,.7)",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  zIndex: 10000,
+                }}
+              >
+                <div
+                  style={{
+                    width: "420px",
+                    background: "#1f2937",
+                    borderRadius: "10px",
+                    padding: "20px",
+                  }}
+                >
+                 <h3
+                    style={{
+                      color: "#fff",
+                      marginBottom: "15px",
+                      textAlign: "center",
+                    }}
+                  >
+                    Manage Offer Images
+                  </h3>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "10px",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {extraImages.map((img, index) => (
+                      <label
+                        key={index}
+                        onClick={() => setSelectedIndex(index)}
+                        style={{
+                          width: "60px",
+                          height: "60px",
+                          border:
+                            selectedIndex === index
+                              ? "2px solid #3b82f6"
+                              : "1px solid #4b5563",
+                          borderRadius: "6px",
+                          overflow: "hidden",
+                          cursor: "pointer",
+                          background: "#111827",
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                        }}
+                      >
+                        <input
+                          type="file"
+                          hidden
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+
+                            if (file) {
+                              const updated = [...extraImages];
+
+                              updated[index] =
+                                URL.createObjectURL(file);
+
+                              setExtraImages(updated);
+                            }
+                          }}
+                        />
+
+                        {img ? (
+                          <img
+                            src={img}
+                            alt=""
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
+                          />
+                        ) : (
+                          <Plus size={18} color="#94a3b8" />
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "10px",
+                      marginTop: "20px",
+                    }}
+                  >
+                    <button
+                      onClick={() => {
+                        document
+                          .getElementById("img-upload-0")
+                          ?.click();
+                      }}
+                      style={{
+                        flex: 1,
+                        background: "#3b82f6",
+                        color: "#fff",
+                        border: "none",
+                        height: "38px",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Add
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (selectedIndex === null) {
+                          alert("Select image first");
+                          return;
+                        }
+
+                        if (
+                          window.confirm(
+                            `Delete Image ${selectedIndex + 1}?`
+                          )
+                        ) {
+                          const updated = [...extraImages];
+
+                          updated[selectedIndex] = null;
+
+                          setExtraImages(updated);
+
+                          setSelectedIndex(null);
+                        }
+                      }}
+                      style={{
+                        flex: 1,
+                        background: "#f59e0b",
+                        color: "#fff",
+                        border: "none",
+                        height: "38px",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Delete
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (extraImages[0]) {
+                          setBanner(extraImages[0]);
+                        }
+
+                        setShowImagePopup(false);
+                      }}
+                      style={{
+                        flex: 1,
+                        background: "#22c55e",
+                        color: "#fff",
+                        border: "none",
+                        height: "38px",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+        </div>
+      </div>
+    )}
+  </div>
+);
 }

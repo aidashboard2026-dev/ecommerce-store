@@ -136,3 +136,45 @@
   transform: translateY(0);
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
+
+
+/* order  page  related css  */
+
+.react-calendar {
+  width: 260px !important;
+  height: 260px !important;
+  background: #0f172a !important;
+  border: 1px solid #374151 !important;
+  color: white !important;
+  border-radius: 12px !important;
+  padding: 10px;
+}
+
+.react-calendar__navigation button {
+  color: white !important;
+  min-width: 30px !important;
+  background: transparent !important;
+}
+
+.react-calendar__month-view__weekdays {
+  color: #9ca3af !important;
+  text-transform: none !important;
+}
+
+.react-calendar__tile {
+  color: white !important;
+  border-radius: 6px;
+}
+
+.react-calendar__tile--active {
+  background: #2563eb !important;
+  color: white !important;
+}
+
+.react-calendar__tile:hover {
+  background: #1e293b !important;
+}
+
+.react-calendar__navigation button:hover {
+  background: #1e293b !important;
+}
