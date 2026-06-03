@@ -1,6 +1,9 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
@@ -8,6 +11,11 @@ from app.database.session import engine
 from app.database.base import Base
 from app.api.v1.router import api_router
 from app.database.init_db import init_db
+import app.models  # noqa: F401 — register all models with Base.metadata
+
+# Ensure uploads directory exists
+UPLOADS_ROOT = os.path.join(os.path.dirname(__file__), "..", "uploads")
+os.makedirs(os.path.join(UPLOADS_ROOT, "products"), exist_ok=True)
 
 
 @asynccontextmanager
@@ -35,6 +43,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve uploaded product images
+app.mount("/uploads", StaticFiles(directory=UPLOADS_ROOT), name="uploads")
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Search } from "lucide-react";
 import Calendar from "react-calendar";
@@ -81,7 +82,7 @@ export default function OrdersPage() {
       </div>
 
       {/* Calendar */}
-      <div className="w-[260px] h-[300px]">
+      <div className="w-[260px] h-[260px]">
 
         <Calendar
           onChange={setDate}
@@ -194,8 +195,17 @@ export default function OrdersPage() {
 
           <div className="flex items-start gap-4 mb-8">
 
-            <div className="w-12 h-12 border-2 border-gray-500 rounded"></div>
-
+            <div className="w-12 h-12 border-2 border-gray-500 rounded overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300"
+                alt="Product"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.style.display = "none";
+                }}
+              />
+            </div>
+            
             <div className="flex-1">
 
               <p>
@@ -222,7 +232,20 @@ export default function OrdersPage() {
 
           <div className="flex items-start gap-4">
 
-            <div className="w-12 h-12 border-2 border-gray-500 rounded"></div>
+            
+
+            <div className="w-12 h-12 border-2 border-gray-500 rounded overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1542272604-787c3835535d?w=300"
+                alt="Product"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.style.display = "none";
+                }}
+              />
+            </div>
+
+            
 
             <div className="flex-1">
 
@@ -286,3 +309,4 @@ export default function OrdersPage() {
 
   );
 }
+
