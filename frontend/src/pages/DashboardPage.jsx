@@ -11,11 +11,10 @@ import {
   TrendingUp,
   Banknote,
   Smartphone,
-  Shirt,
 } from 'lucide-react'
 
 import { dashboardAPI } from '../services/api'
-import StatCard from '../components/dashboard/StatCard'
+import StatCard, { TopCategoriesCard, LowStockProductsCard, SettlementCard } from '../components/dashboard/StatCard'
 import SalesDashboard from '../components/dashboard/SalesDashboard'
 import OrderStatusAnalytics from '../components/dashboard/OrderStatusAnalytics'
 import { PageLoader } from '../components/common/Spinner'
@@ -55,95 +54,8 @@ function formatNumber(value) {
   return numberFormatter.format(Number(value || 0))
 }
 
-function SettlementCard({ title, value, description, footerLabel, footerValue, icon: Icon, iconClassName }) {
-  return (
-    <div className="min-h-[176px] rounded-lg border border-app bg-surface p-5 shadow-card transition-shadow duration-200 hover:shadow-md dark:shadow-card-dark">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
-          <p className="font-display text-base font-bold uppercase text-muted sm:text-lg">
-            {title}
-          </p>
-          <p className="mt-2 font-display text-3xl font-bold leading-none text-app">
-            {value}
-          </p>
-        </div>
-        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-md ${iconClassName}`}>
-          <Icon size={24} />
-        </div>
-      </div>
-      <p className="text-sm font-semibold text-muted">
-        {description}
-      </p>
-      <div className="mt-7 flex items-center justify-between gap-3 text-sm">
-        <span className="text-muted">{footerLabel}</span>
-        <span className="font-display font-bold text-app">{footerValue}</span>
-      </div>
-    </div>
-  )
-}
 
-function TopCategoriesCard({ categories = [] }) {
-  const rows = categories.length
-    ? categories
-    : [{ name: 'No categories', styles: 0 }]
 
-  return (
-    <div className="min-h-[176px] rounded-lg border border-app bg-surface p-5 shadow-card transition-shadow duration-200 hover:shadow-md dark:shadow-card-dark">
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <p className="font-display text-base font-bold uppercase text-muted sm:text-lg">
-          Top Categories
-        </p>
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
-          <Shirt size={24} />
-        </div>
-      </div>
-      <div className="space-y-2.5">
-        {rows.map((category) => (
-          <div key={category.name} className="flex items-center justify-between gap-3 text-sm">
-            <span className="min-w-0 truncate font-semibold text-muted">{category.name}</span>
-            <span className="shrink-0 font-display font-bold text-app">
-              {formatNumber(category.styles)} {category.styles === 1 ? 'style' : 'styles'}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function LowStockProductsCard({ count = 0, products = [] }) {
-  const rows = products.length
-    ? products
-    : [{ id: 'empty', title: 'All products stocked', stock: 0, variants: 0 }]
-
-  return (
-    <div className="min-h-[176px] rounded-lg border border-app bg-surface p-5 shadow-card transition-shadow duration-200 hover:shadow-md dark:shadow-card-dark">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
-          <p className="font-display text-base font-bold uppercase text-muted sm:text-lg">
-            Low Stock Products
-          </p>
-          <p className="mt-2 font-display text-3xl font-bold leading-none text-app">
-            {formatNumber(count)}
-          </p>
-        </div>
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300">
-          <AlertTriangle size={24} />
-        </div>
-      </div>
-      <div className="mt-5 space-y-2">
-        {rows.slice(0, 3).map((product) => (
-          <div key={product.id} className="flex items-center justify-between gap-3 text-sm">
-            <span className="min-w-0 truncate font-semibold text-muted">{product.title}</span>
-            <span className="shrink-0 font-display font-bold text-app">
-              {formatNumber(product.stock)} left
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 export default function DashboardPage() {
   const { admin } = useAuth()
@@ -232,29 +144,31 @@ export default function DashboardPage() {
             value={stats.total_users}
             change={stats.user_growth}
             icon={Users}
-            color="bg-gradient-to-br from-brand-500 to-brand-700"
+            iconClassName="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+            onClick={() => navigate('/Customers')}
           />
           <StatCard
             title="Total Products"
             value={stats.total_products}
             change={stats.product_growth}
             icon={Package}
-            color="bg-gradient-to-br from-violet-500 to-violet-700"
+            iconClassName="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+            onClick={() => navigate('/Products')}
           />
-          <StatCard
-            title="Total Revenue"
-            value={Number(stats.total_revenue || 0).toFixed(0)}
-            change={stats.revenue_growth}
-            icon={DollarSign}
-            color="bg-gradient-to-br from-emerald-500 to-emerald-700"
-            prefix="$"
-          />
+         
           <StatCard
             title="Published Products"
             value={stats.published_products}
             change={stats.published_growth}
             icon={Activity}
-            color="bg-gradient-to-br from-amber-500 to-orange-600"
+            iconClassName="bg-gradient-to-br from-amber-500 to-orange-600"
+            onClick={() => navigate('/Products')}
+          />
+          <LowStockProductsCard
+            title="Low Stock Products"
+            count={stats.low_stock_product_count}
+            products={stats.low_stock_products}
+            onClick={() => navigate('/Products')}
           />
         </div>
       )}
@@ -265,31 +179,43 @@ export default function DashboardPage() {
       </div>
       {stats && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          
+           <StatCard
+            title="Total Revenue"
+            value={Number(stats.total_revenue || 0).toFixed(0)}
+            change={stats.revenue_growth}
+            icon={DollarSign}
+            iconClassName="bg-gradient-to-br from-emerald-500 to-emerald-700"
+            prefix="$"
+            onClick={() => navigate('/Orders')}
+          />
           <SettlementCard
             title="Cash Revenue"
             value={formatCurrency(stats.cash_revenue)}
             description="Total cash settled offline"
-            footerLabel="Average Order:"
-            footerValue={formatNumber(stats.cash_average_order)}
+            change={stats.cash_revenue_growth || 0}
             icon={Banknote}
             iconClassName="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+            onClick={() => navigate('/Orders')}
           />
           <SettlementCard
             title="UPI Revenue"
             value={formatCurrency(stats.upi_revenue)}
             description="Total cash settled online"
-            footerLabel="Average Order:"
-            footerValue={formatNumber(stats.upi_average_order)}
+            change={stats.upi_revenue_growth || 0}
             icon={Smartphone}
             iconClassName="bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300"
+            onClick={() => navigate('/Orders')}
           />
-          <TopCategoriesCard categories={stats.top_categories} />
-          <LowStockProductsCard
-            count={stats.low_stock_product_count}
-            products={stats.low_stock_products}
+          <TopCategoriesCard 
+            title="Top Categories" 
+            categories={stats.top_categories} 
+            onClick={() => navigate('/Products')}
           />
+          
         </div>
       )}
+      
       <div className="card p-6">
         <div className="flex items-center gap-2 mb-5">
           <Clock size={18} className="text-muted" />

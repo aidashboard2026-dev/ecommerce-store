@@ -94,18 +94,21 @@ def _sum_orders(
     return _money(query.scalar())
 
 
-def _payment_revenue_summary(db: Session, payment_methods: tuple[str, ...]) -> dict:
-    total, count = (
-        db.query(
-            func.coalesce(func.sum(Order.total), 0),
-            func.count(Order.id),
-        )
-        .filter(
-            func.lower(Order.status) == REVENUE_STATUS,
-            func.lower(Order.payment).in_(payment_methods),
-        )
-        .one()
+def _payment_revenue_summary(db: Session, payment_methods: tuple[str, ...], start_at: Optional[datetime] = None, end_at: Optional[datetime] = None) -> dict:
+    query = db.query(
+        func.coalesce(func.sum(Order.total), 0),
+        func.count(Order.id),
+    ).filter(
+        func.lower(Order.status) == REVENUE_STATUS,
+        func.lower(Order.payment).in_(payment_methods),
     )
+    
+    if start_at:
+        query = query.filter(Order.ordered_at >= start_at)
+    if end_at:
+        query = query.filter(Order.ordered_at < end_at)
+
+    total, count = query.one()
 
     revenue = _money(total)
     order_count = int(count or 0)
@@ -206,6 +209,16 @@ def get_dashboard_stats(
         previous_window_start,
         current_window_start,
     )
+    
+    # Calculate current and previous cash revenue
+    current_cash_summary = _payment_revenue_summary(db, CASH_PAYMENT_METHODS, current_window_start, now)
+    previous_cash_summary = _payment_revenue_summary(db, CASH_PAYMENT_METHODS, previous_window_start, current_window_start)
+    
+    # Calculate current and previous UPI revenue
+    current_upi_summary = _payment_revenue_summary(db, UPI_PAYMENT_METHODS, current_window_start, now)
+    previous_upi_summary = _payment_revenue_summary(db, UPI_PAYMENT_METHODS, previous_window_start, current_window_start)
+    
+    # Get overall summaries too
     cash_summary = _payment_revenue_summary(db, CASH_PAYMENT_METHODS)
     upi_summary = _payment_revenue_summary(db, UPI_PAYMENT_METHODS)
     low_stock_count, low_stock_products = _low_stock_products(db)
@@ -225,9 +238,11 @@ def get_dashboard_stats(
         "cash_revenue": cash_summary["revenue"],
         "cash_average_order": cash_summary["average_order"],
         "cash_orders": cash_summary["orders"],
+        "cash_revenue_growth": _growth(current_cash_summary["revenue"], previous_cash_summary["revenue"]),
         "upi_revenue": upi_summary["revenue"],
         "upi_average_order": upi_summary["average_order"],
         "upi_orders": upi_summary["orders"],
+        "upi_revenue_growth": _growth(current_upi_summary["revenue"], previous_upi_summary["revenue"]),
         "top_categories": _top_categories(db),
         "low_stock_products": low_stock_products,
         "low_stock_product_count": low_stock_count,
