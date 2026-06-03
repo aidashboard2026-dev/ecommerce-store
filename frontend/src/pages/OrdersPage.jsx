@@ -68,7 +68,7 @@ export default function OrdersPage() {
             </p>
           </div>
 
-          <div className="w-full  h-[82px] bg-red-200 rounded-lg px-3 py-2">
+          <div className="w-full  h-[82px] bg-red-20 rounded-lg px-3 py-2">
             <p className="font-bold text-red-500 text-xl">
               Pending
             </p>
