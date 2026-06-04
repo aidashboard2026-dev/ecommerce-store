@@ -26,6 +26,16 @@ export default function Header() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const profileRef = useRef(null)
+  const [isScrolled, setIsScrolled] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 0)
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   useEffect(() => {
     function handleClick(e) {
@@ -44,7 +54,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-app/80 backdrop-blur-xl border-b border-app">
+      <header className={`sticky top-0 left-0 right-0 z-40 h-16 bg-white border-b border-app dark:bg-black dark:border-slate-700/50 ${isScrolled ? 'shadow-[0_4px_8px_rgba(0,0,0,0.12)]' : ''} transition-shadow duration-300`}>
         <div className="max-w-[1400px] mx-auto h-full px-4 sm:px-6 lg:px-8 flex items-center gap-6">
           {/* Logo */}
           <div className="flex items-center gap-2.5 flex-shrink-0">

@@ -103,19 +103,19 @@ export default function DashboardPage() {
   if (loading) return <PageLoader />
 
   return (
-    <div className="space-y-6 py-6">
-      <div className="mx-auto min-w-[80%] max-w-6xl gap-20 rounded-[10px] bg-blue-600  text-white shadow-sm  p-4 md:p-6 lg:p-9">
-        <div className="flex flex-col gap-5 sm:flex-col sm:items-start sm:justify-between">
-          <div>
-            <span className="inline-flex items-center rounded-[10px] bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
+    <div className="space-y-6 py-6 mx-auto min-w-[80%] max-w-6xl">
+      <div className=" gap-20 rounded-[10px] bg-blue-600  text-white shadow-sm  p-4 md:p-6 lg:p-9">
+        <div className="flex flex-col gap-10 sm:flex-col sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-0">
+            <span className="w-fit inline-flex items-center rounded-[10px] bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
               Live Merchant
             </span>
-            <h1 className="mt-4 font-display text-white">
+            <h1 className="mt-2 font-display text-white">
               <span className="text-sm pl-0 pb-2">Greetings, </span>
               <span className="text-3xl pl-2 font-bold">{adminFirstName}</span>
             </h1>
-            <p className="mt-1 text-sm md:text-base lg:text-base text-blue-50 ">
-              Your catalog features {liveProductCount} live products online. Review real-time sales trends, resolve Physical variant shortages, and deploy custom discount offers.
+            <p className="mt-4 text-sm md:text-base lg:text-lg font-thin text-blue-50 leading-[1.5]">
+              Your catalog features{" "} <span className="font-bold">{liveProductCount} live products</span> currently available online. Monitor real time sales performance, track inventory levels across all variants, identify low-stock or out of stock physical products, and respond quickly to changing customer demand. Create and deploy custom discount campaigns, optimize product visibility, and make data driven decisions to maximize revenue growth and customer engagement.
             </p>
           </div>
           <div className="flex flex-col gap-3 min-[460px]:flex-row ">
@@ -142,26 +142,29 @@ export default function DashboardPage() {
           <StatCard
             title="Total Users"
             value={stats.total_users}
+            // valueClassName="text-blue-700 dark:text-blue-700"
             change={stats.user_growth}
             icon={Users}
-            iconClassName="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+            iconClassName="bg-blue-100/50 text-blue-700 dark:bg-gray-800/50 dark:text-blue-300"
             onClick={() => navigate('/Customers')}
           />
           <StatCard
             title="Total Products"
             value={stats.total_products}
+            // valueClassName="text-[var(--productcard-bg)] "
             change={stats.product_growth}
             icon={Package}
-            iconClassName="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+            iconClassName="bg-gray-200/50 text-[var(--productcard-bg)]  dark:bg-gray-800/50 dark:text-[var(--productcard-bg)]"
             onClick={() => navigate('/Products')}
           />
          
           <StatCard
             title="Published Products"
             value={stats.published_products}
+            // valueClassName="text-emerald-700 dark:text-emerald-300"
             change={stats.published_growth}
             icon={Activity}
-            iconClassName="bg-gradient-to-br from-amber-500 to-orange-600"
+            iconClassName="bg-emerald-100/50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
             onClick={() => navigate('/Products')}
           />
           <LowStockProductsCard
@@ -180,13 +183,13 @@ export default function DashboardPage() {
       {stats && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           
-           <StatCard
+           <StatCard 
             title="Total Revenue"
             value={Number(stats.total_revenue || 0).toFixed(0)}
             change={stats.revenue_growth}
             icon={DollarSign}
             iconClassName="bg-gradient-to-br from-emerald-500 to-emerald-700"
-            prefix="$"
+            prefix={formatCurrency}
             onClick={() => navigate('/Orders')}
           />
           <SettlementCard

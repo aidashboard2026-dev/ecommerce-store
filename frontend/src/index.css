@@ -4,23 +4,41 @@
 
 @layer base {
   :root {
-    --color-bg: 255 255 255;
-    --color-surface: 248 249 252;
-    --color-border: 226 232 240;
-    --color-text: 15 23 42;
-    --color-text-muted: 100 116 139;
-    --color-brand: 88 101 242;
+    --color-bg: #f8fafc;
+    --color-surface: #f8f9fc;
+    --color-border: #dadbdb;
+    
+    --color-text: #0f172a;
+    --color-text-muted: #afafaf;
+    --color-brand: #5865f2;
     --sidebar-width: 240px;
     color-scheme: light;
+
+    --productcard-bg:#a855f7;
+
+    --hover-bg: #ffffff;
+    --hover-border: #a8a8a8;
+    --hover-shadow: 0 4px 6px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.06);
+    /* --usercard-bg:#eff6ff;
+    --usercard-border:#add1ff;
+    --usercard-font-color:#09142e;
+    --usercard-hover-bg:#e7edff;
+    
+
+    --productcard-bg:#ffebca;
+    --productcard-border:#ffbe4f;
+    --productcard-font-color:#0f172a;
+    --productcard-hover-bg:#fdeed6;
+    --productcard-hover-border:#ffbe4f; */
   }
 
   .dark {
-    --color-bg: 15 17 23;
-    --color-surface: 22 26 35;
-    --color-border: 36 42 55;
-    --color-text: 241 245 249;
-    --color-text-muted: 100 116 139;
-    --color-brand: 122 143 255;
+    --color-bg: #141414;
+    --color-surface: #161b22;
+    --color-border: #212638;
+    --color-text: #f1f5f9;
+    --color-text-muted: #64748b;
+    --color-brand: #7a8fff;
     color-scheme: dark;
   }
 
@@ -29,7 +47,7 @@
   }
 
   body {
-    font-family: 'DM Sans', system-ui, sans-serif;
+    font-family: acumin-pro, "Acumin Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
     background-color: rgb(var(--color-bg));
     color: rgb(var(--color-text));
     transition: background-color 0.3s ease, color 0.3s ease;
@@ -43,26 +61,59 @@
 
 @layer components {
   .bg-app {
-    background-color: rgb(var(--color-bg));
+    background-color: var(--color-bg);
   }
 
   .bg-surface {
-    background-color: rgb(var(--color-surface));
+    background-color: var(--color-surface);
   }
 
   .text-app {
-    color: rgb(var(--color-text));
+    color: var(--color-text);
   }
 
   .text-muted {
-    color: rgb(var(--color-text-muted));
+    color: var(--color-text-muted);
   }
 
   .border-app {
-    border-color: rgb(var(--color-border));
+    border-color: var(--color-border);
+  }
+
+ .hover-app {
+  transition: all 0.25s ease;
+}
+
+.hover-app:hover {
+  border: 1px solid var(--hover-border);
+  box-shadow: var(--hover-shadow);
+  /* transform: translateY(-2px); */
+}
+
+  .user-cards{
+    background-color: var(--usercard-bg);
+    color: var(--usercard-font-color);
+    border: 2px solid var(--usercard-border);
+  }
+  .user-cards:hover{
+    background-color: var(--usercard-hover-bg);
+    border: 1px solid var(--usercard-hover-border);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.05);
+  }
+
+  .product-cards{
+    background-color: var(--productcard-bg);
+    color: var(--productcard-font-color);
+    border: 2px solid var(--productcard-border);
+  }
+  .product-cards:hover{
+    background-color: var(--productcard-hover-bg);
+    border: 1px solid var(--productcard-hover-border);
   }
 
   .card {
+    font-size: 22px;
+    font-weight: 600;
     @apply bg-surface rounded-2xl border border-app;
     transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.2s ease;
   }
@@ -116,12 +167,12 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgb(var(--color-border));
+    background: var(--color-border);
     border-radius: 99px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgb(var(--color-text-muted));
+    background: var(--color-text-muted);
   }
 }
 
