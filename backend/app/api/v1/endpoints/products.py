@@ -38,9 +38,63 @@ from app.services.product_service import (
 
 router = APIRouter()
 
-# Upload directory (relative to backend root)
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "uploads", "products")
+# ─────────────────────────────────────────────────────────────
+# Upload directory
+# Points to backend/uploads/products — same root that main.py
+# mounts as StaticFiles("/uploads", directory="backend/uploads")
+# ─────────────────────────────────────────────────────────────
+
+# __file__ is  .../backend/app/api/v1/endpoints/products.py
+# go up 4 levels  → backend/
+# then            → backend/uploads/products
+_BACKEND_ROOT = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")
+)
+UPLOAD_DIR = os.path.join(_BACKEND_ROOT, "uploads", "products")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+# ─────────────────────────────────────────────────────────────
+# Image delete  ← MUST be registered BEFORE /admin/{product_id}
+# so FastAPI does not match "images" as an integer product_id
+# ─────────────────────────────────────────────────────────────
+
+@router.delete("/admin/images/{product_id}")
+def delete_product_image(
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_admin: Admin = Depends(get_current_admin),
+):
+    """
+    Remove the thumbnail for a product.
+    Path param is product_id (the frontend passes product.id).
+    """
+    product = get_product(db, product_id)
+
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found",
+        )
+
+    # Delete file from disk
+    if product.thumbnail:
+        # thumbnail is stored as  /uploads/products/<filename>
+        # strip leading slash and join to backend root
+        rel_path = product.thumbnail.lstrip("/")
+        file_path = os.path.join(_BACKEND_ROOT, rel_path)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+    product.thumbnail = None
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    return {"message": "Image removed"}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -180,7 +234,7 @@ def add_variant(
 
 
 # ─────────────────────────────────────────────────────────────
-# Image upload (MVP — stores as product thumbnail)
+# Image upload — stores file and sets product thumbnail
 # ─────────────────────────────────────────────────────────────
 
 @router.post("/admin/{product_id}/images")
@@ -192,10 +246,9 @@ def upload_product_image(
     current_admin: Admin = Depends(get_current_admin),
 ):
     """
-    MVP image upload: saves file to disk, sets as product thumbnail.
-    Returns a response compatible with the frontend ImageUploadModal.
+    Upload an image for a product. Saves to backend/uploads/products/,
+    which is served as /uploads via StaticFiles in main.py.
     """
-
     product = get_product(db, product_id)
 
     if not product:
@@ -204,7 +257,7 @@ def upload_product_image(
             detail="Product not found",
         )
 
-    # Validate file type
+    # Validate MIME type
     allowed = {"image/jpeg", "image/png", "image/webp"}
     if file.content_type not in allowed:
         raise HTTPException(
@@ -212,19 +265,33 @@ def upload_product_image(
             detail="Only JPG, PNG, and WebP images are allowed.",
         )
 
+    # Validate file size (5 MB max)
+    MAX_SIZE = 5 * 1024 * 1024
+    contents = file.file.read()
+    if len(contents) > MAX_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Image must be under 5 MB.",
+        )
+
     # Generate unique filename
     ext = os.path.splitext(file.filename or "image.jpg")[1] or ".jpg"
     unique_name = f"{product_id}_{uuid.uuid4().hex[:12]}{ext}"
     file_path = os.path.join(UPLOAD_DIR, unique_name)
 
-    # Save file to disk
+    # Write file
     with open(file_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+        f.write(contents)
 
-    # Build URL path (served via StaticFiles mount)
+    # Delete old thumbnail file from disk if replacing
+    if product.thumbnail:
+        old_rel = product.thumbnail.lstrip("/")
+        old_path = os.path.join(_BACKEND_ROOT, old_rel)
+        if os.path.exists(old_path):
+            os.remove(old_path)
+
+    # Store URL and commit
     image_url = f"/uploads/products/{unique_name}"
-
-    # Update product thumbnail
     product.thumbnail = image_url
 
     try:
@@ -241,46 +308,3 @@ def upload_product_image(
         "is_primary": True,
         "message": "Image uploaded and set as thumbnail",
     }
-
-
-# ─────────────────────────────────────────────────────────────
-# Image delete (MVP — clears product thumbnail)
-# ─────────────────────────────────────────────────────────────
-
-@router.delete("/admin/images/{image_id}")
-def delete_product_image(
-    image_id: int,
-    db: Session = Depends(get_db),
-    current_admin: Admin = Depends(get_current_admin),
-):
-    """
-    MVP image delete: clears the thumbnail for the given product ID.
-    image_id is treated as product_id in this MVP approach.
-    """
-
-    product = get_product(db, image_id)
-
-    if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Product not found",
-        )
-
-    # Remove file from disk if it exists
-    if product.thumbnail:
-        file_path = os.path.join(
-            os.path.dirname(__file__), "..", "..", "..",
-            product.thumbnail.lstrip("/"),
-        )
-        if os.path.exists(file_path):
-            os.remove(file_path)
-
-    product.thumbnail = None
-
-    try:
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
-
-    return {"message": "Image removed"}
