@@ -13,7 +13,9 @@ from app.api.v1.router import api_router
 from app.database.init_db import init_db
 import app.models  # noqa: F401 — register all models with Base.metadata
 
-# Ensure uploads directory exists
+# Ensure uploads directory exists.
+# __file__ is backend/app/main.py; go up one level to backend/, then into uploads/
+# This matches the UPLOAD_DIR in products.py endpoint.
 UPLOADS_ROOT = os.path.join(os.path.dirname(__file__), "..", "uploads")
 os.makedirs(os.path.join(UPLOADS_ROOT, "products"), exist_ok=True)
 
