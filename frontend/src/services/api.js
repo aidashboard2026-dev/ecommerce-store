@@ -78,9 +78,10 @@ export const productsAPI = {
   delete:    (id)                 => api.delete(`/products/admin/${id}`),
   createVariant: (productId, data) =>
     api.post(`/products/admin/${productId}/variants`, data),
-  uploadImage: (productId, formData) =>
+  uploadImage: (productId, formData, options = {}) =>
     api.post(`/products/admin/${productId}/images`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      signal: options.signal,
     }),
   deleteImage: (imageId) =>
     api.delete(`/products/admin/images/${imageId}`),

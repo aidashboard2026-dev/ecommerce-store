@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from typing import Optional, List, Any
 from datetime import datetime
 from decimal import Decimal
@@ -19,7 +19,58 @@ class VariantBase(BaseModel):
 
 
 class VariantCreate(VariantBase):
-    pass
+    @field_validator('original_price')
+    @classmethod
+    def original_price_positive(cls, v):
+        if v <= 0:
+            raise ValueError('original_price must be greater than zero')
+        return round(v, 2)
+
+    @field_validator('selling_price')
+    @classmethod
+    def selling_price_positive(cls, v):
+        if v <= 0:
+            raise ValueError('selling_price must be greater than zero')
+        return round(v, 2)
+
+    @field_validator('stock_quantity')
+    @classmethod
+    def stock_nonnegative(cls, v):
+        if v < 0:
+            raise ValueError('stock_quantity cannot be negative')
+        return v
+
+    @field_validator('low_stock_threshold')
+    @classmethod
+    def threshold_nonnegative(cls, v):
+        if v < 0:
+            raise ValueError('low_stock_threshold cannot be negative')
+        return v
+
+    @field_validator('size')
+    @classmethod
+    def size_not_empty(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError('size is required')
+        return v
+
+    @field_validator('sku')
+    @classmethod
+    def sku_strip(cls, v):
+        if v is not None:
+            v = v.strip()
+            return v if v else None
+        return v
+
+    @model_validator(mode='after')
+    def selling_lte_original(self):
+        if self.selling_price > self.original_price:
+            raise ValueError(
+                f'selling_price ({self.selling_price}) cannot exceed '
+                f'original_price ({self.original_price})'
+            )
+        return self
 
 
 class VariantResponse(VariantBase):
@@ -54,7 +105,29 @@ class ProductBase(BaseModel):
 
 
 class ProductCreate(ProductBase):
-    pass
+    @field_validator('title')
+    @classmethod
+    def title_valid(cls, v):
+        v = v.strip()
+        if len(v) < 2:
+            raise ValueError('Product title must be at least 2 characters')
+        return v
+
+    @field_validator('tags')
+    @classmethod
+    def sanitize_tags(cls, v):
+        """Strip whitespace and filter empty tags."""
+        if v is None:
+            return []
+        return [t.strip() for t in v if t and t.strip()]
+
+    @field_validator('status')
+    @classmethod
+    def status_valid(cls, v):
+        allowed = {'draft', 'published', 'archived'}
+        if v not in allowed:
+            raise ValueError(f'status must be one of: {", ".join(allowed)}')
+        return v
 
 
 class ProductUpdate(BaseModel):
@@ -67,6 +140,31 @@ class ProductUpdate(BaseModel):
     thumbnail: Optional[str] = None
     seo_title: Optional[str] = None
     seo_description: Optional[str] = None
+
+    @field_validator('title')
+    @classmethod
+    def title_valid(cls, v):
+        if v is not None:
+            v = v.strip()
+            if len(v) < 2:
+                raise ValueError('Product title must be at least 2 characters')
+        return v
+
+    @field_validator('tags')
+    @classmethod
+    def sanitize_tags(cls, v):
+        if v is not None:
+            return [t.strip() for t in v if t and t.strip()]
+        return v
+
+    @field_validator('status')
+    @classmethod
+    def status_valid(cls, v):
+        if v is not None:
+            allowed = {'draft', 'published', 'archived'}
+            if v not in allowed:
+                raise ValueError(f'status must be one of: {", ".join(allowed)}')
+        return v
 
 
 class ProductResponse(ProductBase):
