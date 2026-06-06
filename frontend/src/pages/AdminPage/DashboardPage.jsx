@@ -13,12 +13,12 @@ import {
   Smartphone,
 } from 'lucide-react'
 
-import { dashboardAPI } from '../services/api'
-import StatCard, { TopCategoriesCard, LowStockProductsCard, SettlementCard } from '../components/dashboard/StatCard'
-import SalesDashboard from '../components/dashboard/SalesDashboard'
-import OrderStatusAnalytics from '../components/dashboard/OrderStatusAnalytics'
-import { PageLoader } from '../components/common/Spinner'
-import { useAuth, useTheme } from '../hooks/useAuth'
+import { dashboardAPI } from '../../services/api'
+import StatCard, { TopCategoriesCard, LowStockProductsCard, SettlementCard } from '../../components/dashboard/StatCard'
+import SalesDashboard from '../../components/dashboard/SalesDashboard'
+import OrderStatusAnalytics from '../../components/dashboard/OrderStatusAnalytics'
+import { PageLoader } from '../../components/common/Spinner'
+import { useAuth, useTheme } from '../../hooks/useAuth'
 
 const activityIcons = {
   user_created: UserPlus,

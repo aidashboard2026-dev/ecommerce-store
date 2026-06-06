@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { loginThunk, clearError } from '../store/authSlice'
-import { useTheme } from '../hooks/useAuth'
+import { loginThunk, clearError } from '../../store/authSlice'
+import { useTheme } from '../../hooks/useAuth'
 import { Eye, EyeOff, Zap, Sun, Moon } from 'lucide-react'
 
 export default function LoginPage() {
