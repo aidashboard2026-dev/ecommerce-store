@@ -109,7 +109,7 @@ export default function OrderStatusAnalytics({ isDark }) {
   const chartData = useMemo(() => {
     const counts = orders.reduce(
       (acc, order) => {
-        const status = normalizeStatus(order.status)
+        const status = normalizeStatus(order.tracking_status)
 
         if (status === 'shipped') acc.shipped += 1
         else if (status === 'delivered' || status === 'delivery') acc.delivered += 1

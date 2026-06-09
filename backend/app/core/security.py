@@ -17,13 +17,32 @@ def create_access_token(subject: Union[str, Any], expires_delta: Optional[timede
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def verify_token(token: str) -> Optional[str]:
+# def verify_token(token: str) -> Optional[str]:
+#     try:
+#         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+#         return payload.get("sub")
+#     except JWTError:
+#         return None
+def verify_token(token: str):
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        return payload.get("sub")
-    except JWTError:
-        return None
+        # print("========== TOKEN ==========")
+        # print(token)
 
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM]
+        )
+
+        # print("========== PAYLOAD ==========")
+        # print(payload)
+
+        return payload.get("sub")
+
+    except Exception as e:
+        # print("========== JWT ERROR ==========")
+        # print(str(e))
+        return None
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)

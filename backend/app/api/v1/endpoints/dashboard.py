@@ -51,12 +51,38 @@ def _orders_between(db: Session, start_at: datetime, end_at: datetime) -> list[O
     return (
         db.query(Order)
         .filter(
-            Order.status.in_(ACTIVE_SALES_STATUSES),
+           Order.tracking_status .in_(ACTIVE_SALES_STATUSES),
             Order.ordered_at >= start_at,
             Order.ordered_at < end_at,
         )
         .all()
     )
+def _orders_between(db, start_at, end_at):
+
+    # print("START:", start_at)
+    # print("END:", end_at)
+
+    orders = (
+        db.query(Order)
+        .filter(
+            Order.tracking_status.in_(ACTIVE_SALES_STATUSES),
+            Order.ordered_at >= start_at,
+            Order.ordered_at < end_at,
+        )
+        .all()
+    )
+
+    # print("FOUND ORDERS:", len(orders))
+
+    # for order in orders:
+    #     print(
+    #         order.id,
+    #         order.customer_name,
+    #         order.tracking_status,
+    #         order.ordered_at
+    #     )
+
+    return orders
 
 
 def _revenue_filter():
@@ -194,7 +220,7 @@ def get_dashboard_stats(
     published_product_count = get_published_products_count(db)
 
     order_count = db.query(Order).filter(
-        Order.status.in_(ACTIVE_SALES_STATUSES)
+        Order.tracking_status.in_(ACTIVE_SALES_STATUSES)
     ).count()
 
     total_revenue = _sum_orders(db)
@@ -277,8 +303,7 @@ def get_chart_data(
     users_by_month = {month: 0 for month in range(1, 13)}
 
     for order in orders:
-        revenue_by_month[order.ordered_at.month] += _money(order.total)
-
+        revenue_by_month[order.ordered_at.month] += _money(order.total_amount)
     for admin in admins:
         if admin.created_at:
             users_by_month[admin.created_at.month] += 1
@@ -317,8 +342,7 @@ def get_sales_chart(
         totals = {day: 0.0 for day in range(7)}
 
         for order in orders:
-            totals[order.ordered_at.weekday()] += _money(order.total)
-
+            totals[order.ordered_at.weekday()] += _money(order.total_amount)
         return {
             "period": "weekly",
             "anchor_date": anchor.isoformat(),
@@ -349,8 +373,7 @@ def get_sales_chart(
     totals = {(month.year, month.month): 0.0 for month in month_keys}
 
     for order in orders:
-        totals[(order.ordered_at.year, order.ordered_at.month)] += _money(order.total)
-
+        totals[(order.ordered_at.year, order.ordered_at.month)] += _money(order.total_amount)
     return {
         "period": "monthly",
         "anchor_date": anchor.isoformat(),
