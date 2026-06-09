@@ -11,6 +11,8 @@ import {
   TrendingUp,
   Banknote,
   Smartphone,
+  Eye,
+  Menu
 } from 'lucide-react'
 
 import { dashboardAPI } from '../services/api'
@@ -19,6 +21,8 @@ import SalesDashboard from '../components/dashboard/SalesDashboard'
 import OrderStatusAnalytics from '../components/dashboard/OrderStatusAnalytics'
 import { PageLoader } from '../components/common/Spinner'
 import { useAuth, useTheme } from '../hooks/useAuth'
+
+import { CustomersIcon } from '../components/img/icons'
 
 const activityIcons = {
   user_created: UserPlus,
@@ -104,33 +108,43 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 py-6 mx-auto min-w-[80%] max-w-6xl">
-      <div className=" gap-20 rounded-[10px] bg-blue-600  text-white shadow-sm  p-4 md:p-6 lg:p-9">
-        <div className="flex flex-col gap-10 sm:flex-col sm:items-start sm:justify-between">
+      <div className="hero-banner">
+        <div className="flex flex-col gap-2 sm:flex-col sm:items-start sm:justify-between">
           <div className="flex flex-col gap-0">
-            <span className="w-fit inline-flex items-center rounded-[10px] bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
+            <span className="hero-badge">
+              <span className="h-2 w-2 rounded-full bg-green-400 mr-2 shadow-glow-sm"></span>
               Live Merchant
             </span>
-            <h1 className="mt-2 font-display text-white">
+            <h1 className="hero-title">
               <span className="text-sm pl-0 pb-2">Greetings, </span>
-              <span className="text-3xl pl-2 font-bold">{adminFirstName}</span>
+             {adminFirstName}
             </h1>
-            <p className="mt-4 text-sm md:text-base lg:text-lg font-thin text-blue-50 leading-[1.5]">
-              Your catalog features{" "} <span className="font-bold">{liveProductCount} live products</span> currently available online. Monitor real time sales performance, track inventory levels across all variants, identify low-stock or out of stock physical products, and respond quickly to changing customer demand. Create and deploy custom discount campaigns, optimize product visibility, and make data driven decisions to maximize revenue growth and customer engagement.
+            <p className="hero-desc">
+              Your catalog features{" "} <span className="font-bold text-white">{liveProductCount} live products</span> currently available online. Monitor real time sales performance, track inventory levels across all variants, identify low-stock or out of stock physical products, and respond quickly to changing customer demand. Create and deploy custom discount campaigns, optimize product visibility, and make data driven decisions to maximize revenue growth and customer engagement.
             </p>
           </div>
-          <div className="flex flex-col gap-3 min-[460px]:flex-row ">
+          <div className="flex flex-col gap-3 min-[460px]:flex-row">
             <button
               type="button"
               onClick={() => navigate('/settings')}
-              className="rounded-[10px] bg-white px-10 py-2.5 text-sm font-semibold text-blue-700 transition-colors duration-150 hover:bg-blue-50 active:scale-95"
+              className="btn btn-white"
             >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-4">
+  <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+</svg>
+
               Manage catalog
             </button>
             <button
               type="button"
               onClick={() => navigate('/Products')}
-              className="rounded-[10px] border border-white/40 bg-blue-700 px-10 py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-blue-800 active:scale-95"
+              className="btn btn-ghost"
             >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="var(--ghost-color)" className="size-4">
+  <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+</svg>
+
               Preview store..!!
             </button>
           </div>
@@ -144,7 +158,7 @@ export default function DashboardPage() {
             value={stats.total_users}
             // valueClassName="text-blue-700 dark:text-blue-700"
             change={stats.user_growth}
-            icon={Users}
+            icon={CustomersIcon}
             iconClassName="bg-blue-100/50 text-blue-700 dark:bg-gray-800/50 dark:text-blue-300"
             onClick={() => navigate('/Customers')}
           />
@@ -162,7 +176,7 @@ export default function DashboardPage() {
             title="Published Products"
             value={stats.published_products}
             // valueClassName="text-emerald-700 dark:text-emerald-300"
-            change={stats.published_growth}
+            // change={stats.published_growth}
             icon={Activity}
             iconClassName="bg-emerald-100/50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
             onClick={() => navigate('/Products')}
@@ -183,7 +197,7 @@ export default function DashboardPage() {
       {stats && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           
-           <StatCard 
+           <StatCard className=" "
             title="Total Revenue"
             value={Number(stats.total_revenue || 0).toFixed(0)}
             change={stats.revenue_growth}

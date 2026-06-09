@@ -57,10 +57,11 @@ export default {
         },
       },
       boxShadow: {
-        'glow': '0 0 20px rgba(88, 101, 242, 0.35)',
+        glow: '0 0 20px rgba(88, 101, 242, 0.35)',
         'glow-sm': '0 0 10px rgba(88, 101, 242, 0.25)',
-        'card': '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)',
+        'card': '0 6px 16px rgba(0, 0, 0, 0.15), 0 12px 32px rgba(0, 0, 0, 0.12)',
         'card-dark': '0 1px 3px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.2)',
+        elevated: '0px 6px 8.3px rgba(0, 0, 0, 0.39)'
       },
     },
   },

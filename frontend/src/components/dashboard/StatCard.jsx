@@ -46,7 +46,7 @@ export function LowStockProductsCard({ count = 0, products = [],onClick, title =
     : [{ id: 'empty', title: 'All products stocked', stock: 0, variants: 0 }]
 
   return (
-    <div className={`flex flex-col justify-between min-h-[176px] rounded-xl border-solid border-[1px] border-app hover-app shadow-inner bg-surface p-4 transition-all duration-200  hover:shadow-md dark:hover:bg-slate-900/50 dark:shadow-card-dark ${onClick ? 'cursor-pointer' : ''}`} onClick={onClick}>
+    <div className={`stat-card dark:hover:bg-slate-900/50 dark:shadow-card-dark ${onClick ? 'cursor-pointer' : ''}`} onClick={onClick}>
       <div className=" flex items-start justify-between gap-3">
         <p className="sm:text-lg font-semibold text-muted">{title}</p>
       </div>
@@ -76,17 +76,17 @@ export function SettlementCard({ title, value, description, change = 0, onClick,
   const isPositive = change >= 0
 
   return (
-    <div className={`flex min-h-[176px] rounded-lg border border-app bg-surface p-4 shadow-card transition-all duration-200 hover:shadow-md hover:border-green-500 dark:hover:bg-slate-900/50 dark:shadow-card-dark ${onClick ? 'cursor-pointer' : ''}`} onClick={onClick}>
+    <div className={`stat-card dark:hover:bg-slate-900/50 dark:shadow-card-dark ${onClick ? 'cursor-pointer' : ''}`} onClick={onClick}>
       <div className="flex flex-1 flex-col justify-evenly">
           <p className="font-display text-base font-bold uppercase text-muted sm:text-lg">{title}</p>
           <p className="mt-2 font-display text-3xl font-bold leading-none text-app">{value}</p>
           <p className="text-sm font-semibold text-muted">{description}</p>
-      <p className={clsx(
-        'text-xs mt-2',
-        isPositive ? 'text-emerald-500' : 'text-red-500'
-      )}>
-        {isPositive ? '▲' : '▼'} {Math.abs(change)}% from last month
-      </p>
+          <p className={clsx(
+            'text-xs mt-2',
+            isPositive ? 'text-emerald-500' : 'text-red-500'
+          )}>
+            {isPositive ? '▲' : '▼'} {Math.abs(change)}% from last month
+          </p>
       </div>
       <div className="flex flex-col items-center justify-between gap-3" >
         <span className={clsx(
@@ -124,36 +124,39 @@ export default function StatCard({ title, value, change, icon: Icon, valueClassN
   return (
     <div
       className={clsx(
-        'flex flex-col justify-between min-h-[176px] rounded-xl border-solid border-[1px] border-app hover-app shadow-inner bg-surface p-4 transition-all duration-200  hover:shadow-md dark:hover:bg-slate-900/50 dark:shadow-card-dark',
+        'stat-card dark:hover:bg-slate-900/50 dark:shadow-card-dark',
       onClick && 'cursor-pointer',
         className
       )}
       onClick={onClick}
     >
-      <div className="flex flex-row justify-between">
-        <p className=" sm:text-lg font-semibold text-muted">{title}</p>
+      <div className="flex flex-row justify-between  ">
+        <div className={clsx('flex h-12 w-12 items-center justify-center rounded-md', iconClassName)}>
+          <Icon size={18} className="text-current" />
+        </div>
+        
         <span className={clsx(
-          'flex items-center h-fit text-xs font-semibold px-2 py-1 rounded-xl gap-1',
+          'flex items-center h-fit text-xs  font-semibold px-2 py-1 rounded-xl gap-1',
           isPositive
-            ? 'text-emerald-800 bg-emerald-100 border rounded-full p-0.5 px-2 border-emerald-500 shadow-inner'
-            : 'text-red-800 bg-red-100 border rounded-full p-0.5 px-2 border-red-600'
+            ? 'text-emerald-800 bg-emerald-50  rounded-full p-0.5'
+            : 'text-red-800 bg-red-100  rounded-full p-0.5 px-2 '
         )}>
           {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
           {Math.abs(change)}%
         </span>
       </div>
-      <div className="flex flex-row items-center justify-between gap-3">
+      <div className="flex flex-row items-center justify-between gap-3 ">
+        <p className="font-medium">{title}</p>
         <p className={clsx("text-5xl font-bold font-display p-0 pl-5 tracking-tight", valueClassName)}>
           {displayValue}
         </p>
-        <div className={clsx('flex h-12 w-12 items-center justify-center rounded-md', iconClassName)}>
-          <Icon size={25} className="text-current" />
-        </div>
+        
       </div>
-      <div className="flex flex-row items-center justify-star">
+      <div className="flex flex-row items-center justify-star ">
         <p className={clsx(
           'text-xs text-semibold tracking-wider',
-          isPositive ? 'text-emerald-800 bg-emerald-100 border rounded-full p-0.5 px-2 border-emerald-400 dark:border dark:border-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-400'  : 'text-red-800 bg-red-100 border rounded-full p-0.5 px-2 border-red-600'
+          // isPositive ? 'text-emerald-800 bg-emerald-100 border rounded-full p-0.5 px-2 border-emerald-400 dark:border dark:border-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-400'  : 'text-red-800 bg-red-100 border rounded-full p-0.5 px-2 border-red-600'
+            isPositive ? 'text-emerald-500' : 'text-red-500'
         )}>
           {isPositive ? '▲' : '▼'} {Math.abs(change)}% from last month
         </p>
