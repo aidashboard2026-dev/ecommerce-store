@@ -48,16 +48,6 @@ def _add_months(value: date, months: int) -> date:
 
 
 def _orders_between(db: Session, start_at: datetime, end_at: datetime) -> list[Order]:
-    return (
-        db.query(Order)
-        .filter(
-           Order.tracking_status .in_(ACTIVE_SALES_STATUSES),
-            Order.ordered_at >= start_at,
-            Order.ordered_at < end_at,
-        )
-        .all()
-    )
-def _orders_between(db, start_at, end_at):
 
     # print("START:", start_at)
     # print("END:", end_at)
@@ -87,8 +77,8 @@ def _orders_between(db, start_at, end_at):
 
 def _revenue_filter():
     return (
-        func.lower(Order.status) == REVENUE_STATUS,
-        func.lower(Order.payment) == REVENUE_PAYMENT,
+        func.lower(Order.tracking_status) == REVENUE_STATUS,
+        func.lower(Order.payment_status) == REVENUE_PAYMENT,
     )
 
 
@@ -109,7 +99,7 @@ def _sum_orders(
     start_at: Optional[datetime] = None,
     end_at: Optional[datetime] = None,
 ) -> float:
-    query = db.query(func.coalesce(func.sum(Order.total), 0)).filter(*_revenue_filter())
+    query = db.query(func.coalesce(func.sum(Order.total_amount), 0)).filter(*_revenue_filter())
 
     if start_at:
         query = query.filter(Order.ordered_at >= start_at)
@@ -122,11 +112,11 @@ def _sum_orders(
 
 def _payment_revenue_summary(db: Session, payment_methods: tuple[str, ...], start_at: Optional[datetime] = None, end_at: Optional[datetime] = None) -> dict:
     query = db.query(
-        func.coalesce(func.sum(Order.total), 0),
+        func.coalesce(func.sum(Order.total_amount), 0),
         func.count(Order.id),
     ).filter(
-        func.lower(Order.status) == REVENUE_STATUS,
-        func.lower(Order.payment).in_(payment_methods),
+        func.lower(Order.tracking_status) == REVENUE_STATUS,
+        func.lower(Order.payment_status).in_(payment_methods),
     )
     
     if start_at:
@@ -427,4 +417,5 @@ def get_recent_activity(
         },
     ]
 
+    return {"activities": activities}
     return {"activities": activities}

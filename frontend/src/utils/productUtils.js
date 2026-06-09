@@ -1,15 +1,35 @@
 import { useState, useEffect } from 'react'
 
 // ─── Image URL helper ─────────────────────────────────────────────────────────
-// Strip /api/v1 suffix to get bare origin, then prepend to relative /uploads/… paths.
-const _API_BASE = (import.meta.env.VITE_API_URL ?? '/api/v1').replace(/\/api\/v\d+\/?$/, '')
+//
+// Images are stored in the DB as root-relative paths: /uploads/products/<filename>
+// The backend serves them at: http://backend:8000/uploads/products/<filename>
+//
+// VITE_BACKEND_URL env var controls how the frontend resolves these paths:
+//   - In Docker dev (Vite running on :5173):
+//       VITE_BACKEND_URL is NOT set (or '')
+//       → image src = '/uploads/products/…'
+//       → Vite dev server proxies /uploads → http://backend:8000  (vite.config.js)
+//       → This works transparently.
+//   - In production (frontend + backend on different origins):
+//       Set VITE_BACKEND_URL=https://api.mystore.com in .env
+//       → image src = 'https://api.mystore.com/uploads/products/…'
+//       → Direct request to the backend origin. No proxy needed.
+//
+// NOTE: Do NOT derive BACKEND_URL by stripping /api/v1 from VITE_API_URL —
+// that breaks when VITE_API_URL is a relative path (the common dev setup).
+const _BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL ?? '').replace(/\/$/, '')
 
 export function getImageUrl(thumbnail) {
   if (!thumbnail) return null
+  // Already an absolute URL — return as-is (handles legacy absolute URLs in DB)
   if (thumbnail.startsWith('http://') || thumbnail.startsWith('https://')) return thumbnail
-  if (thumbnail.startsWith('/')) return `${_API_BASE}${thumbnail}`
-  return thumbnail
+  // Root-relative path from DB (e.g. /uploads/products/1_abc.png)
+  if (thumbnail.startsWith('/')) return `${_BACKEND_ORIGIN}${thumbnail}`
+  // Bare filename or relative path — prefix with the products upload path
+  return `${_BACKEND_ORIGIN}/uploads/products/${thumbnail}`
 }
+
 
 /** Revoke all blob object URLs in an array of { previewUrl } items */
 export function revokeObjectURLs(items) {

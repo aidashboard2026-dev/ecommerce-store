@@ -1,7 +1,7 @@
 from pydantic import BaseModel, field_validator, model_validator
 from typing import Optional, List, Any
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 
 # ── Variant Schemas ──────────────────────────────────────────────────────────
@@ -11,27 +11,43 @@ class VariantBase(BaseModel):
     color: Optional[str] = None
     color_hex: Optional[str] = None
     sku: Optional[str] = None
-    original_price: float
-    selling_price: float
-    discount_percentage: float = 0
+    # Decimal matches the DB Numeric(10,2) column exactly.
+    # float cannot represent many decimal fractions exactly (e.g. 0.1 + 0.2 ≠ 0.3),
+    # causing silent monetary rounding errors. Decimal is exact by design.
+    original_price: Decimal
+    selling_price: Decimal
+    discount_percentage: Decimal = Decimal("0")
     stock_quantity: int = 0
     low_stock_threshold: int = 5
 
 
 class VariantCreate(VariantBase):
+    @field_validator('original_price', 'selling_price', mode='before')
+    @classmethod
+    def coerce_and_round_price(cls, v):
+        """Accept int/float/str inputs and round to 2 d.p. for DB Numeric(10,2)."""
+        d = Decimal(str(v))
+        return d.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    @field_validator('discount_percentage', mode='before')
+    @classmethod
+    def coerce_discount(cls, v):
+        d = Decimal(str(v))
+        return d.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
     @field_validator('original_price')
     @classmethod
     def original_price_positive(cls, v):
         if v <= 0:
             raise ValueError('original_price must be greater than zero')
-        return round(v, 2)
+        return v
 
     @field_validator('selling_price')
     @classmethod
     def selling_price_positive(cls, v):
         if v <= 0:
             raise ValueError('selling_price must be greater than zero')
-        return round(v, 2)
+        return v
 
     @field_validator('stock_quantity')
     @classmethod
@@ -79,13 +95,14 @@ class VariantResponse(VariantBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    # Coerce Numeric/Decimal from DB → float for safe JSON serialization
+    # Coerce Numeric/Decimal from DB → Decimal (no-op if already Decimal).
+    # str coercion handles edge cases from some DB drivers returning strings.
     @field_validator('original_price', 'selling_price', 'discount_percentage', mode='before')
     @classmethod
-    def coerce_decimal_to_float(cls, v):
-        if isinstance(v, Decimal):
-            return float(v)
-        return v
+    def coerce_to_decimal(cls, v):
+        if v is None:
+            return v
+        return Decimal(str(v))
 
     class Config:
         from_attributes = True
@@ -173,7 +190,7 @@ class ProductResponse(ProductBase):
     thumbnail: Optional[str] = None
     images: List[Any] = []        # MVP: empty list; prevents frontend crashes
     total_stock: int = 0
-    min_price: Optional[float] = None
+    min_price: Optional[Decimal] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     variants: List[VariantResponse] = []
@@ -186,13 +203,13 @@ class ProductResponse(ProductBase):
             return v.value
         return v
 
-    # Coerce Decimal min_price → float
+    # Coerce Decimal/float/str min_price → Decimal for type consistency
     @field_validator('min_price', mode='before')
     @classmethod
     def coerce_min_price(cls, v):
-        if isinstance(v, Decimal):
-            return float(v)
-        return v
+        if v is None:
+            return v
+        return Decimal(str(v))
 
     class Config:
         from_attributes = True
