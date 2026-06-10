@@ -34,6 +34,10 @@ class OrderBase(BaseModel):
     tracking_status: str = "PLACED"
     tracking_note: Optional[str] = None
 
+    delivery_days: Optional[int] = None
+
+    expected_delivery_date: Optional[datetime] = None
+
     ordered_at: Optional[datetime] = None
 
 
@@ -49,6 +53,8 @@ class OrderUpdate(BaseModel):
     tracking_status: Optional[str] = None
     tracking_note: Optional[str] = None
 
+
+    
     payment_status: Optional[str] = None
 
 
@@ -61,12 +67,4 @@ class OrderResponse(OrderBase):
 
     class Config:
         from_attributes = True  
-        
-class DeliveryZone(Base):
-    __tablename__ = "delivery_zones"
 
-    id = Column(Integer, primary_key=True)
-
-    city = Column(String(100))
-
-    delivery_days = Column(Integer)
