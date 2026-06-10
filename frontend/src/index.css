@@ -1,7 +1,9 @@
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @layer base {
   :root {
@@ -294,7 +296,7 @@
 }
 
 .react-calendar__month-view__weekdays {
-  color: #9ca3af !important;
+  color: #fbfdff !important;
   text-transform: none !important;
 }
 
@@ -305,17 +307,20 @@
 
 .react-calendar__tile--active {
   background: #2563eb !important;
-  color: white !important;
+  color: rgb(255, 255, 255) !important;
 }
 
 .react-calendar__tile:hover {
-  background: #1e293b !important;
+  background: #fefeff !important;
 }
 
 .react-calendar__navigation button:hover {
-  background: #1e293b !important;
+  background: #ffffff !important;
 }
 
+.react-calendar * {
+  color: #ffffff !important;
+}
 /* ── Inventory Dashboard UI ───────────────────────────────────────────────── */
 
 /* Compact admin table */
