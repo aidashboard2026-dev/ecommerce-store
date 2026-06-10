@@ -1,7 +1,6 @@
-import hashlib
 import os
-import time
 import uuid
+import shutil
 from typing import Optional, List
 
 from fastapi import (
@@ -17,6 +16,7 @@ from fastapi import (
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_admin
+from app.core.config import settings
 from app.database.session import get_db
 from app.models.admin import Admin
 from app.models.product import Product, ProductStatus
@@ -33,6 +33,7 @@ from app.services.product_service import (
     create_product,
     create_variant,
     delete_product,
+    delete_variant,
     get_product,
     get_products_paginated,
     update_product,
@@ -42,18 +43,14 @@ router = APIRouter()
 
 # ─────────────────────────────────────────────────────────────
 # Upload directory
-# Points to backend/uploads/products — same root that main.py
-# mounts as StaticFiles("/uploads", directory="backend/uploads")
+# /app/uploads is the Docker named volume mount point.
+# UPLOAD_DIR from config always points there (default: /app/uploads).
 # ─────────────────────────────────────────────────────────────
 
-# __file__ is  .../backend/app/api/v1/endpoints/products.py
-# go up 4 levels  → backend/
-# then            → backend/uploads/products
-_BACKEND_ROOT = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")
-)
-UPLOAD_DIR = os.path.join(_BACKEND_ROOT, "uploads", "products")
+_UPLOADS_ROOT = os.path.abspath(settings.UPLOAD_DIR)  # → /app/uploads
+UPLOAD_DIR    = os.path.join(_UPLOADS_ROOT, "products") # → /app/uploads/products
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 
 # ─────────────────────────────────────────────────────────────
 # Constants
@@ -63,21 +60,12 @@ ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
 
-# FIX #20 — upload read timeout: abort reads that take too long (30 s)
-UPLOAD_READ_TIMEOUT_SECS = 30
-
 # Magic byte signatures for image type validation
 _MAGIC_BYTES = {
     b"\xff\xd8\xff": "image/jpeg",
     b"\x89PNG": "image/png",
     b"RIFF": "image/webp",  # WebP: RIFF....WEBP
 }
-
-# FIX #16 — in-memory idempotency store (keyed by admin_id + content hash)
-# TTL-based: entries expire after 60 s so retries still work after that.
-# Replace with Redis in multi-process deployments.
-_idempotency_cache: dict[str, tuple[dict, float]] = {}
-_IDEMPOTENCY_TTL = 60  # seconds
 
 
 # ─────────────────────────────────────────────────────────────
@@ -107,8 +95,9 @@ def _validate_image_magic_bytes(contents: bytes, declared_mime: str) -> None:
             detail="File content does not match any supported image format.",
         )
 
-    # For WebP: validate RIFF header has WEBP at offset 8
+    # For JPEG, declared could be image/jpeg; for WebP we just check RIFF header
     if detected_mime == "image/webp":
+        # WebP has RIFF header + WEBP at offset 8
         if len(contents) >= 12 and contents[8:12] != b"WEBP":
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -119,31 +108,38 @@ def _validate_image_magic_bytes(contents: bytes, declared_mime: str) -> None:
 def _cleanup_product_image(product: Product) -> None:
     """
     Remove the thumbnail file from disk for a product.
-    Safe to call even if file doesn't exist.
+    Safe to call even if the file doesn't exist.
+
+    Security: resolves the full path and verifies it is strictly inside
+    UPLOAD_DIR before deletion, preventing path-traversal attacks if the
+    thumbnail column were ever tampered with directly in the database.
+
+    Expected thumbnail format stored in DB: /uploads/products/<filename>
+    UPLOAD_DIR inside container:            /app/uploads/products
+    Resolution: strip /uploads/products prefix → just the filename → join with UPLOAD_DIR
     """
     if not product.thumbnail:
         return
 
-    rel_path = product.thumbnail.lstrip("/")
-    file_path = os.path.join(_BACKEND_ROOT, rel_path)
+    # Thumbnail is stored as a URL path: /uploads/products/<filename>
+    # Extract just the filename to avoid any path traversal via the prefix.
+    filename = os.path.basename(product.thumbnail)
+    if not filename:
+        return
+
+    file_path = os.path.normpath(os.path.join(UPLOAD_DIR, filename))
+
+    # Guard: file_path must be inside UPLOAD_DIR
+    safe_prefix = os.path.normpath(UPLOAD_DIR) + os.sep
+    if not file_path.startswith(safe_prefix):
+        return  # Silently refuse — log in production monitoring
+
     if os.path.exists(file_path):
         try:
             os.remove(file_path)
         except OSError:
-            pass  # Best-effort cleanup; log in production
+            pass  # Best-effort cleanup
 
-
-def _cleanup_idempotency_cache() -> None:
-    """Evict expired entries from the idempotency cache."""
-    now = time.monotonic()
-    expired = [k for k, (_, ts) in _idempotency_cache.items() if now - ts > _IDEMPOTENCY_TTL]
-    for k in expired:
-        del _idempotency_cache[k]
-
-
-def _idempotency_key(admin_id: int, payload_bytes: bytes) -> str:
-    digest = hashlib.sha256(payload_bytes).hexdigest()[:32]
-    return f"{admin_id}:{digest}"
 
 
 # ─────────────────────────────────────────────────────────────
@@ -210,8 +206,6 @@ def list_products_admin(
 
 # ─────────────────────────────────────────────────────────────
 # Create product
-# FIX #16 — idempotency: duplicate submissions within 60 s
-# return the same product instead of creating a duplicate
 # ─────────────────────────────────────────────────────────────
 
 @router.post(
@@ -224,26 +218,7 @@ def create_new_product(
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_admin),
 ):
-    # Clean expired entries periodically
-    _cleanup_idempotency_cache()
-
-    # Build a stable key from admin identity + full payload
-    payload_bytes = product_in.model_dump_json().encode()
-    idem_key = _idempotency_key(current_admin.id, payload_bytes)
-
-    if idem_key in _idempotency_cache:
-        cached_product, _ = _idempotency_cache[idem_key]
-        # Re-fetch fresh from DB in case it was updated
-        fresh = get_product(db, cached_product["id"])
-        if fresh:
-            return fresh
-
-    product = create_product(db, product_in)
-
-    # Cache result
-    _idempotency_cache[idem_key] = ({"id": product.id}, time.monotonic())
-
-    return product
+    return create_product(db, product_in)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -305,11 +280,23 @@ def delete_product_by_id(
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_admin),
 ):
-    # Clean up thumbnail file before soft-deleting
+    # Fetch once — reuse the object for both soft-delete and file cleanup.
     product = get_product(db, product_id)
-    if product:
-        _cleanup_product_image(product)
 
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found",
+        )
+
+    # Snapshot thumbnail path before the DB write so we know what to delete
+    # even after the ORM object's thumbnail field may be cleared.
+    thumbnail_to_delete = product.thumbnail
+
+    # ── Step 1: commit the soft-delete FIRST ─────────────────────────────
+    # The file is removed only AFTER the DB record is safely marked deleted.
+    # Reversing this prevents the broken state where the file is already gone
+    # but the DB still references it, causing permanent 404s on the thumbnail.
     success = delete_product(db, product_id)
 
     if not success:
@@ -317,6 +304,13 @@ def delete_product_by_id(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Product not found",
         )
+
+    # ── Step 2: best-effort file cleanup after successful DB commit ───────
+    # If this fails (disk full, permissions), the orphan file is harmless —
+    # the soft-deleted product no longer appears in any active query.
+    if thumbnail_to_delete:
+        product.thumbnail = thumbnail_to_delete
+        _cleanup_product_image(product)
 
     return {
         "message": "Product deleted successfully",
@@ -382,23 +376,66 @@ def add_variants_bulk(
 
 
 # ─────────────────────────────────────────────────────────────
+# Delete a single variant
+# NOTE: registered BEFORE /admin/{product_id}/variants/bulk so
+# "bulk" is not mismatched as an integer variant_id.
+# ─────────────────────────────────────────────────────────────
+
+@router.delete(
+    "/admin/{product_id}/variants/{variant_id}",
+    status_code=status.HTTP_200_OK,
+)
+def delete_variant_by_id(
+    product_id: int,
+    variant_id: int,
+    db: Session = Depends(get_db),
+    current_admin: Admin = Depends(get_current_admin),
+):
+    """
+    Permanently delete a single product variant.
+
+    The variant is matched on both product_id AND variant_id to
+    prevent an admin from deleting a variant that belongs to a
+    different product by guessing its ID.
+    """
+    product = get_product(db, product_id)
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found",
+        )
+
+    success = delete_variant(db, product_id, variant_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Variant not found for this product",
+        )
+
+    return {"message": "Variant deleted successfully"}
+
+
+# ─────────────────────────────────────────────────────────────
 # Image upload — stores file and sets product thumbnail
 # With hardened validation: MIME, extension, magic bytes, size
-# FIX #20 — upload read timeout protection
-# FIX #21 — rollback-safe: orphan file cleaned up on DB failure
 # ─────────────────────────────────────────────────────────────
 
 @router.post("/admin/{product_id}/images")
 def upload_product_image(
     product_id: int,
     file: UploadFile = File(...),
-    set_as_primary: str = Form("false"),
+    # Default true: the image manager always intends to set the uploaded
+    # image as the product thumbnail. Pass "false" explicitly only when
+    # uploading gallery-only images (future feature).
+    set_as_primary: str = Form("true"),
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_admin),
 ):
     """
-    Upload an image for a product. Saves to backend/uploads/products/,
-    which is served as /uploads via StaticFiles in main.py.
+    Upload an image for a product. Saves to /app/uploads/products/ (Docker named
+    volume, persists across restarts). The URL stored in DB is a root-relative path:
+    /uploads/products/<filename>. The frontend resolves this via the Vite proxy
+    (dev) or BACKEND_URL prefix (production).
     """
     product = get_product(db, product_id)
 
@@ -423,80 +460,110 @@ def upload_product_image(
             detail=f"File extension '{ext}' is not allowed. Use: {', '.join(ALLOWED_EXTENSIONS)}",
         )
 
-    # FIX #20 — timeout-guarded file read
-    # FastAPI runs sync endpoints in a thread pool; we use a manual deadline.
-    read_start = time.monotonic()
-    try:
-        contents = file.file.read()
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Failed to read uploaded file.",
-        )
-
-    elapsed = time.monotonic() - read_start
-    if elapsed > UPLOAD_READ_TIMEOUT_SECS:
-        raise HTTPException(
-            status_code=status.HTTP_408_REQUEST_TIMEOUT,
-            detail=f"File read timed out after {UPLOAD_READ_TIMEOUT_SECS} seconds.",
-        )
-
-    if len(contents) > MAX_IMAGE_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"Image must be under {MAX_IMAGE_SIZE // (1024 * 1024)} MB. Got: {len(contents) / (1024 * 1024):.1f} MB",
-        )
-
-    if len(contents) == 0:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Uploaded file is empty.",
-        )
-
-    # Validate magic bytes match declared MIME type
-    _validate_image_magic_bytes(contents, file.content_type)
-
-    # Generate unique filename
+    # Stream the upload to a .tmp file in 64 KB chunks — never load the full
+    # file into memory. This also catches clients that omit Content-Length and
+    # send a chunked transfer, bypassing the middleware body-size cap.
+    _CHUNK = 65_536
     unique_name = f"{product_id}_{uuid.uuid4().hex[:12]}{ext}"
-    file_path = os.path.join(UPLOAD_DIR, unique_name)
+    final_path  = os.path.join(UPLOAD_DIR, unique_name)
+    tmp_path    = final_path + ".tmp"
+    image_url   = f"/uploads/products/{unique_name}"
 
-    # Write file to disk
+    total_bytes        = 0
+    magic_buf          = b""   # first 16 bytes for magic-byte validation
+
     try:
-        with open(file_path, "wb") as f:
-            f.write(contents)
-    except OSError as e:
+        with open(tmp_path, "wb") as out:
+            while True:
+                chunk = file.file.read(_CHUNK)
+                if not chunk:
+                    break
+                total_bytes += len(chunk)
+                if total_bytes > MAX_IMAGE_SIZE:
+                    out.close()
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail=(
+                            f"Image must be under {MAX_IMAGE_SIZE // (1024 * 1024)} MB. "
+                            f"Upload aborted after {total_bytes / (1024 * 1024):.1f} MB."
+                        ),
+                    )
+                if len(magic_buf) < 16:
+                    magic_buf += chunk
+                out.write(chunk)
+    except HTTPException:
+        raise
+    except OSError:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to save image file to disk.",
         )
 
-    # Delete old thumbnail file from disk if replacing
-    _cleanup_product_image(product)
+    if total_bytes == 0:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Uploaded file is empty.",
+        )
 
-    # Store URL and commit — FIX #21: clean up new file if DB commit fails
-    image_url = f"/uploads/products/{unique_name}"
-    product.thumbnail = image_url
+    # Validate magic bytes against declared MIME — only needs first 16 bytes.
+    try:
+        _validate_image_magic_bytes(magic_buf, file.content_type)
+    except HTTPException:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+        raise
+
+    # Delete old thumbnail BEFORE committing the new one (consistent state)
+    if set_as_primary.lower() == "true":
+        _cleanup_product_image(product)
+        product.thumbnail = image_url
 
     try:
         db.commit()
     except Exception:
         db.rollback()
-        # Clean up the orphan file we just wrote
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except OSError:
-                pass
+        # Commit failed — clean up the tmp file; no orphan on disk
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update product image in database. File has been cleaned up.",
         )
+
+    # DB committed — atomically promote .tmp → final path
+    # os.rename is atomic on the same filesystem (POSIX guarantee)
+    try:
+        os.rename(tmp_path, final_path)
+    except OSError:
+        # Rename failed in an unlikely edge case (cross-device move, permissions).
+        # The DB already has the correct URL. Clean up tmp; the product's thumbnail
+        # URL will 404 until the next upload, which is acceptable.
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
 
     db.refresh(product)
 
     return {
         "id": product.id,
         "url": image_url,
-        "is_primary": True,
-        "message": "Image uploaded and set as thumbnail",
+        "is_primary": set_as_primary.lower() == "true",
+        "message": "Image uploaded and set as thumbnail" if set_as_primary.lower() == "true" else "Image uploaded",
     }

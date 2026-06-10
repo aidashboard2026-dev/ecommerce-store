@@ -5,18 +5,23 @@ import { fetchMeThunk } from './store/authSlice'
 import AppRoutes from './routes/AppRoutes'
 
 function App() {
-  const dispatch = useDispatch()
-  const token = useSelector((s) => s.auth.token)
-  const admin = useSelector((s) => s.auth.admin)
-  const initialized = useSelector((s) => s.auth.initialized)
+  const dispatch     = useDispatch()
+  const token        = useSelector((s) => s.auth.token)
+  const initialized  = useSelector((s) => s.auth.initialized)
 
   useEffect(() => {
+    // token is now rehydrated from localStorage at boot, so this fires
+    // on first render when a persisted session exists.
     if (token) {
       dispatch(fetchMeThunk())
     }
   }, [token, dispatch])
 
-  if (token && !initialized && !admin) {
+  // Block rendering until session validation completes.
+  // initialized starts true  → no token at boot, nothing to fetch, render immediately.
+  // initialized starts false → token exists, fetchMeThunk in flight, show spinner.
+  // fetchMeThunk resolves    → initialized flips to true, routes render.
+  if (!initialized) {
     return (
       <div className="min-h-screen bg-app flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">

@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: admin
-      POSTGRES_PASSWORD: adminpass123
+      POSTGRES_PASSWORD: admin1234
       POSTGRES_DB: admindb
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -28,7 +28,7 @@ services:
     environment:
       POSTGRES_SERVER: db
       POSTGRES_USER: admin
-      POSTGRES_PASSWORD: adminpass123
+      POSTGRES_PASSWORD: admin1234
       POSTGRES_DB: admindb
       # SECRET_KEY: ${SECRET_KEY:-change-me-in-production-please-use-a-long-random-string}
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in your .env file}
@@ -36,6 +36,9 @@ services:
       INITIAL_ADMIN_NAME: ${INITIAL_ADMIN_NAME:-Admin}
       INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@mail.com}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-admin1234}
+      # Upload directory — MUST match the named volume mount below.
+      # Images written here persist in the `product_uploads` Docker named volume.
+      UPLOAD_DIR: /app/uploads
     ports:
       - "8000:8000"
     depends_on:
@@ -54,6 +57,9 @@ services:
     restart: unless-stopped
     environment:
       - VITE_API_URL=/api/v1
+      # VITE_BACKEND_URL: empty in local dev — Vite proxy routes /uploads → backend:8000.
+      # In production, set to the full backend origin: https://api.mystore.com
+      - VITE_BACKEND_URL=
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
     ports:
@@ -66,6 +72,7 @@ services:
       - /app/node_modules
     networks:
       - admindash_network
+
 
 volumes:
   postgres_data:

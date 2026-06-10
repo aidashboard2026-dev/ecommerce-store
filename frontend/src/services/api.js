@@ -61,6 +61,47 @@ export const ordersAPI = {
   cancel: (id)                     => api.post(`/orders/${id}/cancel`),
 }
 
+
+// ─── Customers ────────────────────────────────────────────────────────────────
+export const customersAPI = {
+  /** Paginated list with search, filters, sorting */
+  list: (params = {}) =>
+    api.get('/customers/', { params }),
+
+  /** Single customer */
+  get: (id) =>
+    api.get(`/customers/${id}`),
+
+  /** Full profile: orders + spending analytics */
+  profile: (id) =>
+    api.get(`/customers/${id}/profile`),
+
+  /** Create customer (admin-only) */
+  create: (data) =>
+    api.post('/customers/', data),
+
+  /** Update customer fields */
+  update: (id, data) =>
+    api.put(`/customers/${id}`, data),
+
+  /** Toggle active/inactive */
+  setStatus: (id, is_active) =>
+    api.patch(`/customers/${id}/status`, { is_active }),
+
+  /** Replace notes */
+  updateNotes: (id, notes) =>
+    api.patch(`/customers/${id}/notes`, { notes }),
+
+  /** Replace tags */
+  updateTags: (id, tags) =>
+    api.patch(`/customers/${id}/tags`, { tags }),
+
+  /** Summary analytics */
+  analytics: () =>
+    api.get('/customers/analytics'),
+}
+
+
 // ─── Products ─────────────────────────────────────────────────────────────────
 export const productsAPI = {
   adminList: (params) => {

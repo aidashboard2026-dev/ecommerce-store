@@ -1,0 +1,27 @@
+# Development artifacts
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Version control
+.git/
+.gitignore
+
+# Environment files (never bake secrets into the image)
+.env
+.env.*
+
+# Uploads must NEVER be baked into the image — they are mounted via a
+# named Docker volume (uploads_data) defined in docker-compose.yml.
+# Baking uploads into the image would expose user-uploaded files to anyone
+# who pulls the image and cause a different set of images on each replica.
+uploads/
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store

@@ -429,3 +429,4 @@ def get_recent_activity(
     ]
 
     return {"activities": activities}
+    

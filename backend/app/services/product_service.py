@@ -5,12 +5,13 @@ Production-hardened product service layer
 
 import math
 import re
+import uuid
 from typing import Optional, List
 
 from fastapi import HTTPException, status
-from sqlalchemy import or_
+from sqlalchemy import or_, func as sqla_func
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.product import Product, ProductVariant, ProductStatus
 from app.schemas.product import (
@@ -39,6 +40,9 @@ def _slugify(text: str) -> str:
     return re.sub(r"-+", "-", slug).strip("-")
 
 
+_SLUG_MAX_COUNTER = 99  # cap sequential attempts before falling back to UUID suffix
+
+
 def _ensure_unique_slug(
     db: Session,
     base_slug: str,
@@ -46,25 +50,43 @@ def _ensure_unique_slug(
 ) -> str:
     """
     Ensure slug uniqueness among NON-DELETED products.
+
+    Safety improvements over the original unbounded while-True loop:
+
+    1. LOOP CAP: Tries base_slug, base_slug-1 … base_slug-99, then falls back
+       to a 6-char hex UUID suffix (base_slug-a3f9c1). This bounds the maximum
+       DB queries to 101 per call regardless of catalog size.
+
+    2. TOCTOU MITIGATION: The SELECT→INSERT race is inherent to optimistic slug
+       generation. The real guard is the UNIQUE constraint on products.slug —
+       create_product() catches IntegrityError from that constraint and returns
+       a clean 409, not a raw 500 traceback.
+
+    3. EXCLUDE SOFT-DELETED: Slugs of soft-deleted products are reusable, so
+       the filter includes deleted_at IS NULL. The partial unique index in
+       migration 002 enforces this at the DB level.
     """
-
-    slug = base_slug
-    counter = 1
-
-    while True:
-        query = db.query(Product).filter(
-            Product.slug == slug,
+    def _slug_is_free(candidate: str) -> bool:
+        q = db.query(Product.id).filter(
+            Product.slug == candidate,
             Product.deleted_at.is_(None),
         )
-
         if exclude_id:
-            query = query.filter(Product.id != exclude_id)
+            q = q.filter(Product.id != exclude_id)
+        return q.first() is None
 
-        if not query.first():
-            return slug
+    if _slug_is_free(base_slug):
+        return base_slug
 
-        slug = f"{base_slug}-{counter}"
-        counter += 1
+    for counter in range(1, _SLUG_MAX_COUNTER + 1):
+        candidate = f"{base_slug}-{counter}"
+        if _slug_is_free(candidate):
+            return candidate
+
+    # All sequential candidates taken — use a random hex suffix.
+    # Collision probability: 1 in 16^6 = 1 in ~16M per call.
+    rand_slug = f"{base_slug}-{uuid.uuid4().hex[:6]}"
+    return rand_slug
 
 
 # ─────────────────────────────────────────────────────────────
@@ -122,50 +144,29 @@ def _sku_color_code(color: Optional[str]) -> str:
     return letters[:3].upper() if letters else "XXX"
 
 
-def _next_sku_sequence(db: Session, base: str) -> str:
-    """
-    Find next available SKU sequence.
-    """
-
-    pattern = f"{base}-%"
-
-    existing = (
-        db.query(ProductVariant.sku)
-        .filter(ProductVariant.sku.like(pattern))
-        .all()
-    )
-
-    used_numbers: set[int] = set()
-
-    for (sku,) in existing:
-        parts = sku.rsplit("-", 1)
-
-        if len(parts) == 2 and parts[1].isdigit():
-            used_numbers.add(int(parts[1]))
-
-    seq = 1
-
-    while seq in used_numbers:
-        seq += 1
-
-    return f"{seq:03d}"
-
-
 def generate_sku(
-    db: Session,
     product_title: str,
     size: str,
     color: Optional[str] = None,
 ) -> str:
-    prefix = _sku_prefix(product_title)
+    """
+    FIX B-09: Generate a collision-resistant SKU using a random 6-char hex suffix
+    instead of a SELECT→INSERT sequential counter.
+
+    The old _next_sku_sequence() approach had a TOCTOU race: two concurrent
+    variant creates for the same prefix both read the same "next" number, then
+    race to INSERT. One would succeed; the other hit an IntegrityError with a
+    confusing "concurrent request" message.
+
+    The random suffix gives ~16M unique values per prefix (16^6). At ecommerce
+    scale this is effectively collision-free, and any residual collision is caught
+    cleanly by the DB UniqueConstraint on `sku`, returning a clear 409 error.
+    """
+    prefix     = _sku_prefix(product_title)
     color_code = _sku_color_code(color)
-    size_code = size.upper().replace(" ", "")
-
-    base = f"{prefix}-{color_code}-{size_code}"
-
-    seq = _next_sku_sequence(db, base)
-
-    return f"{base}-{seq}"
+    size_code  = size.upper().replace(" ", "")
+    rand_suffix = uuid.uuid4().hex[:6].upper()
+    return f"{prefix}-{color_code}-{size_code}-{rand_suffix}"
 
 
 # ─────────────────────────────────────────────────────────────
@@ -233,24 +234,36 @@ def _check_duplicate_variant(
 ) -> None:
     """
     Prevent duplicate size+color variants.
+
+    NULL-safe color comparison: SQLAlchemy's == None generates "color = NULL"
+    which is always FALSE in SQL. We must use IS NULL explicitly so that two
+    colorless variants (color=None) are correctly detected as duplicates.
+    The DB UniqueConstraint alone cannot catch this because PostgreSQL treats
+    NULLs as distinct in unique indexes.
     """
+    color_filter = (
+        ProductVariant.color.is_(None)
+        if variant_in.color is None
+        else ProductVariant.color == variant_in.color
+    )
 
     exists = (
         db.query(ProductVariant)
         .filter(
             ProductVariant.product_id == product_id,
             ProductVariant.size == variant_in.size,
-            ProductVariant.color == variant_in.color,
+            color_filter,
         )
         .first()
     )
 
     if exists:
+        color_label = variant_in.color or "no color"
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
                 f"Variant with size='{variant_in.size}' "
-                f"and color='{variant_in.color}' already exists."
+                f"and color='{color_label}' already exists."
             ),
         )
 
@@ -264,9 +277,12 @@ def get_product(
     db: Session,
     product_id: int,
 ) -> Optional[Product]:
+    # selectinload fires a single separate SELECT for variants (IN clause)
+    # instead of joinedload's LEFT OUTER JOIN, preventing duplicate product
+    # rows when multiple variants exist and making count() queries safe.
     return (
         db.query(Product)
-        .options(joinedload(Product.variants))
+        .options(selectinload(Product.variants))
         .filter(
             Product.id == product_id,
             Product.deleted_at.is_(None),
@@ -303,28 +319,32 @@ def get_products_paginated(
     per_page: int = 15,
 ) -> ProductListResponse:
     """
-    Paginated product listing.
+    Paginated product listing — production-hardened.
+
+    Key differences from the naive version:
+    - COUNT runs on a clean scalar subquery (no joinedload pollution)
+    - Data query uses selectinload (two queries: products + variants IN (...))
+      instead of joinedload (one query with LEFT JOIN that multiplies rows)
+    - total_stock and min_price computed in SQL via GROUP BY subqueries,
+      not in Python after loading all variant ORM objects into memory
+    - OFFSET pagination is preserved for MVP; migrate to keyset pagination
+      once the catalog exceeds ~5,000 products (OFFSET N scans N rows)
     """
 
     per_page = min(max(per_page, 1), MAX_PER_PAGE)
 
-    query = (
-        db.query(Product)
-        .options(joinedload(Product.variants))
-        .filter(Product.deleted_at.is_(None))
-    )
+    # ── Build the base filter predicate (reused for count + data) ────────────
+    base_filters = [Product.deleted_at.is_(None)]
 
     if search:
         term = f"%{search}%"
-
-        # Search by title, slug, collection, and variant SKU
+        # Subquery for SKU search — uses trigram index from migration 002
         sku_subq = (
             db.query(ProductVariant.product_id)
             .filter(ProductVariant.sku.ilike(term))
             .subquery()
         )
-
-        query = query.filter(
+        base_filters.append(
             or_(
                 Product.title.ilike(term),
                 Product.slug.ilike(term),
@@ -334,22 +354,56 @@ def get_products_paginated(
         )
 
     if status_filter:
-        query = query.filter(Product.status == status_filter)
+        base_filters.append(Product.status == status_filter)
 
-    total = query.count()
+    # ── COUNT: separate clean query with no options() / joins ────────────────
+    # joinedload on a count() causes SQLAlchemy to wrap in a subquery which
+    # can return inflated counts when variants produce multiple rows per product.
+    total = (
+        db.query(sqla_func.count(Product.id))
+        .filter(*base_filters)
+        .scalar()
+    ) or 0
 
     total_pages = math.ceil(total / per_page) if total else 1
 
+    # ── DATA: paginated product rows ─────────────────────────────────────────
+    # selectinload fires one extra SELECT ... WHERE product_id IN (...) for
+    # the page's variants — no JOIN, no duplicate product rows, safe count().
     products = (
-        query.order_by(Product.created_at.desc())
+        db.query(Product)
+        .options(selectinload(Product.variants))
+        .filter(*base_filters)
+        .order_by(Product.created_at.desc())
         .offset((page - 1) * per_page)
         .limit(per_page)
         .all()
     )
 
-    items = []
+    # ── SQL aggregates for total_stock and min_price ──────────────────────────
+    # Computing these in Python requires all variant ORM objects to be loaded.
+    # At 15 products × 8 variants = 120 objects per page load — fine for MVP
+    # but O(n×variants) at scale. Here we compute both in a single SQL query
+    # using GROUP BY, then join back to the product list by product_id.
+    # This reduces the variant data needed to two integers per product.
+    product_ids = [p.id for p in products]
+    agg_rows = (
+        db.query(
+            ProductVariant.product_id,
+            sqla_func.coalesce(sqla_func.sum(ProductVariant.stock_quantity), 0).label("total_stock"),
+            sqla_func.min(ProductVariant.selling_price).label("min_price"),
+        )
+        .filter(ProductVariant.product_id.in_(product_ids))
+        .group_by(ProductVariant.product_id)
+        .all()
+    ) if product_ids else []
 
+    agg_by_id = {row.product_id: row for row in agg_rows}
+
+    # ── Build response ────────────────────────────────────────────────────────
+    items = []
     for p in products:
+        agg = agg_by_id.get(p.id)
         item = ProductResponse(
             id=p.id,
             title=p.title,
@@ -357,19 +411,18 @@ def get_products_paginated(
             description=p.description,
             collection=p.collection,
             tags=p.tags or [],
-            status=p.status.value if hasattr(p.status, 'value') else p.status,
+            status=p.status.value if hasattr(p.status, "value") else p.status,
             is_featured=p.is_featured,
             thumbnail=p.thumbnail,
             images=[],  # MVP: no ProductImage model yet
             seo_title=p.seo_title,
             seo_description=p.seo_description,
-            total_stock=p.total_stock,
-            min_price=float(p.min_price) if p.min_price is not None else None,
+            total_stock=int(agg.total_stock) if agg else 0,
+            min_price=agg.min_price if agg and agg.min_price is not None else None,
             created_at=p.created_at,
             updated_at=p.updated_at,
             variants=p.variants,
         )
-
         items.append(item)
 
     return ProductListResponse(
@@ -411,6 +464,22 @@ def create_product(
 
     try:
         db.commit()
+
+    except IntegrityError as e:
+        db.rollback()
+        # Most likely cause: slug uniqueness TOCTOU — two concurrent creates
+        # both passed _ensure_unique_slug, then raced to INSERT.
+        # Return a clean 409 instead of a raw 500 traceback.
+        err_str = str(e.orig).lower() if e.orig else ""
+        if "slug" in err_str or "unique" in err_str:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "A product with a similar title already exists. "
+                    "Please use a more specific title or try again."
+                ),
+            )
+        raise
 
     except Exception:
         db.rollback()
@@ -455,7 +524,18 @@ def delete_product(
     product_id: int,
 ) -> bool:
     """
-    Soft delete product.
+    Soft-delete a product and physically delete its variants.
+
+    WHY physically delete variants:
+    Variants have no independent lifecycle — they only exist as part of a product.
+    A soft-delete sets `products.deleted_at` but leaves variant rows (and their SKUs)
+    in `product_variants`. Because `sku` has a global UNIQUE constraint, those orphaned
+    SKUs permanently block reuse on any future product, even though the owning product
+    is logically gone. Physically deleting variants on product soft-delete:
+      - Frees every SKU held by the deleted product immediately.
+      - Keeps the SKU namespace clean without requiring a separate cleanup job.
+      - Is safe: the CASCADE FK would delete them anyway on a hard-delete, and no
+        other table references product_variants.id directly.
     """
 
     product = get_product(db, product_id)
@@ -463,9 +543,50 @@ def delete_product(
     if not product:
         return False
 
-    from sqlalchemy.sql import func as sqlfunc
+    # Step 1 — physically delete variants to release their global-unique SKUs.
+    db.query(ProductVariant).filter(
+        ProductVariant.product_id == product_id
+    ).delete(synchronize_session="fetch")
 
+    # Step 2 — soft-delete the product itself.
+    from sqlalchemy.sql import func as sqlfunc
     product.deleted_at = sqlfunc.now()
+
+    try:
+        db.commit()
+
+    except Exception:
+        db.rollback()
+        raise
+
+    return True
+
+
+def delete_variant(
+    db: Session,
+    product_id: int,
+    variant_id: int,
+) -> bool:
+    """
+    Permanently delete a single variant.
+
+    Verified against product_id to prevent cross-product deletions
+    (an admin with a valid product token cannot delete a variant from
+    a different product by guessing a variant_id).
+    """
+    variant = (
+        db.query(ProductVariant)
+        .filter(
+            ProductVariant.id == variant_id,
+            ProductVariant.product_id == product_id,
+        )
+        .first()
+    )
+
+    if not variant:
+        return False
+
+    db.delete(variant)
 
     try:
         db.commit()
@@ -511,7 +632,6 @@ def create_variant(
 
     if not sku or not sku.strip():
         sku = generate_sku(
-            db,
             product.title,
             variant_in.size,
             variant_in.color,
@@ -577,15 +697,16 @@ def bulk_create_variants(
     failed = []
 
     for idx, variant_in in enumerate(variants_in):
+        variant = None
         try:
-            # Validate
+            # Validate inputs — raises HTTPException before any DB write
             _validate_variant_input(variant_in)
             _check_duplicate_variant(db, product_id, variant_in)
 
             # SKU
             sku = variant_in.sku
             if not sku or not sku.strip():
-                sku = generate_sku(db, product.title, variant_in.size, variant_in.color)
+                sku = generate_sku(product.title, variant_in.size, variant_in.color)
 
             variant = ProductVariant(
                 product_id=product_id,
@@ -599,26 +720,39 @@ def bulk_create_variants(
                 stock_quantity=variant_in.stock_quantity,
                 low_stock_threshold=variant_in.low_stock_threshold,
             )
-
             db.add(variant)
-            db.flush()  # Validate constraints without committing
+
+            # Savepoint: flush this variant in isolation.
+            # An IntegrityError here rolls back only this savepoint, leaving
+            # all previously-flushed variants intact in the outer transaction.
+            sp = db.begin_nested()
+            try:
+                db.flush()
+                sp.commit()
+            except IntegrityError:
+                sp.rollback()
+                # Remove the pending object from the session to keep it clean
+                try:
+                    db.expunge(variant)
+                except Exception:
+                    pass
+                failed.append({
+                    "index": idx,
+                    "size": variant_in.size,
+                    "color": variant_in.color,
+                    "error": "SKU conflict or duplicate variant.",
+                })
+                continue
+
             created.append(variant)
 
         except HTTPException as e:
+            # Validation failed before any DB write — no savepoint needed
             failed.append({
                 "index": idx,
                 "size": variant_in.size,
                 "color": variant_in.color,
                 "error": e.detail,
-            })
-
-        except IntegrityError:
-            db.rollback()
-            failed.append({
-                "index": idx,
-                "size": variant_in.size,
-                "color": variant_in.color,
-                "error": f"SKU conflict or duplicate variant.",
             })
 
     # Commit all successful variants
