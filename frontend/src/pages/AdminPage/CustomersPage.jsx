@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Plus, Search, UserRound, Mail, ShoppingBag } from 'lucide-react'
-import Badge from '../components/common/Badge'
+import Badge from '../../components/common/Badge'
 
 const CUSTOMERS = [
   { id: 1, name: 'Priya Kumar', email: 'priya@example.com', orders: 12, spent: 1840, status: 'vip' },

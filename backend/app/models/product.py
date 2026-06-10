@@ -7,6 +7,7 @@ import enum
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Column,
     DateTime,
     ForeignKey,
@@ -176,13 +177,29 @@ class Product(Base):
 class ProductVariant(Base):
     __tablename__ = "product_variants"
 
-    # Prevent duplicate size/color combinations
+    # Prevent duplicate size/color combinations + data integrity constraints
     __table_args__ = (
         UniqueConstraint(
             "product_id",
             "size",
             "color",
             name="uq_variant_product_size_color",
+        ),
+        CheckConstraint(
+            "stock_quantity >= 0",
+            name="ck_variant_stock_nonneg",
+        ),
+        CheckConstraint(
+            "original_price > 0",
+            name="ck_variant_orig_price_pos",
+        ),
+        CheckConstraint(
+            "selling_price > 0",
+            name="ck_variant_sell_price_pos",
+        ),
+        CheckConstraint(
+            "selling_price <= original_price",
+            name="ck_variant_sell_lte_orig",
         ),
     )
 

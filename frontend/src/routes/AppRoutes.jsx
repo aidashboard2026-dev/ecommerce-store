@@ -2,14 +2,14 @@ import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import MainLayout from '../layouts/MainLayout'
-import LoginPage from '../pages/LoginPage'
-import DashboardPage from '../pages/DashboardPage'
-import ProductsPage from '../pages/ProductsPage'
-import OrdersPage from '../pages/OrdersPage'
-import OffersPage from '../pages/OffersPage'
-import CustomersPage from '../pages/CustomersPage'
-import SettingsPage from '../pages/SettingsPage'
-import AddOfferPage from "../pages/AddOfferPage";
+import LoginPage from '../pages/AdminPage/LoginPage'
+import DashboardPage from '../pages/AdminPage/DashboardPage'
+import ProductsPage from '../pages/AdminPage/ProductsPage'
+import OrdersPage from '../pages/AdminPage/OrdersPage'
+import OffersPage from '../pages/AdminPage/OffersPage'
+import CustomersPage from '../pages/AdminPage/CustomersPage'
+import SettingsPage from '../pages/AdminPage/SettingsPage'
+import AddOfferPage from "../pages/AdminPage/AddOfferPage";
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth()

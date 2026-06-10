@@ -5,7 +5,7 @@ Production-hardened product service layer
 
 import math
 import re
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import HTTPException, status
 from sqlalchemy import or_
@@ -553,3 +553,91 @@ def create_variant(
     db.refresh(variant)
 
     return variant
+
+
+def bulk_create_variants(
+    db: Session,
+    product_id: int,
+    variants_in: List[VariantCreate],
+) -> dict:
+    """
+    Create multiple variants in a single transaction.
+    Returns structured results with created variants and per-item failures.
+    """
+
+    product = get_product(db, product_id)
+
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product {product_id} not found.",
+        )
+
+    created = []
+    failed = []
+
+    for idx, variant_in in enumerate(variants_in):
+        try:
+            # Validate
+            _validate_variant_input(variant_in)
+            _check_duplicate_variant(db, product_id, variant_in)
+
+            # SKU
+            sku = variant_in.sku
+            if not sku or not sku.strip():
+                sku = generate_sku(db, product.title, variant_in.size, variant_in.color)
+
+            variant = ProductVariant(
+                product_id=product_id,
+                size=variant_in.size,
+                color=variant_in.color,
+                color_hex=variant_in.color_hex,
+                sku=sku,
+                original_price=variant_in.original_price,
+                selling_price=variant_in.selling_price,
+                discount_percentage=variant_in.discount_percentage,
+                stock_quantity=variant_in.stock_quantity,
+                low_stock_threshold=variant_in.low_stock_threshold,
+            )
+
+            db.add(variant)
+            db.flush()  # Validate constraints without committing
+            created.append(variant)
+
+        except HTTPException as e:
+            failed.append({
+                "index": idx,
+                "size": variant_in.size,
+                "color": variant_in.color,
+                "error": e.detail,
+            })
+
+        except IntegrityError:
+            db.rollback()
+            failed.append({
+                "index": idx,
+                "size": variant_in.size,
+                "color": variant_in.color,
+                "error": f"SKU conflict or duplicate variant.",
+            })
+
+    # Commit all successful variants
+    if created:
+        try:
+            db.commit()
+            for v in created:
+                db.refresh(v)
+        except Exception:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to commit variants. Please retry.",
+            )
+
+    return {
+        "created": created,
+        "failed": failed,
+        "total_requested": len(variants_in),
+        "total_created": len(created),
+        "total_failed": len(failed),
+    }

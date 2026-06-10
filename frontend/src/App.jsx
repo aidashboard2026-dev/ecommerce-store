@@ -7,6 +7,7 @@ import AppRoutes from './routes/AppRoutes'
 function App() {
   const dispatch = useDispatch()
   const token = useSelector((s) => s.auth.token)
+  const admin = useSelector((s) => s.auth.admin)
   const initialized = useSelector((s) => s.auth.initialized)
 
   useEffect(() => {
@@ -15,7 +16,7 @@ function App() {
     }
   }, [token, dispatch])
 
-  if (token && !initialized) {
+  if (token && !initialized && !admin) {
     return (
       <div className="min-h-screen bg-app flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">

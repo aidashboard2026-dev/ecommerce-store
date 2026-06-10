@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { Sun, Moon, Monitor, Shield, Bell, Palette, User, Save } from 'lucide-react'
 import { useDispatch } from 'react-redux'
-import { useAuth, useTheme } from '../hooks/useAuth'
-import { setTheme } from '../store/themeSlice'
-import { adminsAPI } from '../services/api'
+import { useAuth, useTheme } from "../../hooks/useAuth";
+import { setTheme } from '../../store/themeSlice'
+import { adminsAPI } from '../../services/api'
 import clsx from 'clsx'
 
 function Section({ title, icon: Icon, children }) {

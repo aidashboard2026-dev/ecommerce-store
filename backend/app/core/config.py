@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     # Database
     POSTGRES_SERVER: str = "localhost"
     POSTGRES_USER: str = "admin"
-    POSTGRES_PASSWORD: str = "adminpass"
+    POSTGRES_PASSWORD: str = "adminpass123"
     POSTGRES_DB: str = "admindb"
 
     @property
