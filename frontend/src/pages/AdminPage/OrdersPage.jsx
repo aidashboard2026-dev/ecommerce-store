@@ -22,7 +22,13 @@ export default function OrdersPage() {
   const loadOrders = async () => {
     try {
       const data = await getOrders();
-      console.log("API RESPONSE =", data);
+      console.log(
+        data.map(o => ({
+          id: o.id,
+          expected_delivery_date: o.expected_delivery_date,
+          tracking_status: o.tracking_status
+        }))
+      );
       
       setOrders(data);
     } catch (err) {
