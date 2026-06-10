@@ -67,15 +67,15 @@ def create_order(
             detail="Order number already exists",
         )
 
-    data = order_in.model_dump()
+    # data = order_in.model_dump()
 
-    # duplicate order_number avoid panna
-    data.pop("order_number", None)
+    # # duplicate order_number avoid panna
+    # data.pop("order_number", None)
 
-    order = Order(
-        order_number=order_number,
-        **data
-    )
+    # order = Order(
+    #     order_number=order_number,
+    #     **data
+    # )
 
     if not order.ordered_at:
         order.ordered_at = datetime.utcnow()

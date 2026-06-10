@@ -17,7 +17,12 @@ from app.services.product_service import get_products_count, get_published_produ
 
 router = APIRouter()
 
-ACTIVE_SALES_STATUSES = ("pending", "processing", "shipped", "delivered")
+ACTIVE_SALES_STATUSES = (
+    "PLACED",
+    "PROCESSING",
+    "SHIPPED",
+    "DELIVERED"
+)
 REVENUE_STATUS = "delivered"
 REVENUE_PAYMENT = "paid"
 CASH_PAYMENT_METHODS = ("cod", "cash", "cash on delivery")
@@ -57,38 +62,83 @@ def _orders_between(db: Session, start_at: datetime, end_at: datetime) -> list[O
         )
         .all()
     )
-def _orders_between(db, start_at, end_at):
+# def _orders_between(db, start_at, end_at):
 
-    # print("START:", start_at)
-    # print("END:", end_at)
+#     # print("START:", start_at)
+#     # print("END:", end_at)
 
-    orders = (
-        db.query(Order)
-        .filter(
-            Order.tracking_status.in_(ACTIVE_SALES_STATUSES),
-            Order.ordered_at >= start_at,
-            Order.ordered_at < end_at,
-        )
-        .all()
-    )
+#     orders = (
+#         db.query(Order)
+#         .filter(
+#             Order.tracking_status.in_(ACTIVE_SALES_STATUSES),
+#             Order.ordered_at >= start_at,
+#             Order.ordered_at < end_at,
+#         )
+#         .all()
+#     )
 
-    # print("FOUND ORDERS:", len(orders))
+#     # print("FOUND ORDERS:", len(orders))
 
-    # for order in orders:
-    #     print(
-    #         order.id,
-    #         order.customer_name,
-    #         order.tracking_status,
-    #         order.ordered_at
-    #     )
+#     # for order in orders:
+#     #     print(
+#     #         order.id,
+#     #         order.customer_name,
+#     #         order.tracking_status,
+#     #         order.ordered_at
+#     #     )
 
-    return orders
+#     return orders
+
+#     orders = _orders_between(
+#         db,
+#         _start_of_day(start_date),
+#         _start_of_day(end_date),
+#     )
+
+#     print("START =", _start_of_day(start_date))
+#     print("END =", _start_of_day(end_date))
+#     print("FOUND ORDERS =", len(orders))
+
+#     for order in orders:
+#         print(
+#             order.id,
+#             order.customer_name,
+#             order.tracking_status,
+#             order.ordered_at,
+#             order.total_amount
+#         )
 
 
+# def _orders_between(db: Session, start_at: datetime, end_at: datetime):
+
+#     print("START =", start_at)
+#     print("END =", end_at)
+
+#     all_orders = db.query(Order).all()
+
+#     print("TOTAL ORDERS IN DB =", len(all_orders))
+
+#     for o in all_orders:
+#         print(
+#             o.id,
+#             o.tracking_status,
+#             o.ordered_at,
+#             o.total_amount
+#         )
+
+#     return (
+#         db.query(Order)
+#         .filter(
+#             Order.tracking_status.in_(ACTIVE_SALES_STATUSES),
+#             Order.ordered_at >= start_at,
+#             Order.ordered_at < end_at,
+#         )
+#         .all()
+#     )
 def _revenue_filter():
     return (
-        func.lower(Order.status) == REVENUE_STATUS,
-        func.lower(Order.payment) == REVENUE_PAYMENT,
+        func.lower(Order.tracking_status) == REVENUE_STATUS,
+        func.lower(Order.payment_status) == "paid",
     )
 
 
@@ -109,7 +159,7 @@ def _sum_orders(
     start_at: Optional[datetime] = None,
     end_at: Optional[datetime] = None,
 ) -> float:
-    query = db.query(func.coalesce(func.sum(Order.total), 0)).filter(*_revenue_filter())
+    query = db.query(func.coalesce(func.sum(Order.total_amount), 0)).filter(*_revenue_filter())
 
     if start_at:
         query = query.filter(Order.ordered_at >= start_at)
@@ -122,11 +172,11 @@ def _sum_orders(
 
 def _payment_revenue_summary(db: Session, payment_methods: tuple[str, ...], start_at: Optional[datetime] = None, end_at: Optional[datetime] = None) -> dict:
     query = db.query(
-        func.coalesce(func.sum(Order.total), 0),
+        func.coalesce(func.sum(Order.total_amount), 0),
         func.count(Order.id),
     ).filter(
-        func.lower(Order.status) == REVENUE_STATUS,
-        func.lower(Order.payment).in_(payment_methods),
+        func.lower(Order.tracking_status) == REVENUE_STATUS,
+        func.lower(Order.payment_method).in_(payment_methods),
     )
     
     if start_at:
@@ -333,7 +383,7 @@ def get_sales_chart(
         start_date = anchor - timedelta(days=anchor.weekday())
         end_date = start_date + timedelta(days=7)
 
-        orders = _revenue_orders_between(
+        orders = _orders_between(
             db,
             _start_of_day(start_date),
             _start_of_day(end_date),
