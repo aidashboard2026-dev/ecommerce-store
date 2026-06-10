@@ -59,6 +59,50 @@ def _orders_between(db: Session, start_at: datetime, end_at: datetime) -> list[O
     )
 
 
+def _order_count_between(db: Session, start_at: datetime, end_at: datetime) -> int:
+    return (
+        db.query(Order)
+        .filter(
+            Order.status.in_(ACTIVE_SALES_STATUSES),
+            Order.ordered_at >= start_at,
+            Order.ordered_at < end_at,
+        )
+        .count()
+    )
+
+
+def _admin_count_between(db: Session, start_at: datetime, end_at: datetime) -> int:
+    return (
+        db.query(Admin)
+        .filter(
+            Admin.created_at >= start_at,
+            Admin.created_at < end_at,
+        )
+        .count()
+    )
+
+
+def _product_count_between(
+    db: Session,
+    start_at: datetime,
+    end_at: datetime,
+    published_only: bool = False,
+) -> int:
+    query = (
+        db.query(Product)
+        .filter(
+            Product.deleted_at.is_(None),
+            Product.created_at >= start_at,
+            Product.created_at < end_at,
+        )
+    )
+
+    if published_only:
+        query = query.filter(Product.status == ProductStatus.published)
+
+    return query.count()
+
+
 def _revenue_filter():
     return (
         func.lower(Order.status) == REVENUE_STATUS,
@@ -209,15 +253,37 @@ def get_dashboard_stats(
         previous_window_start,
         current_window_start,
     )
-    
+
+    current_user_count = _admin_count_between(db, current_window_start, now)
+    previous_user_count = _admin_count_between(db, previous_window_start, current_window_start)
+
+    current_product_count = _product_count_between(db, current_window_start, now)
+    previous_product_count = _product_count_between(db, previous_window_start, current_window_start)
+
+    current_published_product_count = _product_count_between(
+        db,
+        current_window_start,
+        now,
+        published_only=True,
+    )
+    previous_published_product_count = _product_count_between(
+        db,
+        previous_window_start,
+        current_window_start,
+        published_only=True,
+    )
+
+    current_active_sessions = _order_count_between(db, current_window_start, now)
+    previous_active_sessions = _order_count_between(db, previous_window_start, current_window_start)
+
     # Calculate current and previous cash revenue
     current_cash_summary = _payment_revenue_summary(db, CASH_PAYMENT_METHODS, current_window_start, now)
     previous_cash_summary = _payment_revenue_summary(db, CASH_PAYMENT_METHODS, previous_window_start, current_window_start)
-    
+
     # Calculate current and previous UPI revenue
     current_upi_summary = _payment_revenue_summary(db, UPI_PAYMENT_METHODS, current_window_start, now)
     previous_upi_summary = _payment_revenue_summary(db, UPI_PAYMENT_METHODS, previous_window_start, current_window_start)
-    
+
     # Get overall summaries too
     cash_summary = _payment_revenue_summary(db, CASH_PAYMENT_METHODS)
     upi_summary = _payment_revenue_summary(db, UPI_PAYMENT_METHODS)
@@ -229,12 +295,12 @@ def get_dashboard_stats(
         "total_revenue": total_revenue,
         "total_orders": order_count,
         "published_products": published_product_count,
-        "active_sessions": published_product_count,
+        "active_sessions": order_count,
         "revenue_growth": _growth(current_revenue, previous_revenue),
-        "user_growth": 8.2,
-        "product_growth": 3.7,
-        "published_growth": 0.0,
-        "session_growth": 0.0,
+        "user_growth": _growth(current_user_count, previous_user_count),
+        "product_growth": _growth(current_product_count, previous_product_count),
+        "published_growth": _growth(current_published_product_count, previous_published_product_count),
+        "session_growth": _growth(current_active_sessions, previous_active_sessions),
         "cash_revenue": cash_summary["revenue"],
         "cash_average_order": cash_summary["average_order"],
         "cash_orders": cash_summary["orders"],
