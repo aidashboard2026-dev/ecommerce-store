@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin1234
+      POSTGRES_PASSWORD: adminpass123
       POSTGRES_DB: admindb
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -28,7 +28,7 @@ services:
     environment:
       POSTGRES_SERVER: db
       POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin1234
+      POSTGRES_PASSWORD: adminpass123
       POSTGRES_DB: admindb
       # SECRET_KEY: ${SECRET_KEY:-change-me-in-production-please-use-a-long-random-string}
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in your .env file}

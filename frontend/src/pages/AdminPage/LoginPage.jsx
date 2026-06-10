@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { loginThunk, clearError } from '../../store/authSlice'
 import { useTheme } from '../../hooks/useAuth'
 import { Eye, EyeOff, Zap, Sun, Moon } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 export default function LoginPage() {
   const dispatch = useDispatch()
@@ -20,8 +21,6 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    console.log("LOGIN BUTTON CLICKED")
-
     const result = await dispatch(
       loginThunk({
         email,
@@ -29,15 +28,9 @@ export default function LoginPage() {
       })
     )
 
-    console.log("RESULT =", result)
-
-    alert("LOGIN SUCCESS BLOCK")
-
-    console.log("BEFORE REDIRECT")
-
-    window.location.href = "/"
-
-    console.log("AFTER REDIRECT")
+    if (loginThunk.fulfilled.match(result)) {
+      window.location.href = "/"
+    }
   }
 
   return (
@@ -130,7 +123,14 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-muted mt-5">
+        <p className="text-center text-sm text-muted mt-5">
+          Don't have an account?{' '}
+          <Link to="/signup" className="text-brand-500 hover:text-brand-400 font-medium transition-colors">
+            Sign up
+          </Link>
+        </p>
+
+        <p className="text-center text-xs text-muted mt-3">
           Protected by JWT Authentication · AdminDash Pro
         </p>
       </div>

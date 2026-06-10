@@ -62,11 +62,3 @@ class OrderResponse(OrderBase):
     class Config:
         from_attributes = True  
         
-class DeliveryZone(Base):
-    __tablename__ = "delivery_zones"
-
-    id = Column(Integer, primary_key=True)
-
-    city = Column(String(100))
-
-    delivery_days = Column(Integer)
