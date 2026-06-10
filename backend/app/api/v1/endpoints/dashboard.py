@@ -17,7 +17,12 @@ from app.services.product_service import get_products_count, get_published_produ
 
 router = APIRouter()
 
-ACTIVE_SALES_STATUSES = ("pending", "processing", "shipped", "delivered")
+ACTIVE_SALES_STATUSES = (
+    "PLACED",
+    "PROCESSING",
+    "SHIPPED",
+    "DELIVERED"
+)
 REVENUE_STATUS = "delivered"
 REVENUE_PAYMENT = "paid"
 CASH_PAYMENT_METHODS = ("cod", "cash", "cash on delivery")
@@ -51,7 +56,7 @@ def _orders_between(db: Session, start_at: datetime, end_at: datetime) -> list[O
     return (
         db.query(Order)
         .filter(
-            Order.status.in_(ACTIVE_SALES_STATUSES),
+           Order.tracking_status .in_(ACTIVE_SALES_STATUSES),
             Order.ordered_at >= start_at,
             Order.ordered_at < end_at,
         )
@@ -59,54 +64,10 @@ def _orders_between(db: Session, start_at: datetime, end_at: datetime) -> list[O
     )
 
 
-def _order_count_between(db: Session, start_at: datetime, end_at: datetime) -> int:
-    return (
-        db.query(Order)
-        .filter(
-            Order.status.in_(ACTIVE_SALES_STATUSES),
-            Order.ordered_at >= start_at,
-            Order.ordered_at < end_at,
-        )
-        .count()
-    )
-
-
-def _admin_count_between(db: Session, start_at: datetime, end_at: datetime) -> int:
-    return (
-        db.query(Admin)
-        .filter(
-            Admin.created_at >= start_at,
-            Admin.created_at < end_at,
-        )
-        .count()
-    )
-
-
-def _product_count_between(
-    db: Session,
-    start_at: datetime,
-    end_at: datetime,
-    published_only: bool = False,
-) -> int:
-    query = (
-        db.query(Product)
-        .filter(
-            Product.deleted_at.is_(None),
-            Product.created_at >= start_at,
-            Product.created_at < end_at,
-        )
-    )
-
-    if published_only:
-        query = query.filter(Product.status == ProductStatus.published)
-
-    return query.count()
-
-
 def _revenue_filter():
     return (
-        func.lower(Order.status) == REVENUE_STATUS,
-        func.lower(Order.payment) == REVENUE_PAYMENT,
+        func.lower(Order.tracking_status) == REVENUE_STATUS,
+        func.lower(Order.payment_status) == "paid",
     )
 
 
@@ -127,7 +88,7 @@ def _sum_orders(
     start_at: Optional[datetime] = None,
     end_at: Optional[datetime] = None,
 ) -> float:
-    query = db.query(func.coalesce(func.sum(Order.total), 0)).filter(*_revenue_filter())
+    query = db.query(func.coalesce(func.sum(Order.total_amount), 0)).filter(*_revenue_filter())
 
     if start_at:
         query = query.filter(Order.ordered_at >= start_at)
@@ -140,11 +101,11 @@ def _sum_orders(
 
 def _payment_revenue_summary(db: Session, payment_methods: tuple[str, ...], start_at: Optional[datetime] = None, end_at: Optional[datetime] = None) -> dict:
     query = db.query(
-        func.coalesce(func.sum(Order.total), 0),
+        func.coalesce(func.sum(Order.total_amount), 0),
         func.count(Order.id),
     ).filter(
-        func.lower(Order.status) == REVENUE_STATUS,
-        func.lower(Order.payment).in_(payment_methods),
+        func.lower(Order.tracking_status) == REVENUE_STATUS,
+        func.lower(Order.payment_method).in_(payment_methods),
     )
     
     if start_at:
@@ -238,7 +199,7 @@ def get_dashboard_stats(
     published_product_count = get_published_products_count(db)
 
     order_count = db.query(Order).filter(
-        Order.status.in_(ACTIVE_SALES_STATUSES)
+        Order.tracking_status.in_(ACTIVE_SALES_STATUSES)
     ).count()
 
     total_revenue = _sum_orders(db)
@@ -343,8 +304,7 @@ def get_chart_data(
     users_by_month = {month: 0 for month in range(1, 13)}
 
     for order in orders:
-        revenue_by_month[order.ordered_at.month] += _money(order.total)
-
+        revenue_by_month[order.ordered_at.month] += _money(order.total_amount)
     for admin in admins:
         if admin.created_at:
             users_by_month[admin.created_at.month] += 1
@@ -374,7 +334,7 @@ def get_sales_chart(
         start_date = anchor - timedelta(days=anchor.weekday())
         end_date = start_date + timedelta(days=7)
 
-        orders = _revenue_orders_between(
+        orders = _orders_between(
             db,
             _start_of_day(start_date),
             _start_of_day(end_date),
@@ -383,8 +343,7 @@ def get_sales_chart(
         totals = {day: 0.0 for day in range(7)}
 
         for order in orders:
-            totals[order.ordered_at.weekday()] += _money(order.total)
-
+            totals[order.ordered_at.weekday()] += _money(order.total_amount)
         return {
             "period": "weekly",
             "anchor_date": anchor.isoformat(),
@@ -415,8 +374,7 @@ def get_sales_chart(
     totals = {(month.year, month.month): 0.0 for month in month_keys}
 
     for order in orders:
-        totals[(order.ordered_at.year, order.ordered_at.month)] += _money(order.total)
-
+        totals[(order.ordered_at.year, order.ordered_at.month)] += _money(order.total_amount)
     return {
         "period": "monthly",
         "anchor_date": anchor.isoformat(),

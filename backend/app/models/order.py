@@ -1,5 +1,13 @@
-from sqlalchemy import Column, DateTime, Integer, Numeric, String
-from sqlalchemy.sql import func
+from datetime import datetime
+
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Float,
+    DateTime,
+    Text
+)
 
 from app.database.base import Base
 
@@ -8,12 +16,72 @@ class Order(Base):
     __tablename__ = "orders"
 
     id = Column(Integer, primary_key=True, index=True)
-    order_number = Column(String(32), unique=True, index=True, nullable=False)
-    customer = Column(String(100), nullable=False)
-    items = Column(Integer, nullable=False, default=1)
-    total = Column(Numeric(12, 2), nullable=False, default=0)
-    status = Column(String(50), nullable=False, default="pending")
-    payment = Column(String(50), nullable=False, default="Paid")
-    ordered_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Order
+    order_number = Column(String(50), unique=True, nullable=False, index=True)
+
+    # Customer
+    customer_name = Column(String(255), nullable=False)
+    customer_email = Column(String(255))
+    customer_phone = Column(String(20))
+
+    # Address
+    address_line1 = Column(String(255))
+    address_line2 = Column(String(255))
+
+    city = Column(String(100))
+    state = Column(String(100))
+    country = Column(String(100))
+
+    pincode = Column(String(20))
+
+    # Product
+    product_name = Column(String(255), nullable=False)
+
+    product_image = Column(String(500))
+
+    size = Column(String(50))
+
+    color = Column(String(100))
+
+    quantity = Column(Integer, default=1)
+
+    price = Column(Float, default=0)
+
+    total_amount = Column(Float, default=0)
+
+    # Payment
+    payment_method = Column(
+        String(50),
+        default="COD"
+    )
+
+    payment_status = Column(
+        String(50),
+        default="PENDING"
+    )
+
+    # Tracking
+    tracking_status = Column(
+        String(50),
+        default="PLACED"
+    )
+
+    tracking_note = Column(Text)
+
+    # Dates
+    ordered_at = Column(
+        DateTime,
+        default=datetime.utcnow
+    )
+
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow
+    )
+
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )

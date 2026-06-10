@@ -1,0 +1,114 @@
+[1mdiff --git a/backend/app/api/v1/endpoints/dashboard.py b/backend/app/api/v1/endpoints/dashboard.py[m
+[1mindex cef5226..926b786 100644[m
+[1m--- a/backend/app/api/v1/endpoints/dashboard.py[m
+[1m+++ b/backend/app/api/v1/endpoints/dashboard.py[m
+[36m@@ -59,6 +59,50 @@[m [mdef _orders_between(db: Session, start_at: datetime, end_at: datetime) -> list[O[m
+     )[m
+ [m
+ [m
+[32m+[m[32mdef _order_count_between(db: Session, start_at: datetime, end_at: datetime) -> int:[m
+[32m+[m[32m    return ([m
+[32m+[m[32m        db.query(Order)[m
+[32m+[m[32m        .filter([m
+[32m+[m[32m            Order.status.in_(ACTIVE_SALES_STATUSES),[m
+[32m+[m[32m            Order.ordered_at >= start_at,[m
+[32m+[m[32m            Order.ordered_at < end_at,[m
+[32m+[m[32m        )[m
+[32m+[m[32m        .count()[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef _admin_count_between(db: Session, start_at: datetime, end_at: datetime) -> int:[m
+[32m+[m[32m    return ([m
+[32m+[m[32m        db.query(Admin)[m
+[32m+[m[32m        .filter([m
+[32m+[m[32m            Admin.created_at >= start_at,[m
+[32m+[m[32m            Admin.created_at < end_at,[m
+[32m+[m[32m        )[m
+[32m+[m[32m        .count()[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef _product_count_between([m
+[32m+[m[32m    db: Session,[m
+[32m+[m[32m    start_at: datetime,[m
+[32m+[m[32m    end_at: datetime,[m
+[32m+[m[32m    published_only: bool = False,[m
+[32m+[m[32m) -> int:[m
+[32m+[m[32m    query = ([m
+[32m+[m[32m        db.query(Product)[m
+[32m+[m[32m        .filter([m
+[32m+[m[32m            Product.deleted_at.is_(None),[m
+[32m+[m[32m            Product.created_at >= start_at,[m
+[32m+[m[32m            Product.created_at < end_at,[m
+[32m+[m[32m        )[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m[32m    if published_only:[m
+[32m+[m[32m        query = query.filter(Product.status == ProductStatus.published)[m
+[32m+[m
+[32m+[m[32m    return query.count()[m
+[32m+[m
+[32m+[m
+ def _revenue_filter():[m
+     return ([m
+         func.lower(Order.status) == REVENUE_STATUS,[m
+[36m@@ -209,15 +253,37 @@[m [mdef get_dashboard_stats([m
+         previous_window_start,[m
+         current_window_start,[m
+     )[m
+[31m-    [m
+[32m+[m
+[32m+[m[32m    current_user_count = _admin_count_between(db, current_window_start, now)[m
+[32m+[m[32m    previous_user_count = _admin_count_between(db, previous_window_start, current_window_start)[m
+[32m+[m
+[32m+[m[32m    current_product_count = _product_count_between(db, current_window_start, now)[m
+[32m+[m[32m    previous_product_count = _product_count_between(db, previous_window_start, current_window_start)[m
+[32m+[m
+[32m+[m[32m    current_published_product_count = _product_count_between([m
+[32m+[m[32m        db,[m
+[32m+[m[32m        current_window_start,[m
+[32m+[m[32m        now,[m
+[32m+[m[32m        published_only=True,[m
+[32m+[m[32m    )[m
+[32m+[m[32m    previous_published_product_count = _product_count_between([m
+[32m+[m[32m        db,[m
+[32m+[m[32m        previous_window_start,[m
+[32m+[m[32m        current_window_start,[m
+[32m+[m[32m        published_only=True,[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m[32m    current_active_sessions = _order_count_between(db, current_window_start, now)[m
+[32m+[m[32m    previous_active_sessions = _order_count_between(db, previous_window_start, current_window_start)[m
+[32m+[m
+     # Calculate current and previous cash revenue[m
+     current_cash_summary = _payment_revenue_summary(db, CASH_PAYMENT_METHODS, current_window_start, now)[m
+     previous_cash_summary = _payment_revenue_summary(db, CASH_PAYMENT_METHODS, previous_window_start, current_window_start)[m
+[31m-    [m
+[32m+[m
+     # Calculate current and previous UPI revenue[m
+     current_upi_summary = _payment_revenue_summary(db, UPI_PAYMENT_METHODS, current_window_start, now)[m
+     previous_upi_summary = _payment_revenue_summary(db, UPI_PAYMENT_METHODS, previous_window_start, current_window_start)[m
+[31m-    [m
+[32m+[m
+     # Get overall summaries too[m
+     cash_summary = _payment_revenue_summary(db, CASH_PAYMENT_METHODS)[m
+     upi_summary = _payment_revenue_summary(db, UPI_PAYMENT_METHODS)[m
+[36m@@ -229,12 +295,12 @@[m [mdef get_dashboard_stats([m
+         "total_revenue": total_revenue,[m
+         "total_orders": order_count,[m
+         "published_products": published_product_count,[m
+[31m-        "active_sessions": published_product_count,[m
+[32m+[m[32m        "active_sessions": order_count,[m
+         "revenue_growth": _growth(current_revenue, previous_revenue),[m
+[31m-        "user_growth": 8.2,[m
+[31m-        "product_growth": 3.7,[m
+[31m-        "published_growth": 0.0,[m
+[31m-        "session_growth": 0.0,[m
+[32m+[m[32m        "user_growth": _growth(current_user_count, previous_user_count),[m
+[32m+[m[32m        "product_growth": _growth(current_product_count, previous_product_count),[m
+[32m+[m[32m        "published_growth": _growth(current_published_product_count, previous_published_product_count),[m
+[32m+[m[32m        "session_growth": _growth(current_active_sessions, previous_active_sessions),[m
+         "cash_revenue": cash_summary["revenue"],[m
+         "cash_average_order": cash_summary["average_order"],[m
+         "cash_orders": cash_summary["orders"],[m

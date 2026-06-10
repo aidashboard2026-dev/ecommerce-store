@@ -1,12 +1,59 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search } from "lucide-react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
+// import { getOrders, updateOrderStatus} from "../../services/order_Service";
+
 
 export default function OrdersPage() {
 
   const [date, setDate] = useState(new Date());
+
+  useEffect(() => {
+    
+    loadOrders();
+  }, []);
+
+  const loadOrders = async () => {
+    try {
+      const data = await getOrders();
+      console.log("API RESPONSE =", data);
+      setOrders(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  const handleStatusUpdate = async (
+    orderId,
+    newStatus
+  ) => {
+    try {
+
+      await updateOrderStatus(
+        orderId,
+        newStatus
+      );
+
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === orderId
+            ? {
+                ...order,
+                tracking_status: newStatus,
+              }
+            : order
+        )
+      );
+
+    } catch (error) {
+      console.error(error);
+      alert("Status update failed");
+    }
+  };
+  
+  const [orders, setOrders] = useState([]);
+
+  console.log("ORDERS =", orders);
 
   return (
     <div className="p-8 text-white">
@@ -75,6 +122,8 @@ export default function OrdersPage() {
             <p className="text-5xl font-bold text-red-500">
               18
             </p>
+
+           
           </div>
 
         </div>
@@ -91,16 +140,21 @@ export default function OrdersPage() {
         />
 
       </div>
-
+      
 {/* card --oder details cutomer wise  */}
     </div>
-      <div className="mt-8 pt-5 border-t border-gray-700">
-
+    
+      {orders.map((order) => (
+        
+      <div
+        key={order.id}
+        className="mt-8 pt-5 border-t border-gray-700"
+      >
         <div className="flex justify-between items-center border-b border-gray-700 pb-5">
 
           <div>
-            <span className="font-bold">ORD-9832</span>
-            <span className="ml-4">Date : 2026-05-19</span>
+            <span className="font-bold">{order.order_number}</span>
+            <span className="ml-4">Date : {order.ordered_at?.split("T")[0]}</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -109,15 +163,51 @@ export default function OrdersPage() {
               Operation Action :
             </span>
 
-            <button className="px-3 py-1 border rounded text-xs">
+            <button
+              onClick={() =>
+                handleStatusUpdate(
+                  order.id,
+                  "PROCESSING"
+                )
+              }
+              className={`px-3 py-1 rounded text-xs ${
+                order.tracking_status === "PROCESSING"
+                  ? "bg-blue-500 text-white"
+                  : "border"
+              }`}
+            >
               Process
             </button>
 
-            <button className="px-3 py-1 bg-orange-300 text-black rounded text-xs">
+            <button
+              onClick={() =>
+                handleStatusUpdate(
+                  order.id,
+                  "SHIPPED"
+                )
+              }
+              className={`px-3 py-1 rounded text-xs ${
+                order.tracking_status === "SHIPPED"
+                  ? "bg-orange-400 text-black"
+                  : "border"
+              }`}
+            >
               Shipped
             </button>
 
-            <button className="px-3 py-1 bg-green-300 text-black rounded text-xs">
+            <button
+              onClick={() =>
+                handleStatusUpdate(
+                  order.id,
+                  "DELIVERED"
+                )
+              }
+              className={`px-3 py-1 rounded text-xs ${
+                order.tracking_status === "DELIVERED"
+                  ? "bg-green-500 text-white"
+                  : "border"
+              }`}
+            >
               Deliver
             </button>
 
@@ -129,48 +219,45 @@ export default function OrdersPage() {
 
   {/* Customer */}
 
-        <div className="pr-8 border-r border-gray-700">
+        <div className="pr-8 border-r border-gray-700 flex flex-col justify-between">
 
           <h3 className="text-gray-400 text-2xl font-bold mb-4">
             Customer Registry
           </h3>
 
           <p className="text-4xl font-bold">
-            Aarav Sharma
+            {order.customer_name}
           </p>
 
           <p className="text-gray-500 underline text-sm">
-            aarav.sharma@gmail.com
+            {order.customer_email}
           </p>
 
-          <div className="mt-4 space-y-2 text-sm">
+          <div className="mt-8 space-y-4 text-sm">
 
             <p>Address:</p>
 
             <p className="font-semibold ml-5">
-              address 1
+              {order.address_line1}
             </p>
 
             <p className="font-semibold ml-5">
-              address 2
+              {order.address_line2}
             </p>
-
             <p className="font-semibold ml-5">
-              address 3
+              {order.city}
             </p>
-
             <p className="font-semibold ml-5">
-              636305
+              {order.pincode}
             </p>
-
           </div>
 
-          <div className="mt-6 text-sm">
+          <div className="mt-12 text-sm space-y-4">
 
             <p className="text-gray-400">
               Receipt Method :
               <span className="text-orange-400 ml-2 font-bold">
-                COD
+                {order.payment_method}
               </span>
             </p>
 
@@ -190,121 +277,163 @@ export default function OrdersPage() {
         <div className="pr-8 border-r border-gray-700">
 
           <h3 className="text-gray-400 text-2xl font-bold mb-6">
-            Purchased Items (2)
+            Purchased Item
           </h3>
 
-          <div className="flex items-start gap-4 mb-8">
+          <div className="flex items-start gap-4 mb-6">
 
             <div className="w-12 h-12 border-2 border-gray-500 rounded overflow-hidden">
               <img
-                src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300"
+                src={order.product_image}
                 alt="Product"
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.style.display = "none";
-                }}
               />
             </div>
-            
+
             <div className="flex-1">
 
-              <p>
-                AeroWeave Oversized Tee
+              <p className="font-semibold text-lg">
+                {order.product_name}
               </p>
 
               <p className="text-sm text-gray-400">
-                Size Selection: M
+                Size : {order.size}
               </p>
 
               <p className="text-sm text-gray-400">
-                Col: Vintage Black
+                Color : {order.color}
               </p>
 
               <p className="text-sm text-gray-400">
-                Qty: 1
+                Quantity : {order.quantity}
               </p>
 
             </div>
 
-            <p>₹549</p>
+            <p className="font-semibold text-lg">
+              ₹{order.price}
+            </p>
 
           </div>
 
-          <div className="flex items-start gap-4">
+          {/* Price Breakdown */}
 
-            
+          <div className="border-t border-gray-700 pt-4 space-y-3">
 
-            <div className="w-12 h-12 border-2 border-gray-500 rounded overflow-hidden">
-              <img
-                src="https://images.unsplash.com/photo-1542272604-787c3835535d?w=300"
-                alt="Product"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.style.display = "none";
-                }}
-              />
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">
+                Product Price
+              </span>
+              <span>
+                ₹{order.price}
+              </span>
             </div>
 
-            
-
-            <div className="flex-1">
-
-              <p>
-                Japanese Selvedge Denim
-              </p>
-
-              <p className="text-sm text-gray-400">
-                Size Selection: M
-              </p>
-
-              <p className="text-sm text-gray-400">
-                Col: Indigo Raw
-              </p>
-
-              <p className="text-sm text-gray-400">
-                Qty: 1
-              </p>
-
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">
+                Quantity
+              </span>
+              <span>
+                {order.quantity}
+              </span>
             </div>
 
-            <p>₹1649</p>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">
+                Shipping
+              </span>
+              <span className="text-green-400">
+                FREE
+              </span>
+            </div>
+
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">
+                Tax
+              </span>
+              <span>
+                ₹0
+              </span>
+            </div>
+
+            <div className="border-t border-gray-700 pt-3 flex justify-between font-bold text-lg">
+              <span>
+                Total
+              </span>
+              <span className="text-green-400">
+                ₹{order.total_amount}
+              </span>
+            </div>
+            
+            <div className="border-t border-gray-700 ">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-gray-400">
+                  Delivery Days :
+                </span>
+
+                <span className="font-semibold text-white">
+                  5 Days
+                </span>
+              </div>
+
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">
+                  Remaining :
+                </span>
+
+                <span className="font-bold text-orange-400">
+                  3 Days 12 Hrs
+                </span>
+              </div>
+            </div>
 
           </div>
 
         </div>
+
+         
+       
 
         {/* Summary */}
 
-        <div>
+       <div className="flex flex-col justify-between h-full">
 
-          <div className="bg-green-200 text-black text-center rounded-full text-xs py-1 mb-6">
-            DELIVERED
+        <div>
+          <div className="bg-green-200 text-black text-center rounded-full text-xs py-2 mb-10">
+            {order.tracking_status}
           </div>
 
           <p className="text-gray-500 text-center text-3xl font-bold leading-none">
-            Total
+            ₹{order.total_amount}
           </p>
 
-          <p className="text-gray-500 text-center text-3xl font-bold">
-            Settled
+          <p
+            className={`text-center text-3xl font-bold mt-2 ${
+              order.payment_status === "PAID"
+                ? "text-green-400"
+                : "text-orange-400"
+            }`}
+          >
+            {order.payment_status}
           </p>
 
-          <p className="text-center text-6xl font-bold mt-5">
-            ₹2248
+          <p className="text-center text-6xl font-bold mt-10">
+            ₹{order.total_amount}
           </p>
-
-          <button className="w-full mt-8 bg-yellow-500 text-black py-2 rounded-lg">
-            🖨 Print
-          </button>
-
         </div>
+
+        <button className="w-full bg-yellow-500 text-black py-3 rounded-lg font-semibold">
+          🖨 Print
+        </button>
 
       </div>
 
+      </div>
+    
     </div>
-
+    ))}      
     <div className="border-b border-gray-700 mt-6"></div>
-
+  
   </div>  
 
   );

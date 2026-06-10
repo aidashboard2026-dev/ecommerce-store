@@ -161,54 +161,81 @@ def init_db() -> None:
 
         now = datetime.now(timezone.utc)
         week_start = now - timedelta(days=now.weekday())
+        # initial_orders = [
+        #     Order(
+        #         order_number="ORD-1048",
+        #         customer="Priya Kumar",
+        #         items=3,
+        #         total=249.99,
+        #         status="processing",
+        #         payment="Paid",
+        #         ordered_at=week_start + timedelta(days=0, hours=10),
+        #     ),
+        #     Order(
+        #         order_number="ORD-1047",
+        #         customer="Arun Patel",
+        #         items=1,
+        #         total=89.50,
+        #         status="shipped",
+        #         payment="Paid",
+        #         ordered_at=week_start + timedelta(days=1, hours=12),
+        #     ),
+        #     Order(
+        #         order_number="ORD-1046",
+        #         customer="Nisha Rao",
+        #         items=5,
+        #         total=412.00,
+        #         status="delivered",
+        #         payment="Paid",
+        #         ordered_at=week_start + timedelta(days=2, hours=15),
+        #     ),
+        #     Order(
+        #         order_number="ORD-1045",
+        #         customer="Kiran Shah",
+        #         items=2,
+        #         total=128.75,
+        #         status="pending",
+        #         payment="COD",
+        #         ordered_at=week_start + timedelta(days=3, hours=9),
+        #     ),
+        #     Order(
+        #         order_number="ORD-1044",
+        #         customer="Kiran Shah",
+        #         items=2,
+        #         total=128.75,
+        #         status="cancelled",
+        #         payment="COD",
+        #         ordered_at=week_start + timedelta(days=4, hours=9),
+        #     ),
+        # ]
         initial_orders = [
             Order(
                 order_number="ORD-1048",
-                customer="Priya Kumar",
-                items=3,
-                total=249.99,
-                status="processing",
-                payment="Paid",
-                ordered_at=week_start + timedelta(days=0, hours=10),
-            ),
-            Order(
-                order_number="ORD-1047",
-                customer="Arun Patel",
-                items=1,
-                total=89.50,
-                status="shipped",
-                payment="Paid",
-                ordered_at=week_start + timedelta(days=1, hours=12),
-            ),
-            Order(
-                order_number="ORD-1046",
-                customer="Nisha Rao",
-                items=5,
-                total=412.00,
-                status="delivered",
-                payment="Paid",
-                ordered_at=week_start + timedelta(days=2, hours=15),
-            ),
-            Order(
-                order_number="ORD-1045",
-                customer="Kiran Shah",
-                items=2,
-                total=128.75,
-                status="pending",
-                payment="COD",
-                ordered_at=week_start + timedelta(days=3, hours=9),
-            ),
-            Order(
-                order_number="ORD-1044",
-                customer="Kiran Shah",
-                items=2,
-                total=128.75,
-                status="cancelled",
-                payment="COD",
-                ordered_at=week_start + timedelta(days=4, hours=9),
-            ),
-        ]
+                customer_name="Priya Kumar",
+                customer_email="priya@test.com",
+                customer_phone="9876543210",
 
+                address_line1="Salem Main Road",
+                city="Salem",
+                state="Tamil Nadu",
+                country="India",
+                pincode="636305",
+
+                product_name="Oversized Tee",
+                size="M",
+                color="Black",
+
+                quantity=3,
+                price=249.99,
+                total_amount=749.97,
+
+                payment_method="UPI",
+                payment_status="PAID",
+
+                tracking_status="PROCESSING",
+                ordered_at=week_start + timedelta(days=0, hours=10),
+            )
+        ]
         for order in initial_orders:
             existing_order = db.query(Order).filter(Order.order_number == order.order_number).first()
             if not existing_order:
