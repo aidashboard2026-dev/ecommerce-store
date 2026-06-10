@@ -123,6 +123,11 @@ def create_order(
     if not order.ordered_at:
         order.ordered_at = datetime.utcnow()
 
+    order.expected_delivery_date = (
+        order.ordered_at +
+        timedelta(days=order.delivery_days)
+    )
+
     db.add(order)
     db.commit()
     db.refresh(order)
