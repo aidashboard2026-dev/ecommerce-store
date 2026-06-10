@@ -1,36 +1,63 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
-
+from pydantic import BaseModel
 
 class OrderBase(BaseModel):
-    customer: str
-    items: int = Field(default=1, ge=1)
-    total: float = Field(default=0, ge=0)
-    status: str = "pending"
-    payment: str = "Paid"
+    customer_name: str
+    customer_email: Optional[str] = None
+    customer_phone: Optional[str] = None
+
+
+    address_line1: Optional[str] = None
+    address_line2: Optional[str] = None
+
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    pincode: Optional[str] = None
+
+    product_name: str
+    product_image: Optional[str] = None
+
+    size: Optional[str] = None
+    color: Optional[str] = None
+
+    quantity: int = 1
+
+    price: float = 0
+    total_amount: float = 0
+
+    payment_method: str = "COD"
+    payment_status: str = "PENDING"
+
+    tracking_status: str = "PLACED"
+    tracking_note: Optional[str] = None
+
     ordered_at: Optional[datetime] = None
 
 
 class OrderCreate(OrderBase):
     order_number: Optional[str] = None
 
-
 class OrderUpdate(BaseModel):
-    customer: Optional[str] = None
-    items: Optional[int] = Field(default=None, ge=1)
-    total: Optional[float] = Field(default=None, ge=0)
-    status: Optional[str] = None
-    payment: Optional[str] = None
-    ordered_at: Optional[datetime] = None
+    customer_name: Optional[str] = None
+    customer_email: Optional[str] = None
+    customer_phone: Optional[str] = None
+
+
+    tracking_status: Optional[str] = None
+    tracking_note: Optional[str] = None
+
+    payment_status: Optional[str] = None
 
 
 class OrderResponse(OrderBase):
     id: int
     order_number: str
+
     created_at: datetime
     updated_at: Optional[datetime] = None
 
     class Config:
-        from_attributes = True
+        from_attributes = True  

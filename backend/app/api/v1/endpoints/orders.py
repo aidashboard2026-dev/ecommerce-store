@@ -40,7 +40,6 @@ def list_orders(
         .all()
     )
 
-
 @router.post("/", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
 def create_order(
     order_in: OrderCreate,
@@ -48,28 +47,60 @@ def create_order(
     current_admin: Admin = Depends(get_current_admin),
 ):
     order_number = order_in.order_number or _generate_order_number(db)
-    existing = db.query(Order).filter(Order.order_number == order_number).first()
 
+    existing = (
+        db.query(Order)
+        .filter(Order.order_number == order_number)
+        .first()
+    )
+    data = order_in.model_dump()
+
+    data.pop("order_number", None)
+
+    order = Order(
+        order_number=order_number,
+        **data
+    )
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Order number already exists",
         )
 
-    order = Order(
-        order_number=order_number,
-        customer=order_in.customer,
-        items=order_in.items,
-        total=order_in.total,
-        status=order_in.status,
-        payment=order_in.payment,
-        ordered_at=order_in.ordered_at or datetime.now(timezone.utc),
-    )
+    # data = order_in.model_dump()
+
+    # # duplicate order_number avoid panna
+    # data.pop("order_number", None)
+
+    # order = Order(
+    #     order_number=order_number,
+    #     **data
+    # )
+
+    if not order.ordered_at:
+        order.ordered_at = datetime.utcnow()
+
     db.add(order)
     db.commit()
     db.refresh(order)
+
     return order
 
+@router.get("/{order_id}", response_model=OrderResponse)
+def get_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_admin: Admin = Depends(get_current_admin),
+):
+    order = db.query(Order).filter(Order.id == order_id).first()
+
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Order not found"
+        )
+
+    return order
 
 @router.put("/{order_id}", response_model=OrderResponse)
 def update_order(
@@ -103,7 +134,29 @@ def cancel_order(
     if not order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
 
-    order.status = "cancelled"
+    order.tracking_status = "CANCELLED"
     db.commit()
     db.refresh(order)
+    return order
+
+@router.put("/{order_id}/tracking", response_model=OrderResponse)
+def update_tracking(
+    order_id: int,
+    tracking_status: str,
+    db: Session = Depends(get_db),
+    current_admin: Admin = Depends(get_current_admin),
+):
+    order = db.query(Order).filter(Order.id == order_id).first()
+
+    if not order:
+        raise HTTPException(
+            status_code=404,
+            detail="Order not found"
+        )
+
+    order.tracking_status = tracking_status
+
+    db.commit()
+    db.refresh(order)
+
     return order

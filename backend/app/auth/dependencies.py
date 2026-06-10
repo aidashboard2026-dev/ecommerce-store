@@ -7,13 +7,19 @@ from app.models.admin import Admin
 
 bearer_scheme = HTTPBearer()
 
-
 def get_current_admin(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: Session = Depends(get_db),
-) -> Admin:
+):
     token = credentials.credentials
+
+    # print("========== TOKEN ==========")
+    # print(token)
+
     admin_id = verify_token(token)
+
+    # print("========== ADMIN ID ==========")
+    # print(admin_id)
 
     if not admin_id:
         raise HTTPException(
@@ -23,13 +29,11 @@ def get_current_admin(
         )
 
     admin = db.query(Admin).filter(Admin.id == int(admin_id)).first()
-    if not admin:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Admin not found",
-        )
-    return admin
 
+    # print("========== ADMIN ==========")
+    # print(admin)
+
+    return admin
 
 def get_current_superadmin(current_admin: Admin = Depends(get_current_admin)) -> Admin:
     if current_admin.role != "superadmin":
