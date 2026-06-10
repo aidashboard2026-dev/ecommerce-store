@@ -54,10 +54,59 @@ def create_order(
         .first()
     )
 
-    
+    delivery_days_map = {
+        "Chennai": 3,
+        "Coimbatore": 4,
+        "Salem": 5,
+        "Madurai": 6,
+        "Trichy": 4,
+        "Erode": 4,
+        "Tiruppur": 4,
+        "Vellore": 5,
+        "Thanjavur": 5,
+        "Tirunelveli": 7,
+        "Thoothukudi": 7,
+        "Dindigul": 5,
+        "Namakkal": 4,
+        "Karur": 4,
+        "Kanchipuram": 3,
+        "Cuddalore": 5,
+        "Nagapattinam": 6,
+        "Ramanathapuram": 7,
+        "Sivagangai": 6,
+        "Virudhunagar": 6,
+        "Kanyakumari": 7,
+        "Dharmapuri": 5,
+        "Krishnagiri": 5,
+        "Ariyalur": 5,
+        "Perambalur": 5,
+        "Pudukkottai": 6,
+        "Nilgiris": 6,
+        "Tenkasi": 7,
+        "Ranipet": 4,
+        "Tirupathur": 5,
+        "Mayiladuthurai": 6,
+    }
+
+    delivery_days = delivery_days_map.get(
+        order_in.city,
+        5
+    )
+
+    expected_delivery_date = (
+        datetime.utcnow()
+        + timedelta(days=delivery_days)
+    )
     data = order_in.model_dump()
 
     data.pop("order_number", None)
+
+
+    data["delivery_days"] = delivery_days
+
+    data["expected_delivery_date"] = (
+        expected_delivery_date
+    )
 
     order = Order(
         order_number=order_number,
@@ -69,15 +118,7 @@ def create_order(
             detail="Order number already exists",
         )
 
-    # data = order_in.model_dump()
-
-    # # duplicate order_number avoid panna
-    # data.pop("order_number", None)
-
-    # order = Order(
-    #     order_number=order_number,
-    #     **data
-    # )
+  
 
     if not order.ordered_at:
         order.ordered_at = datetime.utcnow()

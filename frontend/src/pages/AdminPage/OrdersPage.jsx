@@ -24,6 +24,7 @@ export default function OrdersPage() {
     try {
       const data = await getOrders();
       console.log("API RESPONSE =", data);
+      
       setOrders(data);
     } catch (err) {
       console.error(err);
@@ -241,6 +242,41 @@ export default function OrdersPage() {
     console.log("PENDING =", pendingOrders);
     console.log("SHIPPED =", shippedOrders);
     console.log("DELIVERED =", deliveredOrders);
+    
+    const getRemainingTime = (
+      expectedDate,
+      trackingStatus
+    ) => {
+
+      if (
+        trackingStatus === "DELIVERED"
+      ) {
+        return "Delivered";
+      }
+
+      const diff =
+        new Date(expectedDate) -
+        new Date();
+
+      if (diff <= 0) {
+        return "Arriving Soon";
+      }
+
+      const days = Math.floor(
+        diff / (1000 * 60 * 60 * 24)
+      );
+
+      const hours = Math.floor(
+        (
+          diff %
+          (1000 * 60 * 60 * 24)
+        ) /
+        (1000 * 60 * 60)
+      );
+
+      return `${days} Days ${hours} Hrs`;
+    };
+     
   return (
     <div className="p-8 text-white">
     <div className="flex flex-col xl:flex-row justify-between items-start gap-6">
@@ -302,6 +338,7 @@ export default function OrdersPage() {
           </div>
 
           <div className="w-full min-h-[130px] bg-red-100 rounded-lg px-3 py-3 flex flex-col justify-between">
+            
             <p className="font-bold text-red-500 text-lg md:text-xl">
               Pending
             </p>
@@ -574,7 +611,7 @@ export default function OrdersPage() {
                 </span>
 
                 <span className="font-semibold text-white">
-                  5 Days
+                  {order.delivery_days} Days
                 </span>
               </div>
 
@@ -583,8 +620,18 @@ export default function OrdersPage() {
                   Remaining :
                 </span>
 
-                <span className="font-bold text-orange-400">
-                  3 Days 12 Hrs
+                <span
+                  className={`font-bold ${
+                    order.tracking_status ===
+                    "DELIVERED"
+                      ? "text-green-400"
+                      : "text-orange-400"
+                  }`}
+                >
+                  {getRemainingTime(
+                    order.expected_delivery_date,
+                    order.tracking_status
+                  )}
                 </span>
               </div>
             </div>
