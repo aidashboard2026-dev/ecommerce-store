@@ -85,3 +85,12 @@ class Order(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow
     )
+
+    delivery_days = Column(
+        Integer,
+        default=5
+    )
+
+    expected_delivery_date = Column(
+        DateTime
+    )

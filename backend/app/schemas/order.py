@@ -34,6 +34,10 @@ class OrderBase(BaseModel):
     tracking_status: str = "PLACED"
     tracking_note: Optional[str] = None
 
+    delivery_days: Optional[int] = None
+
+    expected_delivery_date: Optional[datetime] = None
+
     ordered_at: Optional[datetime] = None
 
 
@@ -49,16 +53,16 @@ class OrderUpdate(BaseModel):
     tracking_status: Optional[str] = None
     tracking_note: Optional[str] = None
 
+
+    
     payment_status: Optional[str] = None
 
 
 class OrderResponse(OrderBase):
     id: int
     order_number: str
-
     created_at: datetime
     updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True  
-        
