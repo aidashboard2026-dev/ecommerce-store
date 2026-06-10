@@ -1,5 +1,5 @@
 import React, {useState,useEffect} from "react";
-import api from "../services/api";
+import api from "../../services/api";
 import { Search, Plus } from "lucide-react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";

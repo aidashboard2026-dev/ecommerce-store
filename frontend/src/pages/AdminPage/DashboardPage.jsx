@@ -22,7 +22,7 @@ import OrderStatusAnalytics from '../../components/dashboard/OrderStatusAnalytic
 import { PageLoader } from '../../components/common/Spinner'
 import { useAuth, useTheme } from '../../hooks/useAuth'
 
-import { CustomersIcon } from '../components/img/icons'
+import { CustomersIcon } from "../../components/img/icons";
 
 const activityIcons = {
   user_created: UserPlus,
