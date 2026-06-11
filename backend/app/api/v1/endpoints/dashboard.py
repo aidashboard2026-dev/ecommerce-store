@@ -17,7 +17,7 @@ from app.services.product_service import get_products_count, get_published_produ
 
 router = APIRouter()
 
-ACTIVE_SALES_STATUSES = ("pending", "processing", "shipped", "delivered")
+ACTIVE_SALES_STATUSES = ("placed", "pending", "processing", "shipped", "delivered")  # FIX C-3A: added "placed"
 REVENUE_STATUS = "delivered"
 REVENUE_PAYMENT = "paid"
 CASH_PAYMENT_METHODS = ("cod", "cash", "cash on delivery")
@@ -55,7 +55,7 @@ def _orders_between(db: Session, start_at: datetime, end_at: datetime) -> list[O
     orders = (
         db.query(Order)
         .filter(
-            Order.tracking_status.in_(ACTIVE_SALES_STATUSES),
+            func.lower(Order.tracking_status).in_(ACTIVE_SALES_STATUSES),  # FIX C-3B: case-insensitive
             Order.ordered_at >= start_at,
             Order.ordered_at < end_at,
         )
@@ -231,7 +231,7 @@ def _order_count_between(db: Session, start_at: datetime, end_at: datetime) -> i
     return (
         db.query(func.count(Order.id))
         .filter(
-            Order.tracking_status.in_(ACTIVE_SALES_STATUSES),
+            func.lower(Order.tracking_status).in_(ACTIVE_SALES_STATUSES),  # FIX C-3B: case-insensitive
             Order.ordered_at >= start_at,
             Order.ordered_at < end_at,
         )
@@ -249,7 +249,7 @@ def get_dashboard_stats(
     published_product_count = get_published_products_count(db)
 
     order_count = db.query(Order).filter(
-        Order.tracking_status.in_(ACTIVE_SALES_STATUSES)
+        func.lower(Order.tracking_status).in_(ACTIVE_SALES_STATUSES)  # FIX C-3B: case-insensitive
     ).count()
 
     total_revenue = _sum_orders(db)

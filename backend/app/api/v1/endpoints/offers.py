@@ -1,17 +1,3 @@
-"""
-offers.py — Offers API endpoints.
-
-Fixes applied:
-  - Triple router definition removed (was declared 3×, routes were overwritten)
-  - All endpoints now require admin authentication via get_current_admin
-  - datetime import moved to top-level (was inside a block → NameError when no banner)
-  - Banner image upload path fixed: now uses settings.UPLOAD_DIR (/app/uploads/offers)
-    instead of a relative CWD path that was not inside the Docker named volume
-  - Uploaded filenames are UUID-randomised to prevent collisions and path traversal
-  - HTTPException raised (404) when offer not found in publish endpoint
-  - Optional File(...) correctly annotated so endpoint works with or without image
-"""
-
 import os
 import uuid
 from datetime import date, datetime, time, timezone
@@ -114,7 +100,14 @@ def get_single_offer(
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_admin),
 ):
-    return get_offer(db, offer_id)
+    # FIX C-5: was returning None directly → 500 serialization error
+    offer = get_offer(db, offer_id)
+    if not offer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Offer not found",
+        )
+    return offer
 
 
 # ── Publish offer (set status → published, compute expiry) ────────────────────
