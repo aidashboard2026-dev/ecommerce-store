@@ -30,6 +30,7 @@ def login_admin(db: Session, email: str, password: str):
     access_token = create_access_token(
         subject=admin.id,
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+        token_type="admin",
     )
     return {"access_token": access_token, "token_type": "bearer", "admin": admin}
 
@@ -76,9 +77,6 @@ def register_customer(db: Session, signup_data: SignupRequest) -> Customer:
 
     except IntegrityError:
         db.rollback()
-        # TOCTOU race: two concurrent signups with same email both passed the
-        # fast-path check above and raced to INSERT. The unique constraint catches
-        # the loser with a clean 409 instead of a raw 500 traceback.
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="An account with this email already exists.",
@@ -89,3 +87,38 @@ def register_customer(db: Session, signup_data: SignupRequest) -> Customer:
         raise
 
     return customer
+
+
+def login_customer(db: Session, email: str, password: str):
+    """
+    Authenticate a customer by email + password.
+    Returns a dict with access_token (type='customer') and the customer object,
+    or None if credentials are invalid.
+    """
+    customer = db.query(Customer).filter(Customer.email == email).first()
+    if not customer:
+        return None
+
+    # Admin-created customers have no password (empty or None hash)
+    if not customer.password_hash:
+        return None
+
+    if not verify_password(password, customer.password_hash):
+        return None
+
+    if not customer.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been deactivated. Please contact support.",
+        )
+
+    access_token = create_access_token(
+        subject=customer.id,
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+        token_type="customer",
+    )
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "customer": customer,
+    }

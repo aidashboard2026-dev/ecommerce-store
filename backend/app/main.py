@@ -11,13 +11,8 @@ from app.api.v1.router import api_router
 # Import all models so SQLAlchemy registers them
 import app.models  # noqa: F401
 
-
-# UPLOADS_ROOT points to the named volume mount: /app/uploads inside the container.
-# settings.UPLOAD_DIR defaults to /app/uploads (see config.py) which matches
-# the Docker Compose volume: product_uploads:/app/uploads
 UPLOADS_ROOT = os.path.abspath(settings.UPLOAD_DIR)
 os.makedirs(os.path.join(UPLOADS_ROOT, "products"), exist_ok=True)
-
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -60,12 +55,6 @@ async def _body_size_limit_middleware(request: Request, call_next):
         return await call_next(request)
 
     # No Content-Length (chunked transfer encoding) — stream with limit.
-    # The callable MUST be stateful: Starlette's StreamingResponse runs a
-    # concurrent listen_for_disconnect() task that calls receive() again
-    # after the body is consumed. Returning http.request a second time
-    # raises RuntimeError: Unexpected message received: http.request.
-    # Returning http.disconnect matches what a real ASGI server does once
-    # the request body is fully consumed.
     body_chunks: list[bytes] = []
     total_bytes = 0
 
@@ -94,7 +83,6 @@ async def _body_size_limit_middleware(request: Request, call_next):
         if not _body_sent:
             _body_sent = True
             return {"type": "http.request", "body": body, "more_body": False}
-        # Subsequent calls (e.g. listen_for_disconnect) get disconnect.
         return {"type": "http.disconnect"}
 
     request._receive = _replay_receive  # type: ignore[attr-defined]
@@ -104,16 +92,10 @@ async def _body_size_limit_middleware(request: Request, call_next):
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Application lifespan — RUNTIME ONLY
-#
-# IMPORTANT: No DB mutations here. Schema, ENUMs, and seeding are owned
-# entirely by entrypoint.sh → alembic upgrade head → init_db().
-# Running init_db() here would cause duplicate execution across all 4
-# Uvicorn workers, leading to race conditions and duplicate inserts.
 # ──────────────────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Nothing to do at startup — migrations and seeding run before uvicorn starts.
     yield
 
 
@@ -132,13 +114,15 @@ app = FastAPI(
 
 # ──────────────────────────────────────────────────────────────────────────────
 # CORS
+# a REST API and can be exploited (TRACE enables XST attacks).
 # ──────────────────────────────────────────────────────────────────────────────
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.BACKEND_CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    # FIX (SEC-09): was ["*"] — explicitly list only the methods this API uses
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -156,11 +140,6 @@ async def body_size_limit_middleware(request: Request, call_next):
 # Static uploads
 # Mounts /uploads → UPLOADS_ROOT (the named Docker volume /app/uploads).
 # This makes ALL upload sub-directories (products/, offers/, …) accessible.
-#
-# Browser URL:  http://localhost:8000/uploads/products/<filename>
-# DB storage:   /uploads/products/<filename>  (relative, no host)
-# Frontend:     Vite proxy rewrites /uploads → http://backend:8000
-#               In production, point BACKEND_URL to the actual API host.
 # ──────────────────────────────────────────────────────────────────────────────
 
 os.makedirs(UPLOADS_ROOT, exist_ok=True)

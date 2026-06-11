@@ -1,48 +1,44 @@
 from datetime import datetime, timedelta
 from typing import Optional, Union, Any
+
 from jose import jwt, JWTError
 from passlib.context import CryptContext
+
 from app.core.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-def create_access_token(subject: Union[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(
+    subject: Union[str, Any],
+    expires_delta: Optional[timedelta] = None,
+    token_type: str = "admin",
+) -> str:
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-
-    to_encode = {"exp": expire, "sub": str(subject)}
+        expire = datetime.utcnow() + timedelta(
+            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        )
+    to_encode = {"exp": expire, "sub": str(subject), "type": token_type}
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-# def verify_token(token: str) -> Optional[str]:
-#     try:
-#         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-#         return payload.get("sub")
-#     except JWTError:
-#         return None
-def verify_token(token: str):
+def verify_token(token: str, expected_type: str = "admin") -> Optional[str]:
     try:
-        # print("========== TOKEN ==========")
-        # print(token)
-
         payload = jwt.decode(
             token,
             settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM]
+            algorithms=[settings.ALGORITHM],
         )
-
-        # print("========== PAYLOAD ==========")
-        # print(payload)
-
+        # Backwards-compatible: tokens issued before type was added default to "admin"
+        token_type = payload.get("type", "admin")
+        if token_type != expected_type:
+            return None
         return payload.get("sub")
-
-    except Exception as e:
-        # print("========== JWT ERROR ==========")
-        # print(str(e))
+    except JWTError:
         return None
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)

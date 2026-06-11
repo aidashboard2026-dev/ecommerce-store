@@ -1,6 +1,16 @@
 """
 app/models/product.py
 Production-hardened ecommerce product models
+
+FIX (HP-03): Added explicit length constraints to all String columns that were
+previously declared as bare String (= TEXT in PostgreSQL). The migration files
+already had length=255 on several columns, but the ORM model did not, creating
+a schema drift risk: if SQLAlchemy ever generated the schema from the model
+(e.g. in tests using create_all), columns would be created as TEXT instead of
+VARCHAR(255), silently diverging from the migration-managed schema.
+
+Lengths chosen to match the existing migration `ae78e3561c2b_initial_schema.py`
+and to be consistent with the Pydantic schema validators added in product.py.
 """
 
 import enum
@@ -57,13 +67,17 @@ class Product(Base):
         index=True,
     )
 
+    # FIX (HP-03): was String (= TEXT). Now String(255) to match migration
+    # ae78e3561c2b and the 200-char Pydantic validator in ProductCreate.
     title = Column(
-        String,
+        String(255),
         nullable=False,
     )
 
+    # FIX (HP-03): was String (= TEXT). Slugs are derived from titles
+    # (max 200 chars) plus optional counter suffixes — 255 is sufficient.
     slug = Column(
-        String,
+        String(255),
         unique=True,
         nullable=False,
         index=True,
@@ -74,8 +88,9 @@ class Product(Base):
         nullable=True,
     )
 
+    # FIX (HP-03): was String (= TEXT). Collection names are short labels.
     collection = Column(
-        String,
+        String(100),
         nullable=True,
     )
 
@@ -99,15 +114,17 @@ class Product(Base):
         default=False,
     )
 
-    # Current MVP image approach:
-    # single thumbnail URL
+    # Current MVP image approach: single thumbnail URL path
+    # FIX (HP-03): was String (= TEXT). URL paths are bounded in length.
     thumbnail = Column(
-        String,
+        String(500),
         nullable=True,
     )
 
+    # FIX (HP-03): was String (= TEXT). SEO titles should be ≤ 60 chars;
+    # 255 is a generous upper bound that matches common CMS conventions.
     seo_title = Column(
-        String,
+        String(255),
         nullable=True,
     )
 
@@ -152,6 +169,11 @@ class Product(Base):
     def total_stock(self) -> int:
         """
         Total stock across all variants.
+
+        NOTE: This property loads all variant ORM objects into memory.
+        It is only safe to call when variants are already loaded (e.g. via
+        selectinload in get_product). In get_products_paginated, total_stock
+        is computed via SQL aggregation in the service layer to avoid N+1.
         """
         return sum(v.stock_quantity for v in self.variants)
 
@@ -159,14 +181,15 @@ class Product(Base):
     def min_price(self):
         """
         Lowest selling price among variants.
-        """
 
+        Same caveat as total_stock — safe when variants are already loaded.
+        The service layer uses SQL MIN() for the list endpoint.
+        """
         prices = [
             v.selling_price
             for v in self.variants
             if v.selling_price is not None
         ]
-
         return min(prices) if prices else None
 
 
@@ -220,30 +243,34 @@ class ProductVariant(Base):
     )
 
     # Critical inventory identifier
+    # FIX (HP-03): was String (= TEXT). SKUs follow a predictable format;
+    # 100 chars is a very generous bound.
     sku = Column(
-        String,
+        String(100),
         unique=True,
         nullable=False,
         index=True,
     )
 
+    # FIX (HP-03): was String (= TEXT). Size labels are short (e.g. XS, XL, 42).
     size = Column(
-        String,
+        String(50),
         nullable=False,
     )
 
+    # FIX (HP-03): was String (= TEXT). Color names are short labels.
     color = Column(
-        String,
+        String(100),
         nullable=True,
     )
 
+    # FIX (HP-03): was String (= TEXT). Hex codes are exactly 4 or 7 chars.
     color_hex = Column(
-        String,
+        String(7),
         nullable=True,
     )
 
-    # Money fields
-    # Numeric avoids float precision bugs
+    # Money fields — Numeric avoids float precision bugs
     original_price = Column(
         Numeric(10, 2),
         nullable=False,
@@ -291,4 +318,3 @@ class ProductVariant(Base):
         "Product",
         back_populates="variants",
     )
-

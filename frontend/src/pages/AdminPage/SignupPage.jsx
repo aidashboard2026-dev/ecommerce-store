@@ -143,15 +143,15 @@ export default function SignupPage() {
     setTouched(Object.fromEntries(Object.keys(errors).map((k) => [k, true])))
     if (!isValid) return
     const result = await dispatch(signupThunk({
-      first_name:    firstName.trim(),
-      last_name:     lastName.trim(),
-      date_of_birth: dob,
-      phone:         phone.trim(),
-      email:         email.trim(),
+      first_name: firstName.trim(),
+      last_name:  lastName.trim(),
+      dob,
+      phone:      phone.trim(),
+      email:      email.trim(),
       password,
     }))
     if (signupThunk.fulfilled.match(result)) {
-      navigate('/', { replace: true })
+      navigate('/login', { replace: true, state: { signupSuccess: true } })
     }
   }
 

@@ -108,6 +108,20 @@ class VariantResponse(VariantBase):
         from_attributes = True
 
 
+# ── Bulk variant payload ──────────────────────────────────────────────────────
+
+class BulkVariantCreate(BaseModel):
+    """
+    Payload for POST /products/admin/:id/variants/bulk
+
+    The bulk create endpoint already exists in products.py and product_service.py.
+    This schema was missing from the file, meaning the endpoint accepted a raw
+    List[VariantCreate] without a wrapper. Added here for explicit API contracts
+    and to support frontend bulkCreateVariants() calls consistently.
+    """
+    variants: List[VariantCreate]
+
+
 # ── Product Schemas ──────────────────────────────────────────────────────────
 
 class ProductBase(BaseModel):
@@ -128,6 +142,11 @@ class ProductCreate(ProductBase):
         v = v.strip()
         if len(v) < 2:
             raise ValueError('Product title must be at least 2 characters')
+        # FIX (HP-05): Added max-length — was previously unbounded.
+        # A 50,000-character title passed validation, produced a broken oversized
+        # slug, and broke the UI table layout. Now capped at 200 characters.
+        if len(v) > 200:
+            raise ValueError('Product title must be 200 characters or fewer')
         return v
 
     @field_validator('tags')
@@ -154,7 +173,6 @@ class ProductUpdate(BaseModel):
     tags: Optional[List[str]] = None
     status: Optional[str] = None
     is_featured: Optional[bool] = None
-    thumbnail: Optional[str] = None
     seo_title: Optional[str] = None
     seo_description: Optional[str] = None
 
@@ -165,6 +183,9 @@ class ProductUpdate(BaseModel):
             v = v.strip()
             if len(v) < 2:
                 raise ValueError('Product title must be at least 2 characters')
+            # FIX (HP-05): Added max-length
+            if len(v) > 200:
+                raise ValueError('Product title must be 200 characters or fewer')
         return v
 
     @field_validator('tags')

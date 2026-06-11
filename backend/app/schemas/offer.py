@@ -27,8 +27,8 @@ class OfferResponse(BaseModel):
     id: int
     title: str
     percentage: str
-    description: str
-    banner_image: str | None
+    description: Optional[str] = None
+    banner_image: Optional[str] = None
     status: str
 
     start_date: date
