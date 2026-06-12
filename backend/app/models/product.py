@@ -1,18 +1,3 @@
-"""
-app/models/product.py
-Production-hardened ecommerce product models
-
-FIX (HP-03): Added explicit length constraints to all String columns that were
-previously declared as bare String (= TEXT in PostgreSQL). The migration files
-already had length=255 on several columns, but the ORM model did not, creating
-a schema drift risk: if SQLAlchemy ever generated the schema from the model
-(e.g. in tests using create_all), columns would be created as TEXT instead of
-VARCHAR(255), silently diverging from the migration-managed schema.
-
-Lengths chosen to match the existing migration `ae78e3561c2b_initial_schema.py`
-and to be consistent with the Pydantic schema validators added in product.py.
-"""
-
 import enum
 
 from sqlalchemy import (

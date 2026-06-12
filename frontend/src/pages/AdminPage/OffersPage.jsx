@@ -1,1119 +1,488 @@
-import React, {useState,useEffect} from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import api from "../../services/api";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, X, ImagePlus, Tag, Calendar, Clock, Pencil } from "lucide-react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useTheme } from "../../hooks/useAuth";
 
-export default function OffersPage() {
+// ─── Image helper (mirrors productUtils — no localhost dependency) ──────────
+const _BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL ?? "").replace(/\/$/, "");
+function getImageUrl(path) {
+  if (!path) return null;
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  if (path.startsWith("/")) return `${_BACKEND_ORIGIN}${path}`;
+  return `${_BACKEND_ORIGIN}/uploads/offers/${path}`;
+}
 
+// ─── Theme-aware style factories ─────────────────────────────────────────────
+function getStyles(isDark) {
+  const bg = isDark ? "#111827" : "#f9fafb";
+  const surface = isDark ? "#1e293b" : "#ffffff";
+  const surfaceAlt = isDark ? "#1f2937" : "#ffffff";
+  const border = isDark ? "#334155" : "#e2e8f0";
+  const borderInput = isDark ? "#374151" : "#d1d5db";
+  const inputBg = isDark ? "#111827" : "#f9fafb";
+  const textPrimary = isDark ? "#fff" : "#111827";
+  const textSecondary = isDark ? "#f1f5f9" : "#1e293b";
+  const textMuted = isDark ? "#64748b" : "#6b7280";
+  const textLabel = isDark ? "#94a3b8" : "#6b7280";
+  const cardBg = isDark ? "#0f172a" : "#f1f5f9";
+  const modalOverlay = isDark ? "rgba(0,0,0,.75)" : "rgba(0,0,0,.5)";
 
+  return {
+    inputStyle: {
+      width: "100%", height: 38, border: `1px solid ${borderInput}`,
+      borderRadius: 6, background: inputBg, color: textPrimary,
+      padding: "0 12px", outline: "none", fontSize: 14, boxSizing: "border-box",
+    },
+    bg, surface, surfaceAlt, border, borderInput, inputBg,
+    textPrimary, textSecondary, textMuted, textLabel, cardBg, modalOverlay,
+  };
+}
 
-  const [search, setSearch] = useState("");
-  const [showAddOffer, setShowAddOffer] = useState(false);
-  const [banner, setBanner] = useState(null);
-  // const [extraImages, setExtraImages] = useState(Array(5).fill(null));
-  // const [showThumbs, setShowThumbs] = useState(false);
-  // const [selectedIndex, setSelectedIndex] = useState(null);
-  const [showImagePopup, setShowImagePopup] =
-  useState(false);
-  const [offerName, setOfferName] = useState("");
-  const [percentage, setPercentage] = useState("");
-  const [description, setDescription] = useState("");
+// ─── Countdown helper ───────────────────────────────────────────────────────
+function useCountdown(expiresAt) {
+  const [diff, setDiff] = useState(0);
+  useEffect(() => {
+    if (!expiresAt) return;
+    const tick = () => {
+      const d = new Date(expiresAt + "Z").getTime() - Date.now();
+      setDiff(d);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [expiresAt]);
+  return diff;
+}
 
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+// ─── Sub-components ─────────────────────────────────────────────────────────
+const badge = {
+  green: {
+    background: "rgba(34,197,94,.15)", color: "#22c55e",
+    border: "1px solid #22c55e", padding: "4px 10px",
+    borderRadius: 20, fontSize: 11, fontWeight: 700, display: "inline-block",
+  },
+  amber: {
+    background: "rgba(245,158,11,.15)", color: "#f59e0b",
+    border: "1px solid #f59e0b", padding: "4px 10px",
+    borderRadius: 20, fontSize: 11, fontWeight: 700, display: "inline-block",
+  },
+};
+const textTokens = {
+  warn: { color: "#f59e0b", fontWeight: 700, fontSize: 13 },
+  expired: { color: "#ef4444", fontWeight: 700, fontSize: 13 },
+  countdown: { color: "#f10b64", fontWeight: 700, fontSize: 13 },
+};
+const btn = {
+  base: {
+    height: 38, border: "none", borderRadius: 6, fontWeight: 700,
+    cursor: "pointer", fontSize: 14, transition: "opacity .15s",
+  },
+};
 
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
-  const [bannerFile, setBannerFile] =useState(null);
-  const [offers, setOffers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  
-  const [currentTime, setCurrentTime] =
-    useState(new Date());
+const StatusBadge = ({ status }) =>
+  status === "published" ? (
+    <span style={badge.green}>● Published</span>
+  ) : (
+    <span style={badge.amber}>● Draft</span>
+  );
 
-  const [isOnline, setIsOnline] =
-    useState(navigator.onLine);
+const CountdownDisplay = ({ expiresAt }) => {
+  const diff = useCountdown(expiresAt);
+  if (!expiresAt) return <div style={textTokens.warn}>⚠️ Expiry time missing</div>;
+  if (diff <= 0) return <div style={textTokens.expired}>⛔ Expired</div>;
+  const days = Math.floor(diff / 86400000);
+  const hrs = Math.floor((diff % 86400000) / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  return (
+    <div style={textTokens.countdown}>
+      ⏰ Ends in: {days}d {hrs}h {mins}m
+    </div>
+  );
+};
 
-  const checkServer = async () => {
-    try {
-      await api.get("/auth/me");
-      return true;
-    } catch {
-      return false;
-    }
+// ─── Offer Form Modal ────────────────────────────────────────────────────────
+function OfferFormModal({ initial, onClose, onSaved, isDark }) {
+  const s = getStyles(isDark);
+  const isEdit = Boolean(initial?.id);
+  const [preview, setPreview] = useState(null);
+  const [bannerFile, setBannerFile] = useState(null);
+  const [offerName, setOfferName] = useState(initial?.title ?? "");
+  const [percentage, setPercentage] = useState(initial?.percentage ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [startDate, setStartDate] = useState(initial?.start_date ?? "");
+  const [endDate, setEndDate] = useState(initial?.end_date ?? "");
+  const [startTime, setStartTime] = useState(initial?.start_time?.slice(0, 5) ?? "");
+  const [endTime, setEndTime] = useState(initial?.end_time?.slice(0, 5) ?? "");
+  const [submitting, setSubmitting] = useState(false);
+  const previewRef = useRef(null);
+
+  const serverImage = initial?.banner_image ? getImageUrl(initial.banner_image) : null;
+  const displayImage = preview || serverImage;
+
+  useEffect(() => () => { if (previewRef.current) URL.revokeObjectURL(previewRef.current); }, []);
+
+  const handleFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    const url = URL.createObjectURL(file);
+    previewRef.current = url;
+    setPreview(url);
+    setBannerFile(file);
   };
 
-  const filteredOffers = offers
-    .filter(
-      (offer) =>
-        offer.title
-          ?.toLowerCase()
-          .includes(
-            search.toLowerCase()
-          )
-    )
-    .sort((a, b) => {
-
-      if (
-        a.status === "published" &&
-        b.status === "published"
-      ) {
-        return (
-          new Date(a.expires_at) -
-          new Date(b.expires_at)
-        );
-      }
-
-      if (a.status === "published")
-        return -1;
-
-      if (b.status === "published")
-        return 1;
-
-      return b.id - a.id;
-    });
-
-  const validateOfferForm = () => {
-    
-
-    if (
-      !bannerFile ||
-      !offerName.trim() ||
-      !percentage.trim() ||
-      !startDate ||
-      !startTime ||
-      !endDate ||
-      !endTime
-    ) {
-      toast.error(
-        "⚠️ Please fill all required fields!"
-      );
-
-      return false;
+  const validate = () => {
+    if (!isEdit && !bannerFile) { toast.error("⚠️ Please upload a banner image!"); return false; }
+    if (!offerName.trim()) { toast.error("⚠️ Offer name is required!"); return false; }
+    if (!/^\d+$/.test(percentage.trim())) { toast.error("⚠️ Percentage must be a number!"); return false; }
+    const pct = Number(percentage);
+    if (pct < 1 || pct > 100) { toast.error("⚠️ Percentage must be between 1 – 100!"); return false; }
+    if (!startDate || !startTime || !endDate || !endTime) { toast.error("⚠️ All date/time fields are required!"); return false; }
+    if (new Date(`${endDate}T${endTime}`) <= new Date(`${startDate}T${startTime}`)) {
+      toast.error("⚠️ End must be after start!"); return false;
     }
-
-    if (!/^\d+$/.test(percentage)) {
-      toast.error(
-        "⚠️ Percentage must contain numbers only!"
-      );
-
-      return false;
-    }
-
-    if (
-      Number(percentage) <= 0 ||
-      Number(percentage) > 100
-    ) {
-      toast.error(
-        "⚠️ Percentage must be between 1 and 100!"
-      );
-
-      return false;
-    }
-
-    if (
-      new Date(`${endDate}T${endTime}`) <=
-      new Date(`${startDate}T${startTime}`)
-    ) {
-      toast.error(
-        "⚠️ End Date & Time must be greater than Start Date & Time!"
-      );
-
-      return false;
-    }
-
     return true;
   };
-  
 
-  const handleSave = async () => {
-    const serverAlive =
-      await checkServer();
-
-    if (!serverAlive) {
-      toast.error(
-        "📡 No Connection To Server!"
-      );
-      return;
-    }
-
-    if (!isOnline) {
-      toast.error(
-        "📡 No Internet Connection!"
-      );
-      return;
-    }
-
-    if (!validateOfferForm()) {
-      return;
-    }
-
+  const submit = async (status) => {
+    if (!validate() || submitting) return;
+    setSubmitting(true);
     try {
+      const fd = new FormData();
+      fd.append("title", offerName.trim());
+      fd.append("percentage", percentage.trim());
+      fd.append("description", description.trim());
+      fd.append("start_date", startDate);
+      fd.append("end_date", endDate);
+      fd.append("start_time", startTime);
+      fd.append("end_time", endTime);
+      fd.append("status", status);
+      if (bannerFile) fd.append("banner_image", bannerFile);
 
-      const formData = new FormData();
-
-      formData.append("title", offerName);
-      formData.append("percentage", percentage);
-      formData.append("description", description);
-
-      formData.append("start_date", startDate);
-      formData.append("end_date", endDate);
-
-      formData.append("start_time", startTime);
-      formData.append("end_time", endTime);
-
-      formData.append("status", "saved");
-
-      if (bannerFile) {
-        formData.append(
-          "banner_image",
-          bannerFile
-        );
+      if (isEdit) {
+        await api.patch(`/offers/${initial.id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+        toast.success(status === "published" ? "🚀 Offer published!" : "💾 Offer saved!");
+      } else {
+        await api.post("/offers/", fd, { headers: { "Content-Type": "multipart/form-data" } });
+        toast.success(status === "published" ? "🚀 Offer published!" : "💾 Offer saved!");
       }
-
-      const response = await api.post(
-        "/offers/",
-        formData,
-        {
-          headers: {
-            "Content-Type":
-              "multipart/form-data",
-          },
-        }
-      );
-
-      console.log(response.data);
-
-      toast.success(
-        "💾 Offer Saved Successfully!"
-      );
-
-      fetchOffers();
-      clearForm();
-
-    } catch (error) {
-
-      console.error(error);
-
-      toast.error(
-        "❌ Unable to Save Offer!"
-      );
-    }
-  };
-
-  const handlePublish = async () => {
-    const serverAlive = await checkServer();
-
-    if (!isOnline) {
-      toast.error(
-        "📡 No Internet Connection!"
-      );
-      return;
-    }
-
-    if (!serverAlive) {
-      toast.error(
-        "📡 No Connection To Server!"
-      );
-      return;
-    }
-
-
-    if (!validateOfferForm()) {
-      return;
-    }
-
-    try {
-
-      const formData = new FormData();
-
-      formData.append("title", offerName);
-      formData.append("percentage", percentage);
-      formData.append("description", description);
-
-      formData.append("start_date", startDate);
-      formData.append("end_date", endDate);
-
-      formData.append("start_time", startTime);
-      formData.append("end_time", endTime);
-
-      formData.append(
-        "status",
-        "published"
-      );
-
-      if (bannerFile) {
-        formData.append(
-          "banner_image",
-          bannerFile
-        );
-      }
-
-      const response = await api.post(
-        "/offers/",
-        formData,
-        {
-          headers: {
-            "Content-Type":
-              "multipart/form-data",
-          },
-        }
-      );
-
-      
-
-      toast.success(
-        "🚀 Offer Published Successfully!"
-      );
-
-      fetchOffers();
-      clearForm();
-
-    } catch (error) {
-
-      console.error(error);
-
-      toast.error(
-        "❌ Unable to Publish Offer!"
-      );
-    }
-  };
-
-  const publishOffer = async (offerId) => {
-    try {
-      await api.put(`/offers/${offerId}`, {
-        status: "published",
-      });
-
-      toast.success(
-        "🚀 Offer Published Successfully!"
-      );
-
-      fetchOffers();
-
-    } catch (error) {
-      console.error(error);
-
-      toast.error(
-        "❌ Failed to Publish Offer!"
-      );
-    }
-  };
-
-  const deleteOffer = async (offerId) => {
-    try {
-      await api.delete(
-        `/offers/${offerId}`
-      );
-
-      toast.success(
-        "🗑️ Offer Deleted Successfully!"
-      );
-
-      fetchOffers();
-
-    } catch (error) {
-      console.error(error);
-
-      toast.error(
-        "❌ Failed to Delete Offer!"
-      );
-    }
-  };
-  
-  const clearForm = () => {
-    setOfferName("");
-    setPercentage("");
-    setDescription("");
-
-    setStartDate("");
-    setEndDate("");
-
-    setStartTime("");
-    setEndTime("");
-
-    setBanner(null);
-    setBannerFile(null);
-  };
-  const fetchOffers = async () => {
-    try {
-      const response =
-        await api.get("/offers/");
-      console.log(
-        "OFFERS RESPONSE =",
-        response.data
-      );
-
-      setOffers(
-        response.data
-      );
-    } catch (error) {
-      console.error(error);
+      onSaved();
+      onClose();
+    } catch (err) {
+      console.error(err);
+      toast.error("❌ " + (err?.response?.data?.detail ?? "Operation failed"));
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
-
-
-  useEffect(() => {
-    fetchOffers();
-  }, []);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-  // const endDateTime = new Date(
-  //   `${offer.end_date}T${offer.end_time}`
-  // );
-
-  // const now = new Date();
-
-  // const remainingMs =
-  //   endDateTime - now;
-
-  // const remainingDays =
-  //   Math.floor(
-  //     remainingMs /
-  //     (1000 * 60 * 60 * 24)
-  //   );
-
-  // const isExpired =
-  //   remainingMs <= 0;
-  useEffect(() => {
-
-    const onlineHandler = () =>
-      setIsOnline(true);
-
-    const offlineHandler = () =>
-      setIsOnline(false);
-
-    window.addEventListener(
-      "online",
-      onlineHandler
-    );
-
-    window.addEventListener(
-      "offline",
-      offlineHandler
-    );
-
-    return () => {
-      window.removeEventListener(
-        "online",
-        onlineHandler
-      );
-
-      window.removeEventListener(
-        "offline",
-        offlineHandler
-      );
-    };
-
-  }, []);
- 
 
   return (
-    
-      
-    
-
-    <div
-      
-      style={{
-        padding: "24px",
-        background: "#111827",
-        minHeight: "100vh",
-      }}
-    >
-      <ToastContainer
-        position="top-right"
-        autoClose={2500}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        pauseOnHover
-        draggable
-        theme="dark"
-        style={{
-          zIndex: 99999
-        }}
-      />
-      
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          marginBottom: "30px",
-          flexWrap: "wrap",
-          gap: "20px",
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: "42px",
-              fontWeight: "800",
-              color: "#ffffff",
-              letterSpacing: "-1px",
-            }}
-          >
-            Offers & Promo
-          </h1>
-
-          <p
-            style={{
-              marginTop: "8px",
-              fontSize: "14px",
-              color: "#94a3b8",
-            }}
-          >
-            Manage promotional offers and campaigns
-          </p>
+    <div style={{ position: "fixed", inset: 0, background: s.modalOverlay, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 16 }}>
+      <div style={{ width: "100%", maxWidth: 560, background: s.surfaceAlt, borderRadius: 14, border: `1px solid ${s.border}`, display: "flex", flexDirection: "column", maxHeight: "92vh", overflow: "hidden" }}>
+        {/* Modal header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 20px 0" }}>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: s.textPrimary }}>{isEdit ? "Edit Offer" : "New Offer"}</h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: s.textLabel, cursor: "pointer", padding: 4 }}><X size={20} /></button>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-          }}
-        >
-          {/* Search Box */}
-          <div
-            style={{
-              position: "relative",
-            }}
-          >
-            <Search
-              size={18}
-              style={{
-                position: "absolute",
-                left: "12px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "#94a3b8",
-              }}
-            />
+        {/* Scrollable body */}
+        <div style={{ overflowY: "auto", padding: "18px 20px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+          {/* Banner upload */}
+          <label style={{ display: "block", width: "100%", height: 160, border: "2px dashed #3b82f6", borderRadius: 10, cursor: "pointer", overflow: "hidden", background: s.inputBg, position: "relative" }}>
+            <input type="file" hidden accept="image/*" onChange={handleFile} />
+            {displayImage ? (
+              <img src={displayImage} alt="Banner preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 8 }}>
+                <ImagePlus size={40} color={isDark ? "#4b5563" : "#9ca3af"} />
+                <span style={{ color: s.textMuted, fontSize: 13 }}>Click to upload banner image</span>
+              </div>
+            )}
+            {displayImage && (
+              <div style={{ position: "absolute", bottom: 8, right: 8, background: "rgba(0,0,0,.6)", borderRadius: 6, padding: "4px 10px", color: "#fff", fontSize: 12, fontWeight: 600 }}>Change</div>
+            )}
+          </label>
 
-            <input
-              type="text"
-              placeholder="Search Offer"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{
-                width: "260px",
-                height: "42px",
-                border: "1px solid #334155",
-                borderRadius: "8px",
-                paddingLeft: "40px",
-                background: "#1e293b",
-                color: "#ffffff",
-                outline: "none",
-              }}
-            />
+          {/* Fields */}
+          <input placeholder="Offer Name *" value={offerName} onChange={e => setOfferName(e.target.value)} style={s.inputStyle} />
+          <input placeholder="Discount Percentage (1–100) *" value={percentage} onChange={e => setPercentage(e.target.value)} style={s.inputStyle} type="number" min="1" max="100" />
+          <textarea placeholder="Description (optional)" value={description} onChange={e => setDescription(e.target.value)} rows={3} style={{ ...s.inputStyle, height: "auto", padding: "10px 12px", resize: "none" }} />
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div>
+              <label style={{ fontSize: 11, color: s.textLabel, display: "block", marginBottom: 4 }}>Start Date *</label>
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={s.inputStyle} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: s.textLabel, display: "block", marginBottom: 4 }}>Start Time *</label>
+              <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} style={s.inputStyle} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: s.textLabel, display: "block", marginBottom: 4 }}>End Date *</label>
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={s.inputStyle} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: s.textLabel, display: "block", marginBottom: 4 }}>End Time *</label>
+              <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} style={s.inputStyle} />
+            </div>
           </div>
+        </div>
 
-          {/* Add Offer Button */}
-          <button
-            onClick={() => {
-              setBanner(null);
-              setShowAddOffer(true);
-            }}
-                      style={{
-              height: "42px",
-              padding: "0 20px",
-              border: "none",
-              borderRadius: "8px",
-              background: "#2563eb",
-              color: "#ffffff",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              cursor: "pointer",
-              fontWeight: "700",
-              
-            }}
-          >
-            <Plus size={16} />
-            Add Offer
+        {/* Footer buttons */}
+        <div style={{ display: "flex", gap: 8, padding: "0 20px 20px" }}>
+          <button onClick={() => submit("saved")} disabled={submitting} style={{ ...btn.base, flex: 1, background: "#16a34a", color: "#fff", opacity: submitting ? .6 : 1 }}>
+            {submitting ? "Saving…" : "💾 Save Draft"}
+          </button>
+          <button onClick={() => submit("published")} disabled={submitting} style={{ ...btn.base, flex: 1, background: "#2563eb", color: "#fff", opacity: submitting ? .6 : 1 }}>
+            {submitting ? "Publishing…" : "🚀 Publish"}
+          </button>
+          <button onClick={onClose} disabled={submitting} style={{ ...btn.base, flex: 1, background: isDark ? "#374151" : "#e5e7eb", color: s.textPrimary }}>
+            Cancel
           </button>
         </div>
       </div>
-      {filteredOffers.length > 0 && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fill,minmax(280px,1fr))",
-            gap: "20px",
-          }}
-        >
-          {filteredOffers.map(
-            (offer) => (
-              <div
-                key={offer.id}
-                style={{
-                  background: "#1e293b",
-                  border: "1px solid #334155",
-                  borderRadius: "12px",
-                  overflow: "hidden",
+    </div>
+  );
+}
 
-                  display: "flex",
-                  flexDirection: "column",
-                  height: "100%",
-                  minHeight: "430px", // adjust pannalam
-                }}
-              >
-                <img
-                  src={`http://localhost:8000/${offer.banner_image}`}
-                  alt=""
-                  style={{
-                    width:
-                      "100%",
-                    height:
-                      "180px",
-                    objectFit:
-                      "cover",
-                  }}
-                />
+// ─── Offer Card ──────────────────────────────────────────────────────────────
+function OfferCard({ offer, onPublish, onDelete, onEdit, isDark }) {
+  const s = getStyles(isDark);
+  const imgUrl = getImageUrl(offer.banner_image);
+  const [imgErr, setImgErr] = useState(false);
+  const isPublished = offer.status === "published";
 
-                <div
-                  style={{
-                    padding: "15px",
-                  }}
-                >
+  return (
+    <div style={{ background: s.surface, border: `1px solid ${s.border}`, borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      {/* Banner image */}
+      <div style={{ height: 180, background: s.cardBg, overflow: "hidden", position: "relative" }}>
+        {imgUrl && !imgErr ? (
+          <img src={imgUrl} alt={offer.title} onError={() => setImgErr(true)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : (
+          <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <ImagePlus size={32} color={isDark ? "#334155" : "#cbd5e1"} />
+            <span style={{ color: isDark ? "#475569" : "#94a3b8", fontSize: 12 }}>No image</span>
+          </div>
+        )}
+        <div style={{ position: "absolute", top: 10, left: 10 }}><StatusBadge status={offer.status} /></div>
+      </div>
 
-                  <div
-                    style={{
-                      marginBottom: "12px",
-                    }}
-                  >
-                  
-                    {/* Status */}
+      {/* Body */}
+      <div style={{ padding: "14px 15px", flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+        <h3 style={{ margin: 0, color: s.textSecondary, fontSize: 16, fontWeight: 700, lineHeight: 1.3 }}>{offer.title}</h3>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <Tag size={14} color="#fbbf24" />
+          <span style={{ color: "#fce307", fontWeight: 800, fontSize: 18 }}>{offer.percentage}%</span>
+          <span style={{ color: s.textLabel, fontSize: 12, fontWeight: 600 }}>discount</span>
+        </div>
+        {offer.description && <p style={{ margin: 0, color: s.textLabel, fontSize: 13, lineHeight: 1.5, WebkitLineClamp: 2, display: "-webkit-box", WebkitBoxOrient: "vertical", overflow: "hidden" }}>{offer.description}</p>}
 
-                    {offer.status === "published" ? (
-                      <span
-                        style={{
-                          background: "rgba(34,197,94,0.15)",
-                          color: "#22c55e",
-                          border: "1px solid #22c55e",
-                          padding: "6px 12px",
-                          borderRadius: "20px",
-                          fontSize: "12px",
-                          fontWeight: "700",
-                        }}
-                      >
-                        ● Published
-                      </span>
-                    ) : (
-                      <span
-                        style={{
-                          background: "rgba(245,158,11,0.15)",
-                          color: "#f59e0b",
-                          border: "1px solid #f59e0b",
-                          padding: "6px 12px",
-                          borderRadius: "20px",
-                          fontSize: "12px",
-                          fontWeight: "700",
-                        }}
-                      >
-                        ● Saved Draft
-                      </span>
-                    )}
-                     
+        {/* Dates / countdown */}
+        <div style={{ marginTop: "auto", paddingTop: 8 }}>
+          {isPublished ? (
+            <CountdownDisplay expiresAt={offer.expires_at} />
+          ) : (
+            <div style={{ color: "#07fc96", fontSize: 12, fontWeight: 600, lineHeight: 1.8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}><Calendar size={12} /> {offer.start_date} {offer.start_time?.slice(0, 5)}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}><Clock size={12} /> {offer.end_date} {offer.end_time?.slice(0, 5)}</div>
+            </div>
+          )}
+        </div>
+      </div>
 
-                    
-                  </div>
+      {/* Actions */}
+      <div style={{ display: "flex", gap: 6, padding: "0 15px 15px", justifyContent: "flex-end" }}>
+        <button onClick={() => onEdit(offer)} style={{ ...btn.base, padding: "0 10px", background: "#1d4ed8", color: "#fff", fontSize: 12 }}>
+          <Pencil size={12} />
+        </button>
+        {!isPublished && (
+          <button onClick={() => onPublish(offer.id)} style={{ ...btn.base, padding: "0 12px", background: "#2563eb", color: "#fff", fontSize: 12 }}>
+            Publish
+          </button>
+        )}
+        <button onClick={() => onDelete(offer.id)} style={{ ...btn.base, padding: "0 12px", background: "#dc2626", color: "#fff", fontSize: 12 }}>
+          Delete
+        </button>
+      </div>
+    </div>
+  );
+}
 
-                  <h3
-                    style={{
-                      color: "#fff",
-                      marginTop: "10px",
-                    }}
-                  >
-                    {offer.title}
-                  </h3>
+// ─── Main Page ───────────────────────────────────────────────────────────────
+export default function OffersPage() {
+  const { isDark } = useTheme();
+  const s = getStyles(isDark);
+  const [offers, setOffers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [modal, setModal] = useState(null);   // null | { offer?: Offer }
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-                  <p
-                    style={{
-                      color: "#fce307",
-                      fontWeight: "700",
-                    }}
-                  >
-                    {offer.percentage}%
-                  </p>
+  // ── Network listener
+  useEffect(() => {
+    const up = () => setIsOnline(true);
+    const dn = () => setIsOnline(false);
+    window.addEventListener("online", up);
+    window.addEventListener("offline", dn);
+    return () => { window.removeEventListener("online", up); window.removeEventListener("offline", dn); };
+  }, []);
 
-                  <p
-                    style={{
-                      color: "#94a3b8",
-                    }}
-                  >
-                    {offer.description}
-                  </p>
+  const fetchOffers = useCallback(async () => {
+    try {
+      const res = await api.get("/offers/");
+      setOffers(res.data);
+    } catch (err) {
+      console.error(err);
+      toast.error("❌ Failed to load offers");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-                </div>
-                <div
-                  style={{
-                    marginTop: "12px",
-                    color: "#cbd5e1",
-                    fontSize: "13px",
-                    padding: "0 15px 15px",
+  useEffect(() => { fetchOffers(); }, [fetchOffers]);
 
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "space-between",
-                    flex: 1,
-                  }}
-                >
-                  {offer.status === "saved" ? (
-                    <div
-                      style={{
-                        color: "#07fc96",
-                        fontWeight: "700",
-                        lineHeight: "1.8",
-                        fontSize: "13px",
-                      }}
-                    >
-                      <div>
-                        📅 Start:
-                        {" "}
-                        {offer.start_date}
-                        {" "}
-                        {offer.start_time}
-                      </div>
+  const filteredOffers = offers
+    .filter(o => o.title?.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => {
+      if (a.status === "published" && b.status === "published")
+        return new Date(a.expires_at) - new Date(b.expires_at);
+      if (a.status === "published") return -1;
+      if (b.status === "published") return 1;
+      return b.id - a.id;
+    });
 
-                      <div>
-                        ⏳ End:
-                        {" "}
-                        {offer.end_date}
-                        {" "}
-                        {offer.end_time}
-                      </div>
-                    </div>
-                  ) : (
-                <>
-                      {(() => {
-                       
-                       
-            
-                        // if (!offer.published_at) {
-                        //   return (
-                        //     <div
-                        //       style={{
-                        //         color: "#f59e0b",
-                        //         fontWeight: "700",
-                        //       }}
-                        //     >
-                        //       ⚠️ Publish Time Missing
-                        //     </div>
-                        //   );
-                        // }
+  const publishOffer = async (id) => {
+    if (!isOnline) { toast.error("📡 No internet connection!"); return; }
+    try {
+      await api.put(`/offers/${id}`, { status: "published" });
+      toast.success("🚀 Offer published!");
+      fetchOffers();
+    } catch (err) {
+      console.error(err);
+      toast.error("❌ Failed to publish offer");
+    }
+  };
 
-                        const expiresAt =
-                          new Date(
-                            offer.expires_at + "Z"
-                          );
-                        const diff =
-                          expiresAt.getTime() -
-                          currentTime.getTime();
+  const deleteOffer = async (id) => {
+    try {
+      await api.delete(`/offers/${id}`);
+      toast.success("🗑️ Offer deleted!");
+      setDeleteConfirm(null);
+      fetchOffers();
+    } catch (err) {
+      console.error(err);
+      toast.error("❌ Failed to delete offer");
+    }
+  };
 
-                        console.log("CURRENT TIME =", currentTime);
-                        console.log("EXPIRES AT =", expiresAt);
-                        console.log(
-                          "DIFF HOURS =",
-                          diff / (1000 * 60 * 60)
-                        );
+  return (
+    <div style={{ padding: "24px 28px", background: s.bg, minHeight: "100vh", transition: "background .3s ease" }}>
+      <ToastContainer position="top-right" autoClose={2500} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover theme={isDark ? "dark" : "light"} style={{ zIndex: 99999 }} />
 
-                        if (!offer.expires_at) {
-                          return (
-                            <div
-                              style={{
-                                color: "#f59e0b",
-                                fontWeight: "700",
-                              }}
-                            >
-                              ⚠️ Expiry Time Missing
-                            </div>
-                          );
-                        }
-                                                
+      {/* ── Offline banner */}
+      {!isOnline && (
+        <div style={{ background: "#7f1d1d", color: "#fca5a5", border: "1px solid #ef4444", borderRadius: 8, padding: "10px 16px", marginBottom: 20, fontSize: 14, fontWeight: 600 }}>
+          📡 You are offline. Changes may not save.
+        </div>
+      )}
 
-                        const days = Math.floor(
-                          diff / (1000 * 60 * 60 * 24)
-                        );
+      {/* ── Page header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28, flexWrap: "wrap", gap: 16 }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 34, fontWeight: 800, color: s.textPrimary, letterSpacing: "-0.5px" }}>Offers & Promo</h1>
+          <p style={{ margin: "6px 0 0", fontSize: 14, color: s.textMuted }}>
+            {offers.length} offer{offers.length !== 1 ? "s" : ""} total · {offers.filter(o => o.status === "published").length} active
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ position: "relative" }}>
+            <Search size={16} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: s.textMuted }} />
+            <input
+              type="text" placeholder="Search offers…" value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ ...s.inputStyle, width: 240, paddingLeft: 36, height: 40 }}
+            />
+          </div>
+          <button onClick={() => setModal({})} style={{ ...btn.base, height: 40, padding: "0 18px", background: "#2563eb", color: "#fff", display: "flex", alignItems: "center", gap: 6 }}>
+            <Plus size={16} /> Add Offer
+          </button>
+        </div>
+      </div>
 
-                        const hours = Math.floor(
-                          (diff % (1000 * 60 * 60 * 24)) /
-                          (1000 * 60 * 60)
-                        );
+      {/* ── Loading skeleton */}
+      {loading && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 20 }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} style={{ background: s.surface, border: `1px solid ${s.border}`, borderRadius: 12, height: 380, animation: "pulse 1.5s ease-in-out infinite" }} />
+          ))}
+        </div>
+      )}
 
-                        const minutes = Math.floor(
-                          (diff % (1000 * 60 * 60)) /
-                          (1000 * 60)
-                        );
-                        
-                        // console.log(
-                        //   "TOTAL HOURS =",
-                        //   totalDuration / (1000 * 60 * 60)
-                        // );
+      {/* ── Grid */}
+      {!loading && filteredOffers.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 20 }}>
+          {filteredOffers.map(offer => (
+            <OfferCard
+              key={offer.id} offer={offer} isDark={isDark}
+              onPublish={publishOffer}
+              onDelete={id => setDeleteConfirm(id)}
+              onEdit={offer => setModal({ offer })}
+            />
+          ))}
+        </div>
+      )}
 
-                        // console.log(
-                        //   "DIFF HOURS =",
-                        //   diff / (1000 * 60 * 60)
-                        // );
-                        return (
-                          <div
-                            style={{
-                              color: "#f10b64",
-                              fontWeight: "700",
-                              fontSize: "13px",
-                            }}
-                          >
-                            ⏰ Ends In:
-                            {" "}
-                            {days} Days,
-                            {" "}
-                            {hours} Hr,
-                            {" "}
-                            {minutes} Min
-                          </div>
-                        );
-                      })()}
-                    </>
-                  )}
-
-                  
-
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "flex-end",
-                      gap: "8px",
-                      marginTop: "auto",
-                      paddingTop: "15px",
-                    }}
-                  >
-                    {offer.status === "saved" && (
-                      <button
-                        onClick={() =>
-                          publishOffer(offer.id)
-                        }
-                        style={{
-                          background: "#2563eb",
-                          color: "#fff",
-                          border: "none",
-                          borderRadius: "4px",
-                          padding: "4px 10px",
-                          height: "28px",
-                          fontSize: "12px",
-                          fontWeight: "600",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Publish
-                      </button>
-                    )}
-
-                    <button
-                      onClick={() =>
-                        deleteOffer(offer.id)
-                      }
-                      style={{
-                        background: "#dc2626",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: "4px",
-                        padding: "4px 10px",
-                        height: "28px",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                        cursor: "pointer",
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )
+      {/* ── Empty state */}
+      {!loading && filteredOffers.length === 0 && (
+        <div style={{ height: 420, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16, border: `1px dashed ${s.border}`, borderRadius: 14, background: s.surface }}>
+          <div style={{ width: 64, height: 64, background: "#1d4ed8", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Tag size={28} color="#fff" />
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <h2 style={{ margin: "0 0 6px", color: s.textPrimary, fontWeight: 700 }}>
+              {search ? "No offers match your search" : "No offers yet"}
+            </h2>
+            <p style={{ margin: 0, color: s.textMuted, fontSize: 14 }}>
+              {search ? "Try a different keyword." : "Click Add Offer to create your first promotional campaign."}
+            </p>
+          </div>
+          {!search && (
+            <button onClick={() => setModal({})} style={{ ...btn.base, height: 40, padding: "0 20px", background: "#2563eb", color: "#fff", display: "flex", alignItems: "center", gap: 6 }}>
+              <Plus size={16} /> Add Offer
+            </button>
           )}
         </div>
       )}
-      {/* Empty State */}
-      {filteredOffers.length === 0 && (
-        <div
-          style={{
-            height: "450px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexDirection: "column",
-            border: "1px dashed #334155",
-            borderRadius: "12px",
-            background: "#1e293b",
-          }}
-        >
-          <h2
-            style={{
-              color: "#ffffff",
-              fontSize: "26px",
-              fontWeight: "700",
-              marginBottom: "10px",
-            }}
-          >
-            No Offers & Promo Found
-          </h2>
 
-          <p
-            style={{
-              color: "#94a3b8",
-              fontSize: "14px",
-            }}
-          >
-            Click Add Offer to create your first promotional campaign.
-          </p>
-        </div>
+      {/* ── Offer form modal */}
+      {modal !== null && (
+        <OfferFormModal
+          initial={modal?.offer ?? null}
+          onClose={() => setModal(null)}
+          onSaved={fetchOffers}
+          isDark={isDark}
+        />
       )}
 
-      
-    {showAddOffer && (
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.7)",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          zIndex: 9999,
-        }}
-      >
-        <div
-          style={{
-            width: "580px",
-            background: "#1f2937",
-            borderRadius: "12px",
-            padding: "15px",
-            border: "1px solid #374151",
-          }}
-        >
-          <h2
-            style={{
-              color: "#fff",
-              marginBottom: "20px",
-            }}
-          >
-            Add Offer
-          </h2>
-
-          {/* Upload Section */}
-
-          <div
-            style={{
-              marginBottom: "12px",
-            }}
-          >
-            <label
-              style={{
-                width: "100%",
-                height: "120px",
-                border: "2px solid #60a5fa",
-                borderRadius: "6px",
-                cursor: "pointer",
-                overflow: "hidden",
-                background: "#111827",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <input
-                type="file"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files[0];
-
-                  if (file) {
-                    setBanner(
-                      URL.createObjectURL(file)
-                    );
-
-                    setBannerFile(file);
-                  }
-                }}
-              />
-
-              {banner ? (
-                <img
-                  src={banner}
-                  alt="Offer Banner"
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                  }}
-                />
-              ) : (
-                <Plus size={40} color="#94a3b8" />
-              )}
-            </label>
+      {/* ── Delete confirm modal */}
+      {deleteConfirm !== null && (
+        <div style={{ position: "fixed", inset: 0, background: s.modalOverlay, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10000 }}>
+          <div style={{ background: s.surfaceAlt, border: `1px solid ${s.border}`, borderRadius: 12, padding: 28, width: 360, textAlign: "center" }}>
+            <div style={{ width: 52, height: 52, background: "rgba(239,68,68,.15)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+              <X size={24} color="#ef4444" />
+            </div>
+            <h3 style={{ margin: "0 0 8px", color: s.textPrimary, fontWeight: 700 }}>Delete Offer?</h3>
+            <p style={{ margin: "0 0 20px", color: s.textLabel, fontSize: 14 }}>This action cannot be undone.</p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setDeleteConfirm(null)} style={{ ...btn.base, flex: 1, background: isDark ? "#374151" : "#e5e7eb", color: s.textPrimary }}>Cancel</button>
+              <button onClick={() => deleteOffer(deleteConfirm)} style={{ ...btn.base, flex: 1, background: "#dc2626", color: "#fff" }}>Delete</button>
+            </div>
           </div>
-          {/* Offer Name */}
-
-          <input
-            placeholder="Offer Name"
-            value={offerName}
-            onChange={(e) => setOfferName(e.target.value)}
-            style={{
-              width: "100%",
-              height: "34px",
-              marginBottom: "8px",
-              border: "1px solid #4b5563",
-              borderRadius: "4px",
-              background: "#111827",
-              color: "#fff",
-              padding: "0 10px",
-            }}
-          />
-
-
-          <input
-            placeholder="Offer Percentage (Ex: 50%)"
-            value={percentage}
-            onChange={(e) => setPercentage(e.target.value)}
-            style={{
-              width: "100%",
-              height: "34px",
-              marginBottom: "8px",
-              border: "1px solid #4b5563",
-              borderRadius: "4px",
-              background: "#111827",
-              color: "#fff",
-              padding: "0 10px",
-            }}
-          />
-          {/* Description */}
-
-          <textarea
-            placeholder="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows="3"
-            style={{
-              width: "100%",
-              marginBottom: "8px",
-              border: "1px solid #4b5563",
-              borderRadius: "4px",
-              background: "#111827",
-              color: "#fff",
-              padding: "8px",
-              resize: "none",
-            }}
-          />
-
-          {/* Dates */}
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "8px",
-              marginBottom: "12px",
-            }}
-          >
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-
-            <input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-            />
-
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
-
-            <input
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-            />
-          </div>
-          <div
-            style={{
-              display: "flex",
-              gap: "8px",
-            }}
-          >
-            <button
-              onClick={handleSave}
-              style={{
-                flex: 1,
-                background: "#22c55e",
-                color: "#fff",
-                height: "36px",
-                border: "none",
-                borderRadius: "6px",
-                fontWeight: "600",
-                cursor: "pointer",
-              }}
-            >
-              Save
-            </button>
-
-            <button
-              onClick={handlePublish}
-              style={{
-                flex: 1,
-                background: "#3b82f6",
-                color: "#fff",
-                height: "36px",
-                border: "none",
-                borderRadius: "6px",
-                fontWeight: "600",
-                cursor: "pointer",
-              }}
-            >
-              Publish
-            </button>
-
-
-            <button
-              onClick={() => setShowAddOffer(false)}
-              style={{
-                flex: 1,
-                background: "#ef4444",
-                color: "#fff",
-                height: "36px",
-                border: "none",
-                borderRadius: "6px",
-                fontWeight: "600",
-                cursor: "pointer",
-              }}
-            >
-              Cancel
-            </button>
-
-          </div>
-
-
         </div>
-      </div>
-    )}
-  </div>
-);
+      )}
+    </div>
+  );
 }

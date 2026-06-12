@@ -146,7 +146,7 @@ export default function SignupPage() {
       first_name: firstName.trim(),
       last_name:  lastName.trim(),
       dob,
-      phone:      phone.trim(),
+      phone:      phone.trim() || null,
       email:      email.trim(),
       password,
     }))

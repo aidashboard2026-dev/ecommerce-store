@@ -11,7 +11,7 @@ import OrdersPage from '../pages/AdminPage/OrdersPage'
 import OffersPage from '../pages/AdminPage/OffersPage'
 import CustomersPage from '../pages/AdminPage/CustomersPage'
 import SettingsPage from '../pages/AdminPage/SettingsPage'
-import AddOfferPage from '../pages/AdminPage/AddOfferPage'
+import BannerPage from "../pages/AdminPage/BannerPage";  
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-app">
@@ -63,7 +63,7 @@ export default function AppRoutes() {
         <Route path="offers"    element={<OffersPage />} />
         <Route path="customers" element={<CustomersPage />} />
         <Route path="settings"  element={<SettingsPage />} />
-        <Route path="add-offer" element={<AddOfferPage />} />
+        <Route path="banners" element={<BannerPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

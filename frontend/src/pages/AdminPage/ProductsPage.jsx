@@ -1,17 +1,3 @@
-/**
- * ProductsPage.jsx — table, filters, pagination, state orchestration.
- *
- * Component split:
- *   components/products/InlineProductForm.jsx  — form + batch save
- *   components/products/ImageUploadModal.jsx   — image management modal
- *   components/products/VariantFormModal.jsx   — variant add modal
- *   utils/productUtils.js                      — formatPrice, getImageUrl,
- *                                                revokeObjectURLs, genLocalId,
- *                                                isDuplicateFile, useDebounce
- *
- * Bug fixes in this file:
- *   WARN: AppRoutes now imports SignupPage from the correct path now that split is done.
- */
 import React, { useState, useCallback, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -362,7 +348,7 @@ export default function ProductsPage() {
         <div className="relative flex-1">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
           <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search products, SKUs, collections…"
+            placeholder="Search products, Code, Collections…"
             className="w-full border border-app bg-app rounded-lg pl-8 pr-8 py-1.5 text-xs text-app placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-all" />
           {search && (
             <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-app">

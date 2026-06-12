@@ -10,6 +10,7 @@ import clsx from 'clsx'
 import Badge from '../common/Badge'
 import Spinner from '../common/Spinner'
 import { customersAPI } from '../../services/api'
+import { getImageUrl } from '../../utils/productUtils'
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 function Avatar({ firstName, lastName, size = 'lg' }) {
@@ -293,7 +294,12 @@ export default function CustomerDrawer({ customerId, onClose, onStatusChange }) 
                       <div key={order.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-surface border border-app hover:border-brand-400 transition-colors">
                         <div className="flex items-center gap-3 min-w-0">
                           {order.product_image ? (
-                            <img src={order.product_image} alt={order.product_name} className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
+                            <img
+                              src={getImageUrl(order.product_image)}
+                              alt={order.product_name}
+                              className="w-9 h-9 rounded-lg object-cover flex-shrink-0"
+                              onError={(e) => { e.currentTarget.style.visibility = "hidden" }}
+                            />
                           ) : (
                             <div className="w-9 h-9 rounded-lg bg-app flex items-center justify-center flex-shrink-0">
                               <Package size={14} className="text-muted" />

@@ -9,6 +9,7 @@ const pageTitles = {
   '/products': 'Products',
   '/orders': 'Orders',
   '/offers': 'Offers',
+  '/banners': 'Banners',
   '/customers': 'Customers',
   '/settings': 'Settings',
 }

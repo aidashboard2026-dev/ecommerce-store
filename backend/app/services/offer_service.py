@@ -35,6 +35,29 @@ def create_offer(
     return db_offer
 
 
+def update_offer(
+    db: Session,
+    offer_id: int,
+    update_data: dict,
+):
+    offer = (
+        db.query(Offer)
+        .filter(Offer.id == offer_id)
+        .first()
+    )
+
+    if not offer:
+        return None
+
+    for field, value in update_data.items():
+        setattr(offer, field, value)
+
+    db.commit()
+    db.refresh(offer)
+
+    return offer
+
+
 def get_offers(db: Session):
     return db.query(Offer).all()
 

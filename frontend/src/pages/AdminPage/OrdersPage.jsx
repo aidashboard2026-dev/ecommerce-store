@@ -9,6 +9,7 @@ import {
   getOrders,
   updateOrderStatus,
 } from "../../services/order_Service";
+import { getImageUrl } from "../../utils/productUtils";
 
 export default function OrdersPage() {
   
@@ -528,9 +529,10 @@ export default function OrdersPage() {
 
             <div className="w-12 h-12 border-2 border-gray-500 rounded overflow-hidden">
               <img
-                src={order.product_image}
+                src={getImageUrl(order.product_image)}
                 alt="Product"
                 className="w-full h-full object-cover"
+                onError={(e) => { e.currentTarget.style.visibility = "hidden" }}
               />
             </div>
 

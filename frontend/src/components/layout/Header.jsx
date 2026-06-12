@@ -25,6 +25,7 @@ const navItems = [
   { to: '/products', label: 'Products', icon: Package },
   { to: '/orders', label: 'Orders', icon: ShoppingCart },
   { to: '/offers', label: 'Offers', icon: Tags },
+  { to: '/banners', label: 'Banners', icon: Zap },  
   { to: '/customers', label: 'Customers', icon: UserRound },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]

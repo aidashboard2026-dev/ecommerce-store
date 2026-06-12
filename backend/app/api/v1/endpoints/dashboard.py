@@ -272,7 +272,19 @@ def get_dashboard_stats(
     # Calculate current and previous UPI revenue
     current_upi_summary = _payment_revenue_summary(db, UPI_PAYMENT_METHODS, current_window_start, now)
     previous_upi_summary = _payment_revenue_summary(db, UPI_PAYMENT_METHODS, previous_window_start, current_window_start)
-    
+
+    # Real user (admin) growth: admins created in the last 30 days vs. the
+    # preceding 30-day window.
+    current_admin_count = _admin_count_between(db, current_window_start, now)
+    previous_admin_count = _admin_count_between(db, previous_window_start, current_window_start)
+    user_growth = _growth(current_admin_count, previous_admin_count)
+
+    # Real product growth: products created in the last 30 days vs. the
+    # preceding 30-day window.
+    current_product_count = _product_count_between(db, current_window_start, now)
+    previous_product_count = _product_count_between(db, previous_window_start, current_window_start)
+    product_growth = _growth(current_product_count, previous_product_count)
+
     # Get overall summaries too
     cash_summary = _payment_revenue_summary(db, CASH_PAYMENT_METHODS)
     upi_summary = _payment_revenue_summary(db, UPI_PAYMENT_METHODS)
@@ -286,8 +298,8 @@ def get_dashboard_stats(
         "published_products": published_product_count,
         "active_sessions": published_product_count,
         "revenue_growth": _growth(current_revenue, previous_revenue),
-        "user_growth": 8.2,
-        "product_growth": 3.7,
+        "user_growth": user_growth,
+        "product_growth": product_growth,
         "published_growth": 0.0,
         "session_growth": 0.0,
         "cash_revenue": cash_summary["revenue"],

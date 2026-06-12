@@ -26,6 +26,39 @@ def _generate_order_number(db: Session) -> str:
     return candidate
 
 
+def _find_variant_for_order(db: Session, order: Order) -> ProductVariant | None:
+    """Find the ProductVariant matching an order's product/size/color.
+
+    Mirrors the matching logic used in create_order so that inventory
+    restoration (on cancellation) targets the exact same variant that
+    was decremented at order creation time.
+    """
+    if not order.product_name or not order.size:
+        return None
+
+    variant_q = (
+        db.query(ProductVariant)
+        .join(Product, Product.id == ProductVariant.product_id)
+        .filter(
+            Product.title == order.product_name,
+            ProductVariant.size == order.size,
+            Product.deleted_at.is_(None),
+        )
+    )
+    if order.color:
+        variant_q = variant_q.filter(ProductVariant.color == order.color)
+
+    return variant_q.first()
+
+
+def _restore_inventory_for_order(db: Session, order: Order) -> None:
+    """Restore stock for an order's variant. Caller is responsible for
+    ensuring this is only invoked once per cancellation (idempotency)."""
+    variant = _find_variant_for_order(db, order)
+    if variant is not None:
+        variant.stock_quantity += (order.quantity or 1)
+
+
 @router.get("/", response_model=List[OrderResponse])
 def list_orders(
     skip: int = 0,
@@ -156,6 +189,16 @@ def update_order(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
 
     update_data = order_in.model_dump(exclude_unset=True)
+
+    new_tracking_status = update_data.get("tracking_status")
+    if new_tracking_status is not None:
+        is_now_cancelled = new_tracking_status.upper() == "CANCELLED"
+        was_cancelled = (order.tracking_status or "").upper() == "CANCELLED"
+
+        # Restore inventory only on the transition into CANCELLED, and only once.
+        if is_now_cancelled and not was_cancelled:
+            _restore_inventory_for_order(db, order)
+
     for field, value in update_data.items():
         setattr(order, field, value)
 
@@ -174,6 +217,11 @@ def cancel_order(
     if not order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
 
+    # Restore inventory only if this order isn't already cancelled —
+    # prevents double-incrementing stock on repeated cancel calls.
+    if order.tracking_status != "CANCELLED":
+        _restore_inventory_for_order(db, order)
+
     order.tracking_status = "CANCELLED"
     db.commit()
     db.refresh(order)
@@ -190,6 +238,13 @@ def update_tracking(
     order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+
+    is_now_cancelled = tracking_status.upper() == "CANCELLED"
+    was_cancelled = (order.tracking_status or "").upper() == "CANCELLED"
+
+    # Restore inventory only on the transition into CANCELLED, and only once.
+    if is_now_cancelled and not was_cancelled:
+        _restore_inventory_for_order(db, order)
 
     order.tracking_status = tracking_status
     db.commit()
