@@ -479,48 +479,60 @@
   color: #4ade80;
 }
 
-/* ── order  page  related css  */
+/* ── Orders page — React Calendar (theme-aware) ──────────────────────────── */
 
 .react-calendar {
   width: 260px !important;
-  height: 260px !important;
-  background: #0f172a !important;
-  border: 1px solid #374151 !important;
-  color: white !important;
+  background: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
+  color: var(--color-text) !important;
   border-radius: 12px !important;
   padding: 10px;
+  height: auto !important;
 }
 
 .react-calendar__navigation button {
-  color: white !important;
+  color: var(--color-text) !important;
   min-width: 30px !important;
   background: transparent !important;
+  border-radius: 6px;
+}
+
+.react-calendar__navigation button:hover {
+  background: var(--color-bg) !important;
 }
 
 .react-calendar__month-view__weekdays {
-  color: #fbfdff !important;
+  color: var(--color-text-muted) !important;
   text-transform: none !important;
+  font-size: 11px;
 }
 
 .react-calendar__tile {
-  color: white !important;
+  color: var(--color-text) !important;
   border-radius: 6px;
+  font-size: 12px;
 }
 
 .react-calendar__tile--active {
   background: #2563eb !important;
-  color: rgb(255, 255, 255) !important;
+  color: #ffffff !important;
+}
+
+.react-calendar__tile--now {
+  background: var(--color-bg) !important;
 }
 
 .react-calendar__tile:hover {
-  background: #fefeff !important;
-}
-
-.react-calendar__navigation button:hover {
-  background: #ffffff !important;
+  background: var(--color-bg) !important;
 }
 
 .react-calendar * {
+  color: var(--color-text) !important;
+}
+
+.react-calendar__tile--active,
+.react-calendar__tile--active * {
   color: #ffffff !important;
 }
 /* ── Inventory Dashboard UI ───────────────────────────────────────────────── */
