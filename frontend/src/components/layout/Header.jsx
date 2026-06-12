@@ -102,10 +102,10 @@ export default function Header() {
   return (
     <>
       {/* desktop sidebar */}
-      <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[240px] shrink-0 border-r border-app bg-app px-4 py-5 shadow-sm dark:bg-surface md:flex md:flex-col">
-        <Logo />
+      <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[240px] shrink-0 border-r border-app bg-app shadow-sm dark:bg-surface md:flex md:flex-col">
+        <Logo className="border"/>
           {/* desktop nav items */}
-        <nav className="flex flex-1 flex-col justify-start  gap-2 mt-8">
+        <nav className="flex flex-1 flex-col justify-start px-4 gap-2 mt-8">
           {navItems.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
@@ -119,7 +119,7 @@ export default function Header() {
           ))}
         </nav>
           {/* profile and theme toggle */}
-        <div ref={profileRef} onClick={() => setProfileOpen((v) => !v)} className="bg-yellow-100 absolute bottom-0 w-full left-0 p-3 pt-1 cursor-pointer border-t border-app">
+        <div ref={profileRef} onClick={() => setProfileOpen((v) => !v)} className=" absolute bottom-0 w-full left-0 p-3 pt-1 cursor-pointer border-t border-app">
           <div className="flex items-center justify-between gap-2">
             <ProfileCard admin={admin} showEmail={false}/>
 
@@ -222,7 +222,7 @@ export default function Header() {
 
 function Logo({ compact = false }) {
   return (
-    <div className="flex items-center gap-2.5">
+    <div className="flex items-center gap-2.5 px-4 py-5  md:flex md:border-b md:border-app">
       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-glow-sm">
         <Zap size={18} strokeWidth={2.5} />
       </div>
@@ -240,7 +240,7 @@ function ProfileCard({ admin, large = false, showEmail= true }) {
     <div className={clsx('flex items-center gap-2', large ? 'p-3' : 'p-3')}>
       <div
         className={clsx(
-          'flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-600 font-bold text-white shadow-glow-sm',
+          'flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br bg-black font-bold text-white shadow-glow-sm',
           large ? 'h-10 w-10 text-base' : 'h-9 w-9 text-sm'
         )}
       >

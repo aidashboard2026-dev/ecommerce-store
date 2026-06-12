@@ -104,7 +104,7 @@ export default function DashboardPage() {
   const adminFirstName = admin?.name?.split(' ')[0] || 'Admin'
   const liveProductCount = stats?.total_products ?? 4
 
-  if (loading) return <PageLoader />
+  if (loading) return <PageLoader /> 
 
   return (
     <div className="space-y-6 py-6 mx-auto min-w-[80%] max-w-6xl">
