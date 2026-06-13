@@ -165,17 +165,17 @@ function LocalVariantForm({ onAdd, existingVariants = [] }) {
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="inv-add-variant-btn">
+      <button type="button" onClick={() => setOpen(true)} className="btn-secondary py-1.5 px-3 text-xs mt-3">
         <Plus size={12} /> Add Variant
       </button>
     )
   }
 
   return (
-    <div className="border border-app rounded-xl p-3 space-y-3 bg-surface/40">
-      <p className="text-[11px] font-semibold text-muted uppercase tracking-wider">New Variant</p>
+    <div className="border border-app rounded-xl p-4 space-y-4 bg-app/50 mt-3">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-muted">New Variant</p>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <FormField label="Size" required>
           <StyledSelect value={form.size} onChange={e => set('size', e.target.value)}>
             {SIZE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
@@ -188,7 +188,7 @@ function LocalVariantForm({ onAdd, existingVariants = [] }) {
           <div className="relative">
             <StyledInput value={form.color_hex} onChange={e => set('color_hex', e.target.value)} placeholder="#1A1A1A" />
             {/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(form.color_hex) && (
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border border-app" style={{ background: form.color_hex }} />
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border border-app" style={{ background: form.color_hex }} />
             )}
           </div>
         </FormField>
@@ -197,7 +197,7 @@ function LocalVariantForm({ onAdd, existingVariants = [] }) {
         </FormField>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <FormField label="Original Price" required>
           <StyledInput type="number" min="0.01" step="0.01" value={form.original_price} onChange={e => set('original_price', e.target.value)} placeholder="999" />
         </FormField>
@@ -220,18 +220,18 @@ function LocalVariantForm({ onAdd, existingVariants = [] }) {
       </div>
 
       {priceError && (
-        <p className="text-xs text-red-400 flex items-center gap-1.5">
+        <p className="text-xs text-red-500 flex items-center gap-1.5">
           <AlertTriangle size={12} /> Selling price cannot exceed original price
         </p>
       )}
 
-      <div className="flex items-center gap-2 w-full">
+      <div className="flex items-center gap-2 w-full pt-1">
         <button type="button" onClick={handleAdd} disabled={priceError}
-          className="btn-inv-save text-xs py-2 px-4 min-w-[100px] whitespace-nowrap disabled:opacity-50">
+          className="btn-primary text-xs py-2 px-4 min-w-[100px] whitespace-nowrap disabled:opacity-50">
           Add Variant
         </button>
         <button type="button" onClick={() => { setOpen(false); setForm(BLANK_VARIANT_FORM) }}
-          className="btn-inv-cancel flex-1 text-xs py-2 px-4 whitespace-nowrap">
+          className="btn-secondary text-xs py-2 px-4 whitespace-nowrap flex-1">
           Cancel
         </button>
       </div>
@@ -492,10 +492,10 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
     <>
       {isBatchSaving && <SaveProgressOverlay steps={saveSteps} onClose={handleOverlayClose} />}
 
-      <div className="inv-form-panel">
-        <div className="inv-form-header">
-          <h3>{isEdit ? `Editing: ${product.title}` : 'Add New Product'}</h3>
-          <button type="button" onClick={handleClose} disabled={isBatchSaving} aria-label="Close form" className="text-muted hover:text-app p-1 rounded transition-colors disabled:opacity-40">
+      <div className="card overflow-hidden mt-6 shadow-md">
+        <div className="flex items-center justify-between px-6 py-4.5 bg-gradient-to-r from-brand-500/5 via-surface-light to-brand-500/5 dark:from-brand-500/10 dark:via-surface-dark dark:to-brand-500/10 border-b border-app">
+          <h3 className="text-sm font-bold text-app uppercase tracking-tight">{isEdit ? `Editing: ${product.title}` : 'Add New Product'}</h3>
+          <button type="button" onClick={handleClose} disabled={isBatchSaving} aria-label="Close form" className="text-muted hover:text-app p-1 rounded-lg hover:bg-app transition-colors disabled:opacity-40">
             <X size={16} />
           </button>
         </div>
@@ -506,35 +506,35 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
           if (isEdit) editMutation.mutate(payload())
           else batchSave()
         }}>
-          <div className="inv-form-body">
+          <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-6 p-6">
             {/* LEFT: image */}
-            <div className="inv-image-col">
+            <div className="flex flex-col items-center gap-3.5">
               {isEdit ? (
                 <>
-                  <div className="inv-image-box" onClick={() => onOpenImage(product)} title="Click to manage image">
+                  <div className="w-full aspect-square border-2 border-dashed border-brand-500/50 hover:border-brand-500 rounded-2xl bg-app overflow-hidden cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01]" onClick={() => onOpenImage(product)} title="Click to manage image">
                     {thumbnailUrl
                       ? <img src={thumbnailUrl} alt={form.title} className="w-full h-full object-cover" />
-                      : <div className="inv-image-placeholder">
+                      : <div className="flex flex-col items-center gap-1.5 text-muted">
                         <Camera size={32} className="text-muted opacity-40" />
-                        <span className="text-[11px] text-muted mt-1">Add Image</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted mt-1">Add Image</span>
                       </div>}
                   </div>
-                  <button type="button" onClick={() => onOpenImage(product)} className="inv-img-action-btn">
+                  <button type="button" onClick={() => onOpenImage(product)} className="w-full btn-secondary text-xs font-semibold py-2">
                     <Plus size={12} />{product.thumbnail ? 'Change Image' : 'Add Image'}
                   </button>
                 </>
               ) : (
                 <>
                   <div
-                    className="inv-image-box cursor-pointer"
+                    className="w-full aspect-square border-2 border-dashed border-brand-500/50 hover:border-brand-500 rounded-2xl bg-app overflow-hidden cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01]"
                     onClick={() => localFileRef.current?.click()}
                     title="Click to add image"
                   >
                     {localImages.length > 0
                       ? <img src={localImages[0].previewUrl} alt="preview" className="w-full h-full object-cover" />
-                      : <div className="inv-image-placeholder">
+                      : <div className="flex flex-col items-center gap-1.5 text-muted">
                         <Camera size={32} className="text-muted opacity-40" />
-                        <span className="text-[11px] text-muted mt-1">Click to add</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted mt-1">Click to add</span>
                       </div>}
                   </div>
                   <input
@@ -543,7 +543,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                     onChange={e => pickLocalImage(e.target.files[0])}
                   />
                   {localImages.length > 1 && (
-                    <div className="flex gap-1 flex-wrap mt-1">
+                    <div className="flex gap-1.5 flex-wrap mt-1">
                       {localImages.slice(1).map(img => (
                         <div key={img.id} className="relative w-8 h-9 rounded overflow-hidden border border-app">
                           <img src={img.previewUrl} alt="" className="w-full h-full object-cover" />
@@ -556,12 +556,12 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                       ))}
                     </div>
                   )}
-                  <button type="button" onClick={() => localFileRef.current?.click()} className="inv-img-action-btn">
+                  <button type="button" onClick={() => localFileRef.current?.click()} className="w-full btn-secondary text-xs font-semibold py-2">
                     <Plus size={12} />{localImages.length > 0 ? 'Add More' : 'Add Image'}
                   </button>
                   {localImages.length > 0 && (
                     <button type="button" onClick={() => removeLocalImage(localImages[0].id)}
-                      className="text-[10px] text-red-400 hover:text-red-500 flex items-center gap-0.5 mt-0.5">
+                      className="text-[10px] text-red-500 hover:text-red-600 font-bold flex items-center gap-0.5 mt-1.5">
                       <X size={10} /> Remove
                     </button>
                   )}
@@ -570,52 +570,52 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
             </div>
 
             {/* RIGHT: fields */}
-            <div className="inv-fields-col">
-              <div className="inv-form-row">
-                <label htmlFor="product-title">Product Name <span className="text-red-400">*</span></label>
-                <div className="inv-field">
-                  <input id="product-title" className="inv-input" value={form.title} onChange={e => set('title', e.target.value)} required minLength={2} placeholder="e.g. Classic Black Tee" />
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
+                <label htmlFor="product-title" className="text-xs font-bold text-muted">Product Name <span className="text-red-500">*</span></label>
+                <div className="w-full">
+                  <input id="product-title" className="input-field py-2.5 text-xs" value={form.title} onChange={e => set('title', e.target.value)} required minLength={2} placeholder="e.g. Classic Black Tee" />
                 </div>
               </div>
-              <div className="inv-form-row">
-                <label>Code / SKU</label>
-                <div className="inv-field">
-                  <input className="inv-input readonly" readOnly
+              <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
+                <label className="text-xs font-bold text-muted">Code / SKU</label>
+                <div className="w-full">
+                  <input className="input-field py-2.5 text-xs opacity-60 cursor-not-allowed bg-app" readOnly
                     value={isEdit && variants.length > 0 ? variants[0].sku : ''}
                     placeholder={isEdit ? 'auto-generated on first variant' : 'set via variant'} />
                 </div>
               </div>
-              <div className="inv-form-row">
-                <label>Collection</label>
-                <div className="inv-field">
-                  <select className="inv-input" value={form.collection} onChange={e => set('collection', e.target.value)}>
+              <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
+                <label className="text-xs font-bold text-muted">Collection</label>
+                <div className="w-full">
+                  <select className="input-field py-2.5 text-xs" value={form.collection} onChange={e => set('collection', e.target.value)}>
                     <option value="">— None —</option>
                     {COLLECTION_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="inv-form-row">
-                  <label>Status</label>
-                  <div className="inv-field">
-                    <select className="inv-input" value={form.status} onChange={e => set('status', e.target.value)}>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
+                  <label className="text-xs font-bold text-muted">Status</label>
+                  <div className="w-full">
+                    <select className="input-field py-2.5 text-xs" value={form.status} onChange={e => set('status', e.target.value)}>
                       {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
                     </select>
                   </div>
                 </div>
-                <div className="inv-form-row">
-                  <label>Tags</label>
-                  <div className="inv-field">
-                    <input className="inv-input" value={form.tags} onChange={e => set('tags', e.target.value)} placeholder="Black, White…" />
+                <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
+                  <label className="text-xs font-bold text-muted">Tags</label>
+                  <div className="w-full">
+                    <input className="input-field py-2.5 text-xs" value={form.tags} onChange={e => set('tags', e.target.value)} placeholder="Black, White…" />
                   </div>
                 </div>
               </div>
-              <div className="inv-form-row">
-                <label>Featured</label>
-                <div className="inv-field">
+              <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
+                <label className="text-xs font-bold text-muted">Featured</label>
+                <div className="w-full">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={form.is_featured} onChange={e => set('is_featured', e.target.checked)} className="w-3.5 h-3.5 accent-brand-500" />
-                    <span className="text-xs text-muted">Show on homepage</span>
+                    <span className="text-xs font-medium text-muted">Show on homepage</span>
                   </label>
                 </div>
               </div>
@@ -623,40 +623,46 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
           </div>
 
           {/* Variants section */}
-          <div className="inv-variants-section">
-            <p className="inv-section-label">Variants</p>
+          <div className="px-6 pt-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-3">Variants</p>
             {variants.length > 0 ? (
-              <table className="inv-variant-table">
+              <table className="w-full border-collapse border border-app rounded-xl overflow-hidden bg-surface text-xs">
                 <thead>
-                  <tr><th>Size</th><th>Actual Price</th><th>Discount Price</th><th>% off</th><th>Stock</th><th>Delete</th></tr>
+                  <tr className="border-b border-app">
+                    <th className="bg-app px-3 py-2 text-left font-bold uppercase tracking-wider text-muted text-[10px]">Size</th>
+                    <th className="bg-app px-3 py-2 text-left font-bold uppercase tracking-wider text-muted text-[10px]">Actual Price</th>
+                    <th className="bg-app px-3 py-2 text-left font-bold uppercase tracking-wider text-muted text-[10px]">Discount Price</th>
+                    <th className="bg-app px-3 py-2 text-left font-bold uppercase tracking-wider text-muted text-[10px]">% off</th>
+                    <th className="bg-app px-3 py-2 text-left font-bold uppercase tracking-wider text-muted text-[10px]">Stock</th>
+                    <th className="bg-app px-3 py-2 text-left font-bold uppercase tracking-wider text-muted text-[10px]">Delete</th>
+                  </tr>
                 </thead>
                 <tbody>
                   {variants.map((v) => (
-                    <tr key={isEdit ? v.id : v._localId}>
-                      <td><span className="inv-size-chip">{v.size}</span></td>
-                      <td>{formatPrice(v.original_price)}</td>
-                      <td>{formatPrice(v.selling_price)}</td>
-                      <td>{v.discount_percentage ? `${parseFloat(v.discount_percentage).toFixed(0)}%` : '—'}</td>
-                      <td>{isEdit ? <StockBadge stock={v.stock_quantity} /> : <span className="text-xs text-app">{v.stock_quantity}</span>}</td>
-                      <td>
+                    <tr key={isEdit ? v.id : v._localId} className="border-b border-app last:border-b-0 hover:bg-app/40 transition-colors">
+                      <td className="px-3 py-2.5 text-app align-middle"><span className="status-pill published text-[10px] font-bold">{v.size}</span></td>
+                      <td className="px-3 py-2.5 text-app align-middle font-medium">{formatPrice(v.original_price)}</td>
+                      <td className="px-3 py-2.5 text-app align-middle font-medium">{formatPrice(v.selling_price)}</td>
+                      <td className="px-3 py-2.5 text-app align-middle font-medium">{v.discount_percentage ? `${parseFloat(v.discount_percentage).toFixed(0)}%` : '—'}</td>
+                      <td className="px-3 py-2.5 text-app align-middle font-semibold">{isEdit ? <StockBadge stock={v.stock_quantity} /> : <span>{v.stock_quantity}</span>}</td>
+                      <td className="px-3 py-2.5 text-app align-middle">
                         {isEdit ? (
-                          // CRITICAL 1 FIX: was toast stub, now real API delete
                           <button
                             type="button"
-                            className="btn-tbl-delete"
-                            style={{ width: 22, height: 22 }}
+                            className="btn-secondary rounded-lg flex items-center justify-center border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white"
+                            style={{ width: 24, height: 24 }}
                             disabled={deletingVariantIds.has(v.id)}
                             onClick={() => deleteVariantMutation.mutate(v.id)}
                             aria-label="Delete variant"
                           >
                             {deletingVariantIds.has(v.id)
                               ? <Spinner size="sm" />
-                              : <Trash2 size={10} />}
+                              : <Trash2 size={12} />}
                           </button>
                         ) : (
-                          <button type="button" className="btn-tbl-delete" style={{ width: 22, height: 22 }}
+                          <button type="button" className="btn-secondary rounded-lg flex items-center justify-center border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white" style={{ width: 24, height: 24 }}
                             onClick={() => removeLocalVariant(v._localId)} aria-label="Remove variant">
-                            <Trash2 size={10} />
+                            <Trash2 size={12} />
                           </button>
                         )}
                       </td>
@@ -669,7 +675,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
             )}
 
             {isEdit ? (
-              <button type="button" onClick={() => onOpenVariant(product)} className="inv-add-variant-btn">
+              <button type="button" onClick={() => onOpenVariant(product)} className="btn-secondary py-1.5 px-3 text-xs mt-3">
                 <Plus size={12} /> Add Variant
               </button>
             ) : (
@@ -678,36 +684,36 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
           </div>
 
           {/* Description */}
-          <div className="inv-desc-section">
-            <p className="inv-section-label">Description</p>
-            <textarea className="inv-input" rows={3} style={{ resize: 'none', width: '100%' }}
+          <div className="px-6 pt-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-3">Description</p>
+            <textarea className="input-field text-xs py-2.5 resize-none w-full" rows={3}
               value={form.description} onChange={e => set('description', e.target.value)}
               placeholder="Product description…" />
           </div>
 
           {!isEdit && (localImages.length > 0 || localVariants.length > 0) && (
-            <div className="mx-3 mb-2 flex flex-wrap gap-2">
+            <div className="mx-6 mt-3 flex flex-wrap gap-2">
               {localImages.length > 0 && (
-                <span className="inline-flex items-center gap-1 text-[11px] bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-full px-2.5 py-1 font-medium">
+                <span className="inline-flex items-center gap-1 text-[10px] bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-full px-2.5 py-1 font-semibold">
                   <ImageIcon size={10} /> {localImages.length} image{localImages.length > 1 ? 's' : ''} ready
                 </span>
               )}
               {localVariants.length > 0 && (
-                <span className="inline-flex items-center gap-1 text-[11px] bg-green-500/10 text-green-600 dark:text-green-400 rounded-full px-2.5 py-1 font-medium">
+                <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full px-2.5 py-1 font-semibold">
                   <Layers size={10} /> {localVariants.length} variant{localVariants.length > 1 ? 's' : ''} ready
                 </span>
               )}
             </div>
           )}
 
-          <div className="inv-form-footer">
-            <div className="inv-footer-row">
-              <button type="submit" className="btn-inv-save" disabled={isBatchSaving || editMutation.isPending}>
+          <div className="grid gap-3 p-6 border-t border-app mt-6">
+            <div className="flex gap-3">
+              <button type="submit" className="flex-1 btn-primary py-2.5 text-xs font-bold" disabled={isBatchSaving || editMutation.isPending}>
                 {(isBatchSaving || editMutation.isPending) ? <Spinner size="sm" /> : 'Save'}
               </button>
               <button
                 type="button"
-                className="btn-inv-publish"
+                className="flex-1 btn-primary bg-emerald-500 hover:bg-emerald-600 border-emerald-500 hover:border-emerald-600 py-2.5 text-xs font-bold"
                 disabled={isBatchSaving || editPubMutation?.isPending}
                 onClick={() => {
                   if (isSavingRef.current || editPubMutation?.isPending) return
@@ -718,7 +724,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                 {(isBatchSaving || editPubMutation?.isPending) ? <Spinner size="sm" /> : 'Publish'}
               </button>
             </div>
-            <button type="button" className="btn-inv-cancel" onClick={handleClose} disabled={isBatchSaving}>Cancel</button>
+            <button type="button" className="w-full px-4 py-2.5 rounded-lg border border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white font-bold text-xs transition-colors" onClick={handleClose} disabled={isBatchSaving}>Cancel</button>
           </div>
         </form>
       </div>

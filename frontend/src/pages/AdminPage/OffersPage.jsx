@@ -1,360 +1,45 @@
-import React, {useState,useEffect} from "react";
+import React, { useState, useEffect, useRef } from "react";
+import toast from "react-hot-toast";
+import { Search, Plus, Calendar, Percent, Clock, Trash2, Eye, FileText, X, Image as ImageIcon } from "lucide-react";
 import api from "../../services/api";
-import { Search, Plus } from "lucide-react";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import clsx from "clsx";
 
 export default function OffersPage() {
-
-
-
   const [search, setSearch] = useState("");
   const [showAddOffer, setShowAddOffer] = useState(false);
-  const [banner, setBanner] = useState(null);
-  // const [extraImages, setExtraImages] = useState(Array(5).fill(null));
-  // const [showThumbs, setShowThumbs] = useState(false);
-  // const [selectedIndex, setSelectedIndex] = useState(null);
-  const [showImagePopup, setShowImagePopup] =
-  useState(false);
+  
+  // Form states
   const [offerName, setOfferName] = useState("");
   const [percentage, setPercentage] = useState("");
   const [description, setDescription] = useState("");
-
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
-  const [bannerFile, setBannerFile] =useState(null);
+  const [banner, setBanner] = useState(null);
+  const [bannerFile, setBannerFile] = useState(null);
+  
+  // Listing states
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   
-  const [currentTime, setCurrentTime] =
-    useState(new Date());
+  // Timer state
+  const [currentTime, setCurrentTime] = useState(new Date());
 
-  const [isOnline, setIsOnline] =
-    useState(navigator.onLine);
-
-  const checkServer = async () => {
-    try {
-      await api.get("/auth/me");
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
-  const filteredOffers = offers
-    .filter(
-      (offer) =>
-        offer.title
-          ?.toLowerCase()
-          .includes(
-            search.toLowerCase()
-          )
-    )
-    .sort((a, b) => {
-
-      if (
-        a.status === "published" &&
-        b.status === "published"
-      ) {
-        return (
-          new Date(a.expires_at) -
-          new Date(b.expires_at)
-        );
-      }
-
-      if (a.status === "published")
-        return -1;
-
-      if (b.status === "published")
-        return 1;
-
-      return b.id - a.id;
-    });
-
-  const validateOfferForm = () => {
-    
-
-    if (
-      !bannerFile ||
-      !offerName.trim() ||
-      !percentage.trim() ||
-      !startDate ||
-      !startTime ||
-      !endDate ||
-      !endTime
-    ) {
-      toast.error(
-        "⚠️ Please fill all required fields!"
-      );
-
-      return false;
-    }
-
-    if (!/^\d+$/.test(percentage)) {
-      toast.error(
-        "⚠️ Percentage must contain numbers only!"
-      );
-
-      return false;
-    }
-
-    if (
-      Number(percentage) <= 0 ||
-      Number(percentage) > 100
-    ) {
-      toast.error(
-        "⚠️ Percentage must be between 1 and 100!"
-      );
-
-      return false;
-    }
-
-    if (
-      new Date(`${endDate}T${endTime}`) <=
-      new Date(`${startDate}T${startTime}`)
-    ) {
-      toast.error(
-        "⚠️ End Date & Time must be greater than Start Date & Time!"
-      );
-
-      return false;
-    }
-
-    return true;
-  };
-  
-
-  const handleSave = async () => {
-    const serverAlive =
-      await checkServer();
-
-    if (!serverAlive) {
-      toast.error(
-        "📡 No Connection To Server!"
-      );
-      return;
-    }
-
-    if (!isOnline) {
-      toast.error(
-        "📡 No Internet Connection!"
-      );
-      return;
-    }
-
-    if (!validateOfferForm()) {
-      return;
-    }
-
-    try {
-
-      const formData = new FormData();
-
-      formData.append("title", offerName);
-      formData.append("percentage", percentage);
-      formData.append("description", description);
-
-      formData.append("start_date", startDate);
-      formData.append("end_date", endDate);
-
-      formData.append("start_time", startTime);
-      formData.append("end_time", endTime);
-
-      formData.append("status", "saved");
-
-      if (bannerFile) {
-        formData.append(
-          "banner_image",
-          bannerFile
-        );
-      }
-
-      const response = await api.post(
-        "/offers/",
-        formData,
-        {
-          headers: {
-            "Content-Type":
-              "multipart/form-data",
-          },
-        }
-      );
-
-      console.log(response.data);
-
-      toast.success(
-        "💾 Offer Saved Successfully!"
-      );
-
-      fetchOffers();
-      clearForm();
-
-    } catch (error) {
-
-      console.error(error);
-
-      toast.error(
-        "❌ Unable to Save Offer!"
-      );
-    }
-  };
-
-  const handlePublish = async () => {
-    const serverAlive = await checkServer();
-
-    if (!isOnline) {
-      toast.error(
-        "📡 No Internet Connection!"
-      );
-      return;
-    }
-
-    if (!serverAlive) {
-      toast.error(
-        "📡 No Connection To Server!"
-      );
-      return;
-    }
-
-
-    if (!validateOfferForm()) {
-      return;
-    }
-
-    try {
-
-      const formData = new FormData();
-
-      formData.append("title", offerName);
-      formData.append("percentage", percentage);
-      formData.append("description", description);
-
-      formData.append("start_date", startDate);
-      formData.append("end_date", endDate);
-
-      formData.append("start_time", startTime);
-      formData.append("end_time", endTime);
-
-      formData.append(
-        "status",
-        "published"
-      );
-
-      if (bannerFile) {
-        formData.append(
-          "banner_image",
-          bannerFile
-        );
-      }
-
-      const response = await api.post(
-        "/offers/",
-        formData,
-        {
-          headers: {
-            "Content-Type":
-              "multipart/form-data",
-          },
-        }
-      );
-
-      
-
-      toast.success(
-        "🚀 Offer Published Successfully!"
-      );
-
-      fetchOffers();
-      clearForm();
-
-    } catch (error) {
-
-      console.error(error);
-
-      toast.error(
-        "❌ Unable to Publish Offer!"
-      );
-    }
-  };
-
-  const publishOffer = async (offerId) => {
-    try {
-      await api.put(`/offers/${offerId}`, {
-        status: "published",
-      });
-
-      toast.success(
-        "🚀 Offer Published Successfully!"
-      );
-
-      fetchOffers();
-
-    } catch (error) {
-      console.error(error);
-
-      toast.error(
-        "❌ Failed to Publish Offer!"
-      );
-    }
-  };
-
-  const deleteOffer = async (offerId) => {
-    try {
-      await api.delete(
-        `/offers/${offerId}`
-      );
-
-      toast.success(
-        "🗑️ Offer Deleted Successfully!"
-      );
-
-      fetchOffers();
-
-    } catch (error) {
-      console.error(error);
-
-      toast.error(
-        "❌ Failed to Delete Offer!"
-      );
-    }
-  };
-  
-  const clearForm = () => {
-    setOfferName("");
-    setPercentage("");
-    setDescription("");
-
-    setStartDate("");
-    setEndDate("");
-
-    setStartTime("");
-    setEndTime("");
-
-    setBanner(null);
-    setBannerFile(null);
-  };
   const fetchOffers = async () => {
     try {
-      const response =
-        await api.get("/offers/");
-      console.log(
-        "OFFERS RESPONSE =",
-        response.data
-      );
-
-      setOffers(
-        response.data
-      );
+      setLoading(true);
+      const response = await api.get("/offers/");
+      setOffers(response.data || []);
     } catch (error) {
       console.error(error);
+      toast.error("Failed to load promotional offers");
     } finally {
       setLoading(false);
     }
   };
-
 
   useEffect(() => {
     fetchOffers();
@@ -364,756 +49,481 @@ export default function OffersPage() {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-
     return () => clearInterval(timer);
   }, []);
-  // const endDateTime = new Date(
-  //   `${offer.end_date}T${offer.end_time}`
-  // );
 
-  // const now = new Date();
+  const getOfferImageUrl = (path) => {
+    if (!path) return "";
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
+    const origin = (import.meta.env.VITE_BACKEND_URL ?? "").replace(/\/$/, "");
+    const base = origin || "http://localhost:8000";
+    return path.startsWith("/") ? `${base}${path}` : `${base}/${path}`;
+  };
 
-  // const remainingMs =
-  //   endDateTime - now;
+  const filteredOffers = offers
+    .filter((offer) =>
+      offer.title?.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (a.status === "published" && b.status === "published") {
+        return new Date(a.expires_at) - new Date(b.expires_at);
+      }
+      if (a.status === "published") return -1;
+      if (b.status === "published") return 1;
+      return b.id - a.id;
+    });
 
-  // const remainingDays =
-  //   Math.floor(
-  //     remainingMs /
-  //     (1000 * 60 * 60 * 24)
-  //   );
+  const validateOfferForm = () => {
+    if (
+      !bannerFile ||
+      !offerName.trim() ||
+      !percentage.trim() ||
+      !startDate ||
+      !startTime ||
+      !endDate ||
+      !endTime
+    ) {
+      toast.error("Please fill all required fields, including the banner image.");
+      return false;
+    }
 
-  // const isExpired =
-  //   remainingMs <= 0;
-  useEffect(() => {
+    if (!/^\d+$/.test(percentage)) {
+      toast.error("Discount percentage must contain numbers only.");
+      return false;
+    }
 
-    const onlineHandler = () =>
-      setIsOnline(true);
+    const pctNum = Number(percentage);
+    if (pctNum <= 0 || pctNum > 100) {
+      toast.error("Discount percentage must be between 1 and 100.");
+      return false;
+    }
 
-    const offlineHandler = () =>
-      setIsOnline(false);
+    if (new Date(`${endDate}T${endTime}`) <= new Date(`${startDate}T${startTime}`)) {
+      toast.error("End Date & Time must be after Start Date & Time.");
+      return false;
+    }
 
-    window.addEventListener(
-      "online",
-      onlineHandler
-    );
+    return true;
+  };
 
-    window.addEventListener(
-      "offline",
-      offlineHandler
-    );
+  const clearForm = () => {
+    setOfferName("");
+    setPercentage("");
+    setDescription("");
+    setStartDate("");
+    setEndDate("");
+    setStartTime("");
+    setEndTime("");
+    setBanner(null);
+    setBannerFile(null);
+  };
 
-    return () => {
-      window.removeEventListener(
-        "online",
-        onlineHandler
-      );
+  const handleSave = async (status = "saved") => {
+    if (!validateOfferForm()) return;
+    
+    const isPub = status === "published";
+    if (isPub) setPublishing(true);
+    else setSaving(true);
 
-      window.removeEventListener(
-        "offline",
-        offlineHandler
-      );
-    };
+    try {
+      const formData = new FormData();
+      formData.append("title", offerName);
+      formData.append("percentage", percentage);
+      formData.append("description", description);
+      formData.append("start_date", startDate);
+      formData.append("end_date", endDate);
+      formData.append("start_time", startTime);
+      formData.append("end_time", endTime);
+      formData.append("status", status);
 
-  }, []);
- 
+      if (bannerFile) {
+        formData.append("banner_image", bannerFile);
+      }
+
+      await api.post("/offers/", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      toast.success(isPub ? "Offer published successfully!" : "Offer saved as draft.");
+      fetchOffers();
+      clearForm();
+      setShowAddOffer(false);
+    } catch (error) {
+      console.error(error);
+      toast.error(error.response?.data?.detail || "Unable to save offer campaign.");
+    } finally {
+      setSaving(false);
+      setPublishing(false);
+    }
+  };
+
+  const publishOffer = async (offerId) => {
+    try {
+      await api.put(`/offers/${offerId}`, { status: "published" });
+      toast.success("Offer published successfully!");
+      fetchOffers();
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to publish offer.");
+    }
+  };
+
+  const deleteOffer = async (offerId) => {
+    try {
+      await api.delete(`/offers/${offerId}`);
+      toast.success("Offer deleted successfully.");
+      fetchOffers();
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete offer.");
+    }
+  };
+
+  const formatCountdown = (expiresAtStr) => {
+    if (!expiresAtStr) return "Expiry time missing";
+    const expiresAt = new Date(expiresAtStr + "Z");
+    const diff = expiresAt.getTime() - currentTime.getTime();
+
+    if (diff <= 0) return "Campaign expired";
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (days > 0) {
+      return `Ends in: ${days}d ${hours}h`;
+    }
+    return `Ends in: ${hours}h ${minutes}m`;
+  };
 
   return (
-    
-      
-    
-
-    <div
-      
-      style={{
-        padding: "24px",
-        background: "#111827",
-        minHeight: "100vh",
-      }}
-    >
-      <ToastContainer
-        position="top-right"
-        autoClose={2500}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        pauseOnHover
-        draggable
-        theme="dark"
-        style={{
-          zIndex: 99999
-        }}
-      />
-      
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          marginBottom: "30px",
-          flexWrap: "wrap",
-          gap: "20px",
-        }}
-      >
+    <div className="space-y-6">
+      {/* Header Panel */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-app pb-5">
         <div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: "42px",
-              fontWeight: "800",
-              color: "#ffffff",
-              letterSpacing: "-1px",
-            }}
-          >
-            Offers & Promo
-          </h1>
-
-          <p
-            style={{
-              marginTop: "8px",
-              fontSize: "14px",
-              color: "#94a3b8",
-            }}
-          >
-            Manage promotional offers and campaigns
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-app">Offers & Promos</h1>
+          <p className="text-muted text-sm mt-1">Deploy discount codes and custom banner campaigns</p>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-          }}
-        >
+        <div className="flex items-center gap-3 w-full sm:w-auto">
           {/* Search Box */}
-          <div
-            style={{
-              position: "relative",
-            }}
-          >
-            <Search
-              size={18}
-              style={{
-                position: "absolute",
-                left: "12px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "#94a3b8",
-              }}
-            />
-
+          <div className="relative flex-1 sm:flex-initial">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
               type="text"
-              placeholder="Search Offer"
+              placeholder="Search campaigns..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{
-                width: "260px",
-                height: "42px",
-                border: "1px solid #334155",
-                borderRadius: "8px",
-                paddingLeft: "40px",
-                background: "#1e293b",
-                color: "#ffffff",
-                outline: "none",
-              }}
+              className="input-field pl-9 py-2 text-xs w-full sm:w-60"
             />
+            {search && (
+              <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted text-xs">
+                ✕
+              </button>
+            )}
           </div>
 
-          {/* Add Offer Button */}
           <button
             onClick={() => {
-              setBanner(null);
+              clearForm();
               setShowAddOffer(true);
             }}
-                      style={{
-              height: "42px",
-              padding: "0 20px",
-              border: "none",
-              borderRadius: "8px",
-              background: "#2563eb",
-              color: "#ffffff",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              cursor: "pointer",
-              fontWeight: "700",
-              
-            }}
+            className="btn-primary py-2 text-xs font-semibold shrink-0"
           >
-            <Plus size={16} />
-            Add Offer
+            <Plus size={14} />
+            Create Campaign
           </button>
         </div>
       </div>
-      {filteredOffers.length > 0 && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fill,minmax(280px,1fr))",
-            gap: "20px",
-          }}
-        >
-          {filteredOffers.map(
-            (offer) => (
+
+      {/* Grid List */}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
+          <p className="text-xs font-medium text-muted">Syncing promotions...</p>
+        </div>
+      ) : filteredOffers.length === 0 ? (
+        <div className="card p-16 text-center border-dashed flex flex-col items-center justify-center max-w-xl mx-auto space-y-4">
+          <div className="w-12 h-12 rounded-xl bg-app flex items-center justify-center text-muted">
+            <Percent size={20} />
+          </div>
+          <div>
+            <h3 className="font-bold text-app text-sm">No promotional campaigns found</h3>
+            <p className="text-muted text-xs mt-1">Create banners and discount deals to boost your customer engagement.</p>
+          </div>
+          <button
+            onClick={() => setShowAddOffer(true)}
+            className="btn-primary py-2 text-xs font-semibold"
+          >
+            <Plus size={14} /> Add First Offer
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredOffers.map((offer) => {
+            const expired = offer.expires_at && new Date(offer.expires_at + "Z") <= currentTime;
+            return (
               <div
                 key={offer.id}
-                style={{
-                  background: "#1e293b",
-                  border: "1px solid #334155",
-                  borderRadius: "12px",
-                  overflow: "hidden",
-
-                  display: "flex",
-                  flexDirection: "column",
-                  height: "100%",
-                  minHeight: "430px", // adjust pannalam
-                }}
+                className="card overflow-hidden hover:border-brand-500/30 flex flex-col h-full hover:shadow-card-hover transition-all duration-200"
               >
-                <img
-                  src={`http://localhost:8000/${offer.banner_image}`}
-                  alt=""
-                  style={{
-                    width:
-                      "100%",
-                    height:
-                      "180px",
-                    objectFit:
-                      "cover",
-                  }}
-                />
+                {/* Banner Image */}
+                <div className="h-40 bg-app border-b border-app relative overflow-hidden group">
+                  {offer.banner_image ? (
+                    <img
+                      src={getOfferImageUrl(offer.banner_image)}
+                      alt={offer.title}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      onError={(e) => { e.currentTarget.src = ""; }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted">
+                      <ImageIcon size={28} />
+                    </div>
+                  )}
+                  {/* Discount Badge */}
+                  <div className="absolute top-3 right-3 bg-brand-500 text-white font-bold text-xs px-2.5 py-1.5 rounded-lg shadow-sm">
+                    {offer.percentage}% OFF
+                  </div>
+                </div>
 
-                <div
-                  style={{
-                    padding: "15px",
-                  }}
-                >
-
-                  <div
-                    style={{
-                      marginBottom: "12px",
-                    }}
-                  >
-                  
-                    {/* Status */}
-
-                    {offer.status === "published" ? (
+                {/* Offer details */}
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
                       <span
-                        style={{
-                          background: "rgba(34,197,94,0.15)",
-                          color: "#22c55e",
-                          border: "1px solid #22c55e",
-                          padding: "6px 12px",
-                          borderRadius: "20px",
-                          fontSize: "12px",
-                          fontWeight: "700",
-                        }}
+                        className={clsx(
+                          "status-pill text-[10px]",
+                          offer.status === "published" && !expired && "published",
+                          offer.status === "published" && expired && "draft",
+                          offer.status === "saved" && "draft"
+                        )}
                       >
-                        ● Published
+                        {expired ? "Expired" : offer.status === "published" ? "Published" : "Draft"}
                       </span>
-                    ) : (
-                      <span
-                        style={{
-                          background: "rgba(245,158,11,0.15)",
-                          color: "#f59e0b",
-                          border: "1px solid #f59e0b",
-                          padding: "6px 12px",
-                          borderRadius: "20px",
-                          fontSize: "12px",
-                          fontWeight: "700",
-                        }}
-                      >
-                        ● Saved Draft
-                      </span>
+                    </div>
+                    <h3 className="font-bold text-sm text-app leading-snug">{offer.title}</h3>
+                    {offer.description && (
+                      <p className="text-xs text-muted leading-relaxed line-clamp-2">{offer.description}</p>
                     )}
-                     
-
-                    
                   </div>
 
-                  <h3
-                    style={{
-                      color: "#fff",
-                      marginTop: "10px",
-                    }}
-                  >
-                    {offer.title}
-                  </h3>
-
-                  <p
-                    style={{
-                      color: "#fce307",
-                      fontWeight: "700",
-                    }}
-                  >
-                    {offer.percentage}%
-                  </p>
-
-                  <p
-                    style={{
-                      color: "#94a3b8",
-                    }}
-                  >
-                    {offer.description}
-                  </p>
-
-                </div>
-                <div
-                  style={{
-                    marginTop: "12px",
-                    color: "#cbd5e1",
-                    fontSize: "13px",
-                    padding: "0 15px 15px",
-
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "space-between",
-                    flex: 1,
-                  }}
-                >
-                  {offer.status === "saved" ? (
-                    <div
-                      style={{
-                        color: "#07fc96",
-                        fontWeight: "700",
-                        lineHeight: "1.8",
-                        fontSize: "13px",
-                      }}
-                    >
-                      <div>
-                        📅 Start:
-                        {" "}
-                        {offer.start_date}
-                        {" "}
-                        {offer.start_time}
+                  <div className="border-t border-app pt-4 space-y-3">
+                    {/* Time limits */}
+                    {offer.status === "saved" ? (
+                      <div className="text-[10px] space-y-1 text-app font-medium leading-relaxed bg-app/50 p-2.5 rounded-lg border border-app">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar size={12} className="text-muted" />
+                          <span>Start: {offer.start_date} {offer.start_time}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Clock size={12} className="text-muted" />
+                          <span>End: {offer.end_date} {offer.end_time}</span>
+                        </div>
                       </div>
-
-                      <div>
-                        ⏳ End:
-                        {" "}
-                        {offer.end_date}
-                        {" "}
-                        {offer.end_time}
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-rose-500 bg-rose-500/5 px-2.5 py-1.5 rounded-lg border border-rose-500/10">
+                        <Clock size={13} />
+                        <span>{formatCountdown(offer.expires_at)}</span>
                       </div>
-                    </div>
-                  ) : (
-                <>
-                      {(() => {
-                       
-                       
-            
-                        // if (!offer.published_at) {
-                        //   return (
-                        //     <div
-                        //       style={{
-                        //         color: "#f59e0b",
-                        //         fontWeight: "700",
-                        //       }}
-                        //     >
-                        //       ⚠️ Publish Time Missing
-                        //     </div>
-                        //   );
-                        // }
-
-                        const expiresAt =
-                          new Date(
-                            offer.expires_at + "Z"
-                          );
-                        const diff =
-                          expiresAt.getTime() -
-                          currentTime.getTime();
-
-                        console.log("CURRENT TIME =", currentTime);
-                        console.log("EXPIRES AT =", expiresAt);
-                        console.log(
-                          "DIFF HOURS =",
-                          diff / (1000 * 60 * 60)
-                        );
-
-                        if (!offer.expires_at) {
-                          return (
-                            <div
-                              style={{
-                                color: "#f59e0b",
-                                fontWeight: "700",
-                              }}
-                            >
-                              ⚠️ Expiry Time Missing
-                            </div>
-                          );
-                        }
-                                                
-
-                        const days = Math.floor(
-                          diff / (1000 * 60 * 60 * 24)
-                        );
-
-                        const hours = Math.floor(
-                          (diff % (1000 * 60 * 60 * 24)) /
-                          (1000 * 60 * 60)
-                        );
-
-                        const minutes = Math.floor(
-                          (diff % (1000 * 60 * 60)) /
-                          (1000 * 60)
-                        );
-                        
-                        // console.log(
-                        //   "TOTAL HOURS =",
-                        //   totalDuration / (1000 * 60 * 60)
-                        // );
-
-                        // console.log(
-                        //   "DIFF HOURS =",
-                        //   diff / (1000 * 60 * 60)
-                        // );
-                        return (
-                          <div
-                            style={{
-                              color: "#f10b64",
-                              fontWeight: "700",
-                              fontSize: "13px",
-                            }}
-                          >
-                            ⏰ Ends In:
-                            {" "}
-                            {days} Days,
-                            {" "}
-                            {hours} Hr,
-                            {" "}
-                            {minutes} Min
-                          </div>
-                        );
-                      })()}
-                    </>
-                  )}
-
-                  
-
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "flex-end",
-                      gap: "8px",
-                      marginTop: "auto",
-                      paddingTop: "15px",
-                    }}
-                  >
-                    {offer.status === "saved" && (
-                      <button
-                        onClick={() =>
-                          publishOffer(offer.id)
-                        }
-                        style={{
-                          background: "#2563eb",
-                          color: "#fff",
-                          border: "none",
-                          borderRadius: "4px",
-                          padding: "4px 10px",
-                          height: "28px",
-                          fontSize: "12px",
-                          fontWeight: "600",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Publish
-                      </button>
                     )}
 
-                    <button
-                      onClick={() =>
-                        deleteOffer(offer.id)
-                      }
-                      style={{
-                        background: "#dc2626",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: "4px",
-                        padding: "4px 10px",
-                        height: "28px",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                        cursor: "pointer",
-                      }}
-                    >
-                      Delete
-                    </button>
+                    {/* Actions buttons */}
+                    <div className="flex justify-end gap-2 pt-1">
+                      {offer.status === "saved" && (
+                        <button
+                          onClick={() => publishOffer(offer.id)}
+                          className="px-3 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-bold text-[11px] transition-all"
+                        >
+                          Publish
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          if (confirm("Are you sure you want to delete this campaign?")) {
+                            deleteOffer(offer.id);
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white font-bold text-[11px] transition-all flex items-center gap-1"
+                      >
+                        <Trash2 size={11} />
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            )
-          )}
-        </div>
-      )}
-      {/* Empty State */}
-      {filteredOffers.length === 0 && (
-        <div
-          style={{
-            height: "450px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexDirection: "column",
-            border: "1px dashed #334155",
-            borderRadius: "12px",
-            background: "#1e293b",
-          }}
-        >
-          <h2
-            style={{
-              color: "#ffffff",
-              fontSize: "26px",
-              fontWeight: "700",
-              marginBottom: "10px",
-            }}
-          >
-            No Offers & Promo Found
-          </h2>
-
-          <p
-            style={{
-              color: "#94a3b8",
-              fontSize: "14px",
-            }}
-          >
-            Click Add Offer to create your first promotional campaign.
-          </p>
+            );
+          })}
         </div>
       )}
 
-      
-    {showAddOffer && (
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.7)",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          zIndex: 9999,
-        }}
-      >
-        <div
-          style={{
-            width: "580px",
-            background: "#1f2937",
-            borderRadius: "12px",
-            padding: "15px",
-            border: "1px solid #374151",
-          }}
-        >
-          <h2
-            style={{
-              color: "#fff",
-              marginBottom: "20px",
-            }}
-          >
-            Add Offer
-          </h2>
+      {/* Add Offer Drawer Overlay */}
+      {showAddOffer && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex justify-end">
+          {/* Backdrop click close */}
+          <div className="absolute inset-0" onClick={() => setShowAddOffer(false)} />
+          
+          {/* Drawer container */}
+          <div className="relative w-full max-w-lg bg-surface border-l border-app h-full flex flex-col p-6 shadow-elevated animate-slide-in z-10">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between border-b border-app pb-4 mb-6">
+              <div>
+                <h2 className="text-base font-bold text-app">Create Campaign</h2>
+                <p className="text-muted text-[11px] mt-0.5">Fill details to create a promotional banner</p>
+              </div>
+              <button
+                onClick={() => setShowAddOffer(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-app text-muted hover:text-app transition-all hover:bg-app active:scale-95"
+              >
+                <X size={15} />
+              </button>
+            </div>
 
-          {/* Upload Section */}
+            {/* Form body */}
+            <form onSubmit={(e) => e.preventDefault()} className="flex-1 overflow-y-auto space-y-4 pr-1">
+              
+              {/* Image upload preview box */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-app">Campaign Banner <span className="text-red-500">*</span></label>
+                <label className="w-full h-36 border-2 border-dashed border-brand-500/50 hover:border-brand-500 rounded-xl cursor-pointer overflow-hidden bg-app flex flex-col items-center justify-center gap-2 transition-colors">
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        setBanner(URL.createObjectURL(file));
+                        setBannerFile(file);
+                      }
+                    }}
+                  />
+                  {banner ? (
+                    <img src={banner} alt="Offer Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="text-center p-4">
+                      <ImageIcon size={24} className="text-muted mx-auto mb-1.5" />
+                      <p className="text-xs font-bold text-brand-500">Upload banner image</p>
+                      <p className="text-[10px] text-muted mt-0.5">Support PNG, JPG, WEBP (ratio 16:9)</p>
+                    </div>
+                  )}
+                </label>
+              </div>
 
-          <div
-            style={{
-              marginBottom: "12px",
-            }}
-          >
-            <label
-              style={{
-                width: "100%",
-                height: "120px",
-                border: "2px solid #60a5fa",
-                borderRadius: "6px",
-                cursor: "pointer",
-                overflow: "hidden",
-                background: "#111827",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <input
-                type="file"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files[0];
-
-                  if (file) {
-                    setBanner(
-                      URL.createObjectURL(file)
-                    );
-
-                    setBannerFile(file);
-                  }
-                }}
-              />
-
-              {banner ? (
-                <img
-                  src={banner}
-                  alt="Offer Banner"
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                  }}
+              {/* Offer Title */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-app">Offer Name <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  placeholder="e.g. Summer Clearance Sale"
+                  value={offerName}
+                  onChange={(e) => setOfferName(e.target.value)}
+                  className="input-field py-2.5 text-xs"
                 />
-              ) : (
-                <Plus size={40} color="#94a3b8" />
-              )}
-            </label>
+              </div>
+
+              {/* Percentage */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-app">Discount Percentage (%) <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="e.g. 50"
+                    value={percentage}
+                    onChange={(e) => setPercentage(e.target.value)}
+                    className="input-field pl-9 py-2.5 text-xs"
+                  />
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-bold text-xs">%</span>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-app">Description</label>
+                <textarea
+                  placeholder="Briefly describe the promotional campaign terms..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows="3"
+                  className="input-field py-2.5 text-xs resize-none"
+                />
+              </div>
+
+              {/* Start Date & Time */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-app">Start Date <span className="text-red-500">*</span></label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="input-field py-2 text-xs"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-app">Start Time <span className="text-red-500">*</span></label>
+                  <input
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="input-field py-2 text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* End Date & Time */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-app">End Date <span className="text-red-500">*</span></label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="input-field py-2 text-xs"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-app">End Time <span className="text-red-500">*</span></label>
+                  <input
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="input-field py-2 text-xs"
+                  />
+                </div>
+              </div>
+            </form>
+
+            {/* Footer buttons */}
+            <div className="border-t border-app pt-4 mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => handleSave("saved")}
+                disabled={saving || publishing}
+                className="flex-1 btn-secondary py-2.5 text-xs font-semibold"
+              >
+                {saving ? "Saving..." : "Save Draft"}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSave("published")}
+                disabled={saving || publishing}
+                className="flex-1 btn-primary py-2.5 text-xs font-semibold"
+              >
+                {publishing ? "Publishing..." : "Publish Campaign"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAddOffer(false)}
+                className="px-4 py-2.5 rounded-lg border border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white font-semibold text-xs transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-          {/* Offer Name */}
-
-          <input
-            placeholder="Offer Name"
-            value={offerName}
-            onChange={(e) => setOfferName(e.target.value)}
-            style={{
-              width: "100%",
-              height: "34px",
-              marginBottom: "8px",
-              border: "1px solid #4b5563",
-              borderRadius: "4px",
-              background: "#111827",
-              color: "#fff",
-              padding: "0 10px",
-            }}
-          />
-
-
-          <input
-            placeholder="Offer Percentage (Ex: 50%)"
-            value={percentage}
-            onChange={(e) => setPercentage(e.target.value)}
-            style={{
-              width: "100%",
-              height: "34px",
-              marginBottom: "8px",
-              border: "1px solid #4b5563",
-              borderRadius: "4px",
-              background: "#111827",
-              color: "#fff",
-              padding: "0 10px",
-            }}
-          />
-          {/* Description */}
-
-          <textarea
-            placeholder="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows="3"
-            style={{
-              width: "100%",
-              marginBottom: "8px",
-              border: "1px solid #4b5563",
-              borderRadius: "4px",
-              background: "#111827",
-              color: "#fff",
-              padding: "8px",
-              resize: "none",
-            }}
-          />
-
-          {/* Dates */}
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "8px",
-              marginBottom: "12px",
-            }}
-          >
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-
-            <input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-            />
-
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
-
-            <input
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-            />
-          </div>
-          <div
-            style={{
-              display: "flex",
-              gap: "8px",
-            }}
-          >
-            <button
-              onClick={handleSave}
-              style={{
-                flex: 1,
-                background: "#22c55e",
-                color: "#fff",
-                height: "36px",
-                border: "none",
-                borderRadius: "6px",
-                fontWeight: "600",
-                cursor: "pointer",
-              }}
-            >
-              Save
-            </button>
-
-            <button
-              onClick={handlePublish}
-              style={{
-                flex: 1,
-                background: "#3b82f6",
-                color: "#fff",
-                height: "36px",
-                border: "none",
-                borderRadius: "6px",
-                fontWeight: "600",
-                cursor: "pointer",
-              }}
-            >
-              Publish
-            </button>
-
-
-            <button
-              onClick={() => setShowAddOffer(false)}
-              style={{
-                flex: 1,
-                background: "#ef4444",
-                color: "#fff",
-                height: "36px",
-                border: "none",
-                borderRadius: "6px",
-                fontWeight: "600",
-                cursor: "pointer",
-              }}
-            >
-              Cancel
-            </button>
-
-          </div>
-
-
         </div>
-      </div>
-    )}
-  </div>
-);
+      )}
+    </div>
+  );
 }

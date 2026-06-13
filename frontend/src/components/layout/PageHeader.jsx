@@ -63,74 +63,72 @@ export default function PageHeader({ title }) {
   }
 
   return (
-    <div className="mb-6 flex bg-app items-center justify-between gap-4">
+    <div className="flex bg-app/80 backdrop-blur-md py-3.5 px-6 items-center top-0 justify-between gap-4 border-b border-app">
       {/* Left Side */}
       <div>
-        <h1 className="text-2xl font-bold tracking-normal text-app">
+        <h1 className="text-sm font-bold tracking-tight text-app uppercase">
           {title}
         </h1>
       </div>
 
       {/* Right Side */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3.5">
         {/* Search */}
         <div className="relative hidden md:block">
           <Search
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+            size={14}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted transition-colors group-focus-within:text-brand-500"
           />
 
           <input
             type="text"
-            placeholder="Search..."
-            className="w-64 rounded-xl border border-app bg-surface py-2 pl-10 pr-4 outline-none"
+            placeholder="Search anything..."
+            className="w-56 rounded-lg border border-app bg-surface px-3 py-1.5 pl-9 pr-3 text-app text-xs outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30 transition-all placeholder:text-muted/60"
           />
         </div>
 
         {/* Notification */}
-        <button className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-app hover:bg-surface">
-          <Bell size={18} />
-
-          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" />
+        <button className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-app hover:bg-surface text-muted hover:text-app transition-all">
+          <Bell size={15} />
+          <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-brand-500" />
         </button>
 
         {/* Theme Toggle */}
         <button
           onClick={toggle}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-app hover:bg-surface"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-app hover:bg-surface text-muted hover:text-app transition-all"
         >
-          {isDark ? <Sun size={18} /> : <Moon size={18} />}
+          {isDark ? <Moon size={15} /> : <Sun size={15} />}
         </button>
 
         {/* Profile */}
         <div className="relative" ref={profileRef}>
-            <button
-                onClick={() => setProfileOpen((v) => !v)}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500 text-white font-semibold hover:opacity-90"
-            >
-    
-                {initial}
-            </button>
+          <button
+            onClick={() => setProfileOpen((v) => !v)}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-white text-xs font-bold shadow-glow-sm hover:opacity-90 transition-opacity"
+          >
+            {initial}
+          </button>
 
           {profileOpen && (
-            <div className="absolute right-0 top-14 z-50 w-64 rounded-xl border border-app bg-app p-4 shadow-xl">
-              <div className="mb-4 border-b border-app pb-4">
+            <div className="absolute right-0 top-11 z-50 w-64 rounded-xl border border-app bg-surface p-4 shadow-elevated animate-slide-up">
+              <div className="mb-3 border-b border-app pb-3">
                 <ProfileCard admin={admin} />
               </div>
 
               <button
                 onClick={goToSettings}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 hover:bg-surface"
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-app hover:bg-app transition-colors"
               >
-                <Settings size={16} />
+                <Settings size={14} className="text-muted" />
                 Settings
               </button>
 
               <button
                 onClick={handleLogout}
-                className="mt-2 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                className="mt-1 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/20 transition-colors"
               >
-                <LogOut size={16} />
+                <LogOut size={14} />
                 Logout
               </button>
             </div>
