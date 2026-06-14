@@ -49,14 +49,14 @@ function RowActions({ customer, onView, onEdit, onStatusToggle }) {
     <div className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="p-1.5 rounded-lg hover:bg-surface text-muted hover:text-app transition-colors"
+        className="p-1.5 rounded-lg hover:bg-app text-muted hover:text-app transition-colors"
       >
         <MoreVertical size={16} />
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-8 z-20 w-44 bg-app border border-app rounded-xl shadow-lg overflow-hidden">
+          <div className="absolute right-0 top-8 z-20 w-44 bg-surface border border-app rounded-xl shadow-elevated overflow-hidden animate-slide-up">
             {[
               { label: 'View Profile', icon: Eye, action: () => { onView(); setOpen(false) } },
               { label: 'Edit', icon: Edit2, action: () => { onEdit(); setOpen(false) } },
@@ -71,11 +71,11 @@ function RowActions({ customer, onView, onEdit, onStatusToggle }) {
                 key={label}
                 onClick={action}
                 className={clsx(
-                  'w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-surface',
-                  danger ? 'text-red-500 hover:text-red-600' : 'text-app'
+                  'w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold transition-colors hover:bg-app',
+                  danger ? 'text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20' : 'text-app'
                 )}
               >
-                <Icon size={14} />
+                <Icon size={13} className={clsx(danger ? 'text-red-500' : 'text-muted')} />
                 {label}
               </button>
             ))}
