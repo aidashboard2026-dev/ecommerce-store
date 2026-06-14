@@ -214,3 +214,17 @@ def remove_banner(
     _delete_banner_image_file(banner.banner_image)
     delete_banner(db, banner_id)
     return {"message": "Banner deleted successfully"}
+
+
+# ── Public banners for storefront ─────────────────────────────────────────────
+
+@router.get("/active/all", response_model=List[BannerResponse])
+def get_active_banners_storefront(
+    db: Session = Depends(get_db),
+):
+    return (
+        db.query(Banner)
+        .filter(Banner.is_active == True)
+        .order_by(Banner.sort_order.asc(), Banner.id.desc())
+        .all()
+    )

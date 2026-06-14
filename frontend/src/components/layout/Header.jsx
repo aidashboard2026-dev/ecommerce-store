@@ -21,13 +21,13 @@ import { useAuth, useTheme } from '../../hooks/useAuth'
 import { logout } from '../../store/authSlice'
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/products', label: 'Products', icon: Package },
-  { to: '/orders', label: 'Orders', icon: ShoppingCart },
-  { to: '/offers', label: 'Offers', icon: Tags },
-  { to: '/banners', label: 'Banners', icon: Zap },  
-  { to: '/customers', label: 'Customers', icon: UserRound },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/admin/products', label: 'Products', icon: Package },
+  { to: '/admin/orders', label: 'Orders', icon: ShoppingCart },
+  { to: '/admin/offers', label: 'Offers', icon: Tags },
+  { to: '/admin/banners', label: 'Banners', icon: Zap },  
+  { to: '/admin/customers', label: 'Customers', icon: UserRound },
+  { to: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 
 export default function Header() {
@@ -87,11 +87,11 @@ export default function Header() {
 
   const handleLogout = () => {
     dispatch(logout())
-    navigate('/login')
+    navigate('/admin/login')
   }
 
   const goToSettings = () => {
-    navigate('/settings')
+    navigate('/admin/settings')
     setMobileOpen(false)
   }
 

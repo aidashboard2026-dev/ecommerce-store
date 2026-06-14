@@ -18,6 +18,7 @@ class OrderBase(BaseModel):
     pincode: Optional[str] = None
 
     product_name: str
+    product_id: Optional[int] = None  # used for reliable inventory lookup
     product_image: Optional[str] = None
 
     size: Optional[str] = None

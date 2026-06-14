@@ -37,6 +37,8 @@ from app.services.product_service import (
     get_product,
     get_products_paginated,
     update_product,
+    get_products_public,
+    get_product_by_slug,
 )
 
 router = APIRouter()
@@ -567,3 +569,50 @@ def upload_product_image(
         "is_primary": set_as_primary.lower() == "true",
         "message": "Image uploaded and set as thumbnail" if set_as_primary.lower() == "true" else "Image uploaded",
     }
+
+
+# ─────────────────────────────────────────────────────────────
+# Public storefront product endpoints
+# ─────────────────────────────────────────────────────────────
+
+@router.get(
+    "/",
+    response_model=ProductListResponse,
+)
+def list_products_public(
+    search: str = "",
+    collection: Optional[str] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    sort_by: str = "newest",
+    page: int = Query(1, ge=1),
+    per_page: int = Query(15, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    return get_products_public(
+        db,
+        search=search,
+        collection=collection,
+        min_price=min_price,
+        max_price=max_price,
+        sort_by=sort_by,
+        page=page,
+        per_page=per_page,
+    )
+
+
+@router.get(
+    "/slug/{slug}",
+    response_model=ProductResponse,
+)
+def get_product_by_slug_endpoint(
+    slug: str,
+    db: Session = Depends(get_db),
+):
+    product = get_product_by_slug(db, slug)
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found",
+        )
+    return product

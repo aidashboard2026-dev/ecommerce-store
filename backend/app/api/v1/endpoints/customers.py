@@ -3,7 +3,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_current_admin
+from app.auth.dependencies import get_current_admin, get_current_customer
+from app.models.customer import Customer
 from app.database.session import get_db
 from app.models.admin import Admin
 from app.schemas.customer import (
@@ -158,3 +159,24 @@ def update_tags(
 ):
     """Replace the full tag list for a customer."""
     return update_customer_tags(db, customer_id, data.tags)
+
+
+@router.put("/profile/update", response_model=CustomerResponse)
+def update_profile(
+    profile_data: CustomerUpdate,
+    db: Session = Depends(get_db),
+    current_customer: Customer = Depends(get_current_customer),
+):
+    """Update customer's own profile details."""
+    allowed_fields = ["first_name", "last_name", "phone", "dob", "city", "state", "country"]
+    update_data = profile_data.model_dump(exclude_unset=True)
+    
+    for field in allowed_fields:
+        if field in update_data:
+            setattr(current_customer, field, update_data[field])
+            
+    db.commit()
+    db.refresh(current_customer)
+    
+    # Return with empty analytics fields to satisfy CustomerResponse
+    return current_customer

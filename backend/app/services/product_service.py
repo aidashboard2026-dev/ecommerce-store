@@ -775,3 +775,126 @@ def bulk_create_variants(
         "total_created": len(created),
         "total_failed": len(failed),
     }
+
+
+def get_products_public(
+    db: Session,
+    *,
+    search: str = "",
+    collection: Optional[str] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    sort_by: str = "newest",
+    page: int = 1,
+    per_page: int = 15,
+) -> ProductListResponse:
+    per_page = min(max(per_page, 1), MAX_PER_PAGE)
+    base_filters = [
+        Product.deleted_at.is_(None),
+        Product.status == ProductStatus.published,
+    ]
+
+    if search:
+        term = f"%{search}%"
+        sku_subq = (
+            db.query(ProductVariant.product_id)
+            .filter(ProductVariant.sku.ilike(term))
+            .subquery()
+        )
+        base_filters.append(
+            or_(
+                Product.title.ilike(term),
+                Product.description.ilike(term),
+                Product.collection.ilike(term),
+                Product.id.in_(sku_subq),
+            )
+        )
+
+    if collection:
+        base_filters.append(Product.collection == collection)
+
+    subq = (
+        db.query(
+            ProductVariant.product_id,
+            sqla_func.coalesce(sqla_func.sum(ProductVariant.stock_quantity), 0).label("total_stock"),
+            sqla_func.min(ProductVariant.selling_price).label("min_price"),
+        )
+        .group_by(ProductVariant.product_id)
+        .subquery()
+    )
+
+    query = db.query(Product).outerjoin(subq, Product.id == subq.c.product_id)
+
+    if min_price is not None:
+        query = query.filter(subq.c.min_price >= min_price)
+    if max_price is not None:
+        query = query.filter(subq.c.min_price <= max_price)
+
+    for f in base_filters:
+        query = query.filter(f)
+
+    total = query.count()
+    total_pages = math.ceil(total / per_page) if total else 1
+
+    if sort_by == "price_asc":
+        query = query.order_by(subq.c.min_price.asc(), Product.id.desc())
+    elif sort_by == "price_desc":
+        query = query.order_by(subq.c.min_price.desc(), Product.id.desc())
+    else:
+        query = query.order_by(Product.created_at.desc(), Product.id.desc())
+
+    products = (
+        query.options(selectinload(Product.variants))
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+
+    items = []
+    for p in products:
+        variants = p.variants
+        total_stock = sum(v.stock_quantity for v in variants)
+        prices = [v.selling_price for v in variants if v.selling_price is not None]
+        min_p = min(prices) if prices else None
+
+        item = ProductResponse(
+            id=p.id,
+            title=p.title,
+            slug=p.slug,
+            description=p.description,
+            collection=p.collection,
+            tags=p.tags or [],
+            status=p.status.value if hasattr(p.status, "value") else p.status,
+            is_featured=p.is_featured,
+            thumbnail=p.thumbnail,
+            images=[],
+            seo_title=p.seo_title,
+            seo_description=p.seo_description,
+            total_stock=total_stock,
+            min_price=min_p,
+            created_at=p.created_at,
+            updated_at=p.updated_at,
+            variants=variants,
+        )
+        items.append(item)
+
+    return ProductListResponse(
+        items=items,
+        total=total,
+        page=page,
+        per_page=per_page,
+        total_pages=total_pages,
+    )
+
+
+def get_product_by_slug(db: Session, slug: str) -> Optional[Product]:
+    return (
+        db.query(Product)
+        .options(selectinload(Product.variants))
+        .filter(
+            Product.slug == slug,
+            Product.deleted_at.is_(None),
+            Product.status == ProductStatus.published,
+        )
+        .first()
+    )

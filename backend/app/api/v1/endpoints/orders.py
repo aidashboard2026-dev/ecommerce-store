@@ -4,9 +4,10 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_current_admin
+from app.auth.dependencies import get_current_admin, get_current_customer
 from app.database.session import get_db
 from app.models.admin import Admin
+from app.models.customer import Customer
 from app.models.order import Order
 from app.models.product import Product, ProductVariant
 from app.schemas.order import OrderCreate, OrderResponse, OrderUpdate
@@ -249,4 +250,155 @@ def update_tracking(
     order.tracking_status = tracking_status
     db.commit()
     db.refresh(order)
+    return order
+
+
+# ── Customer storefront order endpoints ────────────────────────────────────────
+
+@router.post("/customer", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
+def create_customer_order(
+    order_in: OrderCreate,
+    db: Session = Depends(get_db),
+    current_customer: Customer = Depends(get_current_customer),
+):
+    order_number = _generate_order_number(db)
+    
+    delivery_days_map = {
+        "Chennai": 3, "Coimbatore": 4, "Salem": 5, "Madurai": 6,
+        "Trichy": 4, "Erode": 4, "Tiruppur": 4, "Vellore": 5,
+        "Thanjavur": 5, "Tirunelveli": 7, "Thoothukudi": 7, "Dindigul": 5,
+        "Namakkal": 4, "Karur": 4, "Kanchipuram": 3, "Cuddalore": 5,
+        "Nagapattinam": 6, "Ramanathapuram": 7, "Sivagangai": 6,
+        "Virudhunagar": 6, "Kanyakumari": 7, "Dharmapuri": 5,
+        "Krishnagiri": 5, "Ariyalur": 5, "Perambalur": 5, "Pudukkottai": 6,
+        "Nilgiris": 6, "Tenkasi": 7, "Ranipet": 4, "Tirupathur": 5,
+        "Mayiladuthurai": 6,
+    }
+
+    delivery_days = delivery_days_map.get(order_in.city, 5)
+    now_utc = datetime.now(timezone.utc)
+    expected_delivery_date = now_utc + timedelta(days=delivery_days)
+
+    data = order_in.model_dump()
+    data.pop("order_number", None)
+    
+    data["customer_name"] = f"{current_customer.first_name} {current_customer.last_name}"
+    data["customer_email"] = current_customer.email
+    data["customer_phone"] = current_customer.phone or order_in.customer_phone
+    data["delivery_days"] = delivery_days
+    data["expected_delivery_date"] = expected_delivery_date
+
+    # ── Inventory check and decrement ─────────────────────────────────────────
+    variant_to_decrement = None
+    if order_in.size:
+        variant_q = (
+            db.query(ProductVariant)
+            .join(Product, Product.id == ProductVariant.product_id)
+            .filter(
+                ProductVariant.size == order_in.size,
+                Product.deleted_at.is_(None),
+            )
+        )
+        # Prefer product_id match (reliable); fall back to title match (legacy)
+        if order_in.product_id:
+            variant_q = variant_q.filter(Product.id == order_in.product_id)
+        elif order_in.product_name:
+            variant_q = variant_q.filter(Product.title == order_in.product_name)
+        else:
+            variant_q = None
+
+        if variant_q is not None:
+            if order_in.color:
+                variant_q = variant_q.filter(ProductVariant.color == order_in.color)
+            variant_to_decrement = variant_q.first()
+
+        if variant_to_decrement is not None:
+            qty = order_in.quantity or 1
+            if variant_to_decrement.stock_quantity < qty:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=(
+                        f"Insufficient stock for '{order_in.product_name}' "
+                        f"(size: {order_in.size}). "
+                        f"Available: {variant_to_decrement.stock_quantity}, "
+                        f"requested: {qty}."
+                    ),
+                )
+
+    order = Order(order_number=order_number, **data)
+    order.ordered_at = now_utc
+    order.expected_delivery_date = expected_delivery_date
+
+    db.add(order)
+
+    if variant_to_decrement is not None:
+        variant_to_decrement.stock_quantity -= (order_in.quantity or 1)
+
+    db.commit()
+    db.refresh(order)
+    return order
+
+
+@router.get("/customer/all", response_model=List[OrderResponse])
+def list_customer_orders(
+    db: Session = Depends(get_db),
+    current_customer: Customer = Depends(get_current_customer),
+):
+    return (
+        db.query(Order)
+        .filter(Order.customer_email == current_customer.email)
+        .order_by(Order.ordered_at.desc(), Order.id.desc())
+        .all()
+    )
+
+
+@router.get("/customer/{order_id}", response_model=OrderResponse)
+def get_customer_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_customer: Customer = Depends(get_current_customer),
+):
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+    if order.customer_email != current_customer.email:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    return order
+
+
+@router.post("/customer/{order_id}/cancel", response_model=OrderResponse)
+def cancel_customer_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_customer: Customer = Depends(get_current_customer),
+):
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+    if order.customer_email != current_customer.email:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    
+    if order.tracking_status in ["SHIPPED", "DELIVERED"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Cannot cancel order that has already been shipped or delivered"
+        )
+
+    if order.tracking_status != "CANCELLED":
+        _restore_inventory_for_order(db, order)
+
+    order.tracking_status = "CANCELLED"
+    db.commit()
+    db.refresh(order)
+    return order
+
+
+@router.get("/track/{order_number}", response_model=OrderResponse)
+def track_order_by_number(
+    order_number: str,
+    db: Session = Depends(get_db),
+):
+    order = db.query(Order).filter(Order.order_number == order_number).first()
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
     return order

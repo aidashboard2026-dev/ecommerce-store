@@ -19,13 +19,20 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Don't redirect signup/customer-login pages — they produce intentional 401s
-      const publicPaths = ['/login', '/signup']
+      const publicPaths = ['/login', '/signup', '/auth/login', '/auth/signup']
       const isPublicPage = publicPaths.some(p => window.location.pathname.startsWith(p))
       if (!isPublicPage) {
+        const isAdminPage = window.location.pathname.startsWith('/admin')
         localStorage.removeItem('token')
         localStorage.removeItem('admin')
-        window.location.href = '/login'
+        localStorage.removeItem('customer')
+        localStorage.removeItem('customer_token')
+
+        if (isAdminPage) {
+          window.location.href = '/admin/login'
+        } else {
+          window.location.href = '/auth/login'
+        }
       }
     }
     return Promise.reject(error)
@@ -132,6 +139,27 @@ export const productsAPI = {
   // Backward-compat alias
   deleteImage: (productId) =>
     api.delete(`/products/admin/images/${productId}`),
+}
+
+// ─── Storefront Client ────────────────────────────────────────────────────────
+export const storefrontAPI = {
+  // Products
+  getProducts: (params = {}) => api.get('/products/', { params }),
+  getProductBySlug: (slug) => api.get(`/products/slug/${slug}`),
+  
+  // Banners & Offers
+  getBanners: () => api.get('/banners/active/all'),
+  getOffers: () => api.get('/offers/active/all'),
+  
+  // Orders
+  createOrder: (data) => api.post('/orders/customer', data),
+  getOrders: () => api.get('/orders/customer/all'),
+  getOrder: (id) => api.get(`/orders/customer/${id}`),
+  cancelOrder: (id) => api.post(`/orders/customer/${id}/cancel`),
+  trackOrder: (orderNumber) => api.get(`/orders/track/${orderNumber}`),
+  
+  // Profile
+  updateProfile: (data) => api.put('/customers/profile/update', data),
 }
 
 export default api

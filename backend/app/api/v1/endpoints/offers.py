@@ -4,6 +4,7 @@ from datetime import date, datetime, time, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_admin
@@ -259,3 +260,23 @@ def remove_offer(
 ):
     delete_offer(db, offer_id)
     return {"message": "Offer deleted successfully"}
+
+
+# ── Public offers for storefront ──────────────────────────────────────────────
+
+@router.get("/active/all", response_model=List[OfferResponse])
+def get_active_offers_storefront(
+    db: Session = Depends(get_db),
+):
+    now = datetime.now(timezone.utc)
+    return (
+        db.query(Offer)
+        .filter(
+            Offer.status == "published",
+            or_(
+                Offer.expires_at.is_(None),
+                Offer.expires_at > now
+            )
+        )
+        .all()
+    )

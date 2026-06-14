@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { BrowserRouter } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
+import { Toaster } from 'react-hot-toast'
 import { fetchMeThunk } from './store/authSlice'
 import AppRoutes from './routes/AppRoutes'
 
@@ -34,6 +35,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <Toaster position="top-center" toastOptions={{ duration: 2500 }} />
       <AppRoutes />
     </BrowserRouter>
   )

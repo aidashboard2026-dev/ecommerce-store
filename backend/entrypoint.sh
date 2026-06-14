@@ -24,9 +24,9 @@ import sys
 
 host = os.getenv("POSTGRES_SERVER", "db")
 port = os.getenv("POSTGRES_PORT", "5432")
-user = os.getenv("POSTGRES_USER", "admin")
-password = os.getenv("POSTGRES_PASSWORD", "password")
-dbname = os.getenv("POSTGRES_DB", "admindb")
+user = os.getenv("POSTGRES_USER", "postgres")
+password = os.getenv("POSTGRES_PASSWORD", "T-Shirt-DB123")
+dbname = os.getenv("POSTGRES_DB", "postgres")
 
 max_retries = 30
 
@@ -44,6 +44,7 @@ for attempt in range(max_retries):
         sys.exit(0)
 
     except Exception as e:
+        print(f"[entrypoint] ERROR: {e}")
         print(f"[entrypoint] Waiting for PostgreSQL... ({attempt + 1}/{max_retries})")
         time.sleep(2)
 

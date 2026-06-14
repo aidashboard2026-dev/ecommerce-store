@@ -5,13 +5,13 @@ import PageHeader from '../components/layout/PageHeader'
 
 
 const pageTitles = {
-  '/': 'Dashboard',
-  '/products': 'Products',
-  '/orders': 'Orders',
-  '/offers': 'Offers',
-  '/banners': 'Banners',
-  '/customers': 'Customers',
-  '/settings': 'Settings',
+  '/admin': 'Dashboard',
+  '/admin/products': 'Products',
+  '/admin/orders': 'Orders',
+  '/admin/offers': 'Offers',
+  '/admin/banners': 'Banners',
+  '/admin/customers': 'Customers',
+  '/admin/settings': 'Settings',
 }
 
 export default function MainLayout() {
