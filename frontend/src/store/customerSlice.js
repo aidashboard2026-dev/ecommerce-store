@@ -74,7 +74,6 @@ const customerSlice = createSlice({
       state.error = null
       localStorage.removeItem(TOKEN_KEY)
       localStorage.removeItem(CUSTOMER_KEY)
-      localStorage.removeItem('token')
     },
     clearCustomerError(state) {
       state.error = null
@@ -89,7 +88,6 @@ const customerSlice = createSlice({
         state.customer = action.payload.customer
         localStorage.setItem(TOKEN_KEY, action.payload.access_token)
         localStorage.setItem(CUSTOMER_KEY, JSON.stringify(action.payload.customer))
-        localStorage.setItem('token', action.payload.access_token)
       })
       .addCase(customerLoginThunk.rejected, (state, action) => {
         state.loading = false
@@ -112,7 +110,6 @@ const customerSlice = createSlice({
         state.customer = null
         localStorage.removeItem(TOKEN_KEY)
         localStorage.removeItem(CUSTOMER_KEY)
-        localStorage.removeItem('token')
       })
 
       .addCase(updateCustomerProfileThunk.fulfilled, (state, action) => {

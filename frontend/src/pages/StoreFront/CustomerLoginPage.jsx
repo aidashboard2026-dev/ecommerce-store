@@ -21,8 +21,7 @@ export default function CustomerLoginPage() {
     const result = await dispatch(customerLoginThunk({ email, password }))
     if (customerLoginThunk.fulfilled.match(result)) {
       toast.success('Welcome back!')
-      const redirectTo = location.state?.from || '/profile'
-      navigate(redirectTo, { replace: true })
+      navigate('/', { replace: true })
     }
   }
 

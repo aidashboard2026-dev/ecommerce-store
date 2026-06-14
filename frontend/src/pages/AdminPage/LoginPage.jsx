@@ -29,7 +29,7 @@ export default function LoginPage() {
     )
 
     if (loginThunk.fulfilled.match(result)) {
-      window.location.href = "/"
+      window.location.href = "/admin"
     }
   }
 

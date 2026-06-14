@@ -9,7 +9,15 @@ const api = axios.create({
 
 // ── Attach JWT token to every request ────────────────────────────────────────
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
+  const isCustomerApi = 
+    config.url.includes('/orders/customer') || 
+    config.url.includes('/customers/profile') || 
+    config.url.includes('/auth/customer')
+
+  const token = isCustomerApi 
+    ? localStorage.getItem('customer_token') 
+    : localStorage.getItem('token')
+
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
@@ -19,19 +27,23 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      const publicPaths = ['/login', '/signup', '/auth/login', '/auth/signup']
+      const publicPaths = ['/login', '/signup', '/auth/login', '/auth/signup', '/admin/login', '/admin/signup']
       const isPublicPage = publicPaths.some(p => window.location.pathname.startsWith(p))
       if (!isPublicPage) {
-        const isAdminPage = window.location.pathname.startsWith('/admin')
-        localStorage.removeItem('token')
-        localStorage.removeItem('admin')
-        localStorage.removeItem('customer')
-        localStorage.removeItem('customer_token')
+        const url = error.config?.url || ''
+        const isCustomerApi = 
+          url.includes('/orders/customer') || 
+          url.includes('/customers/profile') || 
+          url.includes('/auth/customer')
 
-        if (isAdminPage) {
-          window.location.href = '/admin/login'
-        } else {
+        if (isCustomerApi) {
+          localStorage.removeItem('customer_token')
+          localStorage.removeItem('customer')
           window.location.href = '/auth/login'
+        } else {
+          localStorage.removeItem('token')
+          localStorage.removeItem('admin')
+          window.location.href = '/admin/login'
         }
       }
     }
