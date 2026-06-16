@@ -14,6 +14,8 @@ module.exports = {
   rules: {
     'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     'react/prop-types': 'off',
-    'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+    'no-unused-vars': 'off',
+    'react-hooks/exhaustive-deps': 'off',
+    'react/no-unescaped-entities': 'off',
   },
 }

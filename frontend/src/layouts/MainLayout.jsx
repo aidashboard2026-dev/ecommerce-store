@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import clsx from 'clsx'
 
 import Header from '../components/layout/Header'
@@ -21,6 +22,7 @@ export default function MainLayout() {
 
   const mainRef = useRef(null)
   const [isScrolled, setIsScrolled] = useState(false)
+  const sidebarOpen = useSelector((s) => s.ui.sidebarOpen)
 
   useEffect(() => {
     const element = mainRef.current
@@ -45,7 +47,11 @@ export default function MainLayout() {
         className="h-screen w-full overflow-y-auto overflow-x-hidden overscroll-none"
       >
         {/* Sticky Header */}
-        <div className="sticky top-0 z-20 transition-all duration-200 md:pl-[240px]">
+        <div
+          className={clsx(
+            'md:sticky md:top-0 z-20 md:pl-60 md:transition-all md:duration-300',
+          )}
+        >
           <div className="mx-auto w-full max-w-[1400px]">
             <PageHeader title={title} />
           </div>
@@ -53,7 +59,9 @@ export default function MainLayout() {
 
         {/* Page Content */}
         <div
-          className="mx-auto w-full max-w-[1400px] animate-slide-up md:pl-[240px]"
+          className={clsx(
+            'mx-auto w-full md:pl-60 md:pb-0 pb-20 max-w-[1400px] animate-slide-up transition-all duration-300',
+          )}
           key={location.pathname}
         >
           <div className="px-6 py-6 md:px-8">

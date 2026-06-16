@@ -1,6 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
-import { BarChart3, ChevronLeft, ChevronRight, LineChart as LineChartIcon } from 'lucide-react'
+import {
+  BarChart3,
+  CalendarDays,
+  CalendarRange,
+  ChevronLeft,
+  ChevronRight,
+  LineChart as LineChartIcon,
+} from 'lucide-react'
 import {
   Bar,
   BarChart,
@@ -42,10 +49,10 @@ function ControlButton({ active, children, className, ...props }) {
       type="button"
       aria-pressed={active}
       className={clsx(
-        'inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-200 active:scale-95',
+        'inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-medium transition-all',
         active
-          ? 'bg-brand-500 text-white shadow-sm shadow-brand-500/20'
-          : 'border border-app bg-app text-muted hover:text-app',
+          ? 'bg-brand-500 text-white'
+          : 'text-muted hover:text-app',
         className
       )}
       {...props}
@@ -98,7 +105,13 @@ export default function SalesDashboard({ isDark }) {
     setPeriod(nextPeriod)
     setAnchorDate(todayISO())
   }
+  const togglePeriod = () => {
+    handlePeriodChange(period === 'weekly' ? 'monthly' : 'weekly')
+  }
 
+  const toggleChartType = () => {
+    setChartType((prev) => (prev === 'bar' ? 'line' : 'bar'))
+  }
   const movePeriod = (direction) => {
     setAnchorDate((current) => {
       const next = parseISODate(current)
@@ -126,9 +139,9 @@ export default function SalesDashboard({ isDark }) {
   }
 
   return (
-    <div className="card p-5 shadow-sm sm:p-6 xl:col-span-2">
-      <div className="mb-6 space-y-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+    <div className="card w-full min-w-0 p-4 shadow-sm sm:p-4">
+      <div className="flex justify-between mb-5">
+        <div className="flex gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="font-display text-lg font-bold text-app">Sales Dashboard</h2>
             <p className="mt-1 text-sm text-muted">
@@ -137,26 +150,34 @@ export default function SalesDashboard({ isDark }) {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-app p-1">
-            <ControlButton active={period === 'weekly'} onClick={() => handlePeriodChange('weekly')}>
-              Weekly
-            </ControlButton>
-            <ControlButton active={period === 'monthly'} onClick={() => handlePeriodChange('monthly')}>
-              Monthly
-            </ControlButton>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-app p-1">
-            <ControlButton active={chartType === 'bar'} onClick={() => setChartType('bar')}>
-              <BarChart3 size={15} />
-              Bar
-            </ControlButton>
-            <ControlButton active={chartType === 'line'} onClick={() => setChartType('line')}>
-              <LineChartIcon size={15} />
-              Line
-            </ControlButton>
-          </div>
+        <div className="flex items-center justify-end gap-2">
+         {/* Weekly / Monthly Toggle */}
+         <button
+           type="button"
+           onClick={togglePeriod}
+           className="flex h-9 w-9 items-center justify-center rounded-md bg-app text-muted transition hover:text-app"
+           title={period === 'weekly' ? 'Weekly' : 'Monthly'}
+         >
+           {period === 'weekly' ? (
+             <CalendarDays size={16} />
+           ) : (
+             <CalendarRange size={16} />
+           )}
+         </button>
+         
+         {/* Bar / Line Toggle */}
+         <button
+           type="button"
+           onClick={toggleChartType}
+           className="flex h-9 w-9 items-center justify-center rounded-md bg-app text-muted transition hover:text-app"
+           title={chartType === 'bar' ? 'Bar Chart' : 'Line Chart'}
+         >
+           {chartType === 'bar' ? (
+             <BarChart3 size={16} />
+           ) : (
+             <LineChartIcon size={16} />
+           )}
+         </button>
         </div>
       </div>
 
@@ -181,7 +202,7 @@ export default function SalesDashboard({ isDark }) {
                 }}
               />
               <Tooltip contentStyle={tooltipStyle} formatter={(value) => [formatCurrency(value), 'Sales Amount']} />
-              <Bar dataKey="amount" fill="#5865f2" radius={[8, 8, 3, 3]} barSize={period === 'weekly' ? 34 : 18} />
+              <Bar dataKey="amount" fill="#6366f1" radius={[3, 3, 0, 0]} barSize={period === 'weekly' ? 34 : 18} />
             </BarChart>
           ) : (
             <LineChart key={`line-${period}`} {...sharedChartProps}>
@@ -205,32 +226,34 @@ export default function SalesDashboard({ isDark }) {
               <Line
                 type="monotone"
                 dataKey="amount"
-                stroke="#5865f2"
+                stroke="#6366f1"
                 strokeWidth={3}
-                dot={{ r: 4, fill: '#5865f2', strokeWidth: 0 }}
-                activeDot={{ r: 6, fill: '#5865f2', stroke: '#fff', strokeWidth: 2 }}
+                dot={{ r: 4, fill: '#6366f1', strokeWidth: 0 }}
+                activeDot={{ r: 6, fill: '#6366f1', stroke: '#fff', strokeWidth: 2 }}
               />
             </LineChart>
           )}
         </ResponsiveContainer>
       </div>
 
-      <div className="mt-5 flex items-center justify-between gap-3 border-t border-app pt-4">
+      <div className="mt-4 flex items-center justify-center gap-3">
         <button
           type="button"
           onClick={() => movePeriod(-1)}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-app bg-app text-muted transition-all duration-200 hover:text-app active:scale-95"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl hover:border hover:border-app hover:bg-app text-muted transition-all duration-200 hover:text-app active:scale-95"
           aria-label={period === 'weekly' ? 'Previous week' : 'Previous month'}
         >
           <ChevronLeft size={18} />
         </button>
-        <p className="min-w-0 flex-1 text-center text-sm font-semibold text-app">
+
+        <p className="text-center text-sm font-semibold text-app">
           {period === 'weekly' ? 'Week' : '12 months ending'} - {sales.range_label || anchorDate}
         </p>
+
         <button
           type="button"
           onClick={() => movePeriod(1)}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-app bg-app text-muted transition-all duration-200 hover:text-app active:scale-95"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl hover:border hover:border-app hover:bg-app text-muted transition-all duration-200 hover:text-app active:scale-95"
           aria-label={period === 'weekly' ? 'Next week' : 'Next month'}
         >
           <ChevronRight size={18} />
