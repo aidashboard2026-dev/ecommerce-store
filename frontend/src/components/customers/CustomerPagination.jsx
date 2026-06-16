@@ -1,6 +1,7 @@
 import React from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import clsx from 'clsx'
+import Select from '../ui/Select'
 
 export default function CustomerPagination({ page, pages, perPage, total, onPage, onPerPage }) {
   if (!total) return null
@@ -25,15 +26,12 @@ export default function CustomerPagination({ page, pages, perPage, total, onPage
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4 px-1">
       <div className="flex items-center gap-3 text-sm text-muted">
         <span>Showing {start}–{end} of {total.toLocaleString()}</span>
-        <select
+        <Select
           value={perPage}
           onChange={e => onPerPage(Number(e.target.value))}
-          className="input-field py-1.5 px-3 w-auto text-sm"
-        >
-          {[10, 20, 50, 100].map(n => (
-            <option key={n} value={n}>{n} per page</option>
-          ))}
-        </select>
+          className="w-auto text-sm py-1.5 min-w-[120px]"
+          options={[10, 20, 50, 100].map(n => ({ value: n, label: `${n} per page` }))}
+        />
       </div>
 
       <div className="flex items-center gap-1">

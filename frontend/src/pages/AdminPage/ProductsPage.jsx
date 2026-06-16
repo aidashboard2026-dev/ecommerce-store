@@ -17,15 +17,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Search, Edit, Eye, EyeOff, Package,
   Trash2, ChevronLeft, ChevronRight,
-  AlertTriangle, Layers, MoreVertical, ImageIcon
+  AlertTriangle, Layers, MoreVertical, ImageIcon, Loader2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import Spinner from '../../components/common/Spinner'
+import clsx from 'clsx'
 import { productsAPI as productsApi } from '../../services/api'
 import { formatPrice, getImageUrl, useDebounce } from '../../utils/productUtils'
 import InlineProductForm from '../../components/products/InlineProductForm'
 import ImageUploadModal from '../../components/products/ImageUploadModal'
 import VariantFormModal from '../../components/products/VariantFormModal'
+import PageHeader from '../../components/ui/PageHeader'
+import SearchBar from '../../components/ui/SearchBar'
+import Badge from '../../components/ui/Badge'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -89,9 +93,9 @@ const ImageStrip = React.memo(function ImageStrip({ thumbnail }) {
 // ─── Stock badge ──────────────────────────────────────────────────────────────
 
 function StockBadge({ stock }) {
-  if (stock === 0) return <span className="text-sm font-semibold text-red-500 flex items-center gap-1"><AlertTriangle size={12} />Out</span>
-  if (stock <= 5) return <span className="text-sm font-semibold text-amber-500">{stock} low</span>
-  return <span className="text-sm font-semibold text-app">{stock}</span>
+  if (stock === 0) return <Badge label="Out" variant="danger" dot />
+  if (stock <= 5) return <Badge label={`${stock} Low`} variant="warning" dot />
+  return <Badge label={`${stock} stock`} variant="success" />
 }
 
 // ─── Delete confirm button ────────────────────────────────────────────────────
@@ -116,7 +120,7 @@ function DeleteButton({ onConfirm, loading }) {
       title={confirming ? 'Confirm delete?' : 'Delete'}
       className={`btn-tbl-delete ${confirming ? 'confirming' : ''}`}
     >
-      {loading ? <Spinner size="sm" /> : <Trash2 size={12} />}
+      {loading ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
     </button>
   )
 }
@@ -337,45 +341,45 @@ export default function ProductsPage() {
   ), [qc])
 
   return (
-    <div className="space-y-4 py-3 sm:py-5">
+    <div className="space-y-6 py-2">
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between gap-4 bg-surface border border-app rounded-xl px-4 py-3">
-        <div>
-          <h1 className="font-display font-bold text-lg sm:text-xl text-app leading-tight">Products</h1>
-          <p className="text-muted text-xs mt-0.5 flex items-center gap-1.5">
-            <span className="inline-flex items-center justify-center bg-brand-500 text-white text-[10px] font-bold rounded px-1.5 py-0.5">{data?.total ?? 0}</span>
+      <PageHeader
+        title="Products"
+        description={
+          <span className="flex items-center gap-1.5 leading-none">
+            <span className="inline-flex items-center justify-center bg-brand-500/10 text-brand-500 text-[10px] font-bold rounded px-1.5 py-0.5 border border-brand-500/10">
+              {data?.total ?? 0}
+            </span>
             total items
-            {isFetching && !isLoading && <Spinner size="sm" />}
-          </p>
-        </div>
-        <button
-          onClick={() => setFormModal({ open: true, product: null })}
-          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors flex-shrink-0"
-        >
-          <Plus size={13} /> Add Product
-        </button>
-      </div>
+            {isFetching && !isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-500" />}
+          </span>
+        }
+        actions={
+          <button
+            onClick={() => setFormModal({ open: true, product: null })}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus size={15} /> Add Product
+          </button>
+        }
+      />
 
       {/* ── Filters ── */}
-      <div className="flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search products, SKUs, collections…"
-            className="w-full border border-app bg-app rounded-lg pl-8 pr-8 py-1.5 text-xs text-app placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-all" />
-          {search && (
-            <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-app">
-              <span className="text-xs">✕</span>
-            </button>
-          )}
-        </div>
-        <div className="flex gap-1">
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <SearchBar
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          onClear={() => setSearch('')}
+          placeholder="Search products, SKUs, collections…"
+          className="max-w-md w-full"
+        />
+        <div className="flex gap-1 self-start sm:self-auto overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
           {['', ...STATUS_OPTIONS].map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
-              className={`px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-all ${statusFilter === s
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${statusFilter === s
                   ? 'bg-brand-500 text-white border-brand-500'
-                  : 'border-app text-muted hover:text-app hover:border-brand-400'
+                  : 'border-app text-muted hover:text-app hover:bg-surface-hover'
                 }`}>
               {s ? s.charAt(0).toUpperCase() + s.slice(1) : 'All'}
             </button>
@@ -401,9 +405,9 @@ export default function ProductsPage() {
             </div>
           ))
         ) : isError ? (
-          <div className="card">{errorState}</div>
+          <div className="card p-6">{errorState}</div>
         ) : data?.items?.length === 0 ? (
-          <div className="card">{emptyState}</div>
+          <div className="card p-6">{emptyState}</div>
         ) : (
           data?.items?.map(product => (
             <ProductCard
@@ -421,82 +425,96 @@ export default function ProductsPage() {
       </div>
 
       {/* ── Desktop: Inventory table ── */}
-      <div className="hidden lg:block bg-app border border-app rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="inv-table">
-            <thead>
-              <tr>
-                <th>Products</th>
-                <th>Code</th>
-                <th>Original Price</th>
-                <th>Selling Price</th>
-                <th>Discount</th>
-                <th>Stock</th>
-                <th>Size</th>
-                <th>Status</th>
-                <th>Edit</th>
-                <th>Delete</th>
-                <th>Publish</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                Array(8).fill(0).map((_, i) => (
-                  <tr key={i}>
-                    {Array(11).fill(0).map((_, j) => (
-                      <td key={j}><div className={`h-3 bg-surface rounded animate-pulse ${j === 0 ? 'w-32' : 'w-12'}`} /></td>
-                    ))}
-                  </tr>
-                ))
-              ) : isError ? (
-                <tr><td colSpan={11}>{errorState}</td></tr>
-              ) : data?.items?.length === 0 ? (
-                <tr><td colSpan={11}>{emptyState}</td></tr>
-              ) : (
-                data?.items?.map(product => {
-                  const v0 = (product.variants || [])[0]
-                  const sizes = [...new Set((product.variants || []).map(v => v.size))].join(', ')
-                  const discPct = v0?.discount_percentage ? `${parseFloat(v0.discount_percentage).toFixed(0)}%` : '—'
-                  return (
-                    <tr key={product.id}>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <ImageStrip thumbnail={product.thumbnail} />
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-app truncate max-w-[140px]">{product.title}</p>
-                            <p className="text-[10px] text-muted font-mono truncate max-w-[140px]">{product.collection || product.slug}</p>
-                          </div>
+      <div className="hidden lg:block card overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow hover={false}>
+              <TableHead>Products</TableHead>
+              <TableHead>Code</TableHead>
+              <TableHead>Original Price</TableHead>
+              <TableHead>Selling Price</TableHead>
+              <TableHead>Discount</TableHead>
+              <TableHead>Stock</TableHead>
+              <TableHead>Size</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="w-10">Edit</TableHead>
+              <TableHead className="w-10">Delete</TableHead>
+              <TableHead className="w-24">Publish</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              Array(8).fill(0).map((_, i) => (
+                <TableRow key={i} hover={false}>
+                  {Array(11).fill(0).map((_, j) => (
+                    <TableCell key={j}>
+                      <div className={clsx("h-3.5 bg-app border border-app/50 rounded animate-pulse", j === 0 ? "w-32" : "w-12")} />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : isError ? (
+              <TableRow hover={false}>
+                <TableCell colSpan={11}>{errorState}</TableCell>
+              </TableRow>
+            ) : data?.items?.length === 0 ? (
+              <TableRow hover={false}>
+                <TableCell colSpan={11}>{emptyState}</TableCell>
+              </TableRow>
+            ) : (
+              data?.items?.map(product => {
+                const v0 = (product.variants || [])[0]
+                const sizes = [...new Set((product.variants || []).map(v => v.size))].join(', ')
+                const discPct = v0?.discount_percentage ? `${parseFloat(v0.discount_percentage).toFixed(0)}%` : '—'
+                const statusMap = { published: 'success', draft: 'default', archived: 'warning' }
+                return (
+                  <TableRow key={product.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <ImageStrip thumbnail={product.thumbnail} />
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-app truncate max-w-[160px]">{product.title}</p>
+                          <p className="text-[10px] text-muted font-mono truncate max-w-[160px]">{product.collection || product.slug}</p>
                         </div>
-                      </td>
-                      <td><span className="sku-chip">{v0?.sku || '—'}</span></td>
-                      <td className="text-xs font-medium text-app">{formatPrice(v0?.original_price ?? product.min_price)}</td>
-                      <td className="text-xs font-medium text-green-600 dark:text-green-400">{formatPrice(v0?.selling_price)}</td>
-                      <td className="text-xs font-medium text-amber-600">{discPct}</td>
-                      <td><StockBadge stock={product.total_stock} /></td>
-                      <td className="text-xs text-muted">{sizes || '—'}</td>
-                      <td><span className={`status-pill ${product.status}`}>{product.status}</span></td>
-                      <td>
-                        <button onClick={() => openEdit(product)} title="Edit" className="btn-tbl-edit">
-                          <Edit size={12} />
-                        </button>
-                      </td>
-                      <td>
-                        <DeleteButton onConfirm={() => doDelete(product)}
-                          loading={deletingIds.has(product.id)} />
-                      </td>
-                      <td>
-                        <button onClick={() => doToggle(product)}
-                          className={`btn-tbl-publish ${product.status === 'published' ? 'is-published' : 'not-published'}`}>
-                          {product.status === 'published' ? <><EyeOff size={10} />Unpublish</> : <><Eye size={10} />Publish</>}
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-mono text-[10px] bg-app border border-app px-2 py-0.5 rounded text-app font-semibold">
+                        {v0?.sku || '—'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-medium text-app">{formatPrice(v0?.original_price ?? product.min_price)}</TableCell>
+                    <TableCell className="font-semibold text-emerald-600 dark:text-emerald-400">{formatPrice(v0?.selling_price)}</TableCell>
+                    <TableCell className="font-medium text-amber-600">{discPct}</TableCell>
+                    <TableCell><StockBadge stock={product.total_stock} /></TableCell>
+                    <TableCell className="text-muted">{sizes || '—'}</TableCell>
+                    <TableCell>
+                      <Badge
+                        label={product.status}
+                        variant={statusMap[product.status] || 'default'}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <button onClick={() => openEdit(product)} title="Edit" className="btn-tbl-edit">
+                        <Edit size={12} />
+                      </button>
+                    </TableCell>
+                    <TableCell>
+                      <DeleteButton onConfirm={() => doDelete(product)}
+                        loading={deletingIds.has(product.id)} />
+                    </TableCell>
+                    <TableCell>
+                      <button onClick={() => doToggle(product)}
+                        className={clsx("btn-tbl-publish", product.status === 'published' ? 'is-published' : 'not-published')}>
+                        {product.status === 'published' ? <><EyeOff size={10} />Unpublish</> : <><Eye size={10} />Publish</>}
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
+            )}
+          </TableBody>
+        </Table>
       </div>
 
       {/* ── Pagination ── */}

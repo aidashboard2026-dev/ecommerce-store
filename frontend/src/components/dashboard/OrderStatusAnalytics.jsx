@@ -1,5 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
+import {
+  PieChart as PieIcon,
+  CircleDashed,
+} from 'lucide-react'
 
 import { ordersAPI } from '../../services/api'
 
@@ -7,7 +11,7 @@ const STATUS_CONFIG = [
   {
     key: 'orders',
     name: 'Orders',
-    color: '#5865f2',
+    color: '#6366f1',
     track: 'bg-blue-100 dark:bg-blue-950/50',
     bar: 'bg-blue-500',
   },
@@ -80,6 +84,11 @@ const renderCalloutLabel = ({ cx, cy, midAngle, outerRadius, name, percent, fill
 export default function OrderStatusAnalytics({ isDark }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
+  const [chartType, setChartType] = useState('donut')
+
+  const toggleChartType = () => {
+    setChartType((prev) => (prev === 'donut' ? 'pie' : 'donut'))
+  }
 
   useEffect(() => {
     let active = true
@@ -143,12 +152,29 @@ export default function OrderStatusAnalytics({ isDark }) {
   }
 
   return (
-    <div className="card p-6 shadow-sm">
-      <div className="mb-5">
-        <h2 className="font-display text-lg font-bold text-app">Order Status Analytics</h2>
-        <p className="mt-1 text-sm text-muted">
-          {loading ? 'Syncing order records...' : `${total.toLocaleString()} live orders`}
-        </p>
+    <div className="card w-full min-w-0 p-6 shadow-sm">
+      <div className="mb-5 flex items-start justify-between">
+        <div>
+          <h2 className="font-display text-lg font-bold text-app">
+            Order Status Analytics
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            {loading ? 'Syncing order records...' : `${total.toLocaleString()} live orders`}
+          </p>
+        </div>
+        
+        <button
+          type="button"
+          onClick={toggleChartType}
+          className="flex h-9 w-9 items-center justify-center rounded-xl bg-app text-muted transition hover:text-app"
+          title={chartType === 'donut' ? 'Donut Chart' : 'Pie Chart'}
+        >
+          {chartType === 'donut' ? (
+            <CircleDashed size={16} />
+          ) : (
+            <PieIcon size={16} />
+          )}
+        </button>
       </div>
 
       <div className="relative h-[260px]">
@@ -160,7 +186,7 @@ export default function OrderStatusAnalytics({ isDark }) {
               nameKey="name"
               cx="50%"
               cy="50%"
-              innerRadius={58}
+              innerRadius={chartType === 'donut' ? 58 : 0}
               outerRadius={86}
               paddingAngle={total > 0 ? 3 : 0}
               labelLine={false}
@@ -183,15 +209,21 @@ export default function OrderStatusAnalytics({ isDark }) {
           </PieChart>
         </ResponsiveContainer>
 
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="text-center">
-            <p className="font-display text-3xl font-bold text-app">100%</p>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted">Total</p>
+        {chartType === 'donut' && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <p className="font-display text-3xl font-bold text-app">
+                {total.toLocaleString()}
+              </p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                Total
+              </p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      <div className="mt-4 space-y-4">
+      <div className="grid grid-cols-2 gap-4">
         {chartData.map((item) => (
           <div key={item.key}>
             <div className="mb-2 flex items-center justify-between gap-3">

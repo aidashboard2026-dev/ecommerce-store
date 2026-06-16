@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Upload, X, Trash2, AlertTriangle, Package } from 'lucide-react'
+import { Upload, X, Trash2, AlertTriangle, Package, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import Modal from '../common/Modal'
-import Spinner from '../common/Spinner'
+import Modal from '../ui/Modal'
 import { productsAPI as productsApi } from '../../services/api'
 import { getImageUrl } from '../../utils/productUtils'
 
@@ -67,7 +66,7 @@ function CurrentImagePanel({ product, onDeleted }) {
           ) : (
             <button onClick={() => { setConfirmDelete(false); deleteMutation.mutate() }} disabled={deleteMutation.isPending}
               className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5">
-              {deleteMutation.isPending ? <Spinner size="sm" /> : <AlertTriangle size={12} />}
+              {deleteMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <AlertTriangle size={12} />}
               {deleteMutation.isPending ? 'Removing…' : 'Confirm remove'}
             </button>
           )}
@@ -90,7 +89,7 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
   useEffect(() => { if (!isOpen) { setFile(null); setPreview(null) } }, [isOpen])
 
   useEffect(() => {
-    return () => { if (preview) { try { URL.revokeObjectURL(preview) } catch (_) {} } }
+    return () => { if (preview) { try { URL.revokeObjectURL(preview) } catch (err) { void err } } }
   }, [preview])
 
   const handleImageDeleted = useCallback(() => { setFile(null); setPreview(null) }, [])
@@ -99,7 +98,7 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
     if (!f) return
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(f.type)) { toast.error('Only JPG, PNG, WebP allowed'); return }
     if (f.size > MAX_FILE_SIZE) { toast.error(`File must be under ${MAX_FILE_SIZE / (1024 * 1024)} MB`); return }
-    if (preview) { try { URL.revokeObjectURL(preview) } catch (_) {} }
+    if (preview) { try { URL.revokeObjectURL(preview) } catch (err) { void err } }
     setFile(f)
     setPreview(URL.createObjectURL(f))
     if (fileRef.current) fileRef.current.value = ''
@@ -145,7 +144,7 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
         </div>
         {file && (
           <button onClick={() => {
-            if (preview) { try { URL.revokeObjectURL(preview) } catch (_) {} }
+            if (preview) { try { URL.revokeObjectURL(preview) } catch (err) { void err } }
             setFile(null)
             setPreview(null)
             if (fileRef.current) fileRef.current.value = ''
@@ -157,7 +156,7 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
           <button onClick={onClose} className="btn-secondary sm:px-6">Done</button>
           <button onClick={() => uploadMutation.mutate()} disabled={!file || uploadMutation.isPending}
             className="flex-1 btn-primary flex items-center justify-center gap-2 disabled:opacity-50">
-            {uploadMutation.isPending ? <Spinner size="sm" /> : <Upload size={14} />}
+            {uploadMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
             {product?.thumbnail ? 'Replace Image' : 'Upload Image'}
           </button>
         </div>

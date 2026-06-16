@@ -2,18 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { User, Mail, Phone, Calendar, MapPin, Tag } from 'lucide-react'
 import toast from 'react-hot-toast'
-import Modal from '../common/Modal'
+import Modal from '../ui/Modal'
+import Input from '../ui/Input'
 import { customersAPI } from '../../services/api'
-
-const FIELD = ({ label, icon: Icon, error, children }) => (
-  <div>
-    <label className="block text-xs font-semibold text-muted mb-1.5">
-      <span className="flex items-center gap-1.5"><Icon size={12} />{label}</span>
-    </label>
-    {children}
-    {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-  </div>
-)
 
 const DEFAULT = {
   first_name: '', last_name: '', email: '', phone: '',
@@ -88,61 +79,99 @@ export default function CustomerFormModal({ open, onClose, customer = null }) {
     mutation.mutate(buildPayload())
   }
 
-  if (!open) return null
-
   return (
-    <Modal title={isEdit ? 'Edit Customer' : 'Add Customer'} onClose={onClose}>
-      <div className="space-y-4 p-6">
+    <Modal isOpen={open} title={isEdit ? 'Edit Customer' : 'Add Customer'} onClose={onClose}>
+      <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          <FIELD label="First Name" icon={User} error={errors.first_name}>
-            <input className="input-field" value={form.first_name} onChange={set('first_name')} placeholder="First name" />
-          </FIELD>
-          <FIELD label="Last Name" icon={User} error={errors.last_name}>
-            <input className="input-field" value={form.last_name} onChange={set('last_name')} placeholder="Last name" />
-          </FIELD>
+          <Input
+            label="First Name"
+            icon={User}
+            error={errors.first_name}
+            value={form.first_name}
+            onChange={set('first_name')}
+            placeholder="First name"
+          />
+          <Input
+            label="Last Name"
+            icon={User}
+            error={errors.last_name}
+            value={form.last_name}
+            onChange={set('last_name')}
+            placeholder="Last name"
+          />
         </div>
 
-        <FIELD label="Email" icon={Mail} error={errors.email}>
-          <input
-            className="input-field"
-            type="email"
-            value={form.email}
-            onChange={set('email')}
-            placeholder="customer@example.com"
-            disabled={isEdit}
-          />
-          {isEdit && <p className="text-xs text-muted mt-1">Email cannot be changed.</p>}
-        </FIELD>
+        <Input
+          label="Email"
+          icon={Mail}
+          error={errors.email}
+          type="email"
+          value={form.email}
+          onChange={set('email')}
+          placeholder="customer@example.com"
+          disabled={isEdit}
+          helperText={isEdit ? "Email cannot be changed." : undefined}
+        />
 
         <div className="grid grid-cols-2 gap-4">
-          <FIELD label="Phone" icon={Phone} error={errors.phone}>
-            <input className="input-field" value={form.phone} onChange={set('phone')} placeholder="+91 98765 43210" />
-          </FIELD>
-          <FIELD label="Date of Birth" icon={Calendar} error={errors.dob}>
-            <input className="input-field" type="date" value={form.dob} onChange={set('dob')} />
-          </FIELD>
+          <Input
+            label="Phone"
+            icon={Phone}
+            error={errors.phone}
+            value={form.phone}
+            onChange={set('phone')}
+            placeholder="+91 98765 43210"
+          />
+          <Input
+            label="Date of Birth"
+            icon={Calendar}
+            error={errors.dob}
+            type="date"
+            value={form.dob}
+            onChange={set('dob')}
+          />
         </div>
 
         <div className="grid grid-cols-3 gap-4">
-          <FIELD label="City" icon={MapPin} error={errors.city}>
-            <input className="input-field" value={form.city} onChange={set('city')} placeholder="City" />
-          </FIELD>
-          <FIELD label="State" icon={MapPin} error={errors.state}>
-            <input className="input-field" value={form.state} onChange={set('state')} placeholder="State" />
-          </FIELD>
-          <FIELD label="Country" icon={MapPin} error={errors.country}>
-            <input className="input-field" value={form.country} onChange={set('country')} placeholder="Country" />
-          </FIELD>
+          <Input
+            label="City"
+            icon={MapPin}
+            error={errors.city}
+            value={form.city}
+            onChange={set('city')}
+            placeholder="City"
+          />
+          <Input
+            label="State"
+            icon={MapPin}
+            error={errors.state}
+            value={form.state}
+            onChange={set('state')}
+            placeholder="State"
+          />
+          <Input
+            label="Country"
+            icon={MapPin}
+            error={errors.country}
+            value={form.country}
+            onChange={set('country')}
+            placeholder="Country"
+          />
         </div>
 
-        <FIELD label="Tags (comma-separated)" icon={Tag} error={errors.tags}>
-          <input className="input-field" value={form.tags} onChange={set('tags')} placeholder="vip, wholesale, returner" />
-        </FIELD>
+        <Input
+          label="Tags (comma-separated)"
+          icon={Tag}
+          error={errors.tags}
+          value={form.tags}
+          onChange={set('tags')}
+          placeholder="vip, wholesale, returner"
+        />
 
         <div>
-          <label className="block text-xs font-semibold text-muted mb-1.5">Internal Notes</label>
+          <label className="block text-xs font-semibold text-app mb-1.5">Internal Notes</label>
           <textarea
-            className="input-field resize-none"
+            className="input-field resize-none focus:ring-brand-500/10"
             rows={3}
             value={form.notes}
             onChange={set('notes')}
@@ -150,7 +179,7 @@ export default function CustomerFormModal({ open, onClose, customer = null }) {
           />
         </div>
 
-        <div className="flex gap-3 justify-end pt-2 border-t border-app">
+        <div className="flex gap-3 justify-end pt-4 border-t border-app">
           <button onClick={onClose} className="btn-secondary">Cancel</button>
           <button
             onClick={handleSubmit}

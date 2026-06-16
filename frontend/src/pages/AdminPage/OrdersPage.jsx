@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Search, Download, ClipboardList, CheckCircle, Package, Clock, Calendar as CalendarIcon } from "lucide-react";
+import { Search, Download, ClipboardList, CheckCircle, Package, Clock, Calendar as CalendarIcon, Loader2 } from "lucide-react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import jsPDF from "jspdf";
 import clsx from "clsx";
+
+import PageHeader from "../../components/ui/PageHeader";
+import SearchBar from "../../components/ui/SearchBar";
+import Badge from "../../components/ui/Badge";
 
 import {
   getOrders,
@@ -240,49 +244,41 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 py-2">
       {/* Upper Layout Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start gap-6">
         {/* Left Side Info */}
         <div className="flex-1 min-w-0 space-y-4 w-full">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-app">Orders</h1>
-            <p className="text-muted text-sm mt-1">Manage processing, shipment, and receipts</p>
-          </div>
+          <PageHeader
+            title="Orders"
+            description="Manage processing, shipment, and receipts"
+          />
 
           {/* Search Box */}
-          <div className="relative w-full max-w-md">
-            <Search
-              size={15}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
-            />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by Order ID, Customer, Payment..."
-              className="input-field pl-10 text-xs py-2.5"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch("")}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted hover:text-app text-xs"
-              >
-                ✕
-              </button>
-            )}
-          </div>
+          <SearchBar
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onClear={() => setSearch("")}
+            placeholder="Search by Order ID, Customer, Payment..."
+            className="max-w-md w-full"
+          />
 
           {/* Metrics Panel */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full pt-2">
             {[
-              { label: "New Orders", val: newOrders, bg: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
-              { label: "Processing", val: pendingOrders, bg: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
-              { label: "Shipped", val: shippedOrders, bg: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
-              { label: "Delivered", val: deliveredOrders, bg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+              { label: "New Orders", val: newOrders, icon: ClipboardList, color: "text-blue-500 bg-blue-500/5 border-blue-500/10 dark:bg-blue-500/10" },
+              { label: "Processing", val: pendingOrders, icon: Clock, color: "text-amber-500 bg-amber-500/5 border-amber-500/10 dark:bg-amber-500/10" },
+              { label: "Shipped", val: shippedOrders, icon: Package, color: "text-indigo-500 bg-indigo-500/5 border-indigo-500/10 dark:bg-indigo-500/10" },
+              { label: "Delivered", val: deliveredOrders, icon: CheckCircle, color: "text-emerald-500 bg-emerald-500/5 border-emerald-500/10 dark:bg-emerald-500/10" },
             ].map((stat) => (
-              <div key={stat.label} className={clsx("p-4 rounded-xl border border-app", stat.bg)}>
-                <p className="text-[10px] font-bold uppercase tracking-wider opacity-80">{stat.label}</p>
-                <p className="text-2xl font-bold font-display mt-1 tracking-tight">{stat.val}</p>
+              <div key={stat.label} className="card p-5 bg-surface border border-app rounded-xl shadow-sm flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted">{stat.label}</p>
+                  <p className="text-2xl font-bold font-display mt-2 tracking-tight text-app">{stat.val}</p>
+                </div>
+                <div className={clsx("w-9 h-9 rounded-lg border flex items-center justify-center shadow-xs shrink-0", stat.color)}>
+                  <stat.icon size={15} />
+                </div>
               </div>
             ))}
           </div>
@@ -312,7 +308,7 @@ export default function OrdersPage() {
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <div className="w-8 h-8 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
+            <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
             <p className="text-xs font-medium text-muted">Syncing orders...</p>
           </div>
         ) : filteredOrders.length === 0 ? (
@@ -462,32 +458,30 @@ export default function OrdersPage() {
                   <div className="text-center space-y-4">
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Tracking Status</p>
-                      <span
-                        className={clsx(
-                          "status-pill",
-                          order.tracking_status === "DELIVERED" && "published",
-                          order.tracking_status === "SHIPPED" && "archived",
-                          order.tracking_status === "PROCESSING" && "draft",
-                          order.tracking_status === "PLACED" && "draft"
-                        )}
-                      >
-                        {order.tracking_status}
-                      </span>
+                      <Badge
+                        label={order.tracking_status}
+                        variant={
+                          order.tracking_status === "DELIVERED"
+                            ? "success"
+                            : order.tracking_status === "SHIPPED"
+                            ? "info"
+                            : order.tracking_status === "PROCESSING"
+                            ? "warning"
+                            : "default"
+                        }
+                        dot
+                      />
                     </div>
                     
                     <div className="pt-2">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Receipt Settled</p>
                       <p className="text-xl font-bold font-display text-app">₹{order.total_amount}</p>
-                      <span
-                        className={clsx(
-                          "text-[10px] font-bold px-1.5 py-0.5 rounded-full mt-1.5 inline-block",
-                          order.payment_status === "PAID"
-                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                            : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                        )}
-                      >
-                        {order.payment_status}
-                      </span>
+                      <div className="mt-1.5">
+                        <Badge
+                          label={order.payment_status}
+                          variant={order.payment_status === "PAID" ? "success" : "warning"}
+                        />
+                      </div>
                     </div>
                   </div>
 

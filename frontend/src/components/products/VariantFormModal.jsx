@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import Modal from '../common/Modal'
-import Spinner from '../common/Spinner'
+import Modal from '../ui/Modal'
+import Input from '../ui/Input'
+import Select from '../ui/Select'
 import { productsAPI as productsApi } from '../../services/api'
 
 const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
@@ -13,37 +14,6 @@ const BLANK_VARIANT_FORM = {
   original_price: '', selling_price: '', discount_percentage: '',
   stock_quantity: 0, low_stock_threshold: 5,
 }
-
-// ─── Shared form primitives ───────────────────────────────────────────────────
-
-function FormField({ label, required, hint, children }) {
-  return (
-    <div className="space-y-1">
-      <div className="flex items-baseline justify-between">
-        <label className="block text-[11px] font-medium text-muted">
-          {label}{required && <span className="text-red-400 ml-0.5">*</span>}
-        </label>
-        {hint && <span className="text-[10px] text-muted italic">{hint}</span>}
-      </div>
-      {children}
-    </div>
-  )
-}
-
-const inputCls =
-  'w-full border border-app bg-app px-2.5 py-1.5 text-sm text-app rounded-lg ' +
-  'focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all'
-
-function StyledInput(props) { return <input className={inputCls} {...props} /> }
-function StyledSelect({ children, ...props }) {
-  return (
-    <select className={`${inputCls} appearance-none`} {...props}>
-      {children}
-    </select>
-  )
-}
-
-// ─── Modal ────────────────────────────────────────────────────────────────────
 
 export default function VariantFormModal({ isOpen, onClose, productId }) {
   const qc = useQueryClient()
@@ -92,39 +62,72 @@ export default function VariantFormModal({ isOpen, onClose, productId }) {
     <Modal isOpen={isOpen} onClose={onClose} title="Add Variant">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField label="Size" required>
-            <StyledSelect value={form.size} onChange={e => set('size', e.target.value)}>
-              {SIZE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-            </StyledSelect>
-          </FormField>
-          <FormField label="Color">
-            <StyledInput value={form.color} onChange={e => set('color', e.target.value)} placeholder="Black" />
-          </FormField>
+          <Select
+            label="Size"
+            value={form.size}
+            onChange={e => set('size', e.target.value)}
+            options={SIZE_OPTIONS.map(s => ({ value: s, label: s }))}
+          />
+          <Input
+            label="Color"
+            value={form.color}
+            onChange={e => set('color', e.target.value)}
+            placeholder="Black"
+          />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField label="Color Hex">
-            <div className="relative">
-              <StyledInput value={form.color_hex} onChange={e => set('color_hex', e.target.value)} placeholder="#1A1A1A" />
-              {/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(form.color_hex) && (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border border-app" style={{ background: form.color_hex }} />
-              )}
-            </div>
-          </FormField>
-          <FormField label="SKU" hint="leave blank to auto-generate">
-            <StyledInput value={form.sku} onChange={e => set('sku', e.target.value)} placeholder="auto: CBT-BLK-M-001" />
-          </FormField>
+          <Input
+            label="Color Hex"
+            value={form.color_hex}
+            onChange={e => set('color_hex', e.target.value)}
+            placeholder="#1A1A1A"
+            rightSlot={
+              /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(form.color_hex) ? (
+                <span className="w-4 h-4 rounded-full border border-app" style={{ backgroundColor: form.color_hex }} />
+              ) : null
+            }
+          />
+          <Input
+            label="SKU"
+            helperText="Leave blank to auto-generate"
+            value={form.sku}
+            onChange={e => set('sku', e.target.value)}
+            placeholder="auto: CBT-BLK-M-001"
+          />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <FormField label="Original Price" required>
-            <StyledInput type="number" min="0.01" step="0.01" value={form.original_price} onChange={e => set('original_price', e.target.value)} required placeholder="999" />
-          </FormField>
-          <FormField label="Selling Price" required>
-            <StyledInput type="number" min="0.01" step="0.01" value={form.selling_price} onChange={e => set('selling_price', e.target.value)} required placeholder="799"
-              className={`${inputCls} ${priceError ? 'border-red-400 focus:ring-red-400/30' : ''}`} />
-          </FormField>
-          <FormField label="Discount %">
-            <StyledInput type="number" min="0" max="100" step="0.01" value={form.discount_percentage} onChange={e => set('discount_percentage', e.target.value)} placeholder="0" readOnly={!!(form.original_price && form.selling_price)} />
-          </FormField>
+          <Input
+            label="Original Price"
+            type="number"
+            min="0.01"
+            step="0.01"
+            value={form.original_price}
+            onChange={e => set('original_price', e.target.value)}
+            required
+            placeholder="999"
+          />
+          <Input
+            label="Selling Price"
+            type="number"
+            min="0.01"
+            step="0.01"
+            value={form.selling_price}
+            onChange={e => set('selling_price', e.target.value)}
+            required
+            placeholder="799"
+            error={priceError ? 'Price exceeds original' : undefined}
+          />
+          <Input
+            label="Discount %"
+            type="number"
+            min="0"
+            max="100"
+            step="0.01"
+            value={form.discount_percentage}
+            onChange={e => set('discount_percentage', e.target.value)}
+            placeholder="0"
+            disabled
+          />
         </div>
         {priceError && (
           <p className="text-xs text-red-400 flex items-center gap-1.5 -mt-2">
@@ -132,17 +135,25 @@ export default function VariantFormModal({ isOpen, onClose, productId }) {
           </p>
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField label="Stock Qty">
-            <StyledInput type="number" min="0" value={form.stock_quantity} onChange={e => set('stock_quantity', e.target.value)} />
-          </FormField>
-          <FormField label="Low Stock Alert">
-            <StyledInput type="number" min="0" value={form.low_stock_threshold} onChange={e => set('low_stock_threshold', e.target.value)} />
-          </FormField>
+          <Input
+            label="Stock Qty"
+            type="number"
+            min="0"
+            value={form.stock_quantity}
+            onChange={e => set('stock_quantity', e.target.value)}
+          />
+          <Input
+            label="Low Stock Alert"
+            type="number"
+            min="0"
+            value={form.low_stock_threshold}
+            onChange={e => set('low_stock_threshold', e.target.value)}
+          />
         </div>
-        <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
+        <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4 border-t border-app">
           <button type="button" onClick={onClose} className="btn-secondary sm:px-6">Cancel</button>
           <button type="submit" disabled={mutation.isPending || priceError} className="flex-1 btn-primary flex items-center justify-center gap-2 disabled:opacity-50">
-            {mutation.isPending && <Spinner size="sm" />}
+            {mutation.isPending && <Loader2 size={14} className="animate-spin" />}
             Add Variant
           </button>
         </div>

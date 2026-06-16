@@ -15,11 +15,14 @@ import {
   AlertTriangle, CheckCircle, Loader2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import Spinner from '../common/Spinner'
+import clsx from 'clsx'
 import { productsAPI as productsApi } from '../../services/api'
 import {
   formatPrice, getImageUrl, revokeObjectURLs, genLocalId, isDuplicateFile,
 } from '../../utils/productUtils'
+import Select from '../ui/Select'
+import Badge from '../ui/Badge'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../ui/Table'
 
 // ─── Constants (shared with page) ────────────────────────────────────────────
 const STATUS_OPTIONS = ['draft', 'published', 'archived']
@@ -62,18 +65,18 @@ const inputCls =
 function StyledInput(props) { return <input className={inputCls} {...props} /> }
 function StyledSelect({ children, ...props }) {
   return (
-    <select className={`${inputCls} appearance-none`} {...props}>
+    <Select {...props}>
       {children}
-    </select>
+    </Select>
   )
 }
 
 // ─── Stock badge ──────────────────────────────────────────────────────────────
 
 function StockBadge({ stock }) {
-  if (stock === 0) return <span className="text-sm font-semibold text-red-500 flex items-center gap-1"><AlertTriangle size={12} />Out</span>
-  if (stock <= 5) return <span className="text-sm font-semibold text-amber-500">{stock} low</span>
-  return <span className="text-sm font-semibold text-app">{stock}</span>
+  if (stock === 0) return <Badge label="Out" variant="danger" dot />
+  if (stock <= 5) return <Badge label={`${stock} Low`} variant="warning" dot />
+  return <Badge label={`${stock} stock`} variant="success" />
 }
 
 // ─── Save Progress Overlay ────────────────────────────────────────────────────
@@ -626,50 +629,54 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
           <div className="px-6 pt-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-3">Variants</p>
             {variants.length > 0 ? (
-              <table className="w-full border-collapse border border-app rounded-xl overflow-hidden bg-surface text-xs">
-                <thead>
-                  <tr className="border-b border-app">
-                    <th className="bg-app px-3 py-2 text-left font-bold uppercase tracking-wider text-muted text-[10px]">Size</th>
-                    <th className="bg-app px-3 py-2 text-left font-bold uppercase tracking-wider text-muted text-[10px]">Actual Price</th>
-                    <th className="bg-app px-3 py-2 text-left font-bold uppercase tracking-wider text-muted text-[10px]">Discount Price</th>
-                    <th className="bg-app px-3 py-2 text-left font-bold uppercase tracking-wider text-muted text-[10px]">% off</th>
-                    <th className="bg-app px-3 py-2 text-left font-bold uppercase tracking-wider text-muted text-[10px]">Stock</th>
-                    <th className="bg-app px-3 py-2 text-left font-bold uppercase tracking-wider text-muted text-[10px]">Delete</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {variants.map((v) => (
-                    <tr key={isEdit ? v.id : v._localId} className="border-b border-app last:border-b-0 hover:bg-app/40 transition-colors">
-                      <td className="px-3 py-2.5 text-app align-middle"><span className="status-pill published text-[10px] font-bold">{v.size}</span></td>
-                      <td className="px-3 py-2.5 text-app align-middle font-medium">{formatPrice(v.original_price)}</td>
-                      <td className="px-3 py-2.5 text-app align-middle font-medium">{formatPrice(v.selling_price)}</td>
-                      <td className="px-3 py-2.5 text-app align-middle font-medium">{v.discount_percentage ? `${parseFloat(v.discount_percentage).toFixed(0)}%` : '—'}</td>
-                      <td className="px-3 py-2.5 text-app align-middle font-semibold">{isEdit ? <StockBadge stock={v.stock_quantity} /> : <span>{v.stock_quantity}</span>}</td>
-                      <td className="px-3 py-2.5 text-app align-middle">
-                        {isEdit ? (
-                          <button
-                            type="button"
-                            className="btn-secondary rounded-lg flex items-center justify-center border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white"
-                            style={{ width: 24, height: 24 }}
-                            disabled={deletingVariantIds.has(v.id)}
-                            onClick={() => deleteVariantMutation.mutate(v.id)}
-                            aria-label="Delete variant"
-                          >
-                            {deletingVariantIds.has(v.id)
-                              ? <Spinner size="sm" />
-                              : <Trash2 size={12} />}
-                          </button>
-                        ) : (
-                          <button type="button" className="btn-secondary rounded-lg flex items-center justify-center border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white" style={{ width: 24, height: 24 }}
-                            onClick={() => removeLocalVariant(v._localId)} aria-label="Remove variant">
-                            <Trash2 size={12} />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="card overflow-hidden bg-surface text-xs">
+                <Table>
+                  <TableHeader>
+                    <TableRow hover={false}>
+                      <TableHead>Size</TableHead>
+                      <TableHead>Actual Price</TableHead>
+                      <TableHead>Discount Price</TableHead>
+                      <TableHead>% off</TableHead>
+                      <TableHead>Stock</TableHead>
+                      <TableHead>Delete</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {variants.map((v) => (
+                      <TableRow key={isEdit ? v.id : v._localId}>
+                        <TableCell>
+                          <Badge label={v.size} variant="info" />
+                        </TableCell>
+                        <TableCell className="font-medium">{formatPrice(v.original_price)}</TableCell>
+                        <TableCell className="font-medium text-emerald-600 dark:text-emerald-400">{formatPrice(v.selling_price)}</TableCell>
+                        <TableCell className="font-medium text-amber-600">{v.discount_percentage ? `${parseFloat(v.discount_percentage).toFixed(0)}%` : '—'}</TableCell>
+                        <TableCell className="font-semibold">{isEdit ? <StockBadge stock={v.stock_quantity} /> : <span>{v.stock_quantity}</span>}</TableCell>
+                        <TableCell>
+                          {isEdit ? (
+                            <button
+                              type="button"
+                              className="btn-secondary rounded-lg flex items-center justify-center border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white"
+                              style={{ width: 24, height: 24 }}
+                              disabled={deletingVariantIds.has(v.id)}
+                              onClick={() => deleteVariantMutation.mutate(v.id)}
+                              aria-label="Delete variant"
+                            >
+                              {deletingVariantIds.has(v.id)
+                                ? <Loader2 size={12} className="animate-spin" />
+                                : <Trash2 size={12} />}
+                            </button>
+                          ) : (
+                            <button type="button" className="btn-secondary rounded-lg flex items-center justify-center border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white" style={{ width: 24, height: 24 }}
+                              onClick={() => removeLocalVariant(v._localId)} aria-label="Remove variant">
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             ) : (
               <p className="text-xs text-muted py-1.5">No variants yet.</p>
             )}
@@ -709,7 +716,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
           <div className="grid gap-3 p-6 border-t border-app mt-6">
             <div className="flex gap-3">
               <button type="submit" className="flex-1 btn-primary py-2.5 text-xs font-bold" disabled={isBatchSaving || editMutation.isPending}>
-                {(isBatchSaving || editMutation.isPending) ? <Spinner size="sm" /> : 'Save'}
+                {(isBatchSaving || editMutation.isPending) ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : 'Save'}
               </button>
               <button
                 type="button"
@@ -721,7 +728,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                   else batchSave('published')
                 }}
               >
-                {(isBatchSaving || editPubMutation?.isPending) ? <Spinner size="sm" /> : 'Publish'}
+                {(isBatchSaving || editPubMutation?.isPending) ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : 'Publish'}
               </button>
             </div>
             <button type="button" className="w-full px-4 py-2.5 rounded-lg border border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white font-bold text-xs transition-colors" onClick={handleClose} disabled={isBatchSaving}>Cancel</button>
