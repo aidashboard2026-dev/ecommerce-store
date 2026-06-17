@@ -2,19 +2,21 @@ import { useState, useEffect } from 'react'
 
 // ─── Image URL helper ─────────────────────────────────────────────────────────
 //
-// Images are stored in the DB as root-relative paths: /uploads/products/<filename>
-// The backend serves them at: http://backend:8000/uploads/products/<filename>
+// Product/banner images now live in Supabase Storage. The DB stores the full
+// public URL (https://PROJECT.supabase.co/storage/v1/object/public/<bucket>/
+// <file>), so for current uploads this function just returns that URL as-is.
 //
-// VITE_BACKEND_URL env var controls how the frontend resolves these paths:
+// Backward compatibility: any product not yet processed by
+// migrate_images_to_supabase.py may still have a legacy root-relative path
+// (e.g. /uploads/products/<filename>) from the old local-disk storage. For
+// those, VITE_BACKEND_URL controls how the path resolves:
 //   - In Docker dev (Vite running on :5173):
 //       VITE_BACKEND_URL is NOT set (or '')
 //       → image src = '/uploads/products/…'
 //       → Vite dev server proxies /uploads → http://backend:8000  (vite.config.js)
-//       → This works transparently.
-//   - In production (frontend + backend on different origins):
+//   - In production:
 //       Set VITE_BACKEND_URL=https://api.mystore.com in .env
 //       → image src = 'https://api.mystore.com/uploads/products/…'
-//       → Direct request to the backend origin. No proxy needed.
 //
 // NOTE: Do NOT derive BACKEND_URL by stripping /api/v1 from VITE_API_URL —
 // that breaks when VITE_API_URL is a relative path (the common dev setup).
@@ -22,13 +24,14 @@ const _BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL ?? '').replace(/\/$/, 
 
 export function getImageUrl(thumbnail) {
   if (!thumbnail) return null
-  // Already an absolute URL — return as-is (handles legacy absolute URLs in DB)
+  // Supabase Storage URL (current case) or any other absolute URL — return as-is
   if (thumbnail.startsWith('http://') || thumbnail.startsWith('https://')) return thumbnail
-  // Root-relative path from DB (e.g. /uploads/products/1_abc.png)
+  // Legacy root-relative path from before the Supabase migration (e.g. /uploads/products/1_abc.png)
   if (thumbnail.startsWith('/')) return `${_BACKEND_ORIGIN}${thumbnail}`
-  // Bare filename or relative path — prefix with the products upload path
+  // Legacy bare filename — prefix with the products upload path
   return `${_BACKEND_ORIGIN}/uploads/products/${thumbnail}`
 }
+
 
 
 /** Revoke all blob object URLs in an array of { previewUrl } items */

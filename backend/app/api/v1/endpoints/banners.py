@@ -1,16 +1,15 @@
 import os
-import uuid
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_admin
-from app.core.config import settings
 from app.database.session import get_db
 from app.models.admin import Admin
 from app.models.banner import Banner
 from app.schemas.banner import BannerCreate, BannerResponse
+from app.services import supabase_storage
 from app.services.banner_service import (
     create_banner,
     delete_banner,
@@ -21,39 +20,62 @@ from app.services.banner_service import (
 
 router = APIRouter()
 
-# Resolved absolute path inside the Docker named volume
-_BANNER_UPLOAD_DIR = os.path.join(os.path.abspath(settings.UPLOAD_DIR), "banners")
-os.makedirs(_BANNER_UPLOAD_DIR, exist_ok=True)
+# ─────────────────────────────────────────────────────────────
+# Image validation — same constraints as product images
+# ─────────────────────────────────────────────────────────────
+
+ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+MAX_BANNER_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
 
 
-def _save_banner_image(banner_image: UploadFile) -> str:
-    """Persist an uploaded banner image and return its root-relative path."""
-    ext = os.path.splitext(banner_image.filename)[1].lower() or ".jpg"
-    unique_name = f"{uuid.uuid4().hex}{ext}"
-    file_path = os.path.join(_BANNER_UPLOAD_DIR, unique_name)
-    try:
-        with open(file_path, "wb") as buf:
-            buf.write(banner_image.file.read())
-    except OSError:
+async def _save_banner_image(banner_image: UploadFile) -> str:
+    """
+    Validates and uploads a banner image directly to Supabase Storage,
+    returning its public URL. No file is ever written to local disk.
+    """
+    if banner_image.content_type not in ALLOWED_MIME_TYPES:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to save banner image.",
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Only JPG, PNG, and WebP images are allowed. Got: {banner_image.content_type}",
         )
-    return f"/uploads/banners/{unique_name}"
 
+    ext = os.path.splitext(banner_image.filename or "")[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"File extension '{ext}' is not allowed. Use: {', '.join(ALLOWED_EXTENSIONS)}",
+        )
 
-def _delete_banner_image_file(image_path: Optional[str]) -> None:
-    if not image_path:
-        return
-    old_path = os.path.join(
-        os.path.abspath(settings.UPLOAD_DIR),
-        image_path.lstrip("/").removeprefix("uploads/"),
+    contents = await banner_image.read()
+
+    if not contents:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Uploaded file is empty.",
+        )
+
+    if len(contents) > MAX_BANNER_IMAGE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Image must be under {MAX_BANNER_IMAGE_SIZE // (1024 * 1024)} MB.",
+        )
+
+    return supabase_storage.upload_banner_image(
+        contents=contents,
+        original_filename=banner_image.filename or "banner.jpg",
+        content_type=banner_image.content_type,
     )
-    if os.path.isfile(old_path):
-        try:
-            os.remove(old_path)
-        except OSError:
-            pass
+
+
+def _delete_banner_image_file(image_url: Optional[str]) -> None:
+    """
+    Best-effort delete of a banner image from Supabase Storage. Safe to
+    call with None or with a legacy local path (e.g. /uploads/banners/...)
+    left over from before this migration — those simply won't match the
+    Supabase public-URL shape and will be skipped.
+    """
+    supabase_storage.delete_banner_image(image_url)
 
 
 # ── Create banner ───────────────────────────────────────────────────────────
@@ -74,7 +96,7 @@ async def create_new_banner(
     image_path: Optional[str] = None
 
     if banner_image and banner_image.filename:
-        image_path = _save_banner_image(banner_image)
+        image_path = await _save_banner_image(banner_image)
 
     banner_data = BannerCreate(
         title=title,
@@ -156,12 +178,13 @@ async def edit_banner(
     if is_active is not None:
         update_fields["is_active"] = is_active
 
-    # Save new banner image (same upload pattern as offers) and clean up the
-    # old file so it doesn't become orphaned.
+    # Upload the new image first, then only delete the old one after the
+    # DB update has committed successfully — avoids losing the old image
+    # if the update fails partway through.
+    old_image_to_delete: Optional[str] = None
     if banner_image and banner_image.filename:
-        old_image = banner.banner_image
-        update_fields["banner_image"] = _save_banner_image(banner_image)
-        _delete_banner_image_file(old_image)
+        old_image_to_delete = banner.banner_image
+        update_fields["banner_image"] = await _save_banner_image(banner_image)
 
     if not update_fields:
         return banner
@@ -172,6 +195,10 @@ async def edit_banner(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Banner not found",
         )
+
+    if old_image_to_delete:
+        _delete_banner_image_file(old_image_to_delete)
+
     return updated
 
 
