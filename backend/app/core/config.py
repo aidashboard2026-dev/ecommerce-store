@@ -118,12 +118,29 @@ class Settings(BaseSettings):
     BACKEND_URL: str = ""
 
     # ------------------------------------------------------------------
-    # Optional Future Storage
+    # Supabase Storage
     # ------------------------------------------------------------------
+    # All product and banner images live in Supabase Storage buckets.
+    # SUPABASE_SERVICE_ROLE_KEY is used server-side only (never exposed to the
+    # frontend) so the backend can upload/delete objects regardless of bucket
+    # RLS policies. SUPABASE_ANON_KEY is kept for any future client-side use.
 
     SUPABASE_URL: str = ""
     SUPABASE_ANON_KEY: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
+    SUPABASE_PRODUCT_BUCKET: str = "product-images"
+    SUPABASE_BANNER_BUCKET: str = "banners"
+
+    @field_validator("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", mode="after")
+    @classmethod
+    def supabase_storage_credentials_required(cls, v: str) -> str:
+        if not v or not str(v).strip():
+            raise ValueError(
+                "Supabase Storage is not configured. Set SUPABASE_URL and "
+                "SUPABASE_SERVICE_ROLE_KEY in your .env file. These are "
+                "required for product and banner image uploads."
+            )
+        return v
 
 
 settings = Settings()

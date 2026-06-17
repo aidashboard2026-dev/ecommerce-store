@@ -10,6 +10,7 @@ import {
   useNewArrivals,
   useBestSellers,
   useActiveOffers,
+  useActiveBanners,
 } from '../hooks/useProducts'
 
 function SectionHeader({ title, subtitle }) {
@@ -34,10 +35,17 @@ export default function ProductHome() {
   const { data: newArrivals = [], isLoading: loadingNew } = useNewArrivals()
   const { data: bestSellers = [], isLoading: loadingBest } = useBestSellers()
   const { data: offers = [] } = useActiveOffers()
+  const { data: banners = [] } = useActiveBanners()
+
+  // Only the "hero" placement belongs in the hero slider — other placements
+  // (homepage_mid, category, sidebar, popup) are reserved for future sections.
+  const heroBanners = banners
+    .filter((b) => b.placement === 'hero')
+    .sort((a, b) => a.sort_order - b.sort_order)
 
   return (
     <div className="flex flex-col">
-      <HeroSection />
+      <HeroSection banners={heroBanners} />
 
       <CategorySection />
 

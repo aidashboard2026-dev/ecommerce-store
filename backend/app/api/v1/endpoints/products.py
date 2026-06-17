@@ -1,6 +1,4 @@
 import os
-import uuid
-import shutil
 from typing import Optional, List
 
 from fastapi import (
@@ -16,7 +14,6 @@ from fastapi import (
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_admin
-from app.core.config import settings
 from app.database.session import get_db
 from app.models.admin import Admin
 from app.models.product import Product, ProductStatus
@@ -28,6 +25,7 @@ from app.schemas.product import (
     VariantCreate,
     VariantResponse,
 )
+from app.services import supabase_storage
 from app.services.product_service import (
     bulk_create_variants,
     create_product,
@@ -42,17 +40,6 @@ from app.services.product_service import (
 )
 
 router = APIRouter()
-
-# ─────────────────────────────────────────────────────────────
-# Upload directory
-# /app/uploads is the Docker named volume mount point.
-# UPLOAD_DIR from config always points there (default: /app/uploads).
-# ─────────────────────────────────────────────────────────────
-
-_UPLOADS_ROOT = os.path.abspath(settings.UPLOAD_DIR)  # → /app/uploads
-UPLOAD_DIR    = os.path.join(_UPLOADS_ROOT, "products") # → /app/uploads/products
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
 
 # ─────────────────────────────────────────────────────────────
 # Constants
@@ -109,38 +96,20 @@ def _validate_image_magic_bytes(contents: bytes, declared_mime: str) -> None:
 
 def _cleanup_product_image(product: Product) -> None:
     """
-    Remove the thumbnail file from disk for a product.
-    Safe to call even if the file doesn't exist.
+    Removes a product's thumbnail from Supabase Storage. Safe to call even
+    if the product has no thumbnail or the object no longer exists in the
+    bucket — deletion is best-effort, matching the rest of the codebase's
+    cleanup pattern.
 
-    Security: resolves the full path and verifies it is strictly inside
-    UPLOAD_DIR before deletion, preventing path-traversal attacks if the
-    thumbnail column were ever tampered with directly in the database.
-
-    Expected thumbnail format stored in DB: /uploads/products/<filename>
-    UPLOAD_DIR inside container:            /app/uploads/products
-    Resolution: strip /uploads/products prefix → just the filename → join with UPLOAD_DIR
+    Legacy data note: if `product.thumbnail` is still an old root-relative
+    local path (e.g. /uploads/products/old.jpg) from before this migration,
+    this is a no-op — those files should be moved to Supabase first via
+    migrate_images_to_supabase.py.
     """
     if not product.thumbnail:
         return
 
-    # Thumbnail is stored as a URL path: /uploads/products/<filename>
-    # Extract just the filename to avoid any path traversal via the prefix.
-    filename = os.path.basename(product.thumbnail)
-    if not filename:
-        return
-
-    file_path = os.path.normpath(os.path.join(UPLOAD_DIR, filename))
-
-    # Guard: file_path must be inside UPLOAD_DIR
-    safe_prefix = os.path.normpath(UPLOAD_DIR) + os.sep
-    if not file_path.startswith(safe_prefix):
-        return  # Silently refuse — log in production monitoring
-
-    if os.path.exists(file_path):
-        try:
-            os.remove(file_path)
-        except OSError:
-            pass  # Best-effort cleanup
+    supabase_storage.delete_product_image(product.thumbnail)
 
 
 
@@ -434,10 +403,12 @@ def upload_product_image(
     current_admin: Admin = Depends(get_current_admin),
 ):
     """
-    Upload an image for a product. Saves to /app/uploads/products/ (Docker named
-    volume, persists across restarts). The URL stored in DB is a root-relative path:
-    /uploads/products/<filename>. The frontend resolves this via the Vite proxy
-    (dev) or BACKEND_URL prefix (production).
+    Upload an image for a product directly to Supabase Storage. The
+    resulting public URL (https://PROJECT.supabase.co/storage/v1/object/
+    public/<bucket>/<file>) is stored in the product's `thumbnail` column —
+    no files are written to local disk, so the image is immediately visible
+    on every teammate's machine and survives Docker rebuilds, redeploys,
+    and backend restarts.
     """
     product = get_product(db, product_id)
 
@@ -462,104 +433,74 @@ def upload_product_image(
             detail=f"File extension '{ext}' is not allowed. Use: {', '.join(ALLOWED_EXTENSIONS)}",
         )
 
-    # Stream the upload to a .tmp file in 64 KB chunks — never load the full
-    # file into memory. This also catches clients that omit Content-Length and
-    # send a chunked transfer, bypassing the middleware body-size cap.
+    # Read the upload in 64 KB chunks so an oversized file is rejected as
+    # soon as it crosses MAX_IMAGE_SIZE, rather than buffering the whole
+    # (potentially huge) body first. Once validated, the bytes are handed
+    # to Supabase Storage in a single call — Supabase's upload API needs
+    # the full object body, so unlike the old local-disk version this
+    # can't stream straight to its final destination, but the 5 MB cap
+    # keeps memory use trivial.
     _CHUNK = 65_536
-    unique_name = f"{product_id}_{uuid.uuid4().hex[:12]}{ext}"
-    final_path  = os.path.join(UPLOAD_DIR, unique_name)
-    tmp_path    = final_path + ".tmp"
-    image_url   = f"/uploads/products/{unique_name}"
+    chunks: list[bytes] = []
+    total_bytes = 0
 
-    total_bytes        = 0
-    magic_buf          = b""   # first 16 bytes for magic-byte validation
+    while True:
+        chunk = file.file.read(_CHUNK)
+        if not chunk:
+            break
+        total_bytes += len(chunk)
+        if total_bytes > MAX_IMAGE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=(
+                    f"Image must be under {MAX_IMAGE_SIZE // (1024 * 1024)} MB. "
+                    f"Upload aborted after {total_bytes / (1024 * 1024):.1f} MB."
+                ),
+            )
+        chunks.append(chunk)
 
-    try:
-        with open(tmp_path, "wb") as out:
-            while True:
-                chunk = file.file.read(_CHUNK)
-                if not chunk:
-                    break
-                total_bytes += len(chunk)
-                if total_bytes > MAX_IMAGE_SIZE:
-                    out.close()
-                    try:
-                        os.remove(tmp_path)
-                    except OSError:
-                        pass
-                    raise HTTPException(
-                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                        detail=(
-                            f"Image must be under {MAX_IMAGE_SIZE // (1024 * 1024)} MB. "
-                            f"Upload aborted after {total_bytes / (1024 * 1024):.1f} MB."
-                        ),
-                    )
-                if len(magic_buf) < 16:
-                    magic_buf += chunk
-                out.write(chunk)
-    except HTTPException:
-        raise
-    except OSError:
-        try:
-            os.remove(tmp_path)
-        except OSError:
-            pass
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to save image file to disk.",
-        )
+    contents = b"".join(chunks)
 
-    if total_bytes == 0:
-        try:
-            os.remove(tmp_path)
-        except OSError:
-            pass
+    if not contents:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Uploaded file is empty.",
         )
 
     # Validate magic bytes against declared MIME — only needs first 16 bytes.
-    try:
-        _validate_image_magic_bytes(magic_buf, file.content_type)
-    except HTTPException:
-        try:
-            os.remove(tmp_path)
-        except OSError:
-            pass
-        raise
+    _validate_image_magic_bytes(contents[:16], file.content_type)
 
-    # Delete old thumbnail BEFORE committing the new one (consistent state)
+    # Upload to Supabase Storage. Object names are fresh UUIDs, so there's
+    # never a collision to worry about.
+    image_url = supabase_storage.upload_product_image(
+        contents=contents,
+        original_filename=file.filename or "image.jpg",
+        content_type=file.content_type,
+        product_id=product_id,
+    )
+
+    old_thumbnail = product.thumbnail
+
     if set_as_primary.lower() == "true":
-        _cleanup_product_image(product)
         product.thumbnail = image_url
 
     try:
         db.commit()
     except Exception:
         db.rollback()
-        # Commit failed — clean up the tmp file; no orphan on disk
-        try:
-            os.remove(tmp_path)
-        except OSError:
-            pass
+        # Commit failed — clean up the file we just uploaded to Supabase
+        # so it doesn't become an orphan.
+        supabase_storage.delete_product_image(image_url)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update product image in database. File has been cleaned up.",
+            detail="Failed to update product image in database. Uploaded file has been cleaned up.",
         )
 
-    # DB committed — atomically promote .tmp → final path
-    # os.rename is atomic on the same filesystem (POSIX guarantee)
-    try:
-        os.rename(tmp_path, final_path)
-    except OSError:
-        # Rename failed in an unlikely edge case (cross-device move, permissions).
-        # The DB already has the correct URL. Clean up tmp; the product's thumbnail
-        # URL will 404 until the next upload, which is acceptable.
-        try:
-            os.remove(tmp_path)
-        except OSError:
-            pass
+    # DB commit succeeded — only now is it safe to remove the previous
+    # image (deleting beforehand would risk an orphaned reference if the
+    # commit had failed).
+    if set_as_primary.lower() == "true" and old_thumbnail:
+        supabase_storage.delete_product_image(old_thumbnail)
 
     db.refresh(product)
 
