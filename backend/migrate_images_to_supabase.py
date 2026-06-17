@@ -182,6 +182,11 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    if not supabase_storage.is_supabase_configured():
+        print("ERROR: Supabase Storage is not configured.")
+        print("Please set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your .env file to enable migration.")
+        sys.exit(1)
+
     if args.dry_run:
         print("Running in --dry-run mode: no uploads or DB writes will happen.\n")
 
