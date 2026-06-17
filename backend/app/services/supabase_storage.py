@@ -18,19 +18,27 @@ in turn reads them from the environment (.env). Nothing is hardcoded here.
 import uuid
 import os
 from typing import Optional
+import logging
 
 import httpx
 from fastapi import HTTPException, status
 
 from app.core.config import settings
 
-_STORAGE_BASE = f"{settings.SUPABASE_URL.rstrip('/')}/storage/v1"
+logger = logging.getLogger(__name__)
+
+_STORAGE_BASE = f"{settings.SUPABASE_URL.rstrip('/')}/storage/v1" if settings.SUPABASE_URL else ""
 _TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 
 
 # ─────────────────────────────────────────────────────────────
 # Internal helpers
 # ─────────────────────────────────────────────────────────────
+
+def is_supabase_configured() -> bool:
+    """Check if Supabase Storage environment variables are fully configured."""
+    return bool(settings.SUPABASE_URL and settings.SUPABASE_SERVICE_ROLE_KEY)
+
 
 def _auth_headers(content_type: Optional[str] = None) -> dict:
     """
@@ -140,13 +148,43 @@ def upload_product_image(
     content_type: str,
     product_id: int,
 ) -> str:
-    """Uploads a product image and returns its public Supabase URL."""
+    """Uploads a product image and returns its public Supabase URL or local fallback path."""
+    if not is_supabase_configured():
+        logger.warning("Supabase Storage not configured. Falling back to local disk storage.")
+        ext = os.path.splitext(original_filename or "")[1].lower() or ".jpg"
+        filename = f"{product_id}_{uuid.uuid4().hex[:12]}{ext}"
+        target_dir = os.path.join(settings.UPLOAD_DIR, "products")
+        os.makedirs(target_dir, exist_ok=True)
+        file_path = os.path.join(target_dir, filename)
+        with open(file_path, "wb") as f:
+            f.write(contents)
+        return f"/uploads/products/{filename}"
+
     object_path = _generate_unique_filename(original_filename, prefix=f"{product_id}_")
     return _upload_object(settings.SUPABASE_PRODUCT_BUCKET, object_path, contents, content_type)
 
 
 def delete_product_image(image_url: Optional[str]) -> None:
-    """Deletes a product image from Supabase given its stored public URL."""
+    """Deletes a product image from Supabase or local storage given its stored public URL."""
+    if not image_url:
+        return
+
+    # Check for local fallback path
+    if image_url.startswith("/uploads/"):
+        filename = os.path.basename(image_url)
+        if filename:
+            file_path = os.path.normpath(os.path.join(settings.UPLOAD_DIR, "products", filename))
+            safe_prefix = os.path.normpath(os.path.join(settings.UPLOAD_DIR, "products")) + os.sep
+            if file_path.startswith(safe_prefix) and os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except OSError:
+                    pass
+        return
+
+    if not is_supabase_configured():
+        return
+
     object_path = _object_path_from_public_url(image_url, settings.SUPABASE_PRODUCT_BUCKET)
     if object_path:
         _delete_object(settings.SUPABASE_PRODUCT_BUCKET, object_path)
@@ -161,13 +199,43 @@ def upload_banner_image(
     original_filename: str,
     content_type: str,
 ) -> str:
-    """Uploads a banner image and returns its public Supabase URL."""
+    """Uploads a banner image and returns its public Supabase URL or local fallback path."""
+    if not is_supabase_configured():
+        logger.warning("Supabase Storage not configured. Falling back to local disk storage.")
+        ext = os.path.splitext(original_filename or "")[1].lower() or ".jpg"
+        filename = f"{uuid.uuid4().hex[:12]}{ext}"
+        target_dir = os.path.join(settings.UPLOAD_DIR, "banners")
+        os.makedirs(target_dir, exist_ok=True)
+        file_path = os.path.join(target_dir, filename)
+        with open(file_path, "wb") as f:
+            f.write(contents)
+        return f"/uploads/banners/{filename}"
+
     object_path = _generate_unique_filename(original_filename)
     return _upload_object(settings.SUPABASE_BANNER_BUCKET, object_path, contents, content_type)
 
 
 def delete_banner_image(image_url: Optional[str]) -> None:
-    """Deletes a banner image from Supabase given its stored public URL."""
+    """Deletes a banner image from Supabase or local storage given its stored public URL."""
+    if not image_url:
+        return
+
+    # Check for local fallback path
+    if image_url.startswith("/uploads/"):
+        filename = os.path.basename(image_url)
+        if filename:
+            file_path = os.path.normpath(os.path.join(settings.UPLOAD_DIR, "banners", filename))
+            safe_prefix = os.path.normpath(os.path.join(settings.UPLOAD_DIR, "banners")) + os.sep
+            if file_path.startswith(safe_prefix) and os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except OSError:
+                    pass
+        return
+
+    if not is_supabase_configured():
+        return
+
     object_path = _object_path_from_public_url(image_url, settings.SUPABASE_BANNER_BUCKET)
     if object_path:
         _delete_object(settings.SUPABASE_BANNER_BUCKET, object_path)

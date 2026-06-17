@@ -3,18 +3,26 @@ import { BrowserRouter } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { Toaster } from 'react-hot-toast'
 import { fetchMeThunk } from './store/authSlice'
+import { fetchCustomerMeThunk } from './store/customerSlice'
 import AppRoutes from './routes/AppRoutes'
 
 function App() {
-  const dispatch     = useDispatch()
-  const token        = useSelector((s) => s.auth.token)
-  const initialized  = useSelector((s) => s.auth.initialized)
+  const dispatch      = useDispatch()
+  const token         = useSelector((s) => s.auth.token)
+  const initialized   = useSelector((s) => s.auth.initialized)
+  const customerToken = useSelector((s) => s.customer.token)
 
   useEffect(() => {
     if (token) {
       dispatch(fetchMeThunk())
     }
   }, [token, dispatch])
+
+  useEffect(() => {
+    if (customerToken) {
+      dispatch(fetchCustomerMeThunk())
+    }
+  }, [customerToken, dispatch])
 
   if (!initialized) {
     return (

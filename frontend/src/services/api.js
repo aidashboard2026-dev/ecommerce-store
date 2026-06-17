@@ -27,22 +27,29 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      const publicPaths = ['/login', '/signup', '/auth/login', '/auth/signup', '/admin/login', '/admin/signup']
-      const isPublicPage = publicPaths.some(p => window.location.pathname.startsWith(p))
-      if (!isPublicPage) {
-        const url = error.config?.url || ''
-        const isCustomerApi = 
-          url.includes('/orders/customer') || 
-          url.includes('/customers/profile') || 
-          url.includes('/auth/customer')
+      const currentPath = window.location.pathname
+      const url = error.config?.url || ''
+      const isCustomerApi = 
+        url.includes('/orders/customer') || 
+        url.includes('/customers/profile') || 
+        url.includes('/auth/customer')
 
-        if (isCustomerApi) {
-          localStorage.removeItem('customer_token')
-          localStorage.removeItem('customer')
+      if (isCustomerApi) {
+        localStorage.removeItem('customer_token')
+        localStorage.removeItem('customer')
+        
+        const customerProtectedPaths = ['/checkout', '/payment', '/profile', '/orders']
+        const isProtected = customerProtectedPaths.some(p => currentPath.startsWith(p))
+        if (isProtected) {
           window.location.href = '/auth/login'
         } else {
-          localStorage.removeItem('token')
-          localStorage.removeItem('admin')
+          window.location.reload()
+        }
+      } else {
+        localStorage.removeItem('token')
+        localStorage.removeItem('admin')
+        
+        if (currentPath.startsWith('/admin') && currentPath !== '/admin/login' && currentPath !== '/admin/signup') {
           window.location.href = '/admin/login'
         }
       }

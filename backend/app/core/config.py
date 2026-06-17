@@ -133,14 +133,10 @@ class Settings(BaseSettings):
 
     @field_validator("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", mode="after")
     @classmethod
-    def supabase_storage_credentials_required(cls, v: str) -> str:
-        if not v or not str(v).strip():
-            raise ValueError(
-                "Supabase Storage is not configured. Set SUPABASE_URL and "
-                "SUPABASE_SERVICE_ROLE_KEY in your .env file. These are "
-                "required for product and banner image uploads."
-            )
-        return v
+    def supabase_storage_credentials_optional(cls, v: str) -> str:
+        # We allow empty strings at startup to facilitate a local upload directory fallback
+        # when Supabase Storage is not configured (e.g. in local development).
+        return v or ""
 
 
 settings = Settings()
