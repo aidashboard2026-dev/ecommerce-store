@@ -1,21 +1,30 @@
 import React from 'react'
 import { Users, UserCheck, UserX, UserPlus, TrendingUp } from 'lucide-react'
 import clsx from 'clsx'
+import { Card, CardContent } from '../ui/Card'
 
-function Card({ icon: Icon, label, value, iconClass, sub }) {
+function AnalyticsCard({ icon: Icon, label, value, iconClass, sub }) {
   return (
-    <div className="stat-card dark:hover:bg-slate-900/50 dark:shadow-card-dark">
-      <div className="flex flex-row justify-between">
-        <div className={clsx('flex h-10 w-10 items-center justify-center rounded-xl', iconClass)}>
-          <Icon size={16} className="text-current" />
+    <Card className="min-h-[120px] flex flex-col justify-between">
+      <CardContent className="p-4 space-y-3 flex flex-col justify-between h-full">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted">{label}</p>
+            <p className="mt-1 font-display text-2xl font-bold tracking-tight text-app leading-none">
+              {value}
+            </p>
+          </div>
+          <div className={clsx('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border shadow-sm', iconClass)}>
+            <Icon size={14} className="text-current" />
+          </div>
         </div>
-      </div>
-      <div className="flex flex-col gap-0.5">
-        <p className="text-3xl font-bold font-display text-app">{value}</p>
-        <p className="text-sm font-medium text-muted">{label}</p>
-        {sub && <p className="text-xs text-muted">{sub}</p>}
-      </div>
-    </div>
+        {sub && (
+          <p className="text-[10px] font-semibold text-muted truncate border-t border-app/40 pt-2">
+            Top Spender: <span className="text-app">{sub}</span>
+          </p>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -31,36 +40,36 @@ export default function CustomerAnalyticsCards({ analytics }) {
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-      <Card
+      <AnalyticsCard
         icon={Users}
         label="Total Customers"
         value={total_customers?.toLocaleString() ?? '—'}
-        iconClass="bg-violet-100 text-violet-600 dark:bg-violet-950/40 dark:text-violet-300"
+        iconClass="bg-indigo-500/5 text-indigo-600 border-indigo-500/10"
       />
-      <Card
+      <AnalyticsCard
         icon={UserCheck}
         label="Active"
         value={active_customers?.toLocaleString() ?? '—'}
-        iconClass="bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300"
+        iconClass="bg-emerald-500/5 text-emerald-600 border-emerald-500/10"
       />
-      <Card
+      <AnalyticsCard
         icon={UserX}
         label="Inactive"
         value={inactive_customers?.toLocaleString() ?? '—'}
-        iconClass="bg-gray-100 text-gray-500 dark:bg-gray-900/40 dark:text-gray-400"
+        iconClass="bg-zinc-500/5 text-zinc-500 border-zinc-500/10"
       />
-      <Card
+      <AnalyticsCard
         icon={UserPlus}
         label="New This Month"
         value={new_this_month?.toLocaleString() ?? '—'}
-        iconClass="bg-brand-100 text-brand-600 dark:bg-brand-950/40 dark:text-brand-300"
+        iconClass="bg-violet-500/5 text-violet-600 border-violet-500/10"
       />
-      <Card
+      <AnalyticsCard
         icon={TrendingUp}
         label="Top Spender"
         value={topSpender ? fmt(topSpender.total_spent) : '—'}
         sub={topSpender ? topSpender.name : undefined}
-        iconClass="bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"
+        iconClass="bg-amber-500/5 text-amber-600 border-amber-500/10"
       />
     </div>
   )

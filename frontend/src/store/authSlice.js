@@ -52,7 +52,7 @@ export const signupThunk = createAsyncThunk(
 export const logoutThunk = createAsyncThunk(
   'auth/logout',
   async (_, { dispatch }) => {
-    try { await authAPI.logout() } catch (_) {}
+    try { await authAPI.logout() } catch (err) { void err }
     dispatch(logout())
   }
 )

@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
-import { Search, Plus, Calendar, Percent, Clock, Trash2, Eye, FileText, X, Image as ImageIcon } from "lucide-react";
+import { Search, Plus, Calendar, Percent, Clock, Trash2, Eye, FileText, X, Image as ImageIcon, Loader2 } from "lucide-react";
 import api from "../../services/api";
 import clsx from "clsx";
+
+import PageHeader from "../../components/ui/PageHeader";
+import SearchBar from "../../components/ui/SearchBar";
+import Drawer from "../../components/ui/Drawer";
+import Badge from "../../components/ui/Badge";
 
 export default function OffersPage() {
   const [search, setSearch] = useState("");
@@ -197,49 +202,38 @@ export default function OffersPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 py-2">
       {/* Header Panel */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-app pb-5">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-app">Offers & Promos</h1>
-          <p className="text-muted text-sm mt-1">Deploy discount codes and custom banner campaigns</p>
-        </div>
-
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          {/* Search Box */}
-          <div className="relative flex-1 sm:flex-initial">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-            <input
-              type="text"
+      <PageHeader
+        title="Offers & Promos"
+        description="Deploy discount codes and custom banner campaigns"
+        actions={
+          <>
+            <SearchBar
               placeholder="Search campaigns..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="input-field pl-9 py-2 text-xs w-full sm:w-60"
+              onClear={() => setSearch("")}
+              className="max-w-xs"
             />
-            {search && (
-              <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted text-xs">
-                ✕
-              </button>
-            )}
-          </div>
-
-          <button
-            onClick={() => {
-              clearForm();
-              setShowAddOffer(true);
-            }}
-            className="btn-primary py-2 text-xs font-semibold shrink-0"
-          >
-            <Plus size={14} />
-            Create Campaign
-          </button>
-        </div>
-      </div>
+            <button
+              onClick={() => {
+                clearForm();
+                setShowAddOffer(true);
+              }}
+              className="btn-primary flex items-center gap-2"
+            >
+              <Plus size={15} />
+              Create Campaign
+            </button>
+          </>
+        }
+      />
 
       {/* Grid List */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <div className="w-8 h-8 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
           <p className="text-xs font-medium text-muted">Syncing promotions...</p>
         </div>
       ) : filteredOffers.length === 0 ? (
@@ -262,6 +256,7 @@ export default function OffersPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredOffers.map((offer) => {
             const expired = offer.expires_at && new Date(offer.expires_at + "Z") <= currentTime;
+            const statusVariant = expired ? 'default' : offer.status === 'published' ? 'success' : 'warning';
             return (
               <div
                 key={offer.id}
@@ -291,16 +286,11 @@ export default function OffersPage() {
                 <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <span
-                        className={clsx(
-                          "status-pill text-[10px]",
-                          offer.status === "published" && !expired && "published",
-                          offer.status === "published" && expired && "draft",
-                          offer.status === "saved" && "draft"
-                        )}
-                      >
-                        {expired ? "Expired" : offer.status === "published" ? "Published" : "Draft"}
-                      </span>
+                      <Badge
+                        label={expired ? "Expired" : offer.status === "published" ? "Published" : "Draft"}
+                        variant={statusVariant}
+                        dot
+                      />
                     </div>
                     <h3 className="font-bold text-sm text-app leading-snug">{offer.title}</h3>
                     {offer.description && (
@@ -359,171 +349,153 @@ export default function OffersPage() {
       )}
 
       {/* Add Offer Drawer Overlay */}
-      {showAddOffer && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex justify-end">
-          {/* Backdrop click close */}
-          <div className="absolute inset-0" onClick={() => setShowAddOffer(false)} />
-          
-          {/* Drawer container */}
-          <div className="relative w-full max-w-lg bg-surface border-l border-app h-full flex flex-col p-6 shadow-elevated animate-slide-in z-10">
-            {/* Drawer Header */}
-            <div className="flex items-center justify-between border-b border-app pb-4 mb-6">
-              <div>
-                <h2 className="text-base font-bold text-app">Create Campaign</h2>
-                <p className="text-muted text-[11px] mt-0.5">Fill details to create a promotional banner</p>
-              </div>
-              <button
-                onClick={() => setShowAddOffer(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-app text-muted hover:text-app transition-all hover:bg-app active:scale-95"
-              >
-                <X size={15} />
-              </button>
-            </div>
-
-            {/* Form body */}
-            <form onSubmit={(e) => e.preventDefault()} className="flex-1 overflow-y-auto space-y-4 pr-1">
-              
-              {/* Image upload preview box */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-app">Campaign Banner <span className="text-red-500">*</span></label>
-                <label className="w-full h-36 border-2 border-dashed border-brand-500/50 hover:border-brand-500 rounded-xl cursor-pointer overflow-hidden bg-app flex flex-col items-center justify-center gap-2 transition-colors">
-                  <input
-                    type="file"
-                    hidden
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files[0];
-                      if (file) {
-                        setBanner(URL.createObjectURL(file));
-                        setBannerFile(file);
-                      }
-                    }}
-                  />
-                  {banner ? (
-                    <img src={banner} alt="Offer Preview" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="text-center p-4">
-                      <ImageIcon size={24} className="text-muted mx-auto mb-1.5" />
-                      <p className="text-xs font-bold text-brand-500">Upload banner image</p>
-                      <p className="text-[10px] text-muted mt-0.5">Support PNG, JPG, WEBP (ratio 16:9)</p>
-                    </div>
-                  )}
-                </label>
-              </div>
-
-              {/* Offer Title */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-app">Offer Name <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  placeholder="e.g. Summer Clearance Sale"
-                  value={offerName}
-                  onChange={(e) => setOfferName(e.target.value)}
-                  className="input-field py-2.5 text-xs"
-                />
-              </div>
-
-              {/* Percentage */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-app">Discount Percentage (%) <span className="text-red-500">*</span></label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="e.g. 50"
-                    value={percentage}
-                    onChange={(e) => setPercentage(e.target.value)}
-                    className="input-field pl-9 py-2.5 text-xs"
-                  />
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-bold text-xs">%</span>
+      <Drawer
+        isOpen={showAddOffer}
+        onClose={() => setShowAddOffer(false)}
+        title="Create Campaign"
+        subtitle="Fill details to create a promotional banner"
+        size="md"
+      >
+        <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+          {/* Image upload preview box */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-app">Campaign Banner <span className="text-red-500">*</span></label>
+            <label className="w-full h-36 border-2 border-dashed border-brand-500/50 hover:border-brand-500 rounded-xl cursor-pointer overflow-hidden bg-app flex flex-col items-center justify-center gap-2 transition-colors">
+              <input
+                type="file"
+                hidden
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    setBanner(URL.createObjectURL(file));
+                    setBannerFile(file);
+                  }
+                }}
+              />
+              {banner ? (
+                <img src={banner} alt="Offer Preview" className="w-full h-full object-cover" />
+              ) : (
+                <div className="text-center p-4">
+                  <ImageIcon size={24} className="text-muted mx-auto mb-1.5" />
+                  <p className="text-xs font-bold text-brand-500">Upload banner image</p>
+                  <p className="text-[10px] text-muted mt-0.5">Support PNG, JPG, WEBP (ratio 16:9)</p>
                 </div>
-              </div>
+              )}
+            </label>
+          </div>
 
-              {/* Description */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-app">Description</label>
-                <textarea
-                  placeholder="Briefly describe the promotional campaign terms..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows="3"
-                  className="input-field py-2.5 text-xs resize-none"
-                />
-              </div>
+          {/* Offer Title */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-app">Offer Name <span className="text-red-500">*</span></label>
+            <input
+              type="text"
+              placeholder="e.g. Summer Clearance Sale"
+              value={offerName}
+              onChange={(e) => setOfferName(e.target.value)}
+              className="input-field py-2.5 text-xs"
+            />
+          </div>
 
-              {/* Start Date & Time */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-app">Start Date <span className="text-red-500">*</span></label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="input-field py-2 text-xs"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-app">Start Time <span className="text-red-500">*</span></label>
-                  <input
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    className="input-field py-2 text-xs"
-                  />
-                </div>
-              </div>
-
-              {/* End Date & Time */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-app">End Date <span className="text-red-500">*</span></label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="input-field py-2 text-xs"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-app">End Time <span className="text-red-500">*</span></label>
-                  <input
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    className="input-field py-2 text-xs"
-                  />
-                </div>
-              </div>
-            </form>
-
-            {/* Footer buttons */}
-            <div className="border-t border-app pt-4 mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => handleSave("saved")}
-                disabled={saving || publishing}
-                className="flex-1 btn-secondary py-2.5 text-xs font-semibold"
-              >
-                {saving ? "Saving..." : "Save Draft"}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSave("published")}
-                disabled={saving || publishing}
-                className="flex-1 btn-primary py-2.5 text-xs font-semibold"
-              >
-                {publishing ? "Publishing..." : "Publish Campaign"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAddOffer(false)}
-                className="px-4 py-2.5 rounded-lg border border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white font-semibold text-xs transition-colors"
-              >
-                Cancel
-              </button>
+          {/* Percentage */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-app">Discount Percentage (%) <span className="text-red-500">*</span></label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="e.g. 50"
+                value={percentage}
+                onChange={(e) => setPercentage(e.target.value)}
+                className="input-field pl-9 py-2.5 text-xs"
+              />
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-bold text-xs">%</span>
             </div>
           </div>
-        </div>
-      )}
+
+          {/* Description */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-app">Description</label>
+            <textarea
+              placeholder="Briefly describe the promotional campaign terms..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows="3"
+              className="input-field py-2.5 text-xs resize-none"
+            />
+          </div>
+
+          {/* Start Date & Time */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-app">Start Date <span className="text-red-500">*</span></label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="input-field py-2 text-xs"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-app">Start Time <span className="text-red-500">*</span></label>
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="input-field py-2 text-xs"
+              />
+            </div>
+          </div>
+
+          {/* End Date & Time */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-app">End Date <span className="text-red-500">*</span></label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="input-field py-2 text-xs"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-app">End Time <span className="text-red-500">*</span></label>
+              <input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className="input-field py-2 text-xs"
+              />
+            </div>
+          </div>
+
+          {/* Footer buttons */}
+          <div className="border-t border-app pt-4 mt-6 flex gap-3">
+            <button
+              type="button"
+              onClick={() => handleSave("saved")}
+              disabled={saving || publishing}
+              className="flex-1 btn-secondary py-2.5 text-xs font-semibold"
+            >
+              {saving ? "Saving..." : "Save Draft"}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSave("published")}
+              disabled={saving || publishing}
+              className="flex-1 btn-primary py-2.5 text-xs font-semibold"
+            >
+              {publishing ? "Publishing..." : "Publish Campaign"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAddOffer(false)}
+              className="px-4 py-2.5 rounded-lg border border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white font-semibold text-xs transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Drawer>
     </div>
   );
 }

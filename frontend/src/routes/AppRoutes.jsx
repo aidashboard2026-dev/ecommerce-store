@@ -13,7 +13,7 @@ import OrdersPage from '../pages/AdminPage/OrdersPage'
 import OffersPage from '../pages/AdminPage/OffersPage'
 import CustomersPage from '../pages/AdminPage/CustomersPage'
 import SettingsPage from '../pages/AdminPage/SettingsPage'
-import BannerPage from "../pages/AdminPage/BannerPage"
+import BannerPage from '../pages/AdminPage/BannerPage'
 
 // Storefront Layout & Pages
 import StorefrontLayout from '../layouts/StorefrontLayout'
@@ -37,7 +37,7 @@ const Spinner = () => (
   </div>
 )
 
-// ── ADMIN AUTHENTICATION STATE & GUARDS ──────────────────────────────────────
+// ── ADMIN AUTH STATE ──────────────────────────────────────────────────────────
 function useAdminAuthState() {
   return useSelector((s) => ({
     isAuthenticated: !!s.auth.admin,
@@ -47,88 +47,207 @@ function useAdminAuthState() {
 
 function AdminProtectedRoute({ children }) {
   const { isAuthenticated, initialized } = useAdminAuthState()
+
   if (!initialized) return <Spinner />
-  return isAuthenticated ? children : <Navigate to="/admin/login" replace />
+
+  return isAuthenticated
+    ? children
+    : <Navigate to="/admin/login" replace />
 }
 
 function AdminPublicRoute({ children }) {
   const { isAuthenticated, initialized } = useAdminAuthState()
+
   if (!initialized) return <Spinner />
-  return isAuthenticated ? <Navigate to="/admin" replace /> : children
+
+  return isAuthenticated
+    ? <Navigate to="/admin" replace />
+    : children
 }
 
-// ── CUSTOMER AUTHENTICATION STATE & GUARDS ───────────────────────────────────
+// ── CUSTOMER AUTH STATE ──────────────────────────────────────────────────────
 function CustomerProtectedRoute({ children }) {
   const { token, customer } = useSelector((s) => s.customer)
-  return token && customer ? children : <Navigate to="/auth/login" replace />
+
+  return token && customer
+    ? children
+    : <Navigate to="/auth/login" replace />
 }
 
 function CustomerPublicRoute({ children }) {
   const { token, customer } = useSelector((s) => s.customer)
-  return token && customer ? <Navigate to="/profile" replace /> : children
+
+  return token && customer
+    ? <Navigate to="/profile" replace />
+    : children
 }
 
 export default function AppRoutes() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
 
-  // Admin session expiration / unauthorized handler
+  // Admin unauthorized/session expiration handler
   useEffect(() => {
     const handle = () => {
       dispatch(logoutThunk())
       navigate('/admin/login', { replace: true })
     }
+
     window.addEventListener('auth:unauthorized', handle)
-    return () => window.removeEventListener('auth:unauthorized', handle)
-  }, [navigate, dispatch])
+
+    return () => {
+      window.removeEventListener('auth:unauthorized', handle)
+    }
+  }, [dispatch, navigate])
 
   return (
     <Routes>
-      
-      {/* ── BACKWARD COMPATIBILITY REDIRECTS ────────────────────────────────── */}
-      <Route path="/login" element={<Navigate to="/admin/login" replace />} />
-      <Route path="/signup" element={<Navigate to="/admin/signup" replace />} />
+      {/* ── BACKWARD COMPATIBILITY REDIRECTS ─────────────────────────────── */}
+      <Route
+        path="/login"
+        element={<Navigate to="/admin/login" replace />}
+      />
 
-      {/* ── ADMIN PANEL DASHBOARD ROUTES (NAMESPACE /admin) ─────────────────── */}
-      <Route path="/admin/login" element={<AdminPublicRoute><LoginPage /></AdminPublicRoute>} />
-      <Route path="/admin/signup" element={<AdminPublicRoute><SignupPage /></AdminPublicRoute>} />
+      <Route
+        path="/signup"
+        element={<Navigate to="/admin/signup" replace />}
+      />
 
-      <Route path="/admin" element={<AdminProtectedRoute><MainLayout /></AdminProtectedRoute>}>
+      {/* ── ADMIN AUTH ROUTES ───────────────────────────────────────────── */}
+      <Route
+        path="/admin/login"
+        element={
+          <AdminPublicRoute>
+            <LoginPage />
+          </AdminPublicRoute>
+        }
+      />
+
+      <Route
+        path="/admin/signup"
+        element={
+          <AdminPublicRoute>
+            <SignupPage />
+          </AdminPublicRoute>
+        }
+      />
+
+      {/* ── ADMIN DASHBOARD ─────────────────────────────────────────────── */}
+      <Route
+        path="/admin"
+        element={
+          <AdminProtectedRoute>
+            <MainLayout />
+          </AdminProtectedRoute>
+        }
+      >
         <Route index element={<DashboardPage />} />
-        <Route path="products"  element={<ProductsPage />} />
-        <Route path="orders"    element={<OrdersPage />} />
-        <Route path="offers"    element={<OffersPage />} />
+        <Route path="products" element={<ProductsPage />} />
+        <Route path="orders" element={<OrdersPage />} />
+        <Route path="offers" element={<OffersPage />} />
         <Route path="customers" element={<CustomersPage />} />
-        <Route path="settings"  element={<SettingsPage />} />
-        <Route path="banners"   element={<BannerPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+        <Route path="banners" element={<BannerPage />} />
       </Route>
 
-      {/* ── CUSTOMER ECOMMERCE STOREFRONT ROUTES (NAMESPACE /) ──────────────── */}
+      {/* ── STOREFRONT ROUTES ───────────────────────────────────────────── */}
       <Route path="/" element={<StorefrontLayout />}>
         <Route index element={<HomePage />} />
-        <Route path="products" element={<StorefrontProductsPage />} />
-        <Route path="products/:slug" element={<ProductDetailsPage />} />
+
+        <Route
+          path="products"
+          element={<StorefrontProductsPage />}
+        />
+
+        <Route
+          path="products/:slug"
+          element={<ProductDetailsPage />}
+        />
+
         <Route path="cart" element={<CartPage />} />
         <Route path="tracking" element={<TrackingPage />} />
         <Route path="wishlist" element={<WishlistPage />} />
 
-        {/* Customer Public Authentication Paths */}
-        <Route path="auth/login" element={<CustomerPublicRoute><CustomerLoginPage /></CustomerPublicRoute>} />
-        <Route path="auth/signup" element={<CustomerPublicRoute><CustomerSignupPage /></CustomerPublicRoute>} />
+        {/* Customer Auth */}
+        <Route
+          path="auth/login"
+          element={
+            <CustomerPublicRoute>
+              <CustomerLoginPage />
+            </CustomerPublicRoute>
+          }
+        />
 
-        {/* Customer Profile & Checkout Protected Paths */}
-        <Route path="checkout" element={<CustomerProtectedRoute><CheckoutPage /></CustomerProtectedRoute>} />
-        <Route path="payment" element={<CustomerProtectedRoute><PaymentPage /></CustomerProtectedRoute>} />
-        
-        {/* Profile and Order history views */}
-        <Route path="profile" element={<CustomerProtectedRoute><CustomerProfilePage /></CustomerProtectedRoute>} />
-        <Route path="profile/orders" element={<CustomerProtectedRoute><CustomerProfilePage /></CustomerProtectedRoute>} />
-        <Route path="orders" element={<CustomerProtectedRoute><StorefrontOrdersPage /></CustomerProtectedRoute>} />
-        <Route path="orders/:id" element={<CustomerProtectedRoute><OrderDetailsPage /></CustomerProtectedRoute>} />
+        <Route
+          path="auth/signup"
+          element={
+            <CustomerPublicRoute>
+              <CustomerSignupPage />
+            </CustomerPublicRoute>
+          }
+        />
+
+        {/* Protected Customer Routes */}
+        <Route
+          path="checkout"
+          element={
+            <CustomerProtectedRoute>
+              <CheckoutPage />
+            </CustomerProtectedRoute>
+          }
+        />
+
+        <Route
+          path="payment"
+          element={
+            <CustomerProtectedRoute>
+              <PaymentPage />
+            </CustomerProtectedRoute>
+          }
+        />
+
+        <Route
+          path="profile"
+          element={
+            <CustomerProtectedRoute>
+              <CustomerProfilePage />
+            </CustomerProtectedRoute>
+          }
+        />
+
+        <Route
+          path="profile/orders"
+          element={
+            <CustomerProtectedRoute>
+              <CustomerProfilePage />
+            </CustomerProtectedRoute>
+          }
+        />
+
+        <Route
+          path="orders"
+          element={
+            <CustomerProtectedRoute>
+              <StorefrontOrdersPage />
+            </CustomerProtectedRoute>
+          }
+        />
+
+        <Route
+          path="orders/:id"
+          element={
+            <CustomerProtectedRoute>
+              <OrderDetailsPage />
+            </CustomerProtectedRoute>
+          }
+        />
       </Route>
 
-      {/* Fallback wildcard to root */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* Fallback */}
+      <Route
+        path="*"
+        element={<Navigate to="/" replace />}
+      />
     </Routes>
   )
 }

@@ -11,17 +11,11 @@ function App() {
   const initialized  = useSelector((s) => s.auth.initialized)
 
   useEffect(() => {
-    // token is now rehydrated from localStorage at boot, so this fires
-    // on first render when a persisted session exists.
     if (token) {
       dispatch(fetchMeThunk())
     }
   }, [token, dispatch])
 
-  // Block rendering until session validation completes.
-  // initialized starts true  → no token at boot, nothing to fetch, render immediately.
-  // initialized starts false → token exists, fetchMeThunk in flight, show spinner.
-  // fetchMeThunk resolves    → initialized flips to true, routes render.
   if (!initialized) {
     return (
       <div className="min-h-screen bg-app flex items-center justify-center">
@@ -37,6 +31,20 @@ function App() {
     <BrowserRouter>
       <Toaster position="top-center" toastOptions={{ duration: 2500 }} />
       <AppRoutes />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: 'var(--color-surface)',
+            color: 'var(--color-text)',
+            border: '1px solid var(--color-border)',
+            fontSize: '12.5px',
+            borderRadius: '12px',
+            padding: '10px 14px',
+            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.08)',
+          },
+        }}
+      />
     </BrowserRouter>
   )
 }
