@@ -1,5 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
-
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -23,14 +22,14 @@
     --color-primary:      #0f172a;
 
     /* Typography */
-    --font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
 
     /* Radius */
     --radius-sm:   4px;
     --radius-md:   8px;
-    --radius-lg:   12px;
-    --radius-xl:   16px;
+    --radius-lg:   8px;
+    --radius-xl:   12px;
     --radius-pill: 999px;
 
     /* Shadows */
@@ -60,7 +59,7 @@
     --hover-shadow:       0 4px 6px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.06);
     --card-shadow:        0 6px 16px rgba(0,0,0,0.15), 0 12px 32px rgba(0,0,0,0.12);
     --cards-bg:           #fafffa;
-    --productcard-bg:     #a855f7;
+    --productcard-bg:     #ffffff;
 
     color-scheme: light;
   }
@@ -71,8 +70,8 @@
     --color-border:      #212638;
     --color-text:        #f1f5f9;
     --color-text-muted:  #64748b;
-    --color-brand:       #7a8fff;
-    --color-brand-hover: #5865f2;
+    --color-brand:        #171717;
+    --color-brand-hover:  #262626;
     --color-primary:     #f1f5f9;
     --color-text-1:      #f1f5f9;
 
@@ -116,7 +115,7 @@
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   }
   .card:hover {
-    border-color: rgba(88, 101, 242, 0.25);
+    border-color: #171717;
     box-shadow: var(--shadow-lg);
     transform: translateY(-1px);
   }
@@ -650,9 +649,9 @@ textarea.inv-input { min-height: 120px; padding-top: 14px; resize: vertical; }
    CUSTOMER PAGE — professional mild-color theme
    ============================================================ */
 :root {
-  --cust-accent:        #6366f1;
+  --cust-accent: #171717;
   --cust-accent-light:  #eef2ff;
-  --cust-accent-text:   #4f46e5;
+  --cust-accent-text: #171717;
   --cust-success:       #16a34a;
   --cust-success-bg:    #f0fdf4;
   --cust-success-ring:  #bbf7d0;

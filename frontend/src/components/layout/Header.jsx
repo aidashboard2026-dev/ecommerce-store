@@ -232,7 +232,7 @@ export default function Header() {
 
             <button
               onClick={closeAndLogout}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-500 hover:bg-red-600 px-4 py-2.5 text-xs font-bold text-white transition-all active:scale-95 shadow-sm"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-500 hover:bg-red-600 px-4 py-2.5 text-xs font-bold text-gray-900 transition-all active:scale-95 shadow-sm"
             >
               <LogOut size={15} />
               Logout
@@ -247,7 +247,7 @@ export default function Header() {
 function Logo({ compact = false }) {
   return (
     <div className="flex items-center gap-2.5 px-6 py-5 border-b border-app">
-      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-glow-sm">
+      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-gray-900 shadow-glow-sm">
         <Zap size={15} strokeWidth={2.5} />
       </div>
       <span className={clsx('font-display text-base font-bold tracking-tight text-app', compact && 'text-sm')}>
@@ -262,7 +262,7 @@ function ProfileCard({ admin, showEmail = true }) {
 
   return (
     <div className="flex items-center gap-3 p-1.5">
-      <div className="flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand-400 to-brand-600 font-bold text-white text-xs shadow-glow-sm">
+      <div className="flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand-400 to-brand-600 font-bold text-gray-900 text-xs shadow-glow-sm">
         {initial}
       </div>
       <div className="min-w-0">
