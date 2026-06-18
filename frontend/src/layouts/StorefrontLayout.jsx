@@ -351,8 +351,8 @@ export default function StorefrontLayout() {
         <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t border-app flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] text-muted">
           <p>© {new Date().getFullYear()} AuraStore Inc. All rights reserved. Made for premium commerce.</p>
           <div className="flex items-center gap-6">
-            <button className="hover:text-app">Privacy Policy</button>
-            <button className="hover:text-app">Terms of Use</button>
+            <Link to="/support/privacy" className="hover:text-app">Privacy Policy</Link>
+            <Link to="/support/terms" className="hover:text-app">Terms of Use</Link>
             <Link to="/admin" className="text-brand-500 font-semibold hover:text-brand-600">Admin Dashboard</Link>
           </div>
         </div>
