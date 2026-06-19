@@ -8,6 +8,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import SearchBar from "../../components/ui/SearchBar";
 import Drawer from "../../components/ui/Drawer";
 import Badge from "../../components/ui/Badge";
+import Button from '../../components/ui/Button';
 
 export default function OffersPage() {
   const [search, setSearch] = useState("");
@@ -202,7 +203,7 @@ export default function OffersPage() {
   };
 
   return (
-    <div className="space-y-6 py-2">
+    <div className="space-y-6 ">
       {/* Header Panel */}
       <PageHeader
         title="Offers & Promos"
@@ -216,16 +217,14 @@ export default function OffersPage() {
               onClear={() => setSearch("")}
               className="max-w-xs"
             />
-            <button
-              onClick={() => {
-                clearForm();
-                setShowAddOffer(true);
-              }}
-              className="btn-primary flex items-center gap-2"
+            <Button
+              onClick={() => {  clearForm();  setShowAddOffer(true);}}
+              icon={Plus}
+              variant="primary"
+              className="flex flex-row w-fit whitespace-nowrap"
             >
-              <Plus size={15} />
-              Create Campaign
-            </button>
+              <span>Create Campaign</span>
+            </Button>
           </>
         }
       />
@@ -245,12 +244,13 @@ export default function OffersPage() {
             <h3 className="font-bold text-app text-sm">No promotional campaigns found</h3>
             <p className="text-muted text-xs mt-1">Create banners and discount deals to boost your customer engagement.</p>
           </div>
-          <button
-            onClick={() => setShowAddOffer(true)}
-            className="btn-primary py-2 text-xs font-semibold"
+         <Button
+            onClick={() => setShowAddOffer(true)} icon={Plus}
+            variant="addvariant"
+            className="flex items-center gap-2 py-2 bg-sky-500 text-xs font-semibold whitespace-nowrap"
           >
-            <Plus size={14} /> Add First Offer
-          </button>
+            Add First Offer
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -322,8 +322,9 @@ export default function OffersPage() {
                     <div className="flex justify-end gap-2 pt-1">
                       {offer.status === "saved" && (
                         <button
-                          onClick={() => publishOffer(offer.id)}
-                          className="px-3 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-bold text-[11px] transition-all"
+                          onClick={() => publishOffer(offer.id)} 
+                          variant='addvariant'
+                          className="px-3 py-1.5 rounded-l text-white font-bold text-[11px] transition-all"
                         >
                           Publish
                         </button>
@@ -354,13 +355,13 @@ export default function OffersPage() {
         onClose={() => setShowAddOffer(false)}
         title="Create Campaign"
         subtitle="Fill details to create a promotional banner"
-        size="md"
+        size="xl"
       >
         <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
           {/* Image upload preview box */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-app">Campaign Banner <span className="text-red-500">*</span></label>
-            <label className="w-full h-36 border-2 border-dashed border-brand-500/50 hover:border-brand-500 rounded-xl cursor-pointer overflow-hidden bg-app flex flex-col items-center justify-center gap-2 transition-colors">
+            <label className="w-full h-36 border-2 border-dashed border-gray-500/50 hover:border-brand-500 rounded-xl cursor-pointer overflow-hidden bg-app flex flex-col items-center justify-center gap-2 transition-colors">
               <input
                 type="file"
                 hidden
@@ -433,6 +434,7 @@ export default function OffersPage() {
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 className="input-field py-2 text-xs"
+                placeholder="DD-MM-YYYY"
               />
             </div>
             <div className="space-y-1.5">
@@ -470,29 +472,33 @@ export default function OffersPage() {
 
           {/* Footer buttons */}
           <div className="border-t border-app pt-4 mt-6 flex gap-3">
-            <button
+            <Button
               type="button"
-              onClick={() => handleSave("saved")}
+              onClick={() => handleSave('saved')}
               disabled={saving || publishing}
-              className="flex-1 btn-secondary py-2.5 text-xs font-semibold"
+              variant="save"
+              className="flex-1"
             >
-              {saving ? "Saving..." : "Save Draft"}
-            </button>
-            <button
+              {saving ? 'Saving...' : 'Save Draft'}
+            </Button>
+
+            <Button
               type="button"
-              onClick={() => handleSave("published")}
+              onClick={() => handleSave('published')}
               disabled={saving || publishing}
-              className="flex-1 btn-primary py-2.5 text-xs font-semibold"
+              variant="addvariant"
+              className="flex-1"
             >
-              {publishing ? "Publishing..." : "Publish Campaign"}
-            </button>
-            <button
+              {publishing ? 'Publishing...' : 'Publish Campaign'}
+            </Button>
+
+            <Button
               type="button"
               onClick={() => setShowAddOffer(false)}
-              className="px-4 py-2.5 rounded-lg border border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white font-semibold text-xs transition-colors"
+              variant="delete"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       </Drawer>

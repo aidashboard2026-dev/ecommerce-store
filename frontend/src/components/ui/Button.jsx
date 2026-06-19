@@ -19,6 +19,10 @@ export default function Button({
     outline: 'border border-app hover:border-brand-500 text-app hover:text-brand-500',
     ghost: 'hover:bg-app text-muted hover:text-app',
     danger: 'bg-red-500 hover:bg-red-600 text-white shadow-sm shadow-red-500/10 border border-red-600',
+    save: 'border border-app shadow-sm shadow-black/[0.01] hover:text-app hover:bg-green-500/90 hover:border hover:border-green-600',
+    delete: 'border border-app shadow-sm shadow-black/[0.01] hover:text-app hover:bg-red-500/90 hover:border hover:border-red-600',
+    addvariant: 'border border-app shadow-sm shadow-black/[0.01] hover:text-app hover:bg-sky-500/90 hover:border hover:border-sky-600',
+    download: 'border border-app shadow-sm shadow-black/[0.01] hover:text-app hover:bg-orange-500/90 hover:border hover:border-orange-600',
   }
 
   const sizes = {

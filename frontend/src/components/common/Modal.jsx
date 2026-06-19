@@ -25,20 +25,26 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
         onClick={onClose}
       />
       <div className={clsx(
-        'relative w-full bg-app border border-app rounded-2xl shadow-2xl animate-slide-up',
+        'relative w-full bg-app border border-app rounded-2xl shadow-2xl animate-slide-up flex flex-col overflow-hidden',
         sizes[size]
-      )}>
-        <div className="flex items-center justify-between p-6 border-b border-app">
-          <h2 className="text-lg font-display font-bold text-app">{title}</h2>
+      )} style={{ maxHeight: 'calc(100vh - 3rem)' }}>
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-app flex-shrink-0">
+          <h2 className="text-base sm:text-lg font-display font-bold text-app truncate">{title}</h2>
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-xl flex items-center justify-center text-muted hover:text-app hover:bg-surface transition-all"
+            aria-label="Close modal"
           >
             <X size={16} />
           </button>
         </div>
-        <div className="p-6">{children}</div>
+        <div className="p-4 sm:p-6 overflow-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+          {children}
+        </div>
       </div>
     </div>
   )
 }
+
+// Close on Escape for accessibility
+Modal.defaultProps = {}

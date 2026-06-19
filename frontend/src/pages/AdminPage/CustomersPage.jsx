@@ -10,6 +10,7 @@ import CustomerPagination from '../../components/customers/CustomerPagination'
 import CustomerDrawer from '../../components/customers/CustomerDrawer'
 import CustomerFormModal from '../../components/customers/CustomerFormModal'
 import PageHeader from '../../components/ui/PageHeader'
+import SearchBar from "../../components/ui/SearchBar";
 import { customersAPI } from '../../services/api'
 import { useDebounce } from '../../utils/productUtils'
 
@@ -137,6 +138,7 @@ export default function CustomersPage() {
       />
 
       {/* ── Table ─────────────────────────────────────────────────────────── */}
+      
       <CustomerTable
         customers={customers}
         isLoading={isLoading}

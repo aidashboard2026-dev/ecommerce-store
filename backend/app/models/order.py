@@ -69,6 +69,10 @@ class Order(Base):
 
     tracking_note = Column(Text)
 
+    # Logistics provider and tracking identifier
+    logistics = Column(String(100), nullable=True)
+    tracking_id = Column(String(100), nullable=True)
+
     # Dates
     ordered_at = Column(
         DateTime,

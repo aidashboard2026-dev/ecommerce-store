@@ -26,9 +26,11 @@ import { formatPrice, getImageUrl, useDebounce } from '../../utils/productUtils'
 import InlineProductForm from '../../components/products/InlineProductForm'
 import ImageUploadModal from '../../components/products/ImageUploadModal'
 import VariantFormModal from '../../components/products/VariantFormModal'
+import Modal from '../../components/common/Modal'
 import PageHeader from '../../components/ui/PageHeader'
 import SearchBar from '../../components/ui/SearchBar'
 import Badge from '../../components/ui/Badge'
+import Button from '../../components/ui/Button'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -311,7 +313,6 @@ export default function ProductsPage() {
 
   const openEdit    = useCallback(p => {
     setFormModal({ open: true, product: p })
-    setTimeout(() => document.getElementById('inv-form-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }, [])
   const openImage   = useCallback(p => setImageModal({ open: true, product: p }), [])
   const openVariant = useCallback(p => setVariantModal({ open: true, productId: p.id }), [])
@@ -348,7 +349,7 @@ export default function ProductsPage() {
         title="Products"
         description={
           <span className="flex items-center gap-1.5 leading-none">
-            <span className="inline-flex items-center justify-center bg-brand-500/10 text-brand-500 text-[10px] font-bold rounded px-1.5 py-0.5 border border-brand-500/10">
+            <span className="inline-flex items-center justify-centertext-[10px] font-bold rounded ">
               {data?.total ?? 0}
             </span>
             total items
@@ -356,12 +357,12 @@ export default function ProductsPage() {
           </span>
         }
         actions={
-          <button
+          <Button
             onClick={() => setFormModal({ open: true, product: null })}
-            className="btn-primary flex items-center gap-2"
+            icon={Plus} 
           >
-            <Plus size={15} /> Add Product
-          </button>
+            Add Product
+          </Button>
         }
       />
 
@@ -374,7 +375,7 @@ export default function ProductsPage() {
           placeholder="Search products, SKUs, collections…"
           className="max-w-md w-full"
         />
-        <div className="flex gap-1 self-start sm:self-auto overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+        <div className="flex gap-1 items-center sm:flex-nowrap sm:self-auto flex-wrap w-full sm:w-auto pb-1 sm:pb-0">
           {['', ...STATUS_OPTIONS].map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
               className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${statusFilter === s
@@ -522,19 +523,27 @@ export default function ProductsPage() {
         <Pagination page={page} totalPages={data.total_pages} onPageChange={setPage} />
       )}
 
-      {/* ── Inline Product Form ── */}
-      {formModal.open && (
-        <div id="inv-form-anchor">
-          <ProductErrorBoundary title="Product form error">
-            <InlineProductForm
-              product={formModal.product}
-              onClose={() => setFormModal({ open: false, product: null })}
-              onOpenVariant={p => setVariantModal({ open: true, productId: p.id })}
-              onOpenImage={p => setImageModal({ open: true, product: p })}
-            />
-          </ProductErrorBoundary>
-        </div>
-      )}
+      {/* ── Inline Product Form (now modal) ── */}
+     {formModal.open && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="w-full max-w-5xl max-h-[90vh] overflow-hidden rounded-2xl bg-app shadow-2xl">
+      <div className="max-h-[90vh] overflow-y-auto">
+        <ProductErrorBoundary title="Product form error">
+          <InlineProductForm
+            product={formModal.product}
+            onClose={() => setFormModal({ open: false, product: null })}
+            onOpenVariant={p =>
+              setVariantModal({ open: true, productId: p.id })
+            }
+            onOpenImage={p =>
+              setImageModal({ open: true, product: p })
+            }
+          />
+        </ProductErrorBoundary>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* ── Modals ── */}
       <ProductErrorBoundary title="Variant form error">

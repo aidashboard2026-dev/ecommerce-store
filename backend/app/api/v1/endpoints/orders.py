@@ -147,7 +147,7 @@ def get_order(
 @router.put("/{order_id}", response_model=OrderResponse)
 def update_order(
     order_id: int,
-    order_in: OrderUpdate,
+    payload: OrderUpdate,
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_admin),
 ):
@@ -155,14 +155,14 @@ def update_order(
     if not order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
 
-    update_data = order_in.model_dump(exclude_unset=True)
+    update_data = payload.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(order, field, value)
 
     db.commit()
     db.refresh(order)
-    return order
 
+    return order
 
 @router.post("/{order_id}/cancel", response_model=OrderResponse)
 def cancel_order(

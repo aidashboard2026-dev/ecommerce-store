@@ -199,17 +199,17 @@
   color: var(--color-text) !important;
   border-radius: var(--radius-lg) !important;
   padding: 10px !important;
-  box-shadow: var(--shadow-sm) !important;
+  /* box-shadow: var(--shadow-sm) !important; */
   font-family: var(--font-sans) !important;
 }
 
 .react-calendar__navigation button {
   color: var(--color-text) !important;
-  min-width: 28px !important;
+  min-width: 60px !important;
   background: transparent !important;
   border-radius: var(--radius-sm);
   font-weight: 600;
-  font-size: 11px;
+  font-size: 15px;
 }
 
 .react-calendar__navigation button:hover {
@@ -239,7 +239,8 @@
 }
 
 .react-calendar__tile:hover {
-  background: var(--color-bg) !important;
+  /* width: 10px; */
+  /* background: var(--color-bg) !important; */
 }
 
 .react-calendar * {

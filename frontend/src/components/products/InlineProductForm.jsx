@@ -1,13 +1,3 @@
-/**
- * InlineProductForm.jsx
- *
- * CRITICAL FIX: In edit mode the variant delete button was showing a toast
- * ("Open Edit to remove variants") instead of actually deleting the variant.
- * Now wired to productsAPI.deleteVariant via useMutation, with query invalidation.
- *
- * WARN FIX: isCriticalFailureRef is now reset at the top of batchSave so
- * a retry after a step-1 failure starts with a clean slate.
- */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -22,11 +12,13 @@ import {
 } from '../../utils/productUtils'
 import Select from '../ui/Select'
 import Badge from '../ui/Badge'
+import Button from '../ui/Button'
+import Input from '../ui/Input'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../ui/Table'
 
 // ─── Constants (shared with page) ────────────────────────────────────────────
 const STATUS_OPTIONS = ['draft', 'published', 'archived']
-const MAX_IMAGES = 10
+const MAX_IMAGES = 5
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
@@ -39,7 +31,7 @@ const COLLECTION_OPTIONS = [
 const BLANK_VARIANT_FORM = {
   size: 'M', color: '', color_hex: '', sku: '',
   original_price: '', selling_price: '', discount_percentage: '',
-  stock_quantity: 0, low_stock_threshold: 5,
+  stock_quantity: '', low_stock_threshold: 5,
 }
 
 // ─── Shared form primitives ───────────────────────────────────────────────────
@@ -58,14 +50,13 @@ function FormField({ label, required, hint, htmlFor, children }) {
   )
 }
 
-const inputCls =
-  'w-full border border-app bg-app px-2.5 py-1.5 text-sm text-app rounded-lg ' +
-  'focus:outline-none focus:ring-2 focus:ring-brand-500/30 transition-all'
+function StyledInput({ className, ...props }) {
+  return <Input className={clsx('py-1.5 text-sm', className)} {...props} />
+}
 
-function StyledInput(props) { return <input className={inputCls} {...props} /> }
-function StyledSelect({ children, ...props }) {
+function StyledSelect({ children, className, ...props }) {
   return (
-    <Select {...props}>
+    <Select className={clsx('py-1.5 text-sm', className)} {...props}>
       {children}
     </Select>
   )
@@ -113,9 +104,9 @@ function SaveProgressOverlay({ steps, onClose }) {
           ))}
         </div>
         {hasError && allDone && onClose && (
-          <button onClick={onClose} className="w-full text-xs font-medium py-2 rounded-lg border border-app text-app hover:bg-surface transition-colors">
+          <Button type="button" onClick={onClose} variant="secondary" className="w-full">
             Close
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -168,17 +159,17 @@ function LocalVariantForm({ onAdd, existingVariants = [] }) {
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="btn-secondary py-1.5 px-3 text-xs mt-3">
-        <Plus size={12} /> Add Variant
-      </button>
+      <Button type="button" onClick={() => setOpen(true)}  size="sm" icon={Plus} variant='addvariant' className="min-w-[100px] whitespace-nowrap hover:bg-sky-400 hover:border-sky-600">
+        Add Variant
+      </Button>
     )
   }
 
   return (
-    <div className="border border-app rounded-xl p-4 space-y-4 bg-app/50 mt-3">
+    <div className="w-full border border-app rounded-xl p-4 space-y-4 mt-3">
       <p className="text-[10px] font-bold uppercase tracking-wider text-muted">New Variant</p>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-center text-center">
         <FormField label="Size" required>
           <StyledSelect value={form.size} onChange={e => set('size', e.target.value)}>
             {SIZE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
@@ -202,23 +193,33 @@ function LocalVariantForm({ onAdd, existingVariants = [] }) {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <FormField label="Original Price" required>
-          <StyledInput type="number" min="0.01" step="0.01" value={form.original_price} onChange={e => set('original_price', e.target.value)} placeholder="999" />
+          <StyledInput type="number" min="0.01" step="0.01" value={form.original_price} onChange={e => set('original_price', e.target.value)} placeholder="999"
+            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
         </FormField>
         <FormField label="Selling Price" required>
           <StyledInput
             type="number" min="0.01" step="0.01"
             value={form.selling_price} onChange={e => set('selling_price', e.target.value)}
             placeholder="799"
-            className={`${inputCls} ${priceError ? 'border-red-400 focus:ring-red-400/30' : ''}`}
+            className={`${priceError ? 'border-red-400 focus:ring-red-400/30' : ''} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
           />
         </FormField>
         <FormField label="Discount %">
           <StyledInput type="number" min="0" max="100" step="0.01" value={form.discount_percentage}
             onChange={e => set('discount_percentage', e.target.value)} placeholder="0"
+            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             readOnly={!!(form.original_price && form.selling_price)} />
         </FormField>
         <FormField label="Stock">
-          <StyledInput type="number" min="0" value={form.stock_quantity} onChange={e => set('stock_quantity', e.target.value)} />
+          <StyledInput
+            type="number"
+            min="0"
+            value={form.stock_quantity}
+            onChange={e => set('stock_quantity', e.target.value)}
+            placeholder="Enter Stock Quantity"
+            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
         </FormField>
       </div>
 
@@ -229,14 +230,13 @@ function LocalVariantForm({ onAdd, existingVariants = [] }) {
       )}
 
       <div className="flex items-center gap-2 w-full pt-1">
-        <button type="button" onClick={handleAdd} disabled={priceError}
-          className="btn-primary text-xs py-2 px-4 min-w-[100px] whitespace-nowrap disabled:opacity-50">
+        <Button type="button" onClick={handleAdd} disabled={priceError} variant='addvariant' className="min-w-[100px] whitespace-nowrap hover:bg-sky-400 hover:border-sky-600">
           Add Variant
-        </button>
-        <button type="button" onClick={() => { setOpen(false); setForm(BLANK_VARIANT_FORM) }}
-          className="btn-secondary text-xs py-2 px-4 whitespace-nowrap flex-1">
+        </Button>
+        <Button type="button" onClick={() => { setOpen(false); setForm(BLANK_VARIANT_FORM) }}
+          variant="delete" className="whitespace-nowrap hover:bg-red-500 hover:border hover:border-red-500">
           Cancel
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -495,26 +495,30 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
     <>
       {isBatchSaving && <SaveProgressOverlay steps={saveSteps} onClose={handleOverlayClose} />}
 
-      <div className="card overflow-hidden mt-6 shadow-md">
-        <div className="flex items-center justify-between px-6 py-4.5 bg-gradient-to-r from-brand-500/5 via-surface-light to-brand-500/5 dark:from-brand-500/10 dark:via-surface-dark dark:to-brand-500/10 border-b border-app">
-          <h3 className="text-sm font-bold text-app uppercase tracking-tight">{isEdit ? `Editing: ${product.title}` : 'Add New Product'}</h3>
-          <button type="button" onClick={handleClose} disabled={isBatchSaving} aria-label="Close form" className="text-muted hover:text-app p-1 rounded-lg hover:bg-app transition-colors disabled:opacity-40">
-            <X size={16} />
-          </button>
-        </div>
-
-        <form onSubmit={e => {
+      <div className="bg-app">
+        <form
+          className="flex flex-col"
+          onSubmit={e => {
           e.preventDefault()
           if (isSavingRef.current || editMutation.isPending || editPubMutation.isPending) return
           if (isEdit) editMutation.mutate(payload())
           else batchSave()
         }}>
-          <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-6 p-6">
+          <div className="sticky top-0 z-20 flex items-center justify-between px-6 py-1 bg-app border-b border-app backdrop-blur-sm">
+            <h3 className="text-sm font-bold text-app p-4 uppercase tracking-tight">{isEdit ? `Editing: ${product.title}` : 'Add New Product'}</h3>
+            <Button type="button" onClick={handleClose} disabled={isBatchSaving} aria-label="Close form" variant="delete" size="sm"
+              className="h-8 w-8 p-0 rounded-md text-muted hover:text-app hover:bg-red-500 hover:border hover:border-red-500"
+            >
+              <X size={16} />
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-8 p-4 sm:p-6">
             {/* LEFT: image */}
             <div className="flex flex-col items-center gap-3.5">
               {isEdit ? (
                 <>
-                  <div className="w-full aspect-square border-2 border-dashed border-brand-500/50 hover:border-brand-500 rounded-2xl bg-app overflow-hidden cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01]" onClick={() => onOpenImage(product)} title="Click to manage image">
+                  <div className=" w-full max-w-[180px] sm:max-w-[220px] md:max-w-none h-40 sm:h-52 md:aspect-square border-2 border-dashed border-gray-500/50 hover:border-brand-500 rounded-2xl bg-app overflow-hidden cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01] mx-auto" onClick={() => onOpenImage(product)} title="Click to manage image">
                     {thumbnailUrl
                       ? <img src={thumbnailUrl} alt={form.title} className="w-full h-full object-cover" />
                       : <div className="flex flex-col items-center gap-1.5 text-muted">
@@ -522,14 +526,14 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                         <span className="text-[10px] font-bold uppercase tracking-wider text-muted mt-1">Add Image</span>
                       </div>}
                   </div>
-                  <button type="button" onClick={() => onOpenImage(product)} className="w-full btn-secondary text-xs font-semibold py-2">
-                    <Plus size={12} />{product.thumbnail ? 'Change Image' : 'Add Image'}
-                  </button>
+                  <Button type="button" onClick={() => onOpenImage(product)} variant="secondary" icon={Plus} className="w-full">
+                    {product.thumbnail ? 'Change Image' : 'Add Image'}
+                  </Button>
                 </>
               ) : (
                 <>
                   <div
-                    className="w-full aspect-square border-2 border-dashed border-brand-500/50 hover:border-brand-500 rounded-2xl bg-app overflow-hidden cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01]"
+                    className=" w-full max-w-[250px] mx-auto h-40 sm:h-auto sm:aspect-square border-2 border-dashed border-gray-500/50 hover:border-brand-500 rounded-2xl bg-app overflow-hidden cursor-pointer flex items-center justify-center "
                     onClick={() => localFileRef.current?.click()}
                     title="Click to add image"
                   >
@@ -550,23 +554,25 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                       {localImages.slice(1).map(img => (
                         <div key={img.id} className="relative w-8 h-9 rounded overflow-hidden border border-app">
                           <img src={img.previewUrl} alt="" className="w-full h-full object-cover" />
-                          <button type="button" onClick={() => removeLocalImage(img.id)}
+                          <Button type="button" onClick={() => removeLocalImage(img.id)}
                             aria-label="Remove image"
-                            className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                            variant="ghost"
+                            size="sm"
+                            className="absolute inset-0 h-full w-full p-0 rounded-none bg-black/50 opacity-0 hover:opacity-100">
                             <X size={10} className="text-white" />
-                          </button>
+                          </Button>
                         </div>
                       ))}
                     </div>
                   )}
-                  <button type="button" onClick={() => localFileRef.current?.click()} className="w-full btn-secondary text-xs font-semibold py-2">
-                    <Plus size={12} />{localImages.length > 0 ? 'Add More' : 'Add Image'}
-                  </button>
+                  <Button type="button" onClick={() => localFileRef.current?.click()} variant="secondary" icon={Plus} className="w-full">
+                    {localImages.length > 0 ? 'Add More' : 'Add Image'}
+                  </Button>
                   {localImages.length > 0 && (
-                    <button type="button" onClick={() => removeLocalImage(localImages[0].id)}
-                      className="text-[10px] text-red-500 hover:text-red-600 font-bold flex items-center gap-0.5 mt-1.5">
-                      <X size={10} /> Remove
-                    </button>
+                    <Button type="button" onClick={() => removeLocalImage(localImages[0].id)}
+                      variant="ghost" size="sm" icon={X} className="mt-1.5 p-0 text-[10px] text-red-500 hover:text-red-600 hover:bg-transparent">
+                      Remove
+                    </Button>
                   )}
                 </>
               )}
@@ -592,7 +598,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                 <label className="text-xs font-bold text-muted">Collection</label>
                 <div className="w-full">
                   <select className="input-field py-2.5 text-xs" value={form.collection} onChange={e => set('collection', e.target.value)}>
-                    <option value="">— None —</option>
+                    <option value="">None</option>
                     {COLLECTION_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
@@ -600,8 +606,8 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
                   <label className="text-xs font-bold text-muted">Status</label>
-                  <div className="w-full">
-                    <select className="input-field py-2.5 text-xs" value={form.status} onChange={e => set('status', e.target.value)}>
+                  <div className="w-full ">
+                    <select className="input-field  py-2.5 text-xs" value={form.status} onChange={e => set('status', e.target.value)}>
                       {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
                     </select>
                   </div>
@@ -644,8 +650,8 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                   <TableBody>
                     {variants.map((v) => (
                       <TableRow key={isEdit ? v.id : v._localId}>
-                        <TableCell>
-                          <Badge label={v.size} variant="info" />
+                        <TableCell className="text-left font-extrabold text-xl ">
+                          {v.size}
                         </TableCell>
                         <TableCell className="font-medium">{formatPrice(v.original_price)}</TableCell>
                         <TableCell className="font-medium text-emerald-600 dark:text-emerald-400">{formatPrice(v.selling_price)}</TableCell>
@@ -655,7 +661,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                           {isEdit ? (
                             <button
                               type="button"
-                              className="btn-secondary rounded-lg flex items-center justify-center border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white"
+                              className=" rounded-md flex items-center justify-center border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white"
                               style={{ width: 24, height: 24 }}
                               disabled={deletingVariantIds.has(v.id)}
                               onClick={() => deleteVariantMutation.mutate(v.id)}
@@ -678,13 +684,18 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                 </Table>
               </div>
             ) : (
-              <p className="text-xs text-muted py-1.5">No variants yet.</p>
+              <p className="text-xs border p-2 rounded-md text-muted py-1.5 mb-2">No variants yet.</p>
             )}
 
             {isEdit ? (
-              <button type="button" onClick={() => onOpenVariant(product)} className="btn-secondary py-1.5 px-3 text-xs mt-3">
-                <Plus size={12} /> Add Variant
-              </button>
+<Button
+  type="button"
+  onClick={() => onOpenVariant(product)}
+  variant="addvariant"
+  className="min-w-[100px] mt-2 whitespace-nowrap hover:bg-sky-400 hover:border-sky-600"
+>
+  Add Variant
+</Button>
             ) : (
               <LocalVariantForm onAdd={addLocalVariant} existingVariants={localVariants} />
             )}
@@ -693,7 +704,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
           {/* Description */}
           <div className="px-6 pt-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-3">Description</p>
-            <textarea className="input-field text-xs py-2.5 resize-none w-full" rows={3}
+            <textarea className="input-field text-xs py-2.5 resize-none h-28 w-full" rows={3}
               value={form.description} onChange={e => set('description', e.target.value)}
               placeholder="Product description…" />
           </div>
@@ -713,14 +724,14 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
             </div>
           )}
 
-          <div className="grid gap-3 p-6 border-t border-app mt-6">
+          <div className="grid gap-3 p-6 border-app bg-app">
             <div className="flex gap-3">
-              <button type="submit" className="flex-1 btn-primary py-2.5 text-xs font-bold" disabled={isBatchSaving || editMutation.isPending}>
+              <button type="submit" className="flex-1 btn-primary rounded-lg bg-emerald-500 hover:bg-emerald-600 border-emerald-500 hover:border-emerald-600 py-2.5 text-xs font-bold" disabled={isBatchSaving || editMutation.isPending}>
                 {(isBatchSaving || editMutation.isPending) ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : 'Save'}
               </button>
               <button
                 type="button"
-                className="flex-1 btn-primary bg-emerald-500 hover:bg-emerald-600 border-emerald-500 hover:border-emerald-600 py-2.5 text-xs font-bold"
+                className="flex-1 btn-primary rounded-lg bg-sky-400 hover:bg-sky-500 border-sky-500 hover:border-sky-600 py-2.5 text-xs font-bold"
                 disabled={isBatchSaving || editPubMutation?.isPending}
                 onClick={() => {
                   if (isSavingRef.current || editPubMutation?.isPending) return
@@ -731,7 +742,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                 {(isBatchSaving || editPubMutation?.isPending) ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : 'Publish'}
               </button>
             </div>
-            <button type="button" className="w-full px-4 py-2.5 rounded-lg border border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white font-bold text-xs transition-colors" onClick={handleClose} disabled={isBatchSaving}>Cancel</button>
+            <button type="button" className="w-full px-4 py-2.5 rounded-lg border border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-black font-bold text-xs transition-colors" onClick={handleClose} disabled={isBatchSaving}>Cancel</button>
           </div>
         </form>
       </div>

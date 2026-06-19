@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import Modal from '../ui/Modal'
 import Input from '../ui/Input'
 import Select from '../ui/Select'
+import Button from '../ui/Button'
 import { productsAPI as productsApi } from '../../services/api'
 
 const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
@@ -59,8 +60,8 @@ export default function VariantFormModal({ isOpen, onClose, productId }) {
   const priceError = !isNaN(sellNum) && !isNaN(origNum) && sellNum > origNum
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Add Variant">
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <Modal isOpen={isOpen} onClose={onClose} title="Add Variant" size='2xl'>
+      <form onSubmit={handleSubmit} className="space-y-4 p-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Select
             label="Size"
@@ -105,6 +106,7 @@ export default function VariantFormModal({ isOpen, onClose, productId }) {
             onChange={e => set('original_price', e.target.value)}
             required
             placeholder="999"
+            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
           <Input
             label="Selling Price"
@@ -116,6 +118,7 @@ export default function VariantFormModal({ isOpen, onClose, productId }) {
             required
             placeholder="799"
             error={priceError ? 'Price exceeds original' : undefined}
+            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
           <Input
             label="Discount %"
@@ -127,6 +130,7 @@ export default function VariantFormModal({ isOpen, onClose, productId }) {
             onChange={e => set('discount_percentage', e.target.value)}
             placeholder="0"
             disabled
+            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
         </div>
         {priceError && (
@@ -136,26 +140,34 @@ export default function VariantFormModal({ isOpen, onClose, productId }) {
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
-            label="Stock Qty"
+            label="Stock"
             type="number"
             min="0"
             value={form.stock_quantity}
             onChange={e => set('stock_quantity', e.target.value)}
+            placeholder='0'
+            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
           <Input
             label="Low Stock Alert"
             type="number"
             min="0"
             value={form.low_stock_threshold}
-            onChange={e => set('low_stock_threshold', e.target.value)}
+            onChange={e => set('low_stock_threshold', e.target.value)} placeholder='0'
+            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
         </div>
-        <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4 border-t border-app">
-          <button type="button" onClick={onClose} className="btn-secondary sm:px-6">Cancel</button>
-          <button type="submit" disabled={mutation.isPending || priceError} className="flex-1 btn-primary flex items-center justify-center gap-2 disabled:opacity-50">
-            {mutation.isPending && <Loader2 size={14} className="animate-spin" />}
+        <div className="flex flex-col sm:flex-row gap-3 pt-4">
+          <Button type="submit" variant="addvariant" disabled={mutation.isPending || priceError} className="flex">
+            {mutation.isPending && (
+              <Loader2 size={14} className="animate-spin" />
+            )}
             Add Variant
-          </button>
+          </Button>
+
+          <Button  type="button"  variant="delete"  onClick={onClose}  className="sm:px-6">
+            Cancel
+          </Button>
         </div>
       </form>
     </Modal>

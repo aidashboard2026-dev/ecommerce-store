@@ -32,6 +32,8 @@ class OrderBase(BaseModel):
 
     tracking_status: str = "PLACED"
     tracking_note: Optional[str] = None
+    logistics: Optional[str] = None
+    tracking_id: Optional[str] = None
 
     delivery_days: Optional[int] = None
     expected_delivery_date: Optional[datetime] = None
@@ -49,6 +51,8 @@ class OrderUpdate(BaseModel):
 
     tracking_status: Optional[str] = None
     tracking_note: Optional[str] = None
+    logistics: Optional[str] = None
+    tracking_id: Optional[str] = None
 
     payment_status: Optional[str] = None
 
@@ -58,6 +62,8 @@ class OrderResponse(OrderBase):
     order_number: str
     created_at: datetime
     updated_at: Optional[datetime] = None
+    logistics: Optional[str] = None
+    tracking_id: Optional[str] = None
 
     class Config:
         from_attributes = True
