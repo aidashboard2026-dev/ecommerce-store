@@ -63,28 +63,28 @@ export default function ProductFilters({
       {/* Category / Collection */}
       {collections.length > 0 && (
         <div>
-          <h4 className="text-xs font-bold uppercase tracking-wider text-app mb-3">Category</h4>
+          <h4 className="text-xs font-bold uppercase tracking-wider text-app mb-3">Collection</h4>
           <div className="flex flex-col gap-2">
             <label className="flex items-center gap-2 text-sm text-app cursor-pointer">
               <input
                 type="radio"
-                name="collection"
-                checked={!filters.collection}
-                onChange={() => update({ collection: '' })}
+                name="collection_id"
+                checked={!filters.collection_id}
+                onChange={() => update({ collection_id: '' })}
                 className="accent-brand-500"
               />
-              All Categories
+              All Collections
             </label>
             {collections.map((c) => (
-              <label key={c} className="flex items-center gap-2 text-sm text-app cursor-pointer">
+              <label key={c.id} className="flex items-center gap-2 text-sm text-app cursor-pointer">
                 <input
                   type="radio"
-                  name="collection"
-                  checked={filters.collection === c}
-                  onChange={() => update({ collection: c })}
+                  name="collection_id"
+                  checked={String(filters.collection_id) === String(c.id)}
+                  onChange={() => update({ collection_id: c.id })}
                   className="accent-brand-500"
                 />
-                {c}
+                {c.name}
               </label>
             ))}
           </div>

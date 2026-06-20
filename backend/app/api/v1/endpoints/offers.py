@@ -22,9 +22,49 @@ _OFFER_UPLOAD_DIR = os.path.join(os.path.abspath(settings.UPLOAD_DIR), "offers")
 os.makedirs(_OFFER_UPLOAD_DIR, exist_ok=True)
 
 
+# ── Public storefront endpoint (MUST be registered BEFORE /{offer_id}) ────────
+#
+# FastAPI matches routes in registration order. Any static path segment like
+# "active" or "admin" placed after /{offer_id} would be shadowed because
+# FastAPI would try to convert "active" to int → 422 Unprocessable Entity.
+# Registering these named routes first guarantees correct path resolution.
+
+@router.get("/active/all", response_model=List[OfferResponse])
+def get_active_offers_storefront(
+    db: Session = Depends(get_db),
+):
+    """
+    Public endpoint — no authentication required.
+    Returns all currently published, non-expired offers for the storefront.
+    """
+    now = datetime.now(timezone.utc)
+    return (
+        db.query(Offer)
+        .filter(
+            Offer.status == "published",
+            or_(
+                Offer.expires_at.is_(None),
+                Offer.expires_at > now
+            )
+        )
+        .all()
+    )
+
+
+# ── Admin: List all offers ────────────────────────────────────────────────────
+
+@router.get("/admin/all", response_model=List[OfferResponse])
+def get_all_offers(
+    db: Session = Depends(get_db),
+    current_admin: Admin = Depends(get_current_admin),
+):
+    """Admin-only: returns every offer regardless of status."""
+    return get_offers(db)
+
+
 # ── Create offer ──────────────────────────────────────────────────────────────
 
-@router.post("/", response_model=OfferResponse)
+@router.post("/admin", response_model=OfferResponse)
 async def create_new_offer(
     title: str = Form(...),
     percentage: str = Form(...),
@@ -83,25 +123,14 @@ async def create_new_offer(
     return create_offer(db, offer_data)
 
 
-# ── List all offers ───────────────────────────────────────────────────────────
+# ── Get single offer (admin) ──────────────────────────────────────────────────
 
-@router.get("/", response_model=List[OfferResponse])
-def get_all_offers(
-    db: Session = Depends(get_db),
-    current_admin: Admin = Depends(get_current_admin),
-):
-    return get_offers(db)
-
-
-# ── Get single offer ──────────────────────────────────────────────────────────
-
-@router.get("/{offer_id}", response_model=OfferResponse)
+@router.get("/admin/{offer_id}", response_model=OfferResponse)
 def get_single_offer(
     offer_id: int,
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_admin),
 ):
-    # FIX C-5: was returning None directly → 500 serialization error
     offer = get_offer(db, offer_id)
     if not offer:
         raise HTTPException(
@@ -113,7 +142,7 @@ def get_single_offer(
 
 # ── Publish offer (set status → published, compute expiry) ────────────────────
 
-@router.put("/{offer_id}", response_model=OfferResponse)
+@router.put("/admin/{offer_id}", response_model=OfferResponse)
 def publish_offer(
     offer_id: int,
     db: Session = Depends(get_db),
@@ -143,7 +172,7 @@ def publish_offer(
 
 # ── Edit offer (title, description, dates, image, status) ─────────────────────
 
-@router.patch("/{offer_id}", response_model=OfferResponse)
+@router.patch("/admin/{offer_id}", response_model=OfferResponse)
 async def edit_offer(
     offer_id: int,
     title: Optional[str] = Form(None),
@@ -252,7 +281,7 @@ async def edit_offer(
 
 # ── Delete offer ──────────────────────────────────────────────────────────────
 
-@router.delete("/{offer_id}")
+@router.delete("/admin/{offer_id}")
 def remove_offer(
     offer_id: int,
     db: Session = Depends(get_db),
@@ -260,23 +289,3 @@ def remove_offer(
 ):
     delete_offer(db, offer_id)
     return {"message": "Offer deleted successfully"}
-
-
-# ── Public offers for storefront ──────────────────────────────────────────────
-
-@router.get("/active/all", response_model=List[OfferResponse])
-def get_active_offers_storefront(
-    db: Session = Depends(get_db),
-):
-    now = datetime.now(timezone.utc)
-    return (
-        db.query(Offer)
-        .filter(
-            Offer.status == "published",
-            or_(
-                Offer.expires_at.is_(None),
-                Offer.expires_at > now
-            )
-        )
-        .all()
-    )

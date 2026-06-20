@@ -15,7 +15,7 @@ export default function ProductsList() {
 
   const [filters, setFilters] = useState({
     sort_by: searchParams.get('sort_by') || 'newest',
-    collection: searchParams.get('collection') || '',
+    collection_id: searchParams.get('collection_id') || '',
     min_price: searchParams.get('min_price') || '',
     max_price: searchParams.get('max_price') || '',
     rating: null,
@@ -28,7 +28,7 @@ export default function ProductsList() {
     const f = {
       sort_by: filters.sort_by,
       search: debouncedSearch || undefined,
-      collection: filters.collection || undefined,
+      collection_id: filters.collection_id || undefined,
       min_price: filters.min_price || undefined,
       max_price: filters.max_price || undefined,
     }
@@ -42,7 +42,7 @@ export default function ProductsList() {
   useEffect(() => {
     const params = {}
     if (debouncedSearch) params.search = debouncedSearch
-    if (filters.collection) params.collection = filters.collection
+    if (filters.collection_id) params.collection_id = filters.collection_id
     if (filters.sort_by !== 'newest') params.sort_by = filters.sort_by
     if (filters.min_price) params.min_price = filters.min_price
     if (filters.max_price) params.max_price = filters.max_price
@@ -76,7 +76,7 @@ export default function ProductsList() {
     setSearch('')
     setFilters({
       sort_by: 'newest',
-      collection: '',
+      collection_id: '',
       min_price: '',
       max_price: '',
       rating: null,

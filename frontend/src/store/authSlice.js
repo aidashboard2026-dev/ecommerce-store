@@ -17,7 +17,7 @@ export const loginThunk = createAsyncThunk(
   'auth/login',
   async ({ email, password }, { rejectWithValue }) => {
     try {
-      const res = await authAPI.login(email, password)
+      const res = await authAPI.login({ email, password })
       return res.data
     } catch (err) {
       return rejectWithValue(err.response?.data?.detail || 'Login failed')
@@ -29,7 +29,7 @@ export const fetchMeThunk = createAsyncThunk(
   'auth/fetchMe',
   async (_, { rejectWithValue }) => {
     try {
-      const res = await authAPI.getMe()
+      const res = await authAPI.me()
       return res.data
     } catch (err) {
       return rejectWithValue('Session expired')

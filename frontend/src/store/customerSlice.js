@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import { authAPI, storefrontAPI } from '../services/api'
+import { authAPI, customerAuthAPI, storefrontAPI } from '../services/api'
 
 const TOKEN_KEY = 'customer_token'
 const CUSTOMER_KEY = 'customer'
@@ -15,7 +15,7 @@ export const customerLoginThunk = createAsyncThunk(
   'customer/login',
   async ({ email, password }, { rejectWithValue }) => {
     try {
-      const res = await authAPI.customerLogin(email, password)
+      const res = await customerAuthAPI.login({ email, password })
       return res.data
     } catch (err) {
       return rejectWithValue(err.response?.data?.detail || 'Login failed')
@@ -39,7 +39,7 @@ export const fetchCustomerMeThunk = createAsyncThunk(
   'customer/fetchMe',
   async (_, { rejectWithValue }) => {
     try {
-      const res = await authAPI.customerMe()
+      const res = await customerAuthAPI.me()
       return res.data
     } catch (err) {
       return rejectWithValue('Session expired')

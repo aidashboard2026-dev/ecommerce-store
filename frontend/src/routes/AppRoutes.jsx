@@ -6,7 +6,6 @@ import { useSelector, useDispatch } from 'react-redux'
 import { logoutThunk } from '../store/authSlice'
 import MainLayout from '../layouts/MainLayout'
 import AdminLoginPage from '../pages/AdminPage/LoginPage'
-import AdminSignupPage from '../pages/AdminPage/SignupPage'
 import DashboardPage from '../pages/AdminPage/DashboardPage'
 import AdminProductsPage from '../pages/AdminPage/ProductsPage'
 import AdminOrdersPage from '../pages/AdminPage/OrdersPage'
@@ -106,16 +105,13 @@ export default function AppRoutes() {
   return (
     <Routes>
       {/* ── BACKWARD COMPATIBILITY REDIRECTS ─────────────────────────────── */}
+      {/* /login is a customer route alias — not an admin login shortcut */}
       <Route
         path="/login"
-        element={<Navigate to="/admin/login" replace />}
+        element={<Navigate to="/auth/login" replace />}
       />
 
-      <Route
-        path="/signup"
-        element={<Navigate to="/admin/signup" replace />}
-      />
-
+      
       {/* ── ADMIN AUTH ROUTES (structure unchanged) ───────────────────────── */}
       <Route
         path="/admin/login"
@@ -126,14 +122,7 @@ export default function AppRoutes() {
         }
       />
 
-      <Route
-        path="/admin/signup"
-        element={
-          <AdminPublicRoute>
-            <AdminSignupPage />
-          </AdminPublicRoute>
-        }
-      />
+      
 
       {/* ── ADMIN DASHBOARD (structure unchanged) ──────────────────────────── */}
       <Route

@@ -129,6 +129,7 @@ def create_order(
                 ProductVariant.size == order_in.size,
                 Product.deleted_at.is_(None),
             )
+            .with_for_update()
         )
         if order_in.color:
             variant_q = variant_q.filter(ProductVariant.color == order_in.color)
@@ -298,6 +299,7 @@ def create_customer_order(
                 ProductVariant.size == order_in.size,
                 Product.deleted_at.is_(None),
             )
+            .with_for_update()
         )
         # Prefer product_id match (reliable); fall back to title match (legacy)
         if order_in.product_id:

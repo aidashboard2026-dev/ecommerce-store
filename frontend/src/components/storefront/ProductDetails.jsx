@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import toast from 'react-hot-toast'
 import { Heart, ShoppingBag, Zap, ChevronLeft, ChevronRight, Star, Truck, ShieldCheck, RotateCcw } from 'lucide-react'
 import clsx from 'clsx'
-import { useProductBySlug, useProductsInfinite } from '../../hooks/useProducts'
+import { useProductBySlug, useRelatedProducts } from '../../hooks/useProducts'
 import { getImageUrl, formatPrice } from '../../utils/productUtils'
 import { addToCart } from '../../store/cartSlice'
 import { toggleWishlist, selectIsWishlisted } from '../../store/wishlistSlice'
@@ -59,22 +59,22 @@ export default function ProductDetails() {
     )
   }, [variants, selectedSize, selectedColor, colorsForSize])
 
-  // Related products from the same collection
-  const { data: relatedData } = useProductsInfinite({
-    collection: product?.collection || undefined,
-    per_page: 8,
-  })
-  const relatedProducts = useMemo(() => {
-    const items = relatedData?.pages?.[0]?.items || []
-    return items.filter((p) => p.id !== product?.id).slice(0, 4)
-  }, [relatedData, product?.id])
+  // Related products — use the backend's priority-ordered related endpoint
+  const { data: relatedProducts = [] } = useRelatedProducts(slug, 4)
 
-  // Image gallery — currently single thumbnail; treat as a 1-image gallery,
-  // with graceful fallback if `images` array is populated in future.
+  // Image gallery — build from all available image fields, deduplicated
   const images = useMemo(() => {
-    if (product?.images?.length) return product.images
-    if (product?.thumbnail) return [product.thumbnail]
-    return []
+    const seen = new Set()
+    const result = []
+    const addImg = (url) => {
+      if (url && !seen.has(url)) { seen.add(url); result.push(url) }
+    }
+    addImg(product?.thumbnail)
+    addImg(product?.image_front)
+    addImg(product?.image_back)
+    ;(product?.gallery_images || []).forEach(addImg)
+    ;(product?.images || []).forEach(addImg)
+    return result
   }, [product])
 
   if (isLoading) {
@@ -239,9 +239,9 @@ export default function ProductDetails() {
 
         {/* Info */}
         <div className="flex flex-col gap-5">
-          {product.collection && (
+          {(product.collection_name || product.collection) && (
             <span className="text-xs uppercase tracking-wider text-brand-500 font-semibold">
-              {product.collection}
+              {product.collection_name || product.collection}
             </span>
           )}
 

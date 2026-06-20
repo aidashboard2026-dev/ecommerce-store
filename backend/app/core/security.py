@@ -1,12 +1,19 @@
 from datetime import datetime, timedelta
 from typing import Optional, Union, Any
 
+import bcrypt
 from jose import jwt, JWTError
-from passlib.context import CryptContext
 
 from app.core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+_BCRYPT_MAX_BYTES = 72  # bcrypt silently ignores bytes beyond this; truncate explicitly
+
+
+def _prep(password: str) -> bytes:
+    pw_bytes = password.encode("utf-8")
+    if len(pw_bytes) > _BCRYPT_MAX_BYTES:
+        pw_bytes = pw_bytes[:_BCRYPT_MAX_BYTES]
+    return pw_bytes
 
 
 def create_access_token(
@@ -41,8 +48,16 @@ def verify_token(token: str, expected_type: str = "admin") -> Optional[str]:
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    if not hashed_password:
+        return False
+    try:
+        return bcrypt.checkpw(_prep(plain_password), hashed_password.encode("utf-8"))
+    except (ValueError, TypeError):
+        # Malformed/corrupt/non-bcrypt hash in the DB — treat as failed auth,
+        # not a 500. (This is also the case passlib used to throw on.)
+        return False
 
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    hashed = bcrypt.hashpw(_prep(password), bcrypt.gensalt(rounds=12))
+    return hashed.decode("utf-8")

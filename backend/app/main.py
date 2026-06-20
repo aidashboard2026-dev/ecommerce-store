@@ -1,3 +1,4 @@
+import logging
 import os
 
 from fastapi import FastAPI, Request
@@ -5,11 +6,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+from sqlalchemy.exc import IntegrityError
 from app.core.config import settings
 from app.api.v1.router import api_router
 
 # Import all models so SQLAlchemy registers them
 import app.models  # noqa: F401
+
+logger = logging.getLogger("app")
 
 UPLOADS_ROOT = os.path.abspath(settings.UPLOAD_DIR)
 os.makedirs(os.path.join(UPLOADS_ROOT, "products"), exist_ok=True)
@@ -149,6 +153,30 @@ app.mount(
     StaticFiles(directory=UPLOADS_ROOT),
     name="uploads",
 )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Global exception handlers
+# ──────────────────────────────────────────────────────────────────────────────
+
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request: Request, exc: IntegrityError):
+    """
+    Catches DB constraint violations that escape application-level checks —
+    e.g. a stock-quantity race that slips past with_for_update() locking,
+    or a duplicate-key race on concurrent inserts. Without this handler,
+    these surface as raw 500s with a leaked SQL error message.
+    """
+    logger.error("IntegrityError on %s %s: %s", request.method, request.url.path, exc)
+    return JSONResponse(
+        status_code=409,
+        content={
+            "detail": (
+                "This action conflicts with the current state of the data "
+                "(e.g. insufficient stock or a duplicate entry). Please refresh and try again."
+            )
+        },
+    )
 
 
 # ──────────────────────────────────────────────────────────────────────────────

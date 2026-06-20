@@ -4,6 +4,126 @@ from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 
 
+# ── Category Schemas ─────────────────────────────────────────────────────────
+
+class CategoryBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    status: str = "active"
+    sort_order: int = 0
+
+
+class CategoryCreate(CategoryBase):
+    @field_validator("name")
+    @classmethod
+    def name_not_empty(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError("Category name is required")
+        if len(v) > 100:
+            raise ValueError("Category name must be 100 characters or fewer")
+        return v
+
+    @field_validator("status")
+    @classmethod
+    def status_valid(cls, v):
+        if v not in ("active", "inactive"):
+            raise ValueError("status must be 'active' or 'inactive'")
+        return v
+
+
+class CategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+    sort_order: Optional[int] = None
+
+    @field_validator("name")
+    @classmethod
+    def name_not_empty(cls, v):
+        if v is not None:
+            v = v.strip()
+            if not v:
+                raise ValueError("Category name is required")
+            if len(v) > 100:
+                raise ValueError("Category name must be 100 characters or fewer")
+        return v
+
+    @field_validator("status")
+    @classmethod
+    def status_valid(cls, v):
+        if v is not None and v not in ("active", "inactive"):
+            raise ValueError("status must be 'active' or 'inactive'")
+        return v
+
+
+class CategoryResponse(CategoryBase):
+    id: int
+    slug: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ── Collection Schemas ───────────────────────────────────────────────────────
+
+class CollectionBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    status: str = "active"
+    category_id: Optional[int] = None
+
+
+class CollectionCreate(CollectionBase):
+    @field_validator("name")
+    @classmethod
+    def name_not_empty(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError("Collection name is required")
+        if len(v) > 100:
+            raise ValueError("Collection name must be 100 characters or fewer")
+        return v
+
+    @field_validator("status")
+    @classmethod
+    def status_valid(cls, v):
+        if v not in ("active", "inactive"):
+            raise ValueError("status must be 'active' or 'inactive'")
+        return v
+
+
+class CollectionUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+    category_id: Optional[int] = None
+
+    @field_validator("name")
+    @classmethod
+    def name_not_empty(cls, v):
+        if v is not None:
+            v = v.strip()
+            if not v:
+                raise ValueError("Collection name is required")
+            if len(v) > 100:
+                raise ValueError("Collection name must be 100 characters or fewer")
+        return v
+
+
+class CollectionResponse(CollectionBase):
+    id: int
+    slug: str
+    category_name: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
 # ── Variant Schemas ──────────────────────────────────────────────────────────
 
 class VariantBase(BaseModel):
@@ -11,67 +131,55 @@ class VariantBase(BaseModel):
     color: Optional[str] = None
     color_hex: Optional[str] = None
     sku: Optional[str] = None
-    # Decimal matches the DB Numeric(10,2) column exactly.
-    # float cannot represent many decimal fractions exactly (e.g. 0.1 + 0.2 ≠ 0.3),
-    # causing silent monetary rounding errors. Decimal is exact by design.
     original_price: Decimal
     selling_price: Decimal
     discount_percentage: Decimal = Decimal("0")
     stock_quantity: int = 0
+    reserved_stock: int = 0
     low_stock_threshold: int = 5
 
 
 class VariantCreate(VariantBase):
-    @field_validator('original_price', 'selling_price', mode='before')
+    @field_validator("original_price", "selling_price", mode="before")
     @classmethod
     def coerce_and_round_price(cls, v):
-        """Accept int/float/str inputs and round to 2 d.p. for DB Numeric(10,2)."""
-        d = Decimal(str(v))
-        return d.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return Decimal(str(v)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-    @field_validator('discount_percentage', mode='before')
+    @field_validator("discount_percentage", mode="before")
     @classmethod
     def coerce_discount(cls, v):
-        d = Decimal(str(v))
-        return d.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return Decimal(str(v)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-    @field_validator('original_price')
+    @field_validator("original_price")
     @classmethod
     def original_price_positive(cls, v):
         if v <= 0:
-            raise ValueError('original_price must be greater than zero')
+            raise ValueError("original_price must be greater than zero")
         return v
 
-    @field_validator('selling_price')
+    @field_validator("selling_price")
     @classmethod
     def selling_price_positive(cls, v):
         if v <= 0:
-            raise ValueError('selling_price must be greater than zero')
+            raise ValueError("selling_price must be greater than zero")
         return v
 
-    @field_validator('stock_quantity')
+    @field_validator("stock_quantity")
     @classmethod
     def stock_nonnegative(cls, v):
         if v < 0:
-            raise ValueError('stock_quantity cannot be negative')
+            raise ValueError("stock_quantity cannot be negative")
         return v
 
-    @field_validator('low_stock_threshold')
-    @classmethod
-    def threshold_nonnegative(cls, v):
-        if v < 0:
-            raise ValueError('low_stock_threshold cannot be negative')
-        return v
-
-    @field_validator('size')
+    @field_validator("size")
     @classmethod
     def size_not_empty(cls, v):
         v = v.strip()
         if not v:
-            raise ValueError('size is required')
+            raise ValueError("size is required")
         return v
 
-    @field_validator('sku')
+    @field_validator("sku")
     @classmethod
     def sku_strip(cls, v):
         if v is not None:
@@ -79,12 +187,12 @@ class VariantCreate(VariantBase):
             return v if v else None
         return v
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def selling_lte_original(self):
         if self.selling_price > self.original_price:
             raise ValueError(
-                f'selling_price ({self.selling_price}) cannot exceed '
-                f'original_price ({self.original_price})'
+                f"selling_price ({self.selling_price}) cannot exceed "
+                f"original_price ({self.original_price})"
             )
         return self
 
@@ -92,12 +200,12 @@ class VariantCreate(VariantBase):
 class VariantResponse(VariantBase):
     id: int
     product_id: int
+    available_stock: int = 0
+    inventory_status: str = "in_stock"
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    # Coerce Numeric/Decimal from DB → Decimal (no-op if already Decimal).
-    # str coercion handles edge cases from some DB drivers returning strings.
-    @field_validator('original_price', 'selling_price', 'discount_percentage', mode='before')
+    @field_validator("original_price", "selling_price", "discount_percentage", mode="before")
     @classmethod
     def coerce_to_decimal(cls, v):
         if v is None:
@@ -108,17 +216,7 @@ class VariantResponse(VariantBase):
         from_attributes = True
 
 
-# ── Bulk variant payload ──────────────────────────────────────────────────────
-
 class BulkVariantCreate(BaseModel):
-    """
-    Payload for POST /products/admin/:id/variants/bulk
-
-    The bulk create endpoint already exists in products.py and product_service.py.
-    This schema was missing from the file, meaning the endpoint accepted a raw
-    List[VariantCreate] without a wrapper. Added here for explicit API contracts
-    and to support frontend bulkCreateVariants() calls consistently.
-    """
     variants: List[VariantCreate]
 
 
@@ -127,105 +225,122 @@ class BulkVariantCreate(BaseModel):
 class ProductBase(BaseModel):
     title: str
     description: Optional[str] = None
+    short_description: Optional[str] = None
+    # Legacy free-text collection kept for backward compat
     collection: Optional[str] = None
+    # New FK-based classification
+    category_id: Optional[int] = None
+    collection_id: Optional[int] = None
     tags: List[str] = []
     status: str = "draft"
-    is_featured: bool = False
+    is_featured:    bool = False
+    is_trending:    bool = False
+    is_best_seller: bool = False
+    is_new_arrival: bool = False
     seo_title: Optional[str] = None
     seo_description: Optional[str] = None
 
 
 class ProductCreate(ProductBase):
-    @field_validator('title')
+    @field_validator("title")
     @classmethod
     def title_valid(cls, v):
         v = v.strip()
         if len(v) < 2:
-            raise ValueError('Product title must be at least 2 characters')
-        # FIX (HP-05): Added max-length — was previously unbounded.
-        # A 50,000-character title passed validation, produced a broken oversized
-        # slug, and broke the UI table layout. Now capped at 200 characters.
+            raise ValueError("Product title must be at least 2 characters")
         if len(v) > 200:
-            raise ValueError('Product title must be 200 characters or fewer')
+            raise ValueError("Product title must be 200 characters or fewer")
         return v
 
-    @field_validator('tags')
+    @field_validator("tags")
     @classmethod
     def sanitize_tags(cls, v):
-        """Strip whitespace and filter empty tags."""
         if v is None:
             return []
         return [t.strip() for t in v if t and t.strip()]
 
-    @field_validator('status')
+    @field_validator("status")
     @classmethod
     def status_valid(cls, v):
-        allowed = {'draft', 'published', 'archived'}
+        allowed = {"draft", "published", "archived"}
         if v not in allowed:
-            raise ValueError(f'status must be one of: {", ".join(allowed)}')
+            raise ValueError(f"status must be one of: {', '.join(allowed)}")
         return v
 
 
 class ProductUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
+    short_description: Optional[str] = None
     collection: Optional[str] = None
+    category_id: Optional[int] = None
+    collection_id: Optional[int] = None
     tags: Optional[List[str]] = None
     status: Optional[str] = None
-    is_featured: Optional[bool] = None
+    is_featured:    Optional[bool] = None
+    is_trending:    Optional[bool] = None
+    is_best_seller: Optional[bool] = None
+    is_new_arrival: Optional[bool] = None
     seo_title: Optional[str] = None
     seo_description: Optional[str] = None
 
-    @field_validator('title')
+    @field_validator("title")
     @classmethod
     def title_valid(cls, v):
         if v is not None:
             v = v.strip()
             if len(v) < 2:
-                raise ValueError('Product title must be at least 2 characters')
-            # FIX (HP-05): Added max-length
+                raise ValueError("Product title must be at least 2 characters")
             if len(v) > 200:
-                raise ValueError('Product title must be 200 characters or fewer')
+                raise ValueError("Product title must be 200 characters or fewer")
         return v
 
-    @field_validator('tags')
+    @field_validator("tags")
     @classmethod
     def sanitize_tags(cls, v):
         if v is not None:
             return [t.strip() for t in v if t and t.strip()]
         return v
 
-    @field_validator('status')
+    @field_validator("status")
     @classmethod
     def status_valid(cls, v):
         if v is not None:
-            allowed = {'draft', 'published', 'archived'}
+            allowed = {"draft", "published", "archived"}
             if v not in allowed:
-                raise ValueError(f'status must be one of: {", ".join(allowed)}')
+                raise ValueError(f"status must be one of: {', '.join(allowed)}")
         return v
 
 
 class ProductResponse(ProductBase):
     id: int
     slug: str
-    thumbnail: Optional[str] = None
-    images: List[Any] = []        # MVP: empty list; prevents frontend crashes
-    total_stock: int = 0
-    min_price: Optional[Decimal] = None
+    thumbnail:        Optional[str] = None
+    image_front:      Optional[str] = None
+    image_back:       Optional[str] = None
+    image_size_chart: Optional[str] = None
+    gallery_images:   List[Any] = []
+    images:           List[Any] = []   # legacy alias kept so storefront doesn't break
+    total_stock:  int = 0
+    min_price:    Optional[Decimal] = None
+    view_count:   int = 0
+    orders_count: int = 0
+    sales_count:  int = 0
+    # resolved category/collection names for display
+    category_name:   Optional[str] = None
+    collection_name: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     variants: List[VariantResponse] = []
 
-    # Ensure status enum serializes as plain string ("draft", not ProductStatus.draft)
-    @field_validator('status', mode='before')
+    @field_validator("status", mode="before")
     @classmethod
     def coerce_status_to_str(cls, v):
-        if hasattr(v, 'value'):
+        if hasattr(v, "value"):
             return v.value
         return v
 
-    # Coerce Decimal/float/str min_price → Decimal for type consistency
-    @field_validator('min_price', mode='before')
+    @field_validator("min_price", mode="before")
     @classmethod
     def coerce_min_price(cls, v):
         if v is None:
@@ -238,9 +353,32 @@ class ProductResponse(ProductBase):
 
 
 class ProductListResponse(BaseModel):
-    """Paginated product list matching what the frontend expects."""
     items: List[ProductResponse]
     total: int
     page: int
     per_page: int
     total_pages: int
+
+
+# ── Bulk action schemas ──────────────────────────────────────────────────────
+
+class BulkActionPayload(BaseModel):
+    product_ids: List[int]
+    action: str          # "publish" | "unpublish" | "archive" | "delete" | "move_category" | "move_collection"
+    category_id:   Optional[int] = None
+    collection_id: Optional[int] = None
+
+    @field_validator("action")
+    @classmethod
+    def action_valid(cls, v):
+        allowed = {"publish", "unpublish", "archive", "delete", "move_category", "move_collection"}
+        if v not in allowed:
+            raise ValueError(f"action must be one of: {', '.join(allowed)}")
+        return v
+
+    @field_validator("product_ids")
+    @classmethod
+    def ids_not_empty(cls, v):
+        if not v:
+            raise ValueError("product_ids must not be empty")
+        return v

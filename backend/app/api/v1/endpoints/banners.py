@@ -78,9 +78,43 @@ def _delete_banner_image_file(image_url: Optional[str]) -> None:
     supabase_storage.delete_banner_image(image_url)
 
 
-# ── Create banner ───────────────────────────────────────────────────────────
+# ── Public storefront endpoint (MUST be registered BEFORE /admin/{banner_id}) ─
+#
+# FastAPI matches routes in registration order. Static path segments registered
+# after /{banner_id} are shadowed by the dynamic route. Keeping /active/all and
+# /admin/* named routes here, before any dynamic segment, guarantees they are
+# matched correctly without any parameter coercion.
 
-@router.post("/", response_model=BannerResponse)
+@router.get("/active/all", response_model=List[BannerResponse])
+def get_active_banners_storefront(
+    db: Session = Depends(get_db),
+):
+    """
+    Public endpoint — no authentication required.
+    Returns all active banners ordered for display on the storefront.
+    """
+    return (
+        db.query(Banner)
+        .filter(Banner.is_active == True)
+        .order_by(Banner.sort_order.asc(), Banner.id.desc())
+        .all()
+    )
+
+
+# ── Admin: List all banners ────────────────────────────────────────────────────
+
+@router.get("/admin/all", response_model=List[BannerResponse])
+def get_all_banners(
+    db: Session = Depends(get_db),
+    current_admin: Admin = Depends(get_current_admin),
+):
+    """Admin-only: returns every banner regardless of active status."""
+    return get_banners(db)
+
+
+# ── Create banner ─────────────────────────────────────────────────────────────
+
+@router.post("/admin", response_model=BannerResponse)
 async def create_new_banner(
     title: str = Form(...),
     subtitle: str = Form(""),
@@ -111,19 +145,9 @@ async def create_new_banner(
     return create_banner(db, banner_data)
 
 
-# ── List all banners ──────────────────────────────────────────────────────────
+# ── Get single banner (admin) ─────────────────────────────────────────────────
 
-@router.get("/", response_model=List[BannerResponse])
-def get_all_banners(
-    db: Session = Depends(get_db),
-    current_admin: Admin = Depends(get_current_admin),
-):
-    return get_banners(db)
-
-
-# ── Get single banner ─────────────────────────────────────────────────────────
-
-@router.get("/{banner_id}", response_model=BannerResponse)
+@router.get("/admin/{banner_id}", response_model=BannerResponse)
 def get_single_banner(
     banner_id: int,
     db: Session = Depends(get_db),
@@ -138,9 +162,30 @@ def get_single_banner(
     return banner
 
 
+# ── Toggle banner active/inactive ─────────────────────────────────────────────
+
+@router.put("/admin/{banner_id}/toggle", response_model=BannerResponse)
+def toggle_banner_status(
+    banner_id: int,
+    db: Session = Depends(get_db),
+    current_admin: Admin = Depends(get_current_admin),
+):
+    banner = db.query(Banner).filter(Banner.id == banner_id).first()
+    if not banner:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Banner not found",
+        )
+
+    banner.is_active = not banner.is_active
+    db.commit()
+    db.refresh(banner)
+    return banner
+
+
 # ── Edit banner (title, fields, image, placement, sort order, status) ─────────
 
-@router.patch("/{banner_id}", response_model=BannerResponse)
+@router.patch("/admin/{banner_id}", response_model=BannerResponse)
 async def edit_banner(
     banner_id: int,
     title: Optional[str] = Form(None),
@@ -202,30 +247,9 @@ async def edit_banner(
     return updated
 
 
-# ── Toggle banner active/inactive ──────────────────────────────────────────────
+# ── Delete banner ──────────────────────────────────────────────────────────────
 
-@router.put("/{banner_id}/toggle", response_model=BannerResponse)
-def toggle_banner_status(
-    banner_id: int,
-    db: Session = Depends(get_db),
-    current_admin: Admin = Depends(get_current_admin),
-):
-    banner = db.query(Banner).filter(Banner.id == banner_id).first()
-    if not banner:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Banner not found",
-        )
-
-    banner.is_active = not banner.is_active
-    db.commit()
-    db.refresh(banner)
-    return banner
-
-
-# ── Delete banner ───────────────────────────────────────────────────────────────
-
-@router.delete("/{banner_id}")
+@router.delete("/admin/{banner_id}")
 def remove_banner(
     banner_id: int,
     db: Session = Depends(get_db),
@@ -241,17 +265,3 @@ def remove_banner(
     _delete_banner_image_file(banner.banner_image)
     delete_banner(db, banner_id)
     return {"message": "Banner deleted successfully"}
-
-
-# ── Public banners for storefront ─────────────────────────────────────────────
-
-@router.get("/active/all", response_model=List[BannerResponse])
-def get_active_banners_storefront(
-    db: Session = Depends(get_db),
-):
-    return (
-        db.query(Banner)
-        .filter(Banner.is_active == True)
-        .order_by(Banner.sort_order.asc(), Banner.id.desc())
-        .all()
-    )

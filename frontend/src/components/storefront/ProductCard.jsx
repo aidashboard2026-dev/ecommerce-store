@@ -137,9 +137,9 @@ function ProductCard({ product }) {
 
       {/* Info */}
       <div className="flex flex-col gap-1 p-3.5">
-        {product.collection && (
+        {(product.collection_name || product.collection) && (
           <span className="text-[10px] uppercase tracking-wider text-muted font-semibold">
-            {product.collection}
+            {product.collection_name || product.collection}
           </span>
         )}
         <h3 className="text-sm font-semibold text-app line-clamp-2 leading-snug">
