@@ -21,9 +21,11 @@ import ImageUploadModal from '../../components/products/ImageUploadModal'
 import VariantFormModal from '../../components/products/VariantFormModal'
 import CategoryCollectionModal from '../../components/products/CategoryCollectionModal'
 import QuickCategoryEditModal from '../../components/products/QuickCategoryEditModal'
+import Modal from '../../components/common/Modal'
 import PageHeader from '../../components/ui/PageHeader'
 import SearchBar from '../../components/ui/SearchBar'
 import Badge from '../../components/ui/Badge'
+import Button from '../../components/ui/Button'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/Table'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -41,12 +43,12 @@ const FLAG_OPTIONS = [
   { key: 'is_new_arrival', label: 'New',         icon: <Layers size={11} /> },
 ]
 const BULK_ACTIONS = [
-  { value: 'publish',          label: 'Publish' },
-  { value: 'unpublish',        label: 'Unpublish' },
-  { value: 'archive',          label: 'Archive' },
-  { value: 'move_category',    label: 'Move to Category…' },
-  { value: 'move_collection',  label: 'Move to Collection…' },
-  { value: 'delete',           label: 'Delete Selected', danger: true },
+  { value: 'publish',         label: 'Publish' },
+  { value: 'unpublish',       label: 'Unpublish' },
+  { value: 'archive',         label: 'Archive' },
+  { value: 'move_category',   label: 'Move to Category…' },
+  { value: 'move_collection', label: 'Move to Collection…' },
+  { value: 'delete',          label: 'Delete Selected', danger: true },
 ]
 
 // ─── Error Boundary ───────────────────────────────────────────────────────────
@@ -303,22 +305,22 @@ export default function ProductsPage() {
   const qc = useQueryClient()
 
   // ── Filter state ─────────────────────────────────────────────────────────────
-  const [search, setSearch]               = useState('')
-  const [statusFilter, setStatusFilter]   = useState('')
-  const [categoryId, setCategoryId]       = useState('')
-  const [collectionId, setCollectionId]   = useState('')
-  const [stockStatus, setStockStatus]     = useState('')
-  const [flagFilters, setFlagFilters]     = useState({})
-  const [page, setPage]                   = useState(1)
-  const [selectedIds, setSelectedIds]     = useState(new Set())
+  const [search, setSearch]             = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [categoryId, setCategoryId]     = useState('')
+  const [collectionId, setCollectionId] = useState('')
+  const [stockStatus, setStockStatus]   = useState('')
+  const [flagFilters, setFlagFilters]   = useState({})
+  const [page, setPage]                 = useState(1)
+  const [selectedIds, setSelectedIds]   = useState(new Set())
 
   const debouncedSearch = useDebounce(search, 400)
 
   // ── Modals ──────────────────────────────────────────────────────────────────
-  const [formModal,    setFormModal]    = useState({ open: false, product: null })
-  const [variantModal, setVariantModal] = useState({ open: false, productId: null })
-  const [imageModal,   setImageModal]   = useState({ open: false, product: null })
-  const [manageModal,  setManageModal]  = useState(false)
+  const [formModal,      setFormModal]      = useState({ open: false, product: null })
+  const [variantModal,   setVariantModal]   = useState({ open: false, productId: null })
+  const [imageModal,     setImageModal]     = useState({ open: false, product: null })
+  const [manageModal,    setManageModal]    = useState(false)
   const [quickEditModal, setQuickEditModal] = useState({ open: false, product: null })
 
   // Reset page on any filter change
@@ -328,11 +330,11 @@ export default function ProductsPage() {
   // ── Data queries ─────────────────────────────────────────────────────────────
 
   const queryParams = {
-    search: debouncedSearch,
-    status_filter: statusFilter,
-    category_id: categoryId || undefined,
-    collection_id: collectionId || undefined,
-    stock_status: stockStatus || undefined,
+    search:         debouncedSearch,
+    status_filter:  statusFilter,
+    category_id:    categoryId    || undefined,
+    collection_id:  collectionId  || undefined,
+    stock_status:   stockStatus   || undefined,
     is_featured:    flagFilters.is_featured    || undefined,
     is_trending:    flagFilters.is_trending    || undefined,
     is_best_seller: flagFilters.is_best_seller || undefined,
@@ -410,15 +412,12 @@ export default function ProductsPage() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
-  const openEdit    = useCallback(p => {
-    setFormModal({ open: true, product: p })
-    setTimeout(() => document.getElementById('inv-form-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
-  }, [])
-  const openImage   = useCallback(p => setImageModal({ open: true, product: p }), [])
-  const openVariant = useCallback(p => setVariantModal({ open: true, productId: p.id }), [])
+  const openEdit      = useCallback(p => setFormModal({ open: true, product: p }), [])
+  const openImage     = useCallback(p => setImageModal({ open: true, product: p }), [])
+  const openVariant   = useCallback(p => setVariantModal({ open: true, productId: p.id }), [])
   const openQuickEdit = useCallback(p => setQuickEditModal({ open: true, product: p }), [])
-  const doToggle    = useCallback(p => toggleStatus.mutate({ id: p.id, status: p.status === 'published' ? 'draft' : 'published' }), [toggleStatus])
-  const doDelete    = useCallback(p => deleteProduct.mutate(p.id), [deleteProduct])
+  const doToggle      = useCallback(p => toggleStatus.mutate({ id: p.id, status: p.status === 'published' ? 'draft' : 'published' }), [toggleStatus])
+  const doDelete      = useCallback(p => deleteProduct.mutate(p.id), [deleteProduct])
 
   const toggleFlag = (key) => setFlagFilters(prev => ({ ...prev, [key]: prev[key] ? undefined : true }))
 
@@ -471,7 +470,7 @@ export default function ProductsPage() {
         title="Products"
         description={
           <span className="flex items-center gap-1.5 leading-none">
-            <span className="inline-flex items-center justify-center bg-brand-500/10 text-brand-500 text-[10px] font-bold rounded px-1.5 py-0.5 border border-brand-500/10">
+            <span className="inline-flex items-center justify-center text-[10px] font-bold rounded">
               {data?.total ?? 0}
             </span>
             total items
@@ -479,21 +478,26 @@ export default function ProductsPage() {
           </span>
         }
         actions={
+          // HEAD: both buttons kept — branch silently dropped "Manage Categories" which
+          // is the only entry point to CategoryCollectionModal. Upgraded to <Button>.
           <div className="flex items-center gap-2">
-            <button onClick={() => setManageModal(true)} className="btn-secondary flex items-center gap-2">
-              <Settings2 size={14} /> Manage Categories
-            </button>
-            <button onClick={() => setFormModal({ open: true, product: null })} className="btn-primary flex items-center gap-2">
-              <Plus size={15} /> Add Product
-            </button>
+            <Button onClick={() => setManageModal(true)} variant="secondary" icon={Settings2}>
+              Manage Categories
+            </Button>
+            <Button onClick={() => setFormModal({ open: true, product: null })} icon={Plus}>
+              Add Product
+            </Button>
           </div>
         }
       />
 
       {/* ── Filters ── */}
+      {/* HEAD structure: space-y-3 wrapper + all 3 rows. Branch collapsed this to
+          a single row and dropped category/collection/stock/flag filters + BulkActionsBar.
+          Cherry-picked from branch: hover:bg-surface-hover on status pills. */}
       <div className="space-y-3">
 
-        {/* Row 1: Search + Status */}
+        {/* Row 1: Search + Status pills */}
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
           <SearchBar
             value={search}
@@ -509,7 +513,7 @@ export default function ProductsPage() {
                   'px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all whitespace-nowrap',
                   statusFilter === s
                     ? 'bg-brand-500 text-white border-brand-500'
-                    : 'border-app text-muted hover:text-app hover:bg-surface'
+                    : 'border-app text-muted hover:text-app hover:bg-surface-hover' // branch: surface-hover
                 )}>
                 {s ? s.charAt(0).toUpperCase() + s.slice(1) : 'All'}
               </button>
@@ -529,7 +533,7 @@ export default function ProductsPage() {
             </select>
           )}
 
-          {/* Collection filter */}
+          {/* Collection filter (scoped to selected category) */}
           {collections.length > 0 && (
             <select value={collectionId} onChange={e => setCollectionId(e.target.value)}
               className="input-field py-1.5 text-xs max-w-[160px]">
@@ -538,7 +542,7 @@ export default function ProductsPage() {
             </select>
           )}
 
-          {/* Stock status filter */}
+          {/* Stock status filter pills */}
           {STOCK_OPTIONS.map(opt => (
             <FilterPill
               key={opt.value}
@@ -571,7 +575,7 @@ export default function ProductsPage() {
           )}
         </div>
 
-        {/* Row 3: Bulk actions bar */}
+        {/* Row 3: Bulk actions bar (only visible when rows are selected) */}
         <BulkActionsBar
           selectedIds={selectedIds}
           onAction={handleBulkAction}
@@ -739,21 +743,25 @@ export default function ProductsPage() {
         <Pagination page={page} totalPages={data.total_pages} onPageChange={setPage} />
       )}
 
-      {/* ── Inline Product Form ── */}
+      {/* ── Inline Product Form (modal) ── */}
       {formModal.open && (
-        <div id="inv-form-anchor">
-          <ProductErrorBoundary title="Product form error">
-            <InlineProductForm
-              product={formModal.product}
-              onClose={() => setFormModal({ open: false, product: null })}
-              onOpenVariant={p => setVariantModal({ open: true, productId: p.id })}
-              onOpenImage={p => setImageModal({ open: true, product: p })}
-            />
-          </ProductErrorBoundary>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-5xl max-h-[90vh] overflow-hidden rounded-2xl bg-app shadow-2xl">
+            <div className="max-h-[90vh] overflow-y-auto">
+              <ProductErrorBoundary title="Product form error">
+                <InlineProductForm
+                  product={formModal.product}
+                  onClose={() => setFormModal({ open: false, product: null })}
+                  onOpenVariant={p => setVariantModal({ open: true, productId: p.id })}
+                  onOpenImage={p => setImageModal({ open: true, product: p })}
+                />
+              </ProductErrorBoundary>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* ── Modals ── */}
+      {/* ── Other modals ── */}
       <ProductErrorBoundary title="Variant form error">
         <VariantFormModal
           isOpen={variantModal.open}
@@ -781,6 +789,7 @@ export default function ProductsPage() {
           product={quickEditModal.product}
         />
       </ProductErrorBoundary>
+
     </div>
   )
 }

@@ -38,17 +38,19 @@ export default function Drawer({
   if (!isOpen) return null
 
   const sizes = {
-    sm: 'max-w-md',
-    md: 'max-w-lg',
-    lg: 'max-w-xl',
-    xl: 'max-w-2xl',
-  }
+  sm: 'max-w-md',
+  md: 'max-w-lg',
+  lg: 'max-w-xl',
+  xl: 'max-w-3xl',
+  '2xl': 'max-w-5xl',
+  '3xl': 'max-w-6xl',
+}
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-50 flex justify-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity duration-300 animate-fade-in"
+        className="absolute inset-0 transition-opacity duration-300 animate-fade-in"
         onClick={onClose}
       />
 
@@ -56,7 +58,7 @@ export default function Drawer({
       <div
         ref={panelRef}
         className={clsx(
-          'relative w-full h-full bg-surface border-l border-app shadow-elevated flex flex-col z-10 animate-slide-in',
+          'relative w-full  h-full bg-app border rounded-lg border-app shadow-elevated flex flex-col z-10 animate-slide-in',
           sizes[size],
           className
         )}

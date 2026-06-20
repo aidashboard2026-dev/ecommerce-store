@@ -24,9 +24,9 @@ export default function CustomerFilters({
       <div className="flex flex-col sm:flex-row gap-3">
         {/* Search */}
         <div className="relative flex-1 max-w-sm">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
           <input
-            className="input-field pl-9.5 pr-10 text-xs py-2"
+            className="input-field pl-8 pr-10 text-xs py-2"
             placeholder="Search name, email, phone..."
             value={search}
             onChange={e => onSearch(e.target.value)}

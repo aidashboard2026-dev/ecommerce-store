@@ -117,8 +117,6 @@ def create_order(
     data["expected_delivery_date"] = expected_delivery_date
 
     # ── Inventory check and decrement ─────────────────────────────────────────
-    # Find the matching variant by product title + size + optional color.
-    # This uses the existing schema (no new columns required).
     variant_to_decrement = None
     if order_in.product_name and order_in.size:
         variant_q = (
@@ -158,7 +156,6 @@ def create_order(
 
     db.add(order)
 
-    # Decrement stock in the same transaction as order creation
     if variant_to_decrement is not None:
         variant_to_decrement.stock_quantity -= (order_in.quantity or 1)
 
@@ -182,7 +179,7 @@ def get_order(
 @router.put("/{order_id}", response_model=OrderResponse)
 def update_order(
     order_id: int,
-    order_in: OrderUpdate,
+    payload: OrderUpdate,
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_admin),
 ):
@@ -190,7 +187,7 @@ def update_order(
     if not order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
 
-    update_data = order_in.model_dump(exclude_unset=True)
+    update_data = payload.model_dump(exclude_unset=True)
 
     new_tracking_status = update_data.get("tracking_status")
     if new_tracking_status is not None:
@@ -206,6 +203,7 @@ def update_order(
 
     db.commit()
     db.refresh(order)
+
     return order
 
 
@@ -263,7 +261,7 @@ def create_customer_order(
     current_customer: Customer = Depends(get_current_customer),
 ):
     order_number = _generate_order_number(db)
-    
+
     delivery_days_map = {
         "Chennai": 3, "Coimbatore": 4, "Salem": 5, "Madurai": 6,
         "Trichy": 4, "Erode": 4, "Tiruppur": 4, "Vellore": 5,
@@ -282,7 +280,7 @@ def create_customer_order(
 
     data = order_in.model_dump()
     data.pop("order_number", None)
-    
+
     data["customer_name"] = f"{current_customer.first_name} {current_customer.last_name}"
     data["customer_email"] = current_customer.email
     data["customer_phone"] = current_customer.phone or order_in.customer_phone
@@ -379,10 +377,10 @@ def cancel_customer_order(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
     if order.customer_email != current_customer.email:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
-    
+
     if order.tracking_status in ["SHIPPED", "DELIVERED"]:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot cancel order that has already been shipped or delivered"
         )
 

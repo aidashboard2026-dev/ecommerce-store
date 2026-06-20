@@ -146,6 +146,7 @@ export default function CustomerTable({
 
   return (
     <div className="card overflow-hidden">
+      <div className="overflow-x-auto">
       <Table className="min-w-[1000px]">
         <TableHeader>
           <tr>
@@ -160,13 +161,13 @@ export default function CustomerTable({
             ))}
           </tr>
         </TableHeader>
-        <TableBody>
+        <TableBody >
           {isLoading && Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)}
           {!isLoading && customers.length === 0 && (
             <tr className="hover:bg-transparent">
-              <td colSpan={11} className="py-20 text-center">
-                <div className="flex flex-col items-center gap-3 text-muted">
-                  <div className="w-12 h-12 rounded-xl bg-app border border-app flex items-center justify-center">
+              <td colSpan={11} >
+                <div className="min-h-[200px] flex flex-col items-center justify-center gap-3 text-muted">
+                  <div className="w-12 h-12 rounded-xl bg-app  border border-app flex items-center justify-center">
                     <User size={20} />
                   </div>
                   <p className="font-bold text-app text-sm">No customers matched filters</p>
@@ -268,6 +269,7 @@ export default function CustomerTable({
           ))}
         </TableBody>
       </Table>
+    </div>
     </div>
   )
 }

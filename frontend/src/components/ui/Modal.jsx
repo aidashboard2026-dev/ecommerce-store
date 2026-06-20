@@ -1,23 +1,20 @@
 import React, { useEffect } from 'react'
-import { X } from 'lucide-react'
 import clsx from 'clsx'
 
 export default function Modal({
   isOpen,
-  onClose,
-  title,
   children,
   size = 'md',
-  className
+  className,
 }) {
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
+    if (!isOpen) return
+
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
     return () => {
-      document.body.style.overflow = ''
+      document.body.style.overflow = originalOverflow
     }
   }, [isOpen])
 
@@ -27,42 +24,38 @@ export default function Modal({
     sm: 'max-w-md',
     md: 'max-w-lg',
     lg: 'max-w-xl',
-    xl: 'max-w-2xl',
-    '2xl': 'max-w-4xl',
+    xl: 'max-w-3xl',
+    '2xl': 'max-w-5xl',
+    '3xl': 'max-w-6xl',
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-xs animate-fade-in"
-        onClick={onClose}
-      />
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-0 sm:p-4 overflow-y-auto">
+      
 
-      {/* Modal Container */}
+      {/* Modal Frame */}
       <div
-        className={clsx(
-          'relative w-full bg-surface border border-app rounded-2xl shadow-elevated animate-slide-up flex flex-col max-h-[90vh] overflow-hidden',
+  className={clsx(
+    `
+    relative
+    mt-4
+    w-full
+    flex
+    flex-col
+    bg-app
+    rounded-2xl
+    shadow-2xl
+    max-h-[90vh]
+    overflow-hidden
+    `,
           sizes[size],
           className
         )}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-app">
-          <div>
-            <h2 className="text-sm font-bold text-app uppercase tracking-wider">{title}</h2>
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Close dialog"
-            className="flex h-7.5 w-7.5 items-center justify-center rounded-lg border border-app text-muted hover:text-app hover:bg-app transition-all active:scale-95"
-          >
-            <X size={14} />
-          </button>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          {children}
         </div>
-
-        {/* Scrollable Content */}
-        <div className="p-6 overflow-y-auto flex-1">{children}</div>
       </div>
     </div>
   )
