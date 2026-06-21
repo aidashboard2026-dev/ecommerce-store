@@ -22,7 +22,19 @@ export default function StorefrontLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [scrolled, setScrolled] = useState(false)
+  const [showSubProducts, setShowSubProducts] = useState(false);
 
+  useEffect(() => {
+    const closeMenu = () => setShowSubProducts(false)
+
+    if (showSubProducts) {
+      document.addEventListener("click", closeMenu)
+    }
+
+    return () => {
+      document.removeEventListener("click", closeMenu)
+    }
+  }, [showSubProducts])
   // Track page scroll to toggle header background glassmorphism
   useEffect(() => {
     const handleScroll = () => {
@@ -50,7 +62,10 @@ export default function StorefrontLayout() {
   const handleLogout = () => {
     dispatch(customerLogout())
     navigate('/')
-  }
+  } 
+
+  
+  
 
   return (
     <div className="min-h-screen bg-app flex flex-col transition-colors duration-300">
@@ -93,6 +108,212 @@ export default function StorefrontLayout() {
             )}>
               Shop Catalog
             </Link>
+            <div>
+            <Link
+              to="/sub-products"
+              className={clsx(
+                "transition-colors duration-200 hover:text-brand-500",
+                location.pathname === "/sub-products"
+                  ? "text-brand-500 font-semibold"
+                  : "text-app/80"
+              )}
+            >
+              Sub Products
+            </Link>
+
+              {showSubProducts && (
+                <div
+                  className="
+                    absolute
+                    top-full
+                    left-[-370px]
+                    mt-3
+                    grid
+                    grid-cols-5
+                    gap-10
+                    w-[1250px]
+                    bg-white
+                    rounded-2xl
+                    shadow-xl
+                    p-8
+                    z-50
+                  "
+                >
+
+                {/* T-Shirts */}
+                <div>
+                  <h3 className="font-bold mb-3 text-brand-500">
+                    T-Shirts
+                  </h3>
+
+                  <Link
+                    to="/category/round-neck"
+                    onClick={() => setShowSubProducts(false)}
+                    className="block mb-2 hover:text-brand-500"
+                  >
+                    Round neck T- shirt 
+                  </Link>
+
+                  <Link to="/category/v-neck" className="block mb-2 hover:text-brand-500">
+                    V-Neck T-Shirt
+                  </Link>
+
+                  <Link to="/category/polo" className="block mb-2 hover:text-brand-500">
+                    Polo T-Shirt
+                  </Link>
+
+                  <Link to="/category/henley" className="block mb-2 hover:text-brand-500">
+                    Henley T-Shirt
+                  </Link>
+
+                  <Link to="/category/oversized" className="block mb-2 hover:text-brand-500">
+                    Oversized T-Shirt
+                  </Link>
+
+                  <Link to="/category/graphic" className="block mb-2 hover:text-brand-500">
+                    Graphic Printed T-Shirt
+                  </Link>
+
+                  <Link to="/category/plain" className="block mb-2 hover:text-brand-500">
+                    Plain T-Shirt
+                  </Link>
+
+                  <Link to="/category/back-print" className="block py-1 hover:text-brand-500 transition-colors">
+                    Back Print T-Shirt
+                  </Link>
+
+                  <Link to="/category/color-tshirt" className="block py-1 hover:text-brand-500 transition-colors">
+                    Color T-Shirt
+                  </Link>
+
+                  <Link to="/category/embroidery-tshirt" className="block py-1 hover:text-brand-500 transition-colors">
+                    Embroidery Design T-Shirt
+                  </Link>
+                </div>
+
+                {/* Premium Apparel */}
+                <div>
+                  <h3 className="font-bold mb-3 text-brand-500">
+                    Premium Apparel
+                  </h3>
+
+                  <Link to="/category/korean-shirt" className="block mb-2 hover:text-brand-500">
+                    Korean Style Shirts
+                  </Link>
+
+                  <Link to="/category/minimal-polo" className="block mb-2 hover:text-brand-500">
+                    Minimal Premium Polo
+                  </Link>
+
+                  <Link to="/category/hoodie" className="block mb-2 hover:text-brand-500">
+                    Hoodie
+                  </Link>
+
+                  <Link to="/category/oversized-hoodie" className="block mb-2 hover:text-brand-500">
+                    Oversized Hoodie
+                  </Link>
+
+                  <Link to="/category/jersey" className="block hover:text-brand-500">
+                    Jersey
+                  </Link>
+                </div>
+
+                {/* Sports Wear */}
+                <div>
+                  <h3 className="font-bold mb-3 text-brand-500">
+                    Sports Wear
+                  </h3>
+
+                  <Link to="/category/sports-tshirt" className="block mb-2 hover:text-brand-500">
+                    Sports T-Shirts
+                  </Link>
+
+                  <Link to="/category/sports-shorts" className="block mb-2 hover:text-brand-500">
+                    Sports Shorts
+                  </Link>
+
+                  <Link to="/category/track-pants" className="block py-1 hover:text-brand-500 transition-colors">
+                    Track Pants
+                  </Link>
+
+                  <Link to="/category/shorts" className="block py-1 hover:text-brand-500 transition-colors">
+                    Shorts
+                  </Link>
+
+                  <Link to="/category/pant"   className="block py-1 hover:text-brand-500 transition-colors">
+                    Pant
+                  </Link>
+                </div>
+
+                {/* Gifts & Printing */}
+                <div>
+                  <h3 className="font-bold mb-3 text-brand-500">
+                    Gifts & Printing
+                  </h3>
+
+                  <Link to="/category/magic-mug" className="block mb-2 hover:text-brand-500">
+                    Magic Mug Print
+                  </Link>
+
+                  <Link to="/category/photo-frame" className="block mb-2 hover:text-brand-500">
+                    Photo Frames
+                  </Link>
+
+                  <Link to="/category/metal-frame" className="block mb-2 hover:text-brand-500">
+                    Metal Frames
+                  </Link>
+
+                  <Link to="/category/mouse-pad" className="block mb-2 hover:text-brand-500">
+                    Mouse Pads
+                  </Link>
+
+                  <Link to="/category/personal-gifts" className="block hover:text-brand-500">
+                    Personal Gifts
+                  </Link>
+
+                  <Link to="/category/White Mug" className="block py-1 hover:text-brand-500 transition-colors">
+                    White Mug
+                  </Link>
+
+                  <Link to="/category/Sublimation-products" className="block py-1 hover:text-brand-500 transition-colors">
+                    Sublimation Products
+                  </Link>
+                </div>
+
+                {/* Accessories */}
+                <div>
+                  <h3 className="font-bold mb-3 text-brand-500">
+                    Accessories
+                  </h3>
+
+                  <Link to="/category/water-bottle" className="block mb-2 hover:text-brand-500">
+                    Water Bottles
+                  </Link>
+
+                  <Link to="/category/tumbler" className="block mb-2 hover:text-brand-500">
+                    Skinny Tumblers
+                  </Link>
+
+                  <Link to="/category/glassware" className="block mb-2 hover:text-brand-500">
+                    Glass Ware
+                  </Link>
+
+                  <Link to="/category/hats" className="block mb-2 hover:text-brand-500">
+                    Hats & Caps
+                  </Link>
+
+                  <Link to="/category/cards" className="block py-1 hover:text-brand-500 transition-colors">
+                    Wedding & Greeting Cards
+                  </Link>
+
+                  <Link to="/category/pillows" className="block py-1 hover:text-brand-500 transition-colors">
+                    Pillows
+                  </Link>
+                </div>
+
+              </div>
+              )}
+            </div>
             <Link to="/tracking" className={clsx(
               "transition-colors duration-200 hover:text-brand-500",
               location.pathname === '/tracking' ? "text-brand-500 font-semibold" : "text-app/80"

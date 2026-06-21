@@ -6,6 +6,7 @@ import { fetchMeThunk } from './store/authSlice'
 import { fetchCustomerMeThunk } from './store/customerSlice'
 import AppRoutes from './routes/AppRoutes'
 
+
 function App() {
   const dispatch      = useDispatch()
   const token         = useSelector((s) => s.auth.token)
@@ -37,7 +38,7 @@ function App() {
 
   return (
     <BrowserRouter>
-      <Toaster position="top-center" toastOptions={{ duration: 2500 }} />
+      
       <AppRoutes />
       <Toaster
         position="top-right"

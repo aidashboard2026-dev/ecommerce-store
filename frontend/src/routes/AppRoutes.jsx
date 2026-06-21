@@ -17,6 +17,7 @@ import BannerPage from '../pages/AdminPage/BannerPage'
 
 // Storefront Layout
 import StorefrontLayout from '../layouts/StorefrontLayout'
+import ProductDetailsPage from "../pages/CustomProductDetailsPage";
 
 // Storefront Pages (consolidated — see /src/pages/storefront)
 import HomePage from '../pages/storefront/HomePage'
@@ -33,6 +34,10 @@ import NotFoundPage from '../pages/storefront/NotFoundPage'
 // top-level page wrapper needed for these — see refactor notes)
 import CheckoutPage from '../components/storefront/CheckoutPage'
 import WishlistGrid from '../components/storefront/WishlistGrid'
+
+
+import SubProductsPage from "../components/storefront/SubProductsPage";
+// import CategoryPage from '../components/storefront/CategoryPage'
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-app">
@@ -134,7 +139,7 @@ export default function AppRoutes() {
           </AdminPublicRoute>
         }
       />
-
+      
       {/* ── ADMIN DASHBOARD (structure unchanged) ──────────────────────────── */}
       <Route
         path="/admin"
@@ -161,6 +166,11 @@ export default function AppRoutes() {
             a single consolidated page component */}
         <Route path="products" element={<ProductsPage />} />
         <Route path="products/:slug" element={<ProductsPage />} />
+
+
+        <Route path="/sub-products" element={<SubProductsPage />} />
+{/* 
+        <Route path="category/:slug" element={<CategoryPage />} /> */}
 
         <Route path="cart" element={<CartPage />} />
 
@@ -321,6 +331,11 @@ export default function AppRoutes() {
               <OrdersPage />
             </CustomerProtectedRoute>
           }
+        />
+
+        <Route
+          path="/product/:id"
+          element={<ProductDetailsPage />}
         />
 
         {/* Storefront 404 — rendered inside the StorefrontLayout shell so
