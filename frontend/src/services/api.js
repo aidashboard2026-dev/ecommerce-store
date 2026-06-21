@@ -235,23 +235,23 @@ export const dashboardAPI = {
 // ─── Offers ───────────────────────────────────────────────────────────────────
 
 export const offersAPI = {
-  list:       ()         => api.get('/offers/'),
-  get:        (id)       => api.get(`/offers/${id}`),
-  create:     (formData) => api.post('/offers/', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
-  update:     (id, data) => api.patch(`/offers/${id}`, data),
-  updateFull: (id, data) => api.put(`/offers/${id}`, data),
-  delete:     (id)       => api.delete(`/offers/${id}`),
+  list:       ()         => api.get('/offers/admin/all'),
+  get:        (id)       => api.get(`/offers/admin/${id}`),
+  create:     (formData) => api.post('/offers/admin', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  update:     (id, data) => api.patch(`/offers/admin/${id}`, data),
+  updateFull: (id, data) => api.put(`/offers/admin/${id}`, data),
+  delete:     (id)       => api.delete(`/offers/admin/${id}`),
 }
 
 // ─── Banners ──────────────────────────────────────────────────────────────────
 
 export const bannersAPI = {
-  list:       ()         => api.get('/banners/'),
-  get:        (id)       => api.get(`/banners/${id}`),
-  create:     (formData) => api.post('/banners/', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
-  update:     (id, data) => api.patch(`/banners/${id}`, data),
-  toggle:     (id)       => api.put(`/banners/${id}/toggle`),
-  delete:     (id)       => api.delete(`/banners/${id}`),
+  list:       ()         => api.get('/banners/admin/all'),
+  get:        (id)       => api.get(`/banners/admin/${id}`),
+  create:     (formData) => api.post('/banners/admin', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  update:     (id, data) => api.patch(`/banners/admin/${id}`, data),
+  toggle:     (id)       => api.put(`/banners/admin/${id}/toggle`),
+  delete:     (id)       => api.delete(`/banners/admin/${id}`),
   listActive: ()         => api.get('/banners/active/all'),
 }
 
