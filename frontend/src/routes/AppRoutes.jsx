@@ -5,31 +5,33 @@ import { useSelector, useDispatch } from 'react-redux'
 // Admin Layout & Pages
 import { logoutThunk } from '../store/authSlice'
 import MainLayout from '../layouts/MainLayout'
-import LoginPage from '../pages/AdminPage/LoginPage'
-import SignupPage from '../pages/AdminPage/SignupPage'
+import AdminLoginPage from '../pages/AdminPage/LoginPage'
 import DashboardPage from '../pages/AdminPage/DashboardPage'
-import ProductsPage from '../pages/AdminPage/ProductsPage'
-import OrdersPage from '../pages/AdminPage/OrdersPage'
+import AdminProductsPage from '../pages/AdminPage/ProductsPage'
+import AdminOrdersPage from '../pages/AdminPage/OrdersPage'
 import OffersPage from '../pages/AdminPage/OffersPage'
 import CustomersPage from '../pages/AdminPage/CustomersPage'
 import SettingsPage from '../pages/AdminPage/SettingsPage'
 import BannerPage from '../pages/AdminPage/BannerPage'
 
-// Storefront Layout & Pages
+// Storefront Layout
 import StorefrontLayout from '../layouts/StorefrontLayout'
-import HomePage from '../pages/StoreFront/HomePage'
-import StorefrontProductsPage from '../pages/StoreFront/ProductsPage'
-import ProductDetailsPage from '../pages/StoreFront/ProductDetailsPage'
-import CartPage from '../pages/StoreFront/CartPage'
-import CheckoutPage from '../pages/StoreFront/CheckoutPage'
-import PaymentPage from '../pages/StoreFront/PaymentPage'
-import TrackingPage from '../pages/StoreFront/TrackingPage'
-import CustomerLoginPage from '../pages/StoreFront/CustomerLoginPage'
-import CustomerSignupPage from '../pages/StoreFront/CustomerSignupPage'
-import WishlistPage from '../pages/StoreFront/WishlistPage'
-import CustomerProfilePage from '../pages/StoreFront/CustomerProfilePage'
-import StorefrontOrdersPage from '../components/storefront/order/pages/OrdersPage'
-import OrderDetailsPage from '../components/storefront/order/pages/OrderDetailsPage'
+
+// Storefront Pages (consolidated — see /src/pages/storefront)
+import HomePage from '../pages/storefront/HomePage'
+import ProductsPage from '../pages/storefront/ProductsPage'
+import CartPage from '../pages/storefront/CartPage'
+import OrdersPage from '../pages/storefront/OrdersPage'
+import ProfilePage from '../pages/storefront/ProfilePage'
+import AuthPage from '../pages/storefront/AuthPage'
+import SupportPage from '../pages/storefront/SupportPage'
+import CustomPage from '../pages/storefront/CustomPage'
+import NotFoundPage from '../pages/storefront/NotFoundPage'
+
+// Storefront components used directly as route elements (no dedicated
+// top-level page wrapper needed for these — see refactor notes)
+import CheckoutPage from '../components/storefront/CheckoutPage'
+import WishlistGrid from '../components/storefront/WishlistGrid'
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-app">
@@ -103,36 +105,26 @@ export default function AppRoutes() {
   return (
     <Routes>
       {/* ── BACKWARD COMPATIBILITY REDIRECTS ─────────────────────────────── */}
+      {/* /login is a customer route alias — not an admin login shortcut */}
       <Route
         path="/login"
-        element={<Navigate to="/admin/login" replace />}
+        element={<Navigate to="/auth/login" replace />}
       />
 
-      <Route
-        path="/signup"
-        element={<Navigate to="/admin/signup" replace />}
-      />
-
-      {/* ── ADMIN AUTH ROUTES ───────────────────────────────────────────── */}
+      
+      {/* ── ADMIN AUTH ROUTES (structure unchanged) ───────────────────────── */}
       <Route
         path="/admin/login"
         element={
           <AdminPublicRoute>
-            <LoginPage />
+            <AdminLoginPage />
           </AdminPublicRoute>
         }
       />
 
-      <Route
-        path="/admin/signup"
-        element={
-          <AdminPublicRoute>
-            <SignupPage />
-          </AdminPublicRoute>
-        }
-      />
+      
 
-      {/* ── ADMIN DASHBOARD ─────────────────────────────────────────────── */}
+      {/* ── ADMIN DASHBOARD (structure unchanged) ──────────────────────────── */}
       <Route
         path="/admin"
         element={
@@ -142,8 +134,8 @@ export default function AppRoutes() {
         }
       >
         <Route index element={<DashboardPage />} />
-        <Route path="products" element={<ProductsPage />} />
-        <Route path="orders" element={<OrdersPage />} />
+        <Route path="products" element={<AdminProductsPage />} />
+        <Route path="orders" element={<AdminOrdersPage />} />
         <Route path="offers" element={<OffersPage />} />
         <Route path="customers" element={<CustomersPage />} />
         <Route path="settings" element={<SettingsPage />} />
@@ -154,26 +146,46 @@ export default function AppRoutes() {
       <Route path="/" element={<StorefrontLayout />}>
         <Route index element={<HomePage />} />
 
-        <Route
-          path="products"
-          element={<StorefrontProductsPage />}
-        />
-
-        <Route
-          path="products/:slug"
-          element={<ProductDetailsPage />}
-        />
+        {/* Products — list (/products) and details (/products/:slug) share
+            a single consolidated page component */}
+        <Route path="products" element={<ProductsPage />} />
+        <Route path="products/:slug" element={<ProductsPage />} />
 
         <Route path="cart" element={<CartPage />} />
-        <Route path="tracking" element={<TrackingPage />} />
-        <Route path="wishlist" element={<WishlistPage />} />
 
-        {/* Customer Auth */}
+        {/* Custom orders (new) */}
+        <Route path="custom" element={<CustomPage />} />
+        <Route path="custom/:productType" element={<CustomPage />} />
+
+        {/* Support / info (new) */}
+        <Route path="support" element={<SupportPage />} />
+        <Route path="support/faq" element={<SupportPage />} />
+        <Route path="support/about" element={<SupportPage />} />
+        <Route path="support/privacy" element={<SupportPage />} />
+        <Route path="support/terms" element={<SupportPage />} />
+        <Route path="support/returns" element={<SupportPage />} />
+
+        {/* Orders, success/payment, and tracking — all consolidated into
+            one page component that dispatches internally on the route */}
+        <Route path="tracking" element={<OrdersPage />} />
+        <Route path="wishlist" element={<WishlistGrid />} />
+
+        {/* Customer Auth — login/register/forgot-password consolidated;
+            /auth/signup kept as a legacy alias for /auth/register */}
         <Route
           path="auth/login"
           element={
             <CustomerPublicRoute>
-              <CustomerLoginPage />
+              <AuthPage />
+            </CustomerPublicRoute>
+          }
+        />
+
+        <Route
+          path="auth/register"
+          element={
+            <CustomerPublicRoute>
+              <AuthPage />
             </CustomerPublicRoute>
           }
         />
@@ -182,7 +194,16 @@ export default function AppRoutes() {
           path="auth/signup"
           element={
             <CustomerPublicRoute>
-              <CustomerSignupPage />
+              <AuthPage />
+            </CustomerPublicRoute>
+          }
+        />
+
+        <Route
+          path="auth/forgot-password"
+          element={
+            <CustomerPublicRoute>
+              <AuthPage />
             </CustomerPublicRoute>
           }
         />
@@ -201,16 +222,18 @@ export default function AppRoutes() {
           path="payment"
           element={
             <CustomerProtectedRoute>
-              <PaymentPage />
+              <OrdersPage />
             </CustomerProtectedRoute>
           }
         />
 
+        {/* Profile — profile / orders / addresses / wishlist / settings tabs
+            are all handled internally by ProfilePage */}
         <Route
           path="profile"
           element={
             <CustomerProtectedRoute>
-              <CustomerProfilePage />
+              <ProfilePage />
             </CustomerProtectedRoute>
           }
         />
@@ -219,16 +242,54 @@ export default function AppRoutes() {
           path="profile/orders"
           element={
             <CustomerProtectedRoute>
-              <CustomerProfilePage />
+              <ProfilePage />
             </CustomerProtectedRoute>
           }
         />
 
         <Route
+          path="profile/addresses"
+          element={
+            <CustomerProtectedRoute>
+              <ProfilePage />
+            </CustomerProtectedRoute>
+          }
+        />
+
+        <Route
+          path="profile/wishlist"
+          element={
+            <CustomerProtectedRoute>
+              <ProfilePage />
+            </CustomerProtectedRoute>
+          }
+        />
+
+        <Route
+          path="profile/settings"
+          element={
+            <CustomerProtectedRoute>
+              <ProfilePage />
+            </CustomerProtectedRoute>
+          }
+        />
+
+        {/* Orders list / details / success / per-order tracking — all one
+            consolidated page component (see OrdersPage internals) */}
+        <Route
           path="orders"
           element={
             <CustomerProtectedRoute>
-              <StorefrontOrdersPage />
+              <OrdersPage />
+            </CustomerProtectedRoute>
+          }
+        />
+
+        <Route
+          path="orders/success"
+          element={
+            <CustomerProtectedRoute>
+              <OrdersPage />
             </CustomerProtectedRoute>
           }
         />
@@ -237,17 +298,27 @@ export default function AppRoutes() {
           path="orders/:id"
           element={
             <CustomerProtectedRoute>
-              <OrderDetailsPage />
+              <OrdersPage />
             </CustomerProtectedRoute>
           }
         />
-      </Route>
 
-      {/* Fallback */}
-      <Route
-        path="*"
-        element={<Navigate to="/" replace />}
-      />
+        <Route
+          path="orders/:id/tracking"
+          element={
+            <CustomerProtectedRoute>
+              <OrdersPage />
+            </CustomerProtectedRoute>
+          }
+        />
+
+        {/* Storefront 404 — rendered inside the StorefrontLayout shell so
+            unmatched paths still get the site header/footer. (Previously
+            any unmatched path silently redirected to "/"; seeing an actual
+            not-found page here is the one intentional behavior change in
+            this refactor — see summary.) */}
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
     </Routes>
   )
 }

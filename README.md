@@ -172,24 +172,23 @@ ecommerce-store/
     │   │   ├── dashboard/              # StatCard, SalesDashboard, OrderStatusAnalytics
     │   │   ├── customers/              # CustomerTable, CustomerDrawer, CustomerFilters, etc.
     │   │   ├── products/               # InlineProductForm, VariantFormModal, ImageUploadModal
-    │   │   └── storefront/             # Customer-facing components (3 modules)
-    │   │       ├── product/
-    │   │       │   ├── components/     # ProductCard, ProductGrid, ProductFilters,
-    │   │       │   │                   # HeroSection, OfferBanner, CategorySection
-    │   │       │   ├── hooks/          # useProducts (React Query)
-    │   │       │   └── pages/          # ProductHome, ProductsPage, ProductDetails
-    │   │       ├── cart/
-    │   │       │   ├── components/     # CartItem, CartSummary, CouponSection
-    │   │       │   └── pages/          # CartPage
-    │   │       └── order/
-    │   │           ├── components/     # CheckoutForm, PaymentSection, OrderTimeline
-    │   │           ├── hooks/          # useOrders (React Query)
-    │   │           └── pages/          # CheckoutPage, PaymentPage, OrdersPage, OrderDetailsPage
+    │   │   └── storefront/             # Customer-facing reusable components (flat)
+    │   │       ├── ProductCard.jsx, ProductGrid.jsx, ProductFilters.jsx,
+    │   │       ├── HeroSection.jsx, OfferBanner.jsx, CategorySection.jsx
+    │   │       ├── ProductsList.jsx, ProductDetails.jsx   # views composed by pages/storefront/ProductsPage
+    │   │       ├── CartItem.jsx, CartSummary.jsx, CouponSection.jsx, CartView.jsx
+    │   │       ├── CheckoutForm.jsx, PaymentSection.jsx, CheckoutPage.jsx
+    │   │       ├── OrderTimeline.jsx, OrdersList.jsx, OrderDetails.jsx, OrderSuccess.jsx,
+    │   │       │   OrderTrackingLookup.jsx                # views composed by pages/storefront/OrdersPage
+    │   │       ├── LoginForm.jsx, RegisterForm.jsx        # views composed by pages/storefront/AuthPage
+    │   │       ├── WishlistGrid.jsx                       # view composed by pages/storefront/ProfilePage (+ /wishlist route)
+    │   │       └── CustomProductForm.jsx, UploadDesign.jsx, DesignPreview.jsx,
+    │   │           QuoteRequest.jsx, customProductTypes.js  # views composed by pages/storefront/CustomPage
     │   ├── layouts/
     │   │   ├── MainLayout.jsx          # Admin shell — sidebar + header + outlet
     │   │   └── StorefrontLayout.jsx    # Storefront shell — navbar + footer
     │   ├── pages/
-    │   │   ├── AdminPage/
+    │   │   ├── admin/
     │   │   │   ├── LoginPage.jsx
     │   │   │   ├── SignupPage.jsx
     │   │   │   ├── DashboardPage.jsx
@@ -199,20 +198,22 @@ ecommerce-store/
     │   │   │   ├── OffersPage.jsx
     │   │   │   ├── BannerPage.jsx
     │   │   │   └── SettingsPage.jsx
-    │   │   └── StoreFront/
+    │   │   └── storefront/             # Consolidated top-level storefront pages
     │   │       ├── HomePage.jsx
-    │   │       ├── ProductsPage.jsx
-    │   │       ├── ProductDetailsPage.jsx
+    │   │       ├── ProductsPage.jsx    # list (/products) + details (/products/:slug)
     │   │       ├── CartPage.jsx
-    │   │       ├── CheckoutPage.jsx
-    │   │       ├── PaymentPage.jsx
-    │   │       ├── CustomerLoginPage.jsx
-    │   │       ├── CustomerSignupPage.jsx
-    │   │       ├── CustomerProfilePage.jsx
-    │   │       ├── WishlistPage.jsx
-    │   │       └── TrackingPage.jsx
+    │   │       ├── OrdersPage.jsx      # list, details, success/payment, tracking
+    │   │       ├── ProfilePage.jsx     # profile, orders, addresses, wishlist, settings tabs
+    │   │       ├── AuthPage.jsx        # login, register, forgot-password
+    │   │       ├── SupportPage.jsx     # contact, FAQ, about, privacy, terms, returns
+    │   │       ├── CustomPage.jsx      # custom product quote requests
+    │   │       └── NotFoundPage.jsx
     │   ├── routes/
     │   │   └── AppRoutes.jsx           # All routes — admin + storefront + protected guards
+    │   ├── hooks/
+    │   │   ├── useAuth.js              # Admin auth + theme hooks
+    │   │   ├── useProducts.js          # Storefront product queries (React Query)
+    │   │   └── useOrders.js            # Storefront order queries/mutations (React Query)
     │   ├── store/
     │   │   ├── store.js                # Redux store (7 slices)
     │   │   ├── authSlice.js            # Admin auth state + thunks
@@ -313,26 +314,43 @@ ecommerce-store/
 
 ## Storefront Routes
 
-| Route                  | Page                   | Auth         |
-| ---------------------- | ---------------------- | ------------ |
-| `/`                    | Home                   | Public       |
-| `/products`            | Product Listing        | Public       |
-| `/products/:slug`      | Product Detail         | Public       |
-| `/cart`                | Shopping Cart          | Public       |
-| `/auth/login`          | Customer Login         | Public only  |
-| `/auth/signup`         | Customer Signup        | Public only  |
-| `/checkout`            | Checkout               | Customer JWT |
-| `/payment`             | Payment                | Customer JWT |
-| `/orders`              | Order History          | Customer JWT |
-| `/orders/:id`          | Order Detail           | Customer JWT |
-| `/profile`             | Customer Profile       | Customer JWT |
-| `/wishlist`            | Wishlist               | Public       |
-| `/tracking`            | Order Tracking         | Public       |
+| Route                       | Page                         | Auth         |
+| ---------------------------- | ----------------------------- | ------------ |
+| `/`                          | Home                          | Public       |
+| `/products`                 | Product Listing               | Public       |
+| `/products/:slug`           | Product Detail                | Public       |
+| `/cart`                      | Shopping Cart                 | Public       |
+| `/auth/login`                | Customer Login                | Public only  |
+| `/auth/register`            | Customer Signup (canonical)   | Public only  |
+| `/auth/signup`               | Customer Signup (legacy alias)| Public only  |
+| `/auth/forgot-password`      | Password reset info           | Public only  |
+| `/checkout`                  | Checkout                      | Customer JWT |
+| `/payment`                   | Order Success (legacy alias)  | Customer JWT |
+| `/orders`                    | Order History                 | Customer JWT |
+| `/orders/success`           | Order Success                 | Customer JWT |
+| `/orders/:id`                | Order Detail                  | Customer JWT |
+| `/orders/:id/tracking`      | Order Detail (with tracking)  | Customer JWT |
+| `/profile`                   | Customer Profile              | Customer JWT |
+| `/profile/orders`           | Profile — Orders tab          | Customer JWT |
+| `/profile/addresses`        | Profile — Addresses tab       | Customer JWT |
+| `/profile/wishlist`         | Profile — Wishlist tab        | Customer JWT |
+| `/profile/settings`         | Profile — Account Settings tab| Customer JWT |
+| `/wishlist`                  | Wishlist                      | Public       |
+| `/tracking`                  | Order Tracking (by number)    | Public       |
+| `/custom`                    | Custom Orders — type selector | Public       |
+| `/custom/:productType`      | Custom Orders — quote form    | Public       |
+| `/support`                   | Support — Contact Us          | Public       |
+| `/support/faq`               | Support — FAQ                 | Public       |
+| `/support/about`             | Support — About Us            | Public       |
+| `/support/privacy`           | Support — Privacy Policy      | Public       |
+| `/support/terms`             | Support — Terms of Use        | Public       |
+| `/support/returns`           | Support — Returns & Exchanges | Public       |
+| `*` (unmatched)              | Not Found                     | Public       |
 
 ## Admin Routes
 
 | Route                  | Page                   | Auth         |
-| ---------------------- | ---------------------- | ------------ |
+| ---------------------- | ----------------------- | ------------ |
 | `/admin/login`         | Admin Login            | Public only  |
 | `/admin/dashboard`     | Dashboard              | Admin JWT    |
 | `/admin/products`      | Products               | Admin JWT    |
@@ -341,6 +359,7 @@ ecommerce-store/
 | `/admin/offers`        | Offers                 | Admin JWT    |
 | `/admin/banners`       | Banners                | Admin JWT    |
 | `/admin/settings`      | Settings               | Admin JWT    |
+
 
 ---
 

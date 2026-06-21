@@ -1,24 +1,33 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Search, Download, ClipboardList, CheckCircle, Package, Clock, Calendar as CalendarIcon, Loader2 } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Download, ClipboardList, Ban, CheckCircle, Package, Clock, Calendar as CalendarIcon, Loader2 } from "lucide-react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import jsPDF from "jspdf";
 import clsx from "clsx";
+import toast from "react-hot-toast";
 
 import PageHeader from "../../components/ui/PageHeader";
 import SearchBar from "../../components/ui/SearchBar";
 import Badge from "../../components/ui/Badge";
+import Button from "../../components/ui/Button";
 
 import {
   getOrders,
   updateOrderStatus,
+  updateOrder,
 } from "../../services/order_Service";
 
 export default function OrdersPage() {
+  const emptyOrderForm = {
+    logistics: "",
+    tracking_id: "",
+  };
+
   const [orders, setOrders] = useState([]);
   const [date, setDate] = useState(new Date());
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [orderDrafts, setOrderDrafts] = useState({});
 
   useEffect(() => {
     loadOrders();
@@ -189,6 +198,64 @@ export default function OrdersPage() {
     );
   };
 
+  const getOrderDraft = (order) => {
+    return orderDrafts[order.id] || {
+      logistics: order.logistics || "",
+      tracking_id: order.tracking_id || "",
+    };
+  };
+
+  const handleDraftChange = (order, field, value) => {
+    setOrderDrafts((prev) => ({
+      ...prev,
+      [order.id]: {
+        ...(prev[order.id] || {
+          logistics: order.logistics || "",
+          tracking_id: order.tracking_id || "",
+        }),
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleClearForm = (orderId) => {
+    setOrderDrafts((prev) => ({
+      ...prev,
+      [orderId]: emptyOrderForm,
+    }));
+    toast.success("Order fields cleared");
+  };
+
+  const handleSubmit = async (order) => {
+    try {
+      const draft = getOrderDraft(order);
+      const updated = await updateOrder(
+        order.id,
+        draft
+      );
+
+      setOrders((prev) =>
+        prev.map((item) =>
+          item.id === order.id
+            ? updated
+            : item
+        )
+      );
+      setOrderDrafts((prev) => ({
+        ...prev,
+        [order.id]: {
+          logistics: updated.logistics || "",
+          tracking_id: updated.tracking_id || "",
+        },
+      }));
+
+      toast.success("Order updated successfully");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.detail || "Failed to update order");
+    }
+  };
+
   const handleStatusUpdate = async (orderId, newStatus) => {
     try {
       await updateOrderStatus(orderId, newStatus);
@@ -208,7 +275,7 @@ export default function OrdersPage() {
     }
   };
 
-  // ── Filters & Analytics ──────────────────────────────────────────────────────
+  // Filters & Analytics
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
       const term = search.toLowerCase();
@@ -225,10 +292,17 @@ export default function OrdersPage() {
   const pendingOrders = useMemo(() => orders.filter((o) => o.tracking_status === "PROCESSING").length, [orders]);
   const shippedOrders = useMemo(() => orders.filter((o) => o.tracking_status === "SHIPPED").length, [orders]);
   const deliveredOrders = useMemo(() => orders.filter((o) => o.tracking_status === "DELIVERED").length, [orders]);
+  const cancelOrders = useMemo(() => orders.filter((o) => o.tracking_status === "CANCELLED").length, [orders]);
 
   const getRemainingTime = (expectedDate, trackingStatus) => {
+    if (trackingStatus === "PLACED") {
+      return "New Order";
+    }
     if (trackingStatus === "DELIVERED") {
       return "Delivered";
+    }
+    if (trackingStatus === "CANCELLED") {
+      return "Cancelled";
     }
 
     const diff = new Date(expectedDate) - new Date();
@@ -248,7 +322,7 @@ export default function OrdersPage() {
       {/* Upper Layout Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start gap-6">
         {/* Left Side Info */}
-        <div className="flex-1 min-w-0 space-y-4 w-full">
+        <div className="flex flex-col min-w-0 space-y-4 w-full">
           <PageHeader
             title="Orders"
             description="Manage processing, shipment, and receipts"
@@ -270,30 +344,37 @@ export default function OrdersPage() {
               { label: "Processing", val: pendingOrders, icon: Clock, color: "text-amber-500 bg-amber-500/5 border-amber-500/10 dark:bg-amber-500/10" },
               { label: "Shipped", val: shippedOrders, icon: Package, color: "text-indigo-500 bg-indigo-500/5 border-indigo-500/10 dark:bg-indigo-500/10" },
               { label: "Delivered", val: deliveredOrders, icon: CheckCircle, color: "text-emerald-500 bg-emerald-500/5 border-emerald-500/10 dark:bg-emerald-500/10" },
+              { label: "Cancel", val: cancelOrders, icon: Ban, color: "text-red-500 bg-red-500/5 border-red-500/10 dark:bg-red-500/10" },
             ].map((stat) => (
-              <div key={stat.label} className="card p-5 bg-surface border border-app rounded-xl shadow-sm flex items-center justify-between">
-                <div>
+              <div key={stat.label} className={clsx(
+                "card py-3 px-2 rounded-xl shadow-sm flex flex-col items-start justify-between border", stat.bg
+              )}>
+                <div className="w-full flex justify-between items-center gap-2">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-muted">{stat.label}</p>
-                  <p className="text-2xl font-bold font-display mt-2 tracking-tight text-app">{stat.val}</p>
+                  <div className={clsx("w-9 h-9 rounded-lg border flex items-center justify-center shadow-xs shrink-0", stat.color)}>
+                    <stat.icon size={15} />
+                  </div>
                 </div>
-                <div className={clsx("w-9 h-9 rounded-lg border flex items-center justify-center shadow-xs shrink-0", stat.color)}>
-                  <stat.icon size={15} />
-                </div>
+
+                <p className="text-4xl pl-4 font-bold font-display mt-2 tracking-tight text-app">{stat.val}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* Right Side Calendar Wrapper */}
-        <div className="flex-shrink-0 flex flex-col items-center p-4 card w-full lg:w-auto">
+        <div className="flex flex-1 flex-col items-center lg:w-auto">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-muted mb-3 self-start">
             <CalendarIcon size={14} />
             <span>Calendar Logs</span>
           </div>
-          <Calendar
-            onChange={setDate}
-            value={date}
-          />
+          <div className="rounded-none border-0 bg-transparent shadow-none">
+            <Calendar
+              onChange={setDate}
+              value={date}
+              className="border-0 bg-transparent shadow-none"
+            />
+          </div>
         </div>
       </div>
 
@@ -340,9 +421,11 @@ export default function OrdersPage() {
                   </span>
                   <div className="flex gap-1.5">
                     {[
+                      { status: "PLACED", label: "New Order", activeColor: "bg-blue-500 border-blue-500 text-white" },
                       { status: "PROCESSING", label: "Process", activeColor: "bg-amber-500 border-amber-500 text-white" },
                       { status: "SHIPPED", label: "Ship", activeColor: "bg-violet-500 border-violet-500 text-white" },
                       { status: "DELIVERED", label: "Deliver", activeColor: "bg-emerald-500 border-emerald-500 text-white" },
+                      { status: "CANCELLED", label: "Cancel", activeColor: "bg-red-500 border-red-500 text-white" },
                     ].map((step) => (
                       <button
                         key={step.status}
@@ -361,38 +444,90 @@ export default function OrdersPage() {
                 </div>
               </div>
 
+              
               {/* Order Grid details */}
               <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1.5fr_220px] gap-8">
                 
                 {/* Column 1: Customer Info */}
-                <div className="lg:border-r lg:border-app lg:pr-6 space-y-4">
+                <div className="lg:border-r lg:border-app lg:pr-6 space-y-3">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Customer Registry</p>
                   <div>
                     <h4 className="text-base font-bold text-app">{order.customer_name}</h4>
                     <p className="text-xs text-muted mt-0.5">{order.customer_email}</p>
                     <p className="text-xs text-muted">{order.customer_phone}</p>
                   </div>
-                  <div className="text-xs space-y-1 text-app font-medium bg-app/50 p-3 rounded-lg border border-app">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-muted mb-1">Delivery Address</p>
-                    <p>{order.address_line1}</p>
-                    {order.address_line2 && <p>{order.address_line2}</p>}
-                    <p>{order.city} - {order.pincode}</p>
+                  <div className="text-xs text-app font-medium bg-app/50">
+                    <p className="text-md font-bold uppercase tracking-wider text-muted mb-1">Delivery Address:</p>
+                    <div className="pl-3">
+                      <p>{order.address_line1}</p>
+                      {order.address_line2 && <p>{order.address_line2}</p>}
+                      <p>{order.city} - {order.pincode}</p>
+                    </div>
                   </div>
                   <div className="text-xs flex flex-col gap-1 pt-1">
-                    <p className="text-muted">
+                    <p className="font-bold text-md uppercase">
                       Payment Mode: <span className="font-bold text-brand-500">{order.payment_method}</span>
                     </p>
-                    <p className="text-muted">
-                      Logistics: <span className="font-semibold text-app">Priority Cargo</span>
-                    </p>
                   </div>
+                  {/* Order Management */}
+              <div className="flex flex-row w-full justify-between gap-3 ">
+                <div className="flex flex-col">
+                  <div className="">
+                    <label className="text-xs font-semibold text-muted">
+                      Logistics
+                    </label>
+                    <input
+                      className="input-field w-full text-xs"
+                      value={getOrderDraft(order).logistics}
+                      onChange={(e) =>
+                        handleDraftChange(order, "logistics", e.target.value)
+                      }
+                      placeholder="Enter logistics partner"
+                    />
+                  </div>
+
+                  <div className="w-full">
+                    <label className="text-xs font-semibold text-muted">
+                      Tracking ID
+                    </label>
+                    <input
+                      className="input-field w-full text-xs"
+                      value={getOrderDraft(order).tracking_id}
+                      onChange={(e) =>
+                        handleDraftChange(order, "tracking_id", e.target.value)
+                      }
+                      placeholder="Enter tracking ID"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col justify-end gap-2 sm:gap-2">
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleSubmit(order)}
+                  >
+                    Update
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleClearForm(order.id)}
+                  >
+                    Clear
+                  </Button>
+                </div>
+                
+              </div>
+
                 </div>
 
                 {/* Column 2: Items Details */}
-                <div className="lg:border-r lg:border-app lg:px-6 space-y-4">
+                <div className="lg:border-r lg:border-app lg:pr-6 space-y-3">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Purchased Item</p>
-                  <div className="flex items-start gap-4">
-                    <div className="w-14 h-16 rounded-lg bg-app border border-app overflow-hidden flex-shrink-0">
+                  <div className="flex items-start gap-3 ">
+                    <div className="w-24 h-28 rounded-lg bg-app border border-app overflow-hidden flex-shrink-0">
                       {order.product_image ? (
                         <img
                           src={order.product_image}
@@ -408,7 +543,7 @@ export default function OrdersPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="font-semibold text-sm text-app truncate">{order.product_name}</h4>
-                      <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 mt-1.5 text-xs text-muted">
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-2 mt-2 text-xs text-muted">
                         <p>Size: <span className="font-bold text-app">{order.size}</span></p>
                         <p>Color: <span className="font-bold text-app">{order.color}</span></p>
                         <p>Qty: <span className="font-bold text-app">{order.quantity}</span></p>
@@ -441,12 +576,17 @@ export default function OrdersPage() {
                         <span
                           className={clsx(
                             "font-bold",
-                            order.tracking_status === "DELIVERED"
-                              ? "text-emerald-500"
-                              : "text-amber-500"
+                            order.tracking_status === "DELIVERED" && "text-emerald-500",
+                            order.tracking_status === "SHIPPED" && "text-indigo-500",
+                            order.tracking_status === "PLACED" && "text-blue-500",
+                            order.tracking_status === "PROCESSING" && "text-amber-500",
+                            order.tracking_status === "CANCELLED" && "text-red-500"
                           )}
                         >
-                          {getRemainingTime(order.expected_delivery_date, order.tracking_status)}
+                          {getRemainingTime(
+                            order.expected_delivery_date,
+                            order.tracking_status
+                          )}
                         </span>
                       </div>
                     </div>
@@ -455,25 +595,20 @@ export default function OrdersPage() {
 
                 {/* Column 3: Payment Summary & Actions */}
                 <div className="flex flex-col justify-between h-full space-y-6">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Tracking Status</p>
                   <div className="text-center space-y-4">
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Tracking Status</p>
                       <Badge
                         label={order.tracking_status}
                         variant={
-                          order.tracking_status === "DELIVERED"
-                            ? "success"
-                            : order.tracking_status === "SHIPPED"
-                            ? "info"
-                            : order.tracking_status === "PROCESSING"
-                            ? "warning"
-                            : "default"
-                        }
-                        dot
+                          order.tracking_status === "PLACED" ? "new":
+                          order.tracking_status === "DELIVERED" ? "success":
+                          order.tracking_status === "SHIPPED" ? "info":
+                          order.tracking_status === "PROCESSING" ? "warning":
+                          order.tracking_status === "CANCELLED" ? "danger": "default"
+                        } dot
                       />
-                    </div>
-                    
-                    <div className="pt-2">
+                  </div>
+                   <div className="text-center pt-2">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Receipt Settled</p>
                       <p className="text-xl font-bold font-display text-app">₹{order.total_amount}</p>
                       <div className="mt-1.5">
@@ -483,15 +618,16 @@ export default function OrdersPage() {
                         />
                       </div>
                     </div>
-                  </div>
 
-                  <button
+                  <Button
                     onClick={() => downloadInvoice(order)}
-                    className="w-full btn-secondary text-xs font-bold py-2.5 flex items-center justify-center gap-1.5"
+                    variant="download"
+                    className="flex"
+                    icon={Download}
                   >
-                    <Download size={14} />
+                    {/* <Download size={14} /> */}
                     Invoice PDF
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
