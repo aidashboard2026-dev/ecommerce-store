@@ -6,6 +6,7 @@ import { useSelector, useDispatch } from 'react-redux'
 import { logoutThunk } from '../store/authSlice'
 import MainLayout from '../layouts/MainLayout'
 import AdminLoginPage from '../pages/AdminPage/LoginPage'
+import AdminSignupPage from '../pages/AdminPage/SignupPage'
 import DashboardPage from '../pages/AdminPage/DashboardPage'
 import AdminProductsPage from '../pages/AdminPage/ProductsPage'
 import AdminOrdersPage from '../pages/AdminPage/OrdersPage'
@@ -16,6 +17,7 @@ import BannerPage from '../pages/AdminPage/BannerPage'
 
 // Storefront Layout
 import StorefrontLayout from '../layouts/StorefrontLayout'
+import ProductDetailsPage from "../pages/CustomProductDetailsPage";
 
 // Storefront Pages (consolidated — see /src/pages/storefront)
 import HomePage from '../pages/storefront/HomePage'
@@ -32,6 +34,10 @@ import NotFoundPage from '../pages/storefront/NotFoundPage'
 // top-level page wrapper needed for these — see refactor notes)
 import CheckoutPage from '../components/storefront/CheckoutPage'
 import WishlistGrid from '../components/storefront/WishlistGrid'
+
+
+import SubProductsPage from "../components/storefront/SubProductsPage";
+// import CategoryPage from '../components/storefront/CategoryPage'
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-app">
@@ -105,13 +111,16 @@ export default function AppRoutes() {
   return (
     <Routes>
       {/* ── BACKWARD COMPATIBILITY REDIRECTS ─────────────────────────────── */}
-      {/* /login is a customer route alias — not an admin login shortcut */}
       <Route
         path="/login"
-        element={<Navigate to="/auth/login" replace />}
+        element={<Navigate to="/admin/login" replace />}
       />
 
-      
+      <Route
+        path="/signup"
+        element={<Navigate to="/admin/signup" replace />}
+      />
+
       {/* ── ADMIN AUTH ROUTES (structure unchanged) ───────────────────────── */}
       <Route
         path="/admin/login"
@@ -122,8 +131,15 @@ export default function AppRoutes() {
         }
       />
 
+      <Route
+        path="/admin/signup"
+        element={
+          <AdminPublicRoute>
+            <AdminSignupPage />
+          </AdminPublicRoute>
+        }
+      />
       
-
       {/* ── ADMIN DASHBOARD (structure unchanged) ──────────────────────────── */}
       <Route
         path="/admin"
@@ -150,6 +166,11 @@ export default function AppRoutes() {
             a single consolidated page component */}
         <Route path="products" element={<ProductsPage />} />
         <Route path="products/:slug" element={<ProductsPage />} />
+
+
+        <Route path="/sub-products" element={<SubProductsPage />} />
+{/* 
+        <Route path="category/:slug" element={<CategoryPage />} /> */}
 
         <Route path="cart" element={<CartPage />} />
 
@@ -310,6 +331,11 @@ export default function AppRoutes() {
               <OrdersPage />
             </CustomerProtectedRoute>
           }
+        />
+
+        <Route
+          path="/product/:id"
+          element={<ProductDetailsPage />}
         />
 
         {/* Storefront 404 — rendered inside the StorefrontLayout shell so
