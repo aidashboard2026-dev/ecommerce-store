@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, admins, dashboard, orders, products, offers, banners
+from app.api.v1.endpoints import auth, admins, dashboard, orders, products, offers, settings
 from app.api.v1.endpoints import customers  # ← NEW
 
 api_router = APIRouter()
