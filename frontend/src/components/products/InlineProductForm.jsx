@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Plus, X, Camera, Layers, ImageIcon, Trash2, Eye, EyeOff,
-  AlertTriangle, CheckCircle, Loader2
+  Plus, X, Camera, Layers, ImageIcon, Trash2,
+  AlertTriangle, CheckCircle, Loader2,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import clsx from 'clsx'
-import { productsAPI as productsApi } from '../../services/api'
+import { productsAPI as productsApi, categoriesAPI, collectionsAPI } from '../../services/api'
 import {
   formatPrice, getImageUrl, revokeObjectURLs, genLocalId, isDuplicateFile,
 } from '../../utils/productUtils'
@@ -16,25 +15,29 @@ import Button from '../ui/Button'
 import Input from '../ui/Input'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../ui/Table'
 
-// ─── Constants (shared with page) ────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 const STATUS_OPTIONS = ['draft', 'published', 'archived']
-const MAX_IMAGES = 5
-const MAX_FILE_SIZE = 5 * 1024 * 1024
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
-const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
+const MAX_IMAGES     = 10                          // HEAD: 10 (branch had 5)
+const MAX_FILE_SIZE  = 5 * 1024 * 1024
+const ALLOWED_TYPES  = ['image/jpeg', 'image/png', 'image/webp']
+const SIZE_OPTIONS   = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
+// COLLECTION_OPTIONS kept from branch — used as fallback display labels only;
+// the actual dropdown is driven by the collections API (FK-based).
 const COLLECTION_OPTIONS = [
   'Oversized', 'Essentials', 'Streetwear', 'Bottoms',
   'Summer', 'Hoodies', 'Joggers', 'Limited Edition',
 ]
 
-// ─── Module-level blank form state (stable reference, no hook needed) ─────────
+// ─── Blank variant form (module-level — stable ref, no hook needed) ───────────
+
 const BLANK_VARIANT_FORM = {
   size: 'M', color: '', color_hex: '', sku: '',
   original_price: '', selling_price: '', discount_percentage: '',
   stock_quantity: '', low_stock_threshold: 5,
 }
 
-// ─── Shared form primitives ───────────────────────────────────────────────────
+// ─── Shared primitives ────────────────────────────────────────────────────────
 
 function FormField({ label, required, hint, htmlFor, children }) {
   return (
@@ -50,13 +53,15 @@ function FormField({ label, required, hint, htmlFor, children }) {
   )
 }
 
+// Branch versions: properly use clsx + component props (HEAD had broken duplicate
+// StyledInput definition and referenced undefined `inputCls`).
 function StyledInput({ className, ...props }) {
-  return <Input className={clsx('py-1.5 text-sm', className)} {...props} />
+  return <Input className={`py-1.5 text-sm ${className || ''}`} {...props} />
 }
 
 function StyledSelect({ children, className, ...props }) {
   return (
-    <Select className={clsx('py-1.5 text-sm', className)} {...props}>
+    <Select className={`py-1.5 text-sm ${className || ''}`} {...props}>
       {children}
     </Select>
   )
@@ -65,18 +70,19 @@ function StyledSelect({ children, className, ...props }) {
 // ─── Stock badge ──────────────────────────────────────────────────────────────
 
 function StockBadge({ stock }) {
-  if (stock === 0) return <Badge label="Out" variant="danger" dot />
-  if (stock <= 5) return <Badge label={`${stock} Low`} variant="warning" dot />
-  return <Badge label={`${stock} stock`} variant="success" />
+  if (stock === 0) return <Badge label="Out"             variant="danger"  dot />
+  if (stock <= 5)  return <Badge label={`${stock} Low`}  variant="warning" dot />
+  return                   <Badge label={`${stock} stock`} variant="success" />
 }
 
 // ─── Save Progress Overlay ────────────────────────────────────────────────────
 
 function SaveProgressOverlay({ steps, onClose }) {
   const hasError = steps.some(s => s.status === 'error')
-  const allDone = steps.every(s => s.status === 'done' || s.status === 'error')
+  const allDone  = steps.every(s => s.status === 'done' || s.status === 'error')
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Save progress">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      role="dialog" aria-modal="true" aria-label="Save progress">
       <div className="bg-app border border-app rounded-2xl p-6 w-80 shadow-2xl space-y-4">
         <p className="text-sm font-semibold text-app">
           {hasError && allDone ? 'Completed with issues' : 'Saving product…'}
@@ -85,24 +91,27 @@ function SaveProgressOverlay({ steps, onClose }) {
           {steps.map(step => (
             <div key={step.id} className="flex items-start gap-3">
               <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center mt-0.5">
-                {step.status === 'done' && <CheckCircle size={18} className="text-green-500" />}
-                {step.status === 'loading' && <Loader2 size={18} className="text-brand-500 animate-spin" />}
-                {step.status === 'error' && <AlertTriangle size={18} className="text-red-400" />}
+                {step.status === 'done'    && <CheckCircle   size={18} className="text-green-500" />}
+                {step.status === 'loading' && <Loader2       size={18} className="text-brand-500 animate-spin" />}
+                {step.status === 'error'   && <AlertTriangle size={18} className="text-red-400" />}
                 {step.status === 'pending' && <div className="w-4 h-4 rounded-full border-2 border-app" />}
               </div>
               <div className="flex-1 min-w-0">
-                <span className={`text-xs ${step.status === 'done' ? 'text-green-500 line-through' :
-                    step.status === 'loading' ? 'text-app font-semibold' :
-                      step.status === 'error' ? 'text-red-400' :
-                        'text-muted'
-                  }`}>{step.label}</span>
+                <span className={`text-xs ${
+                  step.status === 'done'    ? 'text-green-500 line-through' :
+                  step.status === 'loading' ? 'text-app font-semibold'      :
+                  step.status === 'error'   ? 'text-red-400'                : 'text-muted'
+                }`}>{step.label}</span>
                 {step.details && (
-                  <p className={`text-[10px] mt-0.5 ${step.status === 'error' ? 'text-red-400/80' : 'text-muted'}`}>{step.details}</p>
+                  <p className={`text-[10px] mt-0.5 ${step.status === 'error' ? 'text-red-400/80' : 'text-muted'}`}>
+                    {step.details}
+                  </p>
                 )}
               </div>
             </div>
           ))}
         </div>
+        {/* Branch: <Button> component; HEAD had raw <button> — Button is correct here */}
         {hasError && allDone && onClose && (
           <Button type="button" onClick={onClose} variant="secondary" className="w-full">
             Close
@@ -113,7 +122,7 @@ function SaveProgressOverlay({ steps, onClose }) {
   )
 }
 
-// ─── Local Variant Row editor (new product only) ──────────────────────────────
+// ─── Local Variant Form (new product only) ────────────────────────────────────
 
 function LocalVariantForm({ onAdd, existingVariants = [] }) {
   const [form, setForm] = useState(BLANK_VARIANT_FORM)
@@ -128,19 +137,24 @@ function LocalVariantForm({ onAdd, existingVariants = [] }) {
     }
   }, [form.original_price, form.selling_price])
 
-  const sellNum = parseFloat(form.selling_price || 0)
-  const origNum = parseFloat(form.original_price || 0)
-  const priceError = !isNaN(sellNum) && !isNaN(origNum) && sellNum > origNum && form.selling_price !== ''
+  const sellNum  = parseFloat(form.selling_price || 0)
+  const origNum  = parseFloat(form.original_price || 0)
+  // HEAD named this `priceErr` — branch renamed to `priceError` but forgot to
+  // update the JSX references, causing a ReferenceError. Keeping `priceErr`.
+  const priceErr = !isNaN(sellNum) && !isNaN(origNum) && sellNum > origNum && form.selling_price !== ''
 
   const handleAdd = () => {
     if (!form.original_price || !form.selling_price) { toast.error('Price fields required'); return }
-    if (priceError) { toast.error('Selling price cannot exceed original price'); return }
+    if (priceErr) { toast.error('Selling price cannot exceed original price'); return }
     const stockQty = parseInt(form.stock_quantity || 0, 10)
     if (stockQty < 0) { toast.error('Stock cannot be negative'); return }
-    const dupExists = existingVariants.some(v =>
-      v.size === form.size && (v.color || '') === (form.color || '')
+    const dupExists = existingVariants.some(
+      v => v.size === form.size && (v.color || '') === (form.color || '')
     )
-    if (dupExists) { toast.error(`Variant with size "${form.size}" and color "${form.color || 'none'}" already exists`); return }
+    if (dupExists) {
+      toast.error(`Variant with size "${form.size}" and color "${form.color || 'none'}" already exists`)
+      return
+    }
     onAdd({
       _localId: genLocalId(),
       size: form.size,
@@ -159,7 +173,8 @@ function LocalVariantForm({ onAdd, existingVariants = [] }) {
 
   if (!open) {
     return (
-      <Button type="button" onClick={() => setOpen(true)}  size="sm" icon={Plus} variant='addvariant' className="min-w-[100px] whitespace-nowrap hover:bg-sky-400 hover:border-sky-600">
+      <Button type="button" onClick={() => setOpen(true)} size="sm" icon={Plus} variant="addvariant"
+        className="min-w-[100px] whitespace-nowrap hover:bg-sky-400 hover:border-sky-600">
         Add Variant
       </Button>
     )
@@ -182,7 +197,8 @@ function LocalVariantForm({ onAdd, existingVariants = [] }) {
           <div className="relative">
             <StyledInput value={form.color_hex} onChange={e => set('color_hex', e.target.value)} placeholder="#1A1A1A" />
             {/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(form.color_hex) && (
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border border-app" style={{ background: form.color_hex }} />
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border border-app"
+                style={{ background: form.color_hex }} />
             )}
           </div>
         </FormField>
@@ -193,7 +209,11 @@ function LocalVariantForm({ onAdd, existingVariants = [] }) {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <FormField label="Original Price" required>
-          <StyledInput type="number" min="0.01" step="0.01" value={form.original_price} onChange={e => set('original_price', e.target.value)} placeholder="999"
+          {/* Branch: added number spinner suppression classes */}
+          <StyledInput
+            type="number" min="0.01" step="0.01"
+            value={form.original_price} onChange={e => set('original_price', e.target.value)}
+            placeholder="999"
             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
         </FormField>
@@ -202,35 +222,37 @@ function LocalVariantForm({ onAdd, existingVariants = [] }) {
             type="number" min="0.01" step="0.01"
             value={form.selling_price} onChange={e => set('selling_price', e.target.value)}
             placeholder="799"
-            className={`${priceError ? 'border-red-400 focus:ring-red-400/30' : ''} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+            className={`${priceErr ? 'border-red-400 focus:ring-red-400/30' : ''} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
           />
         </FormField>
         <FormField label="Discount %">
-          <StyledInput type="number" min="0" max="100" step="0.01" value={form.discount_percentage}
-            onChange={e => set('discount_percentage', e.target.value)} placeholder="0"
+          <StyledInput
+            type="number" min="0" max="100" step="0.01"
+            value={form.discount_percentage} onChange={e => set('discount_percentage', e.target.value)}
+            placeholder="0"
             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            readOnly={!!(form.original_price && form.selling_price)} />
+            readOnly={!!(form.original_price && form.selling_price)}
+          />
         </FormField>
         <FormField label="Stock">
           <StyledInput
-            type="number"
-            min="0"
-            value={form.stock_quantity}
-            onChange={e => set('stock_quantity', e.target.value)}
+            type="number" min="0"
+            value={form.stock_quantity} onChange={e => set('stock_quantity', e.target.value)}
             placeholder="Enter Stock Quantity"
             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
         </FormField>
       </div>
 
-      {priceError && (
+      {priceErr && (
         <p className="text-xs text-red-500 flex items-center gap-1.5">
           <AlertTriangle size={12} /> Selling price cannot exceed original price
         </p>
       )}
 
       <div className="flex items-center gap-2 w-full pt-1">
-        <Button type="button" onClick={handleAdd} disabled={priceError} variant='addvariant' className="min-w-[100px] whitespace-nowrap hover:bg-sky-400 hover:border-sky-600">
+        <Button type="button" onClick={handleAdd} disabled={priceErr} variant="addvariant"
+          className="min-w-[100px] whitespace-nowrap hover:bg-sky-400 hover:border-sky-600">
           Add Variant
         </Button>
         <Button type="button" onClick={() => { setOpen(false); setForm(BLANK_VARIANT_FORM) }}
@@ -245,44 +267,87 @@ function LocalVariantForm({ onAdd, existingVariants = [] }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function InlineProductForm({ product, onClose, onOpenVariant, onOpenImage }) {
-  const qc = useQueryClient()
+  const qc     = useQueryClient()
   const isEdit = !!product
 
-  const blankForm = useRef({ title: '', description: '', collection: '', tags: '', status: 'draft', is_featured: false, seo_title: '', seo_description: '' })
+  // ─── Blank form ref ──────────────────────────────────────────────────────────
+  const blankForm = useRef({
+    title: '', description: '', short_description: '',
+    collection: '', category_id: '', collection_id: '',
+    tags: '', status: 'draft',
+    is_featured: false, is_trending: false, is_best_seller: false, is_new_arrival: false,
+    seo_title: '', seo_description: '',
+  })
+
+  // ─── Form state — must be declared BEFORE any hook that reads `form` ─────────
   const [form, setForm] = useState(blankForm.current)
 
-  const [localImages, setLocalImages] = useState([])
-  const [localVariants, setLocalVariants] = useState([])
-  const [saveSteps, setSaveSteps] = useState(null)
-  const isSavingRef = useRef(false)
-  const isCriticalFailureRef = useRef(false)
+  // ─── BUG-1 FIX: useQuery calls moved here, after `form` is declared ──────────
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories', 'admin'],
+    queryFn: () => categoriesAPI.list().then(r => r.data),
+    staleTime: 5 * 60_000,
+  })
 
-  const localImagesRef = useRef(localImages)
+  const { data: collections = [] } = useQuery({
+    // queryKey includes form.category_id so it refetches when category changes
+    queryKey: ['collections', 'admin', form.category_id],
+    queryFn: () =>
+      collectionsAPI.list(form.category_id ? { category_id: form.category_id } : {})
+        .then(r => r.data),
+    staleTime: 5 * 60_000,
+  })
+
+  // ─── Other state ─────────────────────────────────────────────────────────────
+  const [localImages, setLocalImages]     = useState([])
+  const [localVariants, setLocalVariants] = useState([])
+  const [saveSteps, setSaveSteps]         = useState(null)
+  const [deletingVariantIds, setDeletingVariantIds] = useState(() => new Set())
+
+  const isSavingRef          = useRef(false)
+  const isCriticalFailureRef = useRef(false)
+  const localImagesRef       = useRef(localImages)
+  const productRef           = useRef(product)
+  const localFileRef         = useRef(null)
+
   useEffect(() => { localImagesRef.current = localImages }, [localImages])
-  const productRef = useRef(product)
   useEffect(() => { productRef.current = product }, [product])
 
-  useEffect(() => {
-    return () => { revokeObjectURLs(localImagesRef.current) }
-  }, [])
+  // Revoke blob URLs on unmount
+  useEffect(() => () => revokeObjectURLs(localImagesRef.current), [])
 
+  // Populate form when product prop changes (edit mode)
   useEffect(() => {
     revokeObjectURLs(localImagesRef.current)
     const p = productRef.current
     setForm(p ? {
-      title: p.title, description: p.description || '',
-      collection: p.collection || '', tags: (p.tags || []).join(', '),
-      status: p.status, is_featured: p.is_featured,
-      seo_title: p.seo_title || '', seo_description: p.seo_description || '',
+      title:             p.title,
+      description:       p.description       || '',
+      short_description: p.short_description || '',
+      collection:        p.collection        || '',
+      category_id:       p.category_id       || '',
+      collection_id:     p.collection_id     || '',
+      tags:              (p.tags || []).join(', '),
+      status:            p.status,
+      is_featured:       p.is_featured       || false,
+      is_trending:       p.is_trending       || false,
+      is_best_seller:    p.is_best_seller    || false,
+      is_new_arrival:    p.is_new_arrival    || false,
+      seo_title:         p.seo_title         || '',
+      seo_description:   p.seo_description   || '',
     } : blankForm.current)
     setLocalImages([])
     setLocalVariants([])
   }, [product?.id])
 
+  // ─── Unsaved-changes guard ────────────────────────────────────────────────────
+
   const hasUnsavedChanges = useMemo(() => {
     if (isEdit) return false
-    return localImages.length > 0 || localVariants.length > 0 ||
+    return (
+      localImages.length > 0 || localVariants.length > 0 ||
       form.title.trim() !== '' || form.description.trim() !== ''
+    )
   }, [isEdit, localImages.length, localVariants.length, form.title, form.description])
 
   useEffect(() => {
@@ -298,10 +363,20 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
     onClose()
   }, [hasUnsavedChanges, localImages, onClose])
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
-  const payload = () => ({ ...form, title: form.title.trim(), tags: form.tags.split(',').map(t => t.trim()).filter(Boolean) })
+  // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-  // ── Edit mode mutations ──────────────────────────────────────────────────────
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const payload = () => ({
+    ...form,
+    title:        form.title.trim(),
+    category_id:  form.category_id   ? Number(form.category_id)   : null,
+    collection_id: form.collection_id ? Number(form.collection_id) : null,
+    tags:         form.tags.split(',').map(t => t.trim()).filter(Boolean),
+  })
+
+  // ─── Edit mutations ───────────────────────────────────────────────────────────
+
   const editMutation = useMutation({
     mutationFn: data => productsApi.update(product.id, data),
     onSuccess: () => { toast.success('Product updated'); qc.invalidateQueries({ queryKey: ['products'] }); onClose() },
@@ -314,58 +389,56 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
     onError: e => toast.error(e.response?.data?.detail || 'Something went wrong'),
   })
 
-  // ── CRITICAL 1: Real variant delete mutation ─────────────────────────────────
-  // Track deleting variant IDs so we can show per-row loading state
-  const [deletingVariantIds, setDeletingVariantIds] = useState(() => new Set())
+  // ─── Variant delete mutation (edit mode) ──────────────────────────────────────
 
   const deleteVariantMutation = useMutation({
-    mutationFn: (variantId) => productsApi.deleteVariant(product.id, variantId),
-    onMutate: (variantId) => {
-      setDeletingVariantIds(prev => new Set([...prev, variantId]))
-    },
-    onSettled: (_, __, variantId) => {
-      setDeletingVariantIds(prev => { const s = new Set(prev); s.delete(variantId); return s })
-    },
-    onSuccess: () => {
-      toast.success('Variant deleted')
-      qc.invalidateQueries({ queryKey: ['products'] })
-    },
-    onError: (e) => toast.error(e.response?.data?.detail || 'Failed to delete variant'),
+    mutationFn: variantId => productsApi.deleteVariant(product.id, variantId),
+    onMutate:  variantId  => setDeletingVariantIds(prev => new Set([...prev, variantId])),
+    onSettled: (_, __, variantId) => setDeletingVariantIds(prev => {
+      const s = new Set(prev); s.delete(variantId); return s
+    }),
+    onSuccess: () => { toast.success('Variant deleted'); qc.invalidateQueries({ queryKey: ['products'] }) },
+    onError: e => toast.error(e.response?.data?.detail || 'Failed to delete variant'),
   })
 
-  // ── New product: batch save ─────────────────────────────────────────────────
+  // ─── New product: batch save ──────────────────────────────────────────────────
+
   const batchSave = async (overrideStatus) => {
     if (isSavingRef.current) return
     isSavingRef.current = true
-
-    // WARN FIX: reset isCriticalFailureRef at the start of every save attempt
-    // so a retry after a step-1 failure starts with a clean slate
     isCriticalFailureRef.current = false
 
     const data = payload()
     if (overrideStatus) data.status = overrideStatus
 
-    if (data.title.length < 2) { toast.error('Product title must be at least 2 characters'); isSavingRef.current = false; return }
+    if (data.title.length < 2) {
+      toast.error('Product title must be at least 2 characters')
+      isSavingRef.current = false
+      return
+    }
     if (overrideStatus === 'published' && localVariants.length === 0) {
-      toast.error('Add at least one variant before publishing'); isSavingRef.current = false; return
+      toast.error('Add at least one variant before publishing')
+      isSavingRef.current = false
+      return
     }
 
     const imgCount = localImages.length
     const varCount = localVariants.length
+
     const steps = [
-      { id: 'create-product', label: 'Create product', status: 'pending', details: null },
-      ...(imgCount > 0 ? [{ id: 'upload-images', label: `Upload ${imgCount} image${imgCount > 1 ? 's' : ''}`, status: 'pending', details: null }] : []),
+      { id: 'create-product',  label: 'Create product',                                              status: 'pending', details: null },
+      ...(imgCount > 0 ? [{ id: 'upload-images',   label: `Upload ${imgCount} image${imgCount > 1 ? 's' : ''}`,   status: 'pending', details: null }] : []),
       ...(varCount > 0 ? [{ id: 'create-variants', label: `Create ${varCount} variant${varCount > 1 ? 's' : ''}`, status: 'pending', details: null }] : []),
     ]
 
-    const updateStep = (id, updates) => {
+    const updateStep = (id, updates) =>
       setSaveSteps(prev => prev ? prev.map(s => s.id === id ? { ...s, ...updates } : s) : prev)
-    }
 
     setSaveSteps(steps)
-    let createdProduct = null
+    let createdProduct    = null
     let hadPartialFailure = false
 
+    // ── Step 1: Create product ──────────────────────────────────────────────────
     try {
       updateStep('create-product', { status: 'loading' })
       const res = await productsApi.create(data)
@@ -379,63 +452,75 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
       return
     }
 
+    // ── Step 2: Upload images ───────────────────────────────────────────────────
     if (imgCount > 0) {
       updateStep('upload-images', { status: 'loading' })
       let imgSucceeded = 0
-      let imgFailed = 0
-      for (let i = localImages.length - 1; i >= 0; i--) {
-        const img = localImages[i]
-        const fd = new FormData()
-        fd.append('file', img.file)
-        fd.append('set_as_primary', i === 0 ? 'true' : 'false')
+      let imgFailed    = 0
+
+      for (let i = 0; i < localImages.length; i++) {
+        const img       = localImages[i]
+        const imageType = i === 0 ? 'thumbnail' : 'gallery'
         try {
-          await productsApi.uploadImage(createdProduct.id, fd)
+          // BUG-2 FIX: pass img.file (raw File) — api.js builds FormData internally
+          await productsApi.uploadImage(createdProduct.id, img.file, imageType, i === 0)
           imgSucceeded++
         } catch (_) {
           imgFailed++
         }
       }
+
       if (imgFailed === 0) {
         updateStep('upload-images', { status: 'done', details: `${imgSucceeded} uploaded` })
       } else {
         hadPartialFailure = true
         updateStep('upload-images', {
-          status: imgSucceeded > 0 ? 'done' : 'error',
+          status:  imgSucceeded > 0 ? 'done' : 'error',
           details: `${imgSucceeded} uploaded, ${imgFailed} failed`,
         })
-        toast.error(imgSucceeded > 0
-          ? `${imgFailed} image${imgFailed > 1 ? 's' : ''} failed — add them later`
-          : 'Image upload failed — add images later via Edit')
+        toast.error(
+          imgSucceeded > 0
+            ? `${imgFailed} image${imgFailed > 1 ? 's' : ''} failed — add them later`
+            : 'Image upload failed — add images later via Edit'
+        )
       }
     }
 
+    // ── Step 3: Create variants ─────────────────────────────────────────────────
     if (varCount > 0) {
       updateStep('create-variants', { status: 'loading' })
       try {
+        // BUG-3 FIX: wrap array in { variants: [...] } — matches BulkVariantCreate schema
         const variantsPayload = localVariants.map(({ _localId, ...v }) => v)
-        const bulkRes = await productsApi.bulkCreateVariants(createdProduct.id, variantsPayload)
-        const { total_created: varSucceeded, total_failed: varFailed, failed: failedItems } = bulkRes.data
-        if (varFailed === 0) {
+        const bulkRes = await productsApi.bulkCreateVariants(createdProduct.id, { variants: variantsPayload })
+
+        // BUG-4 FIX: response is ProductResponse, not { total_created, total_failed }.
+        // Derive success count from the returned product's variants array.
+        const returnedProduct = bulkRes.data
+        const varSucceeded    = (returnedProduct?.variants || []).length
+        const varFailed       = varCount - varSucceeded
+
+        if (varFailed <= 0) {
           updateStep('create-variants', { status: 'done', details: `${varSucceeded} created` })
         } else {
           hadPartialFailure = true
-          const firstError = failedItems?.[0]?.error || 'unknown error'
           updateStep('create-variants', {
-            status: varSucceeded > 0 ? 'done' : 'error',
-            details: `${varSucceeded} created, ${varFailed} failed — ${firstError}`,
+            status:  varSucceeded > 0 ? 'done' : 'error',
+            details: `${varSucceeded} created, ${varFailed} failed`,
           })
-          toast.error(`${varFailed} variant${varFailed > 1 ? 's' : ''} failed — you can add them later`)
+          toast.error(`${varFailed} variant${varFailed > 1 ? 's' : ''} failed — add them later via Edit`)
         }
       } catch (e) {
         hadPartialFailure = true
         updateStep('create-variants', {
-          status: 'error',
+          status:  'error',
           details: e.response?.data?.detail || 'Variant creation failed',
         })
-        toast.error('Variant creation failed — you can add them later via Edit')
+        toast.error('Variant creation failed — add them later via Edit')
       }
     }
 
+    // ── Finish ──────────────────────────────────────────────────────────────────
     revokeObjectURLs(localImages)
     await new Promise(r => setTimeout(r, hadPartialFailure ? 1500 : 800))
 
@@ -453,23 +538,21 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
 
   const handleOverlayClose = useCallback(() => {
     setSaveSteps(null)
-    if (isCriticalFailureRef.current) {
-      isCriticalFailureRef.current = false
-      // Product was never created — keep form open so user's work is preserved
-    } else {
+    if (!isCriticalFailureRef.current) {
       onClose()
     }
+    isCriticalFailureRef.current = false
   }, [onClose])
 
-  // ── Local image handlers (new product only) ──────────────────────────────────
-  const localFileRef = useRef(null)
+  // ─── Local image handlers (new product only) ──────────────────────────────────
+
   const pickLocalImage = useCallback((f) => {
     if (!f) return
-    if (!ALLOWED_TYPES.includes(f.type)) { toast.error('Only JPG, PNG, WebP allowed'); return }
-    if (f.size > MAX_FILE_SIZE) { toast.error('File must be under 5 MB'); return }
+    if (!ALLOWED_TYPES.includes(f.type))  { toast.error('Only JPG, PNG, WebP allowed'); return }
+    if (f.size > MAX_FILE_SIZE)           { toast.error('File must be under 5 MB');      return }
     setLocalImages(prev => {
-      if (prev.length >= MAX_IMAGES) { toast.error(`Maximum ${MAX_IMAGES} images allowed`); return prev }
-      if (isDuplicateFile(f, prev)) { toast.error('This image is already added'); return prev }
+      if (prev.length >= MAX_IMAGES)     { toast.error(`Maximum ${MAX_IMAGES} images`); return prev }
+      if (isDuplicateFile(f, prev))      { toast.error('This image is already added');  return prev }
       return [...prev, { id: genLocalId(), file: f, previewUrl: URL.createObjectURL(f) }]
     })
     if (localFileRef.current) localFileRef.current.value = ''
@@ -483,48 +566,62 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
     })
   }, [])
 
-  const addLocalVariant = useCallback((v) => setLocalVariants(prev => [...prev, v]), [])
-  const removeLocalVariant = useCallback((id) => setLocalVariants(prev => prev.filter(v => v._localId !== id)), [])
+  const addLocalVariant    = useCallback(v => setLocalVariants(prev => [...prev, v]), [])
+  const removeLocalVariant = useCallback(id => setLocalVariants(prev => prev.filter(v => v._localId !== id)), [])
 
-  // ── Render ───────────────────────────────────────────────────────────────────
-  const thumbnailUrl = isEdit ? getImageUrl(product?.thumbnail) : (localImages[0]?.previewUrl || null)
-  const variants = isEdit ? (product?.variants || []) : localVariants
+  // ─── Derived values ───────────────────────────────────────────────────────────
+
+  const thumbnailUrl  = isEdit ? getImageUrl(product?.thumbnail) : (localImages[0]?.previewUrl || null)
+  const variants      = isEdit ? (product?.variants || []) : localVariants
   const isBatchSaving = saveSteps !== null
+
+  // ─── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <>
       {isBatchSaving && <SaveProgressOverlay steps={saveSteps} onClose={handleOverlayClose} />}
 
-      <div className="bg-app">
+      {/* HEAD: card wrapper + shadow; branch: bg-app — merged both */}
+      <div className="card overflow-hidden mt-6 shadow-md bg-app">
         <form
           className="flex flex-col"
           onSubmit={e => {
-          e.preventDefault()
-          if (isSavingRef.current || editMutation.isPending || editPubMutation.isPending) return
-          if (isEdit) editMutation.mutate(payload())
-          else batchSave()
-        }}>
+            e.preventDefault()
+            if (isSavingRef.current || editMutation.isPending || editPubMutation.isPending) return
+            if (isEdit) editMutation.mutate(payload())
+            else batchSave()
+          }}>
+
+          {/* Branch: sticky header */}
           <div className="sticky top-0 z-20 flex items-center justify-between px-6 py-1 bg-app border-b border-app backdrop-blur-sm">
-            <h3 className="text-sm font-bold text-app p-4 uppercase tracking-tight">{isEdit ? `Editing: ${product.title}` : 'Add New Product'}</h3>
-            <Button type="button" onClick={handleClose} disabled={isBatchSaving} aria-label="Close form" variant="delete" size="sm"
-              className="h-8 w-8 p-0 rounded-md text-muted hover:text-app hover:bg-red-500 hover:border hover:border-red-500"
-            >
+            <h3 className="text-sm font-bold text-app p-4 uppercase tracking-tight">
+              {isEdit ? `Editing: ${product.title}` : 'Add New Product'}
+            </h3>
+            <Button type="button" onClick={handleClose} disabled={isBatchSaving} aria-label="Close form"
+              variant="delete" size="sm"
+              className="h-8 w-8 p-0 rounded-md text-muted hover:text-app hover:bg-red-500 hover:border hover:border-red-500">
               <X size={16} />
             </Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-8 p-4 sm:p-6">
-            {/* LEFT: image */}
+
+            {/* ── LEFT: image panel ── */}
             <div className="flex flex-col items-center gap-3.5">
               {isEdit ? (
                 <>
-                  <div className=" w-full max-w-[180px] sm:max-w-[220px] md:max-w-none h-40 sm:h-52 md:aspect-square border-2 border-dashed border-gray-500/50 hover:border-brand-500 rounded-2xl bg-app overflow-hidden cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01] mx-auto" onClick={() => onOpenImage(product)} title="Click to manage image">
+                  <div
+                    className="w-full max-w-[180px] sm:max-w-[220px] md:max-w-none h-40 sm:h-52 md:aspect-square border-2 border-dashed border-brand-500/50 hover:border-brand-500 rounded-2xl bg-app overflow-hidden cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01] mx-auto"
+                    onClick={() => onOpenImage(product)}
+                    title="Click to manage images"
+                  >
                     {thumbnailUrl
                       ? <img src={thumbnailUrl} alt={form.title} className="w-full h-full object-cover" />
                       : <div className="flex flex-col items-center gap-1.5 text-muted">
-                        <Camera size={32} className="text-muted opacity-40" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted mt-1">Add Image</span>
-                      </div>}
+                          <Camera size={32} className="text-muted opacity-40" />
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted mt-1">Add Image</span>
+                        </div>
+                    }
                   </div>
                   <Button type="button" onClick={() => onOpenImage(product)} variant="secondary" icon={Plus} className="w-full">
                     {product.thumbnail ? 'Change Image' : 'Add Image'}
@@ -533,22 +630,20 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
               ) : (
                 <>
                   <div
-                    className=" w-full max-w-[250px] mx-auto h-40 sm:h-auto sm:aspect-square border-2 border-dashed border-gray-500/50 hover:border-brand-500 rounded-2xl bg-app overflow-hidden cursor-pointer flex items-center justify-center "
+                    className="w-full max-w-[250px] mx-auto h-40 sm:h-auto sm:aspect-square border-2 border-dashed border-gray-500/50 hover:border-brand-500 rounded-2xl bg-app overflow-hidden cursor-pointer flex items-center justify-center"
                     onClick={() => localFileRef.current?.click()}
                     title="Click to add image"
                   >
                     {localImages.length > 0
                       ? <img src={localImages[0].previewUrl} alt="preview" className="w-full h-full object-cover" />
                       : <div className="flex flex-col items-center gap-1.5 text-muted">
-                        <Camera size={32} className="text-muted opacity-40" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted mt-1">Click to add</span>
-                      </div>}
+                          <Camera size={32} className="text-muted opacity-40" />
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted mt-1">Click to add</span>
+                        </div>
+                    }
                   </div>
-                  <input
-                    ref={localFileRef} type="file" accept="image/jpeg,image/png,image/webp"
-                    className="hidden"
-                    onChange={e => pickLocalImage(e.target.files[0])}
-                  />
+                  <input ref={localFileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                    onChange={e => pickLocalImage(e.target.files[0])} />
                   {localImages.length > 1 && (
                     <div className="flex gap-1.5 flex-wrap mt-1">
                       {localImages.slice(1).map(img => (
@@ -578,60 +673,100 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
               )}
             </div>
 
-            {/* RIGHT: fields */}
+            {/* ── RIGHT: fields ── */}
             <div className="flex flex-col gap-4">
+
+              {/* Product Name */}
               <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
-                <label htmlFor="product-title" className="text-xs font-bold text-muted">Product Name <span className="text-red-500">*</span></label>
-                <div className="w-full">
-                  <input id="product-title" className="input-field py-2.5 text-xs" value={form.title} onChange={e => set('title', e.target.value)} required minLength={2} placeholder="e.g. Classic Black Tee" />
-                </div>
+                <label htmlFor="product-title" className="text-xs font-bold text-muted">
+                  Product Name <span className="text-red-500">*</span>
+                </label>
+                <input id="product-title" className="input-field py-2.5 text-xs"
+                  value={form.title} onChange={e => set('title', e.target.value)}
+                  required minLength={2} placeholder="e.g. Classic Black Tee" />
               </div>
+
+              {/* Code / SKU (read-only) */}
               <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
                 <label className="text-xs font-bold text-muted">Code / SKU</label>
-                <div className="w-full">
-                  <input className="input-field py-2.5 text-xs opacity-60 cursor-not-allowed bg-app" readOnly
-                    value={isEdit && variants.length > 0 ? variants[0].sku : ''}
-                    placeholder={isEdit ? 'auto-generated on first variant' : 'set via variant'} />
-                </div>
+                <input className="input-field py-2.5 text-xs opacity-60 cursor-not-allowed bg-app" readOnly
+                  value={isEdit && variants.length > 0 ? variants[0].sku : ''}
+                  placeholder={isEdit ? 'auto-generated on first variant' : 'set via variant'} />
               </div>
+
+              {/* Category */}
+              <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
+                <label className="text-xs font-bold text-muted">Category</label>
+                <select className="input-field py-2.5 text-xs"
+                  value={form.category_id}
+                  onChange={e => { set('category_id', e.target.value); set('collection_id', '') }}>
+                  <option value="">— None —</option>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+
+              {/* Collection — HEAD: FK-based select driven by API (correct); branch had
+                  hardcoded COLLECTION_OPTIONS string dropdown which ignores the DB. */}
               <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
                 <label className="text-xs font-bold text-muted">Collection</label>
-                <div className="w-full">
-                  <select className="input-field py-2.5 text-xs" value={form.collection} onChange={e => set('collection', e.target.value)}>
-                    <option value="">None</option>
-                    {COLLECTION_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
+                <select className="input-field py-2.5 text-xs"
+                  value={form.collection_id}
+                  onChange={e => set('collection_id', e.target.value)}>
+                  <option value="">— None —</option>
+                  {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
               </div>
+
+              {/* Status + Tags */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
                   <label className="text-xs font-bold text-muted">Status</label>
-                  <div className="w-full ">
-                    <select className="input-field  py-2.5 text-xs" value={form.status} onChange={e => set('status', e.target.value)}>
-                      {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-                    </select>
-                  </div>
+                  <select className="input-field py-2.5 text-xs"
+                    value={form.status} onChange={e => set('status', e.target.value)}>
+                    {STATUS_OPTIONS.map(s => (
+                      <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
                   <label className="text-xs font-bold text-muted">Tags</label>
-                  <div className="w-full">
-                    <input className="input-field py-2.5 text-xs" value={form.tags} onChange={e => set('tags', e.target.value)} placeholder="Black, White…" />
-                  </div>
+                  <input className="input-field py-2.5 text-xs"
+                    value={form.tags} onChange={e => set('tags', e.target.value)} placeholder="Black, White…" />
                 </div>
               </div>
+
+              {/* Short Description */}
+              <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-start">
+                <label className="text-xs font-bold text-muted pt-2">Short Desc</label>
+                <textarea rows={2} className="input-field py-2.5 text-xs resize-none"
+                  value={form.short_description} onChange={e => set('short_description', e.target.value)}
+                  placeholder="One-liner for product cards…" maxLength={500} />
+              </div>
+
+              {/* Merchandising flags */}
               <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
-                <label className="text-xs font-bold text-muted">Featured</label>
-                <div className="w-full">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={form.is_featured} onChange={e => set('is_featured', e.target.checked)} className="w-3.5 h-3.5 accent-brand-500" />
-                    <span className="text-xs font-medium text-muted">Show on homepage</span>
-                  </label>
+                <label className="text-xs font-bold text-muted">Flags</label>
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    { key: 'is_featured',    label: '⭐ Featured'    },
+                    { key: 'is_trending',    label: '🔥 Trending'    },
+                    { key: 'is_best_seller', label: '⚡ Best Seller' },
+                    { key: 'is_new_arrival', label: '🆕 New Arrival' },
+                  ].map(f => (
+                    <label key={f.key} className="flex items-center gap-1.5 cursor-pointer">
+                      <input type="checkbox" checked={!!form[f.key]}
+                        onChange={e => set(f.key, e.target.checked)}
+                        className="w-3.5 h-3.5 accent-brand-500" />
+                      <span className="text-xs font-medium text-muted">{f.label}</span>
+                    </label>
+                  ))}
                 </div>
               </div>
+
             </div>
           </div>
 
-          {/* Variants section */}
+          {/* ── Variants section ── */}
           <div className="px-6 pt-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-3">Variants</p>
             {variants.length > 0 ? (
@@ -648,32 +783,37 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {variants.map((v) => (
+                    {variants.map(v => (
                       <TableRow key={isEdit ? v.id : v._localId}>
-                        <TableCell className="text-left font-extrabold text-xl ">
-                          {v.size}
-                        </TableCell>
+                        {/* HEAD: Badge component — cleaner than branch's oversized text-xl cell */}
+                        <TableCell><Badge label={v.size} variant="info" /></TableCell>
                         <TableCell className="font-medium">{formatPrice(v.original_price)}</TableCell>
                         <TableCell className="font-medium text-emerald-600 dark:text-emerald-400">{formatPrice(v.selling_price)}</TableCell>
-                        <TableCell className="font-medium text-amber-600">{v.discount_percentage ? `${parseFloat(v.discount_percentage).toFixed(0)}%` : '—'}</TableCell>
-                        <TableCell className="font-semibold">{isEdit ? <StockBadge stock={v.stock_quantity} /> : <span>{v.stock_quantity}</span>}</TableCell>
+                        <TableCell className="font-medium text-amber-600">
+                          {v.discount_percentage ? `${parseFloat(v.discount_percentage).toFixed(0)}%` : '—'}
+                        </TableCell>
+                        <TableCell className="font-semibold">
+                          {isEdit ? <StockBadge stock={v.stock_quantity} /> : <span>{v.stock_quantity}</span>}
+                        </TableCell>
                         <TableCell>
                           {isEdit ? (
                             <button
                               type="button"
-                              className=" rounded-md flex items-center justify-center border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white"
+                              className="rounded-md flex items-center justify-center border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white"
                               style={{ width: 24, height: 24 }}
                               disabled={deletingVariantIds.has(v.id)}
                               onClick={() => deleteVariantMutation.mutate(v.id)}
-                              aria-label="Delete variant"
-                            >
+                              aria-label="Delete variant">
                               {deletingVariantIds.has(v.id)
                                 ? <Loader2 size={12} className="animate-spin" />
                                 : <Trash2 size={12} />}
                             </button>
                           ) : (
-                            <button type="button" className="btn-secondary rounded-lg flex items-center justify-center border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white" style={{ width: 24, height: 24 }}
-                              onClick={() => removeLocalVariant(v._localId)} aria-label="Remove variant">
+                            <button type="button"
+                              className="btn-secondary rounded-lg flex items-center justify-center border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white"
+                              style={{ width: 24, height: 24 }}
+                              onClick={() => removeLocalVariant(v._localId)}
+                              aria-label="Remove variant">
                               <Trash2 size={12} />
                             </button>
                           )}
@@ -688,20 +828,20 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
             )}
 
             {isEdit ? (
-<Button
-  type="button"
-  onClick={() => onOpenVariant(product)}
-  variant="addvariant"
-  className="min-w-[100px] mt-2 whitespace-nowrap hover:bg-sky-400 hover:border-sky-600"
->
-  Add Variant
-</Button>
+              <Button
+                type="button"
+                onClick={() => onOpenVariant(product)}
+                variant="addvariant"
+                className="min-w-[100px] mt-2 whitespace-nowrap hover:bg-sky-400 hover:border-sky-600"
+              >
+                Add Variant
+              </Button>
             ) : (
               <LocalVariantForm onAdd={addLocalVariant} existingVariants={localVariants} />
             )}
           </div>
 
-          {/* Description */}
+          {/* ── Description ── */}
           <div className="px-6 pt-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-3">Description</p>
             <textarea className="input-field text-xs py-2.5 resize-none h-28 w-full" rows={3}
@@ -709,6 +849,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
               placeholder="Product description…" />
           </div>
 
+          {/* Ready badges */}
           {!isEdit && (localImages.length > 0 || localVariants.length > 0) && (
             <div className="mx-6 mt-3 flex flex-wrap gap-2">
               {localImages.length > 0 && (
@@ -724,26 +865,39 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
             </div>
           )}
 
-          <div className="grid gap-3 p-6 border-app bg-app">
+          {/* ── Action buttons — branch color scheme (emerald Save, sky Publish) +
+                HEAD's border-t border-app mt-6 container ── */}
+          <div className="grid gap-3 p-6 border-t border-app mt-6">
             <div className="flex gap-3">
-              <button type="submit" className="flex-1 btn-primary rounded-lg bg-emerald-500 hover:bg-emerald-600 border-emerald-500 hover:border-emerald-600 py-2.5 text-xs font-bold" disabled={isBatchSaving || editMutation.isPending}>
-                {(isBatchSaving || editMutation.isPending) ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : 'Save'}
+              <button
+                type="submit"
+                className="flex-1 btn-primary rounded-lg bg-emerald-500 hover:bg-emerald-600 border-emerald-500 hover:border-emerald-600 py-2.5 text-xs font-bold"
+                disabled={isBatchSaving || editMutation.isPending}>
+                {(isBatchSaving || editMutation.isPending)
+                  ? <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  : 'Save'}
               </button>
               <button
                 type="button"
                 className="flex-1 btn-primary rounded-lg bg-sky-400 hover:bg-sky-500 border-sky-500 hover:border-sky-600 py-2.5 text-xs font-bold"
-                disabled={isBatchSaving || editPubMutation?.isPending}
+                disabled={isBatchSaving || editPubMutation.isPending}
                 onClick={() => {
-                  if (isSavingRef.current || editPubMutation?.isPending) return
+                  if (isSavingRef.current || editPubMutation.isPending) return
                   if (isEdit) editPubMutation.mutate(payload())
                   else batchSave('published')
-                }}
-              >
-                {(isBatchSaving || editPubMutation?.isPending) ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : 'Publish'}
+                }}>
+                {(isBatchSaving || editPubMutation.isPending)
+                  ? <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  : 'Publish'}
               </button>
             </div>
-            <button type="button" className="w-full px-4 py-2.5 rounded-lg border border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-black font-bold text-xs transition-colors" onClick={handleClose} disabled={isBatchSaving}>Cancel</button>
+            <button type="button"
+              className="w-full px-4 py-2.5 rounded-lg border border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white font-bold text-xs transition-colors"
+              onClick={handleClose} disabled={isBatchSaving}>
+              Cancel
+            </button>
           </div>
+
         </form>
       </div>
     </>

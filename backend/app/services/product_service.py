@@ -1,8 +1,3 @@
-"""
-app/services/product.py
-Production-hardened product service layer
-"""
-
 import math
 import re
 import uuid
@@ -13,25 +8,22 @@ from sqlalchemy import or_, func as sqla_func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from app.models.product import Product, ProductVariant, ProductStatus
-from app.schemas.product import (
-    ProductCreate,
-    ProductListResponse,
-    ProductResponse,
-    ProductUpdate,
-    VariantCreate,
+from app.models.product import (
+    Category, Collection, Product, ProductVariant, ProductStatus
 )
-
-# ─────────────────────────────────────────────────────────────
-# Pagination protection
-# ─────────────────────────────────────────────────────────────
+from app.schemas.product import (
+    BulkActionPayload,
+    CategoryCreate, CategoryUpdate,
+    CollectionCreate, CollectionUpdate,
+    ProductCreate, ProductListResponse, ProductResponse, ProductUpdate,
+    VariantCreate, CategoryResponse, CollectionResponse,
+)
 
 MAX_PER_PAGE = 100
 
 # ─────────────────────────────────────────────────────────────
 # Slug helpers
 # ─────────────────────────────────────────────────────────────
-
 
 def _slugify(text: str) -> str:
     slug = text.lower().strip()
@@ -40,33 +32,26 @@ def _slugify(text: str) -> str:
     return re.sub(r"-+", "-", slug).strip("-")
 
 
-_SLUG_MAX_COUNTER = 99  # cap sequential attempts before falling back to UUID suffix
+def _unique_slug(db: Session, model, base_slug: str, exclude_id: Optional[int] = None) -> str:
+    """Generic unique-slug finder for any SQLAlchemy model with a `slug` column."""
+    def free(candidate: str) -> bool:
+        q = db.query(model.id).filter(model.slug == candidate)
+        if exclude_id:
+            q = q.filter(model.id != exclude_id)
+        return q.first() is None
+
+    if free(base_slug):
+        return base_slug
+    for i in range(1, 100):
+        c = f"{base_slug}-{i}"
+        if free(c):
+            return c
+    return f"{base_slug}-{uuid.uuid4().hex[:6]}"
 
 
-def _ensure_unique_slug(
-    db: Session,
-    base_slug: str,
-    exclude_id: Optional[int] = None,
-) -> str:
-    """
-    Ensure slug uniqueness among NON-DELETED products.
-
-    Safety improvements over the original unbounded while-True loop:
-
-    1. LOOP CAP: Tries base_slug, base_slug-1 … base_slug-99, then falls back
-       to a 6-char hex UUID suffix (base_slug-a3f9c1). This bounds the maximum
-       DB queries to 101 per call regardless of catalog size.
-
-    2. TOCTOU MITIGATION: The SELECT→INSERT race is inherent to optimistic slug
-       generation. The real guard is the UNIQUE constraint on products.slug —
-       create_product() catches IntegrityError from that constraint and returns
-       a clean 409, not a raw 500 traceback.
-
-    3. EXCLUDE SOFT-DELETED: Slugs of soft-deleted products are reusable, so
-       the filter includes deleted_at IS NULL. The partial unique index in
-       migration 002 enforces this at the DB level.
-    """
-    def _slug_is_free(candidate: str) -> bool:
+def _ensure_unique_slug(db: Session, base_slug: str, exclude_id: Optional[int] = None) -> str:
+    """Unique slug for products — excludes soft-deleted rows."""
+    def free(candidate: str) -> bool:
         q = db.query(Product.id).filter(
             Product.slug == candidate,
             Product.deleted_at.is_(None),
@@ -75,96 +60,48 @@ def _ensure_unique_slug(
             q = q.filter(Product.id != exclude_id)
         return q.first() is None
 
-    if _slug_is_free(base_slug):
+    if free(base_slug):
         return base_slug
-
-    for counter in range(1, _SLUG_MAX_COUNTER + 1):
-        candidate = f"{base_slug}-{counter}"
-        if _slug_is_free(candidate):
-            return candidate
-
-    # All sequential candidates taken — use a random hex suffix.
-    # Collision probability: 1 in 16^6 = 1 in ~16M per call.
-    rand_slug = f"{base_slug}-{uuid.uuid4().hex[:6]}"
-    return rand_slug
+    for i in range(1, 100):
+        c = f"{base_slug}-{i}"
+        if free(c):
+            return c
+    return f"{base_slug}-{uuid.uuid4().hex[:6]}"
 
 
 # ─────────────────────────────────────────────────────────────
 # SKU generation
 # ─────────────────────────────────────────────────────────────
 
-
 def _sku_prefix(title: str) -> str:
     words = re.findall(r"[a-zA-Z0-9]+", title)
-
     if len(words) >= 2:
         return "".join(w[0] for w in words[:4]).upper()
-
     return words[0][:3].upper() if words else "PRD"
 
 
 def _sku_color_code(color: Optional[str]) -> str:
     COMMON = {
-        "black": "BLK",
-        "white": "WHT",
-        "red": "RED",
-        "blue": "BLU",
-        "navy": "NVY",
-        "navy blue": "NVY",
-        "green": "GRN",
-        "yellow": "YLW",
-        "orange": "ORG",
-        "pink": "PNK",
-        "purple": "PRP",
-        "grey": "GRY",
-        "gray": "GRY",
-        "brown": "BRN",
-        "beige": "BGE",
-        "cream": "CRM",
-        "maroon": "MRN",
-        "olive": "OLV",
-        "teal": "TEL",
-        "coral": "CRL",
-        "lavender": "LVD",
-        "mint": "MNT",
-        "khaki": "KHK",
-        "indigo": "IND",
+        "black": "BLK", "white": "WHT", "red": "RED", "blue": "BLU",
+        "navy": "NVY", "navy blue": "NVY", "green": "GRN", "yellow": "YLW",
+        "orange": "ORG", "pink": "PNK", "purple": "PRP", "grey": "GRY",
+        "gray": "GRY", "brown": "BRN", "beige": "BGE", "cream": "CRM",
+        "maroon": "MRN", "olive": "OLV", "teal": "TEL", "coral": "CRL",
+        "lavender": "LVD", "mint": "MNT", "khaki": "KHK", "indigo": "IND",
     }
-
     if not color:
         return "XXX"
-
     key = color.lower().strip()
-
     if key in COMMON:
         return COMMON[key]
-
     letters = re.sub(r"[^a-zA-Z]", "", color)
-
     return letters[:3].upper() if letters else "XXX"
 
 
-def generate_sku(
-    product_title: str,
-    size: str,
-    color: Optional[str] = None,
-) -> str:
-    """
-    FIX B-09: Generate a collision-resistant SKU using a random 6-char hex suffix
-    instead of a SELECT→INSERT sequential counter.
-
-    The old _next_sku_sequence() approach had a TOCTOU race: two concurrent
-    variant creates for the same prefix both read the same "next" number, then
-    race to INSERT. One would succeed; the other hit an IntegrityError with a
-    confusing "concurrent request" message.
-
-    The random suffix gives ~16M unique values per prefix (16^6). At ecommerce
-    scale this is effectively collision-free, and any residual collision is caught
-    cleanly by the DB UniqueConstraint on `sku`, returning a clear 409 error.
-    """
-    prefix     = _sku_prefix(product_title)
-    color_code = _sku_color_code(color)
-    size_code  = size.upper().replace(" ", "")
+def generate_sku(product_title: str, size: str, color: Optional[str] = None) -> str:
+    prefix      = _sku_prefix(product_title)
+    color_code  = _sku_color_code(color)
+    size_code   = size.upper().replace(" ", "")
     rand_suffix = uuid.uuid4().hex[:6].upper()
     return f"{prefix}-{color_code}-{size_code}-{rand_suffix}"
 
@@ -177,137 +114,301 @@ _HEX_RE = re.compile(r"^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$")
 
 
 def _validate_variant_input(variant_in: VariantCreate) -> None:
-    """
-    Validate prices, stock, and HEX color.
-    """
-
-    # Price validation
     if variant_in.original_price <= 0:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="original_price must be greater than zero.",
-        )
-
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "original_price must be greater than zero.")
     if variant_in.selling_price <= 0:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="selling_price must be greater than zero.",
-        )
-
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "selling_price must be greater than zero.")
     if variant_in.selling_price > variant_in.original_price:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=(
-                f"selling_price ({variant_in.selling_price}) "
-                f"cannot exceed original_price ({variant_in.original_price})."
-            ),
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"selling_price ({variant_in.selling_price}) cannot exceed original_price ({variant_in.original_price}).",
         )
-
-    # Stock validation
     if variant_in.stock_quantity < 0:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="stock_quantity cannot be negative.",
-        )
-
-    if variant_in.low_stock_threshold < 0:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="low_stock_threshold cannot be negative.",
-        )
-
-    # HEX validation
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "stock_quantity cannot be negative.")
     if variant_in.color_hex and not _HEX_RE.match(variant_in.color_hex):
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=(
-                f"color_hex '{variant_in.color_hex}' is invalid. "
-                "Use #RGB or #RRGGBB format."
-            ),
-        )
-
-
-def _check_duplicate_variant(
-    db: Session,
-    product_id: int,
-    variant_in: VariantCreate,
-) -> None:
-    """
-    Prevent duplicate size+color variants.
-
-    NULL-safe color comparison: SQLAlchemy's == None generates "color = NULL"
-    which is always FALSE in SQL. We must use IS NULL explicitly so that two
-    colorless variants (color=None) are correctly detected as duplicates.
-    The DB UniqueConstraint alone cannot catch this because PostgreSQL treats
-    NULLs as distinct in unique indexes.
-    """
-    color_filter = (
-        ProductVariant.color.is_(None)
-        if variant_in.color is None
-        else ProductVariant.color == variant_in.color
-    )
-
-    exists = (
-        db.query(ProductVariant)
-        .filter(
-            ProductVariant.product_id == product_id,
-            ProductVariant.size == variant_in.size,
-            color_filter,
-        )
-        .first()
-    )
-
-    if exists:
-        color_label = variant_in.color or "no color"
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                f"Variant with size='{variant_in.size}' "
-                f"and color='{color_label}' already exists."
-            ),
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"color_hex must be a valid CSS hex colour (e.g. #FF0000). Got: {variant_in.color_hex}",
         )
 
 
 # ─────────────────────────────────────────────────────────────
-# Product queries
+# Response builder helper
 # ─────────────────────────────────────────────────────────────
 
-
-def get_product(
-    db: Session,
-    product_id: int,
-) -> Optional[Product]:
-    # selectinload fires a single separate SELECT for variants (IN clause)
-    # instead of joinedload's LEFT OUTER JOIN, preventing duplicate product
-    # rows when multiple variants exist and making count() queries safe.
-    return (
-        db.query(Product)
-        .options(selectinload(Product.variants))
-        .filter(
-            Product.id == product_id,
-            Product.deleted_at.is_(None),
-        )
-        .first()
+def _build_product_response(
+    p: Product,
+    agg=None,
+    category_map: dict = None,
+    collection_map: dict = None,
+) -> ProductResponse:
+    category_map   = category_map or {}
+    collection_map = collection_map or {}
+    return ProductResponse(
+        id=p.id,
+        title=p.title,
+        slug=p.slug,
+        description=p.description,
+        short_description=p.short_description,
+        collection=p.collection,
+        category_id=p.category_id,
+        collection_id=p.collection_id,
+        tags=p.tags or [],
+        status=p.status.value if hasattr(p.status, "value") else p.status,
+        is_featured=p.is_featured,
+        is_trending=p.is_trending,
+        is_best_seller=p.is_best_seller,
+        is_new_arrival=p.is_new_arrival,
+        thumbnail=p.thumbnail,
+        image_front=p.image_front,
+        image_back=p.image_back,
+        image_size_chart=p.image_size_chart,
+        gallery_images=p.gallery_images or [],
+        images=[],
+        seo_title=p.seo_title,
+        seo_description=p.seo_description,
+        total_stock=int(agg.total_stock) if agg else 0,
+        min_price=agg.min_price if agg and agg.min_price is not None else None,
+        view_count=p.view_count or 0,
+        orders_count=p.orders_count or 0,
+        sales_count=p.sales_count or 0,
+        category_name=category_map.get(p.category_id),
+        collection_name=collection_map.get(p.collection_id),
+        created_at=p.created_at,
+        updated_at=p.updated_at,
+        variants=p.variants,
     )
 
+
+# ─────────────────────────────────────────────────────────────
+# CATEGORY CRUD
+# ─────────────────────────────────────────────────────────────
+
+def get_categories(db: Session, status_filter: Optional[str] = None) -> List[CategoryResponse]:
+    q = db.query(Category)
+    if status_filter:
+        q = q.filter(Category.status == status_filter)
+    rows = q.order_by(Category.sort_order, Category.name).all()
+    return [CategoryResponse.model_validate(r) for r in rows]
+
+
+def get_category(db: Session, category_id: int) -> Category:
+    cat = db.get(Category, category_id)
+    if not cat:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Category {category_id} not found.")
+    return cat
+
+
+def create_category(db: Session, data: CategoryCreate) -> CategoryResponse:
+    slug = _unique_slug(db, Category, _slugify(data.name))
+    cat = Category(
+        name=data.name,
+        slug=slug,
+        description=data.description,
+        status=data.status,
+        sort_order=data.sort_order,
+    )
+    db.add(cat)
+    try:
+        db.commit()
+        db.refresh(cat)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, f"Category name '{data.name}' already exists.")
+    return CategoryResponse.model_validate(cat)
+
+
+def update_category(db: Session, category_id: int, data: CategoryUpdate) -> CategoryResponse:
+    cat = get_category(db, category_id)
+    patch = data.model_dump(exclude_unset=True)
+    if "name" in patch:
+        patch["slug"] = _unique_slug(db, Category, _slugify(patch["name"]), exclude_id=category_id)
+    for k, v in patch.items():
+        setattr(cat, k, v)
+    try:
+        db.commit()
+        db.refresh(cat)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "Category name already exists.")
+    return CategoryResponse.model_validate(cat)
+
+
+def delete_category(db: Session, category_id: int) -> None:
+    cat = get_category(db, category_id)
+    db.delete(cat)
+    db.commit()
+
+
+# ─────────────────────────────────────────────────────────────
+# COLLECTION CRUD
+# ─────────────────────────────────────────────────────────────
+
+def get_collections(
+    db: Session,
+    category_id: Optional[int] = None,
+    status_filter: Optional[str] = None,
+) -> List[CollectionResponse]:
+    q = db.query(Collection)
+    if category_id:
+        q = q.filter(Collection.category_id == category_id)
+    if status_filter:
+        q = q.filter(Collection.status == status_filter)
+    rows = q.order_by(Collection.name).all()
+
+    cat_ids = {r.category_id for r in rows if r.category_id}
+    cat_map: dict = {}
+    if cat_ids:
+        cats = db.query(Category.id, Category.name).filter(Category.id.in_(cat_ids)).all()
+        cat_map = {c.id: c.name for c in cats}
+
+    return [
+        CollectionResponse(
+            id=r.id,
+            name=r.name,
+            slug=r.slug,
+            description=r.description,
+            status=r.status,
+            category_id=r.category_id,
+            category_name=cat_map.get(r.category_id),
+            created_at=r.created_at,
+            updated_at=r.updated_at,
+        )
+        for r in rows
+    ]
+
+
+def get_collection(db: Session, collection_id: int) -> Collection:
+    col = db.get(Collection, collection_id)
+    if not col:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Collection {collection_id} not found.")
+    return col
+
+
+def create_collection(db: Session, data: CollectionCreate) -> CollectionResponse:
+    if data.category_id:
+        get_category(db, data.category_id)
+    slug = _unique_slug(db, Collection, _slugify(data.name))
+    col = Collection(
+        name=data.name,
+        slug=slug,
+        description=data.description,
+        status=data.status,
+        category_id=data.category_id,
+    )
+    db.add(col)
+    try:
+        db.commit()
+        db.refresh(col)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "Collection slug already exists.")
+
+    cat_name = None
+    if col.category_id:
+        cat = db.get(Category, col.category_id)
+        cat_name = cat.name if cat else None
+
+    return CollectionResponse(
+        id=col.id, name=col.name, slug=col.slug, description=col.description,
+        status=col.status, category_id=col.category_id,
+        category_name=cat_name, created_at=col.created_at, updated_at=col.updated_at,
+    )
+
+
+def update_collection(db: Session, collection_id: int, data: CollectionUpdate) -> CollectionResponse:
+    col = get_collection(db, collection_id)
+    patch = data.model_dump(exclude_unset=True)
+    if "category_id" in patch and patch["category_id"]:
+        get_category(db, patch["category_id"])
+    if "name" in patch:
+        patch["slug"] = _unique_slug(db, Collection, _slugify(patch["name"]), exclude_id=collection_id)
+    for k, v in patch.items():
+        setattr(col, k, v)
+    try:
+        db.commit()
+        db.refresh(col)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "Collection name/slug already exists.")
+
+    cat_name = None
+    if col.category_id:
+        cat = db.get(Category, col.category_id)
+        cat_name = cat.name if cat else None
+
+    return CollectionResponse(
+        id=col.id, name=col.name, slug=col.slug, description=col.description,
+        status=col.status, category_id=col.category_id,
+        category_name=cat_name, created_at=col.created_at, updated_at=col.updated_at,
+    )
+
+
+def delete_collection(db: Session, collection_id: int) -> None:
+    col = get_collection(db, collection_id)
+    db.delete(col)
+    db.commit()
+
+
+# ─────────────────────────────────────────────────────────────
+# PRODUCT QUERIES
+# ─────────────────────────────────────────────────────────────
 
 def get_products_count(db: Session) -> int:
-    return (
-        db.query(Product)
-        .filter(Product.deleted_at.is_(None))
-        .count()
-    )
+    """Total product count (all non-deleted, any status)."""
+    return db.query(sqla_func.count(Product.id)).filter(Product.deleted_at.is_(None)).scalar() or 0
 
 
 def get_published_products_count(db: Session) -> int:
+    """Published product count only."""
     return (
-        db.query(Product)
-        .filter(
-            Product.deleted_at.is_(None),
-            Product.status == ProductStatus.published,
-        )
-        .count()
+        db.query(sqla_func.count(Product.id))
+        .filter(Product.deleted_at.is_(None), Product.status == ProductStatus.published)
+        .scalar()
+    ) or 0
+
+
+def _stock_having_clause(stock_status: str, threshold_col):
+    """
+    Return a HAVING expression for the given stock_status string.
+    threshold_col is the aggregated low_stock_threshold expression.
+    """
+    total = sqla_func.coalesce(sqla_func.sum(ProductVariant.stock_quantity), 0)
+    if stock_status == "out_of_stock":
+        return total == 0
+    if stock_status == "low_stock":
+        # 0 < total_stock <= threshold
+        return (total > 0) & (total <= threshold_col)
+    if stock_status == "in_stock":
+        return total > threshold_col
+    return None
+
+
+def _build_agg_subquery(db: Session, product_ids: list, stock_status: Optional[str] = None):
+    """
+    Return aggregation rows for the given product IDs, optionally filtered
+    by stock_status via HAVING — not post-query Python filtering.
+    """
+    if not product_ids:
+        return []
+
+    threshold_col = sqla_func.coalesce(
+        sqla_func.min(ProductVariant.low_stock_threshold), 5
     )
+    q = (
+        db.query(
+            ProductVariant.product_id,
+            sqla_func.coalesce(sqla_func.sum(ProductVariant.stock_quantity), 0).label("total_stock"),
+            sqla_func.min(ProductVariant.selling_price).label("min_price"),
+        )
+        .filter(ProductVariant.product_id.in_(product_ids))
+        .group_by(ProductVariant.product_id)
+    )
+    if stock_status:
+        clause = _stock_having_clause(stock_status, threshold_col)
+        if clause is not None:
+            q = q.having(clause)
+    return q.all()
 
 
 def get_products_paginated(
@@ -315,50 +416,63 @@ def get_products_paginated(
     *,
     search: str = "",
     status_filter: Optional[ProductStatus] = None,
+    category_id: Optional[int] = None,
+    collection_id: Optional[int] = None,
+    stock_status: Optional[str] = None,   # "in_stock" | "low_stock" | "out_of_stock"
+    is_featured: Optional[bool] = None,
+    is_trending: Optional[bool] = None,
+    is_best_seller: Optional[bool] = None,
+    is_new_arrival: Optional[bool] = None,
     page: int = 1,
     per_page: int = 15,
 ) -> ProductListResponse:
-    """
-    Paginated product listing — production-hardened.
-
-    Key differences from the naive version:
-    - COUNT runs on a clean scalar subquery (no joinedload pollution)
-    - Data query uses selectinload (two queries: products + variants IN (...))
-      instead of joinedload (one query with LEFT JOIN that multiplies rows)
-    - total_stock and min_price computed in SQL via GROUP BY subqueries,
-      not in Python after loading all variant ORM objects into memory
-    - OFFSET pagination is preserved for MVP; migrate to keyset pagination
-      once the catalog exceeds ~5,000 products (OFFSET N scans N rows)
-    """
-
     per_page = min(max(per_page, 1), MAX_PER_PAGE)
 
-    # ── Build the base filter predicate (reused for count + data) ────────────
     base_filters = [Product.deleted_at.is_(None)]
 
     if search:
         term = f"%{search}%"
-        # Subquery for SKU search — uses trigram index from migration 002
-        sku_subq = (
-            db.query(ProductVariant.product_id)
-            .filter(ProductVariant.sku.ilike(term))
-            .subquery()
-        )
-        base_filters.append(
-            or_(
-                Product.title.ilike(term),
-                Product.slug.ilike(term),
-                Product.collection.ilike(term),
-                Product.id.in_(sku_subq),
-            )
-        )
-
+        sku_subq = db.query(ProductVariant.product_id).filter(ProductVariant.sku.ilike(term)).subquery()
+        cat_subq  = db.query(Category.id).filter(Category.name.ilike(term)).subquery()
+        col_subq  = db.query(Collection.id).filter(Collection.name.ilike(term)).subquery()
+        base_filters.append(or_(
+            Product.title.ilike(term),
+            Product.slug.ilike(term),
+            Product.collection.ilike(term),
+            Product.id.in_(sku_subq),
+            Product.category_id.in_(cat_subq),
+            Product.collection_id.in_(col_subq),
+        ))
     if status_filter:
         base_filters.append(Product.status == status_filter)
+    if category_id:
+        base_filters.append(Product.category_id == category_id)
+    if collection_id:
+        base_filters.append(Product.collection_id == collection_id)
+    if is_featured is not None:
+        base_filters.append(Product.is_featured == is_featured)
+    if is_trending is not None:
+        base_filters.append(Product.is_trending == is_trending)
+    if is_best_seller is not None:
+        base_filters.append(Product.is_best_seller == is_best_seller)
+    if is_new_arrival is not None:
+        base_filters.append(Product.is_new_arrival == is_new_arrival)
 
-    # ── COUNT: separate clean query with no options() / joins ────────────────
-    # joinedload on a count() causes SQLAlchemy to wrap in a subquery which
-    # can return inflated counts when variants produce multiple rows per product.
+    # ── stock_status: filter in SQL via a HAVING subquery ───────────────────
+    # Build the set of product IDs that pass the stock filter before paginating,
+    # so COUNT and LIMIT both operate on the correctly-filtered universe.
+    if stock_status:
+        threshold_col = sqla_func.coalesce(sqla_func.min(ProductVariant.low_stock_threshold), 5)
+        stock_subq = (
+            db.query(ProductVariant.product_id)
+            .group_by(ProductVariant.product_id)
+        )
+        clause = _stock_having_clause(stock_status, threshold_col)
+        if clause is not None:
+            stock_subq = stock_subq.having(clause)
+        stock_subq = stock_subq.subquery()
+        base_filters.append(Product.id.in_(stock_subq))
+
     total = (
         db.query(sqla_func.count(Product.id))
         .filter(*base_filters)
@@ -367,9 +481,6 @@ def get_products_paginated(
 
     total_pages = math.ceil(total / per_page) if total else 1
 
-    # ── DATA: paginated product rows ─────────────────────────────────────────
-    # selectinload fires one extra SELECT ... WHERE product_id IN (...) for
-    # the page's variants — no JOIN, no duplicate product rows, safe count().
     products = (
         db.query(Product)
         .options(selectinload(Product.variants))
@@ -380,398 +491,536 @@ def get_products_paginated(
         .all()
     )
 
-    # ── SQL aggregates for total_stock and min_price ──────────────────────────
-    # Computing these in Python requires all variant ORM objects to be loaded.
-    # At 15 products × 8 variants = 120 objects per page load — fine for MVP
-    # but O(n×variants) at scale. Here we compute both in a single SQL query
-    # using GROUP BY, then join back to the product list by product_id.
-    # This reduces the variant data needed to two integers per product.
     product_ids = [p.id for p in products]
-    agg_rows = (
-        db.query(
-            ProductVariant.product_id,
-            sqla_func.coalesce(sqla_func.sum(ProductVariant.stock_quantity), 0).label("total_stock"),
-            sqla_func.min(ProductVariant.selling_price).label("min_price"),
-        )
-        .filter(ProductVariant.product_id.in_(product_ids))
-        .group_by(ProductVariant.product_id)
-        .all()
-    ) if product_ids else []
-
+    agg_rows = _build_agg_subquery(db, product_ids)  # no stock_status here; already filtered above
     agg_by_id = {row.product_id: row for row in agg_rows}
 
-    # ── Build response ────────────────────────────────────────────────────────
-    items = []
-    for p in products:
-        agg = agg_by_id.get(p.id)
-        item = ProductResponse(
-            id=p.id,
-            title=p.title,
-            slug=p.slug,
-            description=p.description,
-            collection=p.collection,
-            tags=p.tags or [],
-            status=p.status.value if hasattr(p.status, "value") else p.status,
-            is_featured=p.is_featured,
-            thumbnail=p.thumbnail,
-            images=[],  # MVP: no ProductImage model yet
-            seo_title=p.seo_title,
-            seo_description=p.seo_description,
-            total_stock=int(agg.total_stock) if agg else 0,
-            min_price=agg.min_price if agg and agg.min_price is not None else None,
-            created_at=p.created_at,
-            updated_at=p.updated_at,
-            variants=p.variants,
-        )
-        items.append(item)
+    cat_ids = {p.category_id for p in products if p.category_id}
+    col_ids = {p.collection_id for p in products if p.collection_id}
 
-    return ProductListResponse(
-        items=items,
-        total=total,
-        page=page,
-        per_page=per_page,
-        total_pages=total_pages,
-    )
+    category_map: dict = {}
+    if cat_ids:
+        cats = db.query(Category.id, Category.name).filter(Category.id.in_(cat_ids)).all()
+        category_map = {c.id: c.name for c in cats}
+
+    collection_map: dict = {}
+    if col_ids:
+        cols = db.query(Collection.id, Collection.name).filter(Collection.id.in_(col_ids)).all()
+        collection_map = {c.id: c.name for c in cols}
+
+    items = [
+        _build_product_response(p, agg_by_id.get(p.id), category_map, collection_map)
+        for p in products
+    ]
+
+    return ProductListResponse(items=items, total=total, page=page, per_page=per_page, total_pages=total_pages)
 
 
 # ─────────────────────────────────────────────────────────────
-# Product CRUD
+# PRODUCT CRUD
 # ─────────────────────────────────────────────────────────────
 
-
-def create_product(
-    db: Session,
-    product_in: ProductCreate,
-) -> Product:
-    slug = _ensure_unique_slug(
-        db,
-        _slugify(product_in.title),
-    )
+def create_product(db: Session, product_in: ProductCreate) -> ProductResponse:
+    base_slug = _slugify(product_in.title)
+    slug = _ensure_unique_slug(db, base_slug)
 
     product = Product(
         title=product_in.title,
         slug=slug,
         description=product_in.description,
+        short_description=product_in.short_description,
         collection=product_in.collection,
-        tags=product_in.tags,
-        status=product_in.status,
+        category_id=product_in.category_id,
+        collection_id=product_in.collection_id,
+        tags=product_in.tags or [],
+        status=ProductStatus(product_in.status),
         is_featured=product_in.is_featured,
+        is_trending=product_in.is_trending,
+        is_best_seller=product_in.is_best_seller,
+        is_new_arrival=product_in.is_new_arrival,
         seo_title=product_in.seo_title,
         seo_description=product_in.seo_description,
+        gallery_images=[],
     )
 
     db.add(product)
-
     try:
         db.commit()
-
-    except IntegrityError as e:
+        db.refresh(product)     # single refresh — commit already flushed
+    except IntegrityError as exc:
         db.rollback()
-        # Most likely cause: slug uniqueness TOCTOU — two concurrent creates
-        # both passed _ensure_unique_slug, then raced to INSERT.
-        # Return a clean 409 instead of a raw 500 traceback.
-        err_str = str(e.orig).lower() if e.orig else ""
-        if "slug" in err_str or "unique" in err_str:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=(
-                    "A product with a similar title already exists. "
-                    "Please use a more specific title or try again."
-                ),
-            )
-        raise
+        if "slug" in str(exc).lower():
+            raise HTTPException(status.HTTP_409_CONFLICT, "A product with this slug already exists.")
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to create product.")
 
-    except Exception:
-        db.rollback()
-        raise
-
-    db.refresh(product)
-
-    return product
+    return _build_product_response(product)
 
 
-def update_product(
-    db: Session,
-    product: Product,
-    product_in: ProductUpdate,
-) -> Product:
-    update_data = product_in.model_dump(exclude_unset=True)
-
-    if "title" in update_data:
-        update_data["slug"] = _ensure_unique_slug(
-            db,
-            _slugify(update_data["title"]),
-            exclude_id=product.id,
-        )
-
-    for field, value in update_data.items():
-        setattr(product, field, value)
-
-    try:
-        db.commit()
-
-    except Exception:
-        db.rollback()
-        raise
-
-    db.refresh(product)
-
-    return product
-
-
-def delete_product(
-    db: Session,
-    product_id: int,
-) -> bool:
-    """
-    Soft-delete a product and physically delete its variants.
-
-    WHY physically delete variants:
-    Variants have no independent lifecycle — they only exist as part of a product.
-    A soft-delete sets `products.deleted_at` but leaves variant rows (and their SKUs)
-    in `product_variants`. Because `sku` has a global UNIQUE constraint, those orphaned
-    SKUs permanently block reuse on any future product, even though the owning product
-    is logically gone. Physically deleting variants on product soft-delete:
-      - Frees every SKU held by the deleted product immediately.
-      - Keeps the SKU namespace clean without requiring a separate cleanup job.
-      - Is safe: the CASCADE FK would delete them anyway on a hard-delete, and no
-        other table references product_variants.id directly.
-    """
-
-    product = get_product(db, product_id)
-
-    if not product:
-        return False
-
-    # Step 1 — physically delete variants to release their global-unique SKUs.
-    db.query(ProductVariant).filter(
-        ProductVariant.product_id == product_id
-    ).delete(synchronize_session="fetch")
-
-    # Step 2 — soft-delete the product itself.
-    from sqlalchemy.sql import func as sqlfunc
-    product.deleted_at = sqlfunc.now()
-
-    try:
-        db.commit()
-
-    except Exception:
-        db.rollback()
-        raise
-
-    return True
-
-
-def delete_variant(
-    db: Session,
-    product_id: int,
-    variant_id: int,
-) -> bool:
-    """
-    Permanently delete a single variant.
-
-    Verified against product_id to prevent cross-product deletions
-    (an admin with a valid product token cannot delete a variant from
-    a different product by guessing a variant_id).
-    """
-    variant = (
-        db.query(ProductVariant)
-        .filter(
-            ProductVariant.id == variant_id,
-            ProductVariant.product_id == product_id,
-        )
+def get_product(db: Session, product_id: int) -> Product:
+    product = (
+        db.query(Product)
+        .options(selectinload(Product.variants))
+        .filter(Product.id == product_id, Product.deleted_at.is_(None))
         .first()
     )
+    if not product:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Product {product_id} not found.")
+    return product
 
-    if not variant:
-        return False
 
-    db.delete(variant)
+def get_product_response(db: Session, product_id: int) -> ProductResponse:
+    product = get_product(db, product_id)
+    cat_map: dict = {}
+    col_map: dict = {}
+    if product.category_id:
+        cat = db.get(Category, product.category_id)
+        if cat:
+            cat_map[cat.id] = cat.name
+    if product.collection_id:
+        col = db.get(Collection, product.collection_id)
+        if col:
+            col_map[col.id] = col.name
+    return _build_product_response(product, category_map=cat_map, collection_map=col_map)
+
+
+def update_product(db: Session, product_id: int, product_in: ProductUpdate) -> ProductResponse:
+    product = get_product(db, product_id)
+    patch = product_in.model_dump(exclude_unset=True)
+
+    if "title" in patch and patch["title"]:
+        base_slug = _slugify(patch["title"])
+        patch["slug"] = _ensure_unique_slug(db, base_slug, exclude_id=product_id)
+
+    if "status" in patch and patch["status"]:
+        patch["status"] = ProductStatus(patch["status"])
+
+    for k, v in patch.items():
+        setattr(product, k, v)
 
     try:
         db.commit()
-
-    except Exception:
+        db.refresh(product)
+    except IntegrityError as exc:
         db.rollback()
-        raise
+        if "slug" in str(exc).lower():
+            raise HTTPException(status.HTTP_409_CONFLICT, "A product with this slug already exists.")
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to update product.")
 
-    return True
-
-
-# ─────────────────────────────────────────────────────────────
-# Variant operations
-# ─────────────────────────────────────────────────────────────
+    return get_product_response(db, product_id)
 
 
-def create_variant(
-    db: Session,
-    product_id: int,
-    variant_in: VariantCreate,
-) -> ProductVariant:
-    """
-    Create product variant safely.
-    """
-
-    # Product existence
+def soft_delete_product(db: Session, product_id: int) -> None:
+    from datetime import datetime, timezone
     product = get_product(db, product_id)
+    product.deleted_at = datetime.now(timezone.utc)
+    db.commit()
 
-    if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Product {product_id} not found.",
-        )
 
-    # Validation
+def increment_view_count(db: Session, product_id: int) -> None:
+    """Increment view counter via raw UPDATE (no ORM object needed)."""
+    db.query(Product).filter(Product.id == product_id).update(
+        {Product.view_count: Product.view_count + 1}
+    )
+    db.commit()
+
+
+# ─────────────────────────────────────────────────────────────
+# BULK ACTIONS
+# ─────────────────────────────────────────────────────────────
+
+def bulk_action(db: Session, payload: BulkActionPayload) -> dict:
+    from datetime import datetime, timezone
+
+    ids = payload.product_ids
+    products = db.query(Product).filter(Product.id.in_(ids), Product.deleted_at.is_(None)).all()
+    found_ids = {p.id for p in products}
+    not_found = [i for i in ids if i not in found_ids]
+
+    action = payload.action
+
+    if action == "publish":
+        for p in products:
+            p.status = ProductStatus.published
+    elif action == "unpublish":
+        for p in products:
+            p.status = ProductStatus.draft
+    elif action == "archive":
+        for p in products:
+            p.status = ProductStatus.archived
+    elif action == "delete":
+        now = datetime.now(timezone.utc)
+        for p in products:
+            p.deleted_at = now
+    elif action == "move_category":
+        if not payload.category_id:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "category_id required for move_category.")
+        get_category(db, payload.category_id)
+        for p in products:
+            p.category_id = payload.category_id
+    elif action == "move_collection":
+        if not payload.collection_id:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "collection_id required for move_collection.")
+        get_collection(db, payload.collection_id)
+        for p in products:
+            p.collection_id = payload.collection_id
+    else:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Unknown action: {action}")
+
+    db.commit()
+    return {"updated": len(products), "not_found": not_found}
+
+
+# ─────────────────────────────────────────────────────────────
+# VARIANT CRUD
+# ─────────────────────────────────────────────────────────────
+
+def add_variant(db: Session, product_id: int, variant_in: VariantCreate) -> ProductResponse:
+    product = get_product(db, product_id)
     _validate_variant_input(variant_in)
 
-    # Duplicate prevention
-    _check_duplicate_variant(db, product_id, variant_in)
-
-    # SKU generation
-    sku = variant_in.sku
-
-    if not sku or not sku.strip():
-        sku = generate_sku(
-            product.title,
-            variant_in.size,
-            variant_in.color,
+    existing = db.query(ProductVariant).filter(
+        ProductVariant.product_id == product_id,
+        ProductVariant.size == variant_in.size,
+        ProductVariant.color == variant_in.color,
+    ).first()
+    if existing:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Variant with size='{variant_in.size}' and color='{variant_in.color}' already exists.",
         )
+
+    sku = variant_in.sku or generate_sku(product.title, variant_in.size, variant_in.color)
+    for _attempt in range(5):
+        if not db.query(ProductVariant).filter(ProductVariant.sku == sku).first():
+            break
+        sku = generate_sku(product.title, variant_in.size, variant_in.color)
 
     variant = ProductVariant(
         product_id=product_id,
+        sku=sku,
         size=variant_in.size,
         color=variant_in.color,
         color_hex=variant_in.color_hex,
-        sku=sku,
         original_price=variant_in.original_price,
         selling_price=variant_in.selling_price,
         discount_percentage=variant_in.discount_percentage,
         stock_quantity=variant_in.stock_quantity,
+        reserved_stock=0,
         low_stock_threshold=variant_in.low_stock_threshold,
     )
-
     db.add(variant)
-
     try:
         db.commit()
-
-    except IntegrityError:
+    except IntegrityError as exc:
         db.rollback()
+        if "uq_variant_product_size_color" in str(exc):
+            raise HTTPException(status.HTTP_409_CONFLICT, "Duplicate size + color combination.")
+        if "sku" in str(exc).lower():
+            raise HTTPException(status.HTTP_409_CONFLICT, f"SKU '{sku}' is already in use.")
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to create variant.")
 
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                f"SKU '{sku}' already exists. "
-                "Concurrent request detected. Please retry."
-            ),
-        )
-
-    except Exception:
-        db.rollback()
-        raise
-
-    db.refresh(variant)
-
-    return variant
+    return get_product_response(db, product_id)
 
 
-def bulk_create_variants(
-    db: Session,
-    product_id: int,
-    variants_in: List[VariantCreate],
-) -> dict:
+def add_variants_bulk(db: Session, product_id: int, variants_in: list) -> ProductResponse:
     """
-    Create multiple variants in a single transaction.
-    Returns structured results with created variants and per-item failures.
-    """
+    Insert multiple variants in a single transaction.
 
+    Each variant is validated and flushed individually so that duplicate
+    size+color errors can be collected without aborting the whole batch.
+    A flush-level IntegrityError forces a SAVEPOINT rollback for just that
+    row; the outer transaction is kept alive for the remaining variants.
+    """
     product = get_product(db, product_id)
+    succeeded = 0
+    errors: list[str] = []
 
-    if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Product {product_id} not found.",
-        )
-
-    created = []
-    failed = []
-
-    for idx, variant_in in enumerate(variants_in):
-        variant = None
+    for v in variants_in:
         try:
-            # Validate inputs — raises HTTPException before any DB write
-            _validate_variant_input(variant_in)
-            _check_duplicate_variant(db, product_id, variant_in)
-
-            # SKU
-            sku = variant_in.sku
-            if not sku or not sku.strip():
-                sku = generate_sku(product.title, variant_in.size, variant_in.color)
-
-            variant = ProductVariant(
-                product_id=product_id,
-                size=variant_in.size,
-                color=variant_in.color,
-                color_hex=variant_in.color_hex,
-                sku=sku,
-                original_price=variant_in.original_price,
-                selling_price=variant_in.selling_price,
-                discount_percentage=variant_in.discount_percentage,
-                stock_quantity=variant_in.stock_quantity,
-                low_stock_threshold=variant_in.low_stock_threshold,
-            )
-            db.add(variant)
-
-            # Savepoint: flush this variant in isolation.
-            # An IntegrityError here rolls back only this savepoint, leaving
-            # all previously-flushed variants intact in the outer transaction.
-            sp = db.begin_nested()
-            try:
-                db.flush()
-                sp.commit()
-            except IntegrityError:
-                sp.rollback()
-                # Remove the pending object from the session to keep it clean
-                try:
-                    db.expunge(variant)
-                except Exception:
-                    pass
-                failed.append({
-                    "index": idx,
-                    "size": variant_in.size,
-                    "color": variant_in.color,
-                    "error": "SKU conflict or duplicate variant.",
-                })
-                continue
-
-            created.append(variant)
-
+            _validate_variant_input(v)
         except HTTPException as e:
-            # Validation failed before any DB write — no savepoint needed
-            failed.append({
-                "index": idx,
-                "size": variant_in.size,
-                "color": variant_in.color,
-                "error": e.detail,
-            })
+            errors.append(str(e.detail))
+            continue
 
-    # Commit all successful variants
-    if created:
+        existing_combo = db.query(ProductVariant).filter(
+            ProductVariant.product_id == product_id,
+            ProductVariant.size == v.size,
+            ProductVariant.color == v.color,
+        ).first()
+        if existing_combo:
+            errors.append(f"Duplicate size+color: {v.size}/{v.color}")
+            continue
+
+        sku = v.sku or generate_sku(product.title, v.size, v.color)
+        for _attempt in range(5):
+            if not db.query(ProductVariant).filter(ProductVariant.sku == sku).first():
+                break
+            sku = generate_sku(product.title, v.size, v.color)
+
+        variant = ProductVariant(
+            product_id=product_id, sku=sku, size=v.size, color=v.color,
+            color_hex=v.color_hex, original_price=v.original_price,
+            selling_price=v.selling_price, discount_percentage=v.discount_percentage,
+            stock_quantity=v.stock_quantity, reserved_stock=0,
+            low_stock_threshold=v.low_stock_threshold,
+        )
+        db.add(variant)
+
         try:
-            db.commit()
-            for v in created:
-                db.refresh(v)
-        except Exception:
-            db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to commit variants. Please retry.",
-            )
+            # flush() writes just this row; if it raises, the transaction is
+            # still open — we expire the failed object and carry on.
+            db.flush()
+            succeeded += 1
+        except IntegrityError as exc:
+            # expire_all() discards the failed object from the identity map
+            # without rolling back previously flushed (good) rows.
+            db.expire_all()
+            if "uq_variant_product_size_color" in str(exc):
+                errors.append(f"Duplicate size+color: {v.size}/{v.color}")
+            elif "sku" in str(exc).lower():
+                errors.append(f"SKU conflict for {v.size}/{v.color}")
+            else:
+                errors.append(f"Integrity error on size={v.size}, color={v.color}")
 
-    return {
-        "created": created,
-        "failed": failed,
-        "total_requested": len(variants_in),
-        "total_created": len(created),
-        "total_failed": len(failed),
-    }
+    if succeeded == 0 and errors:
+        db.rollback()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail={"errors": errors})
+
+    db.commit()
+    return get_product_response(db, product_id)
+
+
+def delete_variant(db: Session, product_id: int, variant_id: int) -> ProductResponse:
+    get_product(db, product_id)
+    variant = db.query(ProductVariant).filter(
+        ProductVariant.id == variant_id,
+        ProductVariant.product_id == product_id,
+    ).first()
+    if not variant:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Variant {variant_id} not found on product {product_id}.")
+    db.delete(variant)
+    db.commit()
+    return get_product_response(db, product_id)
+
+
+# ─────────────────────────────────────────────────────────────
+# STOREFRONT QUERIES
+# ─────────────────────────────────────────────────────────────
+
+def get_products_public(
+    db: Session,
+    *,
+    search: str = "",
+    collection: Optional[str] = None,
+    collection_id: Optional[int] = None,
+    category_id: Optional[int] = None,
+    is_featured: Optional[bool] = None,
+    is_trending: Optional[bool] = None,
+    is_best_seller: Optional[bool] = None,
+    is_new_arrival: Optional[bool] = None,
+    sort_by: str = "newest",
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    page: int = 1,
+    per_page: int = 12,
+) -> ProductListResponse:
+    per_page = min(max(per_page, 1), MAX_PER_PAGE)
+
+    base_filters = [
+        Product.deleted_at.is_(None),
+        Product.status == ProductStatus.published,
+    ]
+
+    if search:
+        term = f"%{search}%"
+        sku_subq = db.query(ProductVariant.product_id).filter(ProductVariant.sku.ilike(term)).subquery()
+        cat_subq  = db.query(Category.id).filter(Category.name.ilike(term)).subquery()
+        col_subq  = db.query(Collection.id).filter(Collection.name.ilike(term)).subquery()
+        base_filters.append(or_(
+            Product.title.ilike(term),
+            Product.slug.ilike(term),
+            Product.collection.ilike(term),
+            Product.id.in_(sku_subq),
+            Product.category_id.in_(cat_subq),
+            Product.collection_id.in_(col_subq),
+        ))
+    if collection:
+        base_filters.append(Product.collection.ilike(f"%{collection}%"))
+    if collection_id:
+        base_filters.append(Product.collection_id == collection_id)
+    if category_id:
+        base_filters.append(Product.category_id == category_id)
+    if is_featured is not None:
+        base_filters.append(Product.is_featured == is_featured)
+    if is_trending is not None:
+        base_filters.append(Product.is_trending == is_trending)
+    if is_best_seller is not None:
+        base_filters.append(Product.is_best_seller == is_best_seller)
+    if is_new_arrival is not None:
+        base_filters.append(Product.is_new_arrival == is_new_arrival)
+
+    # ── Price filter: push into SQL via a HAVING subquery ───────────────────
+    # This ensures COUNT and LIMIT both operate on the price-filtered universe.
+    if min_price is not None or max_price is not None:
+        price_q = (
+            db.query(ProductVariant.product_id)
+            .group_by(ProductVariant.product_id)
+        )
+        min_price_agg = sqla_func.min(ProductVariant.selling_price)
+        if min_price is not None:
+            price_q = price_q.having(min_price_agg >= min_price)
+        if max_price is not None:
+            price_q = price_q.having(min_price_agg <= max_price)
+        price_subq = price_q.subquery()
+        base_filters.append(Product.id.in_(price_subq))
+
+    total = (
+        db.query(sqla_func.count(Product.id))
+        .filter(*base_filters)
+        .scalar()
+    ) or 0
+
+    total_pages = math.ceil(total / per_page) if total else 1
+
+    if sort_by in ("price_asc", "price_desc"):
+        min_price_sub = (
+            db.query(sqla_func.min(ProductVariant.selling_price))
+            .filter(ProductVariant.product_id == Product.id)
+            .correlate(Product)
+            .scalar_subquery()
+        )
+        order_clause = min_price_sub.asc() if sort_by == "price_asc" else min_price_sub.desc()
+    else:
+        order_clause = Product.created_at.desc()
+
+    products = (
+        db.query(Product)
+        .options(selectinload(Product.variants))
+        .filter(*base_filters)
+        .order_by(order_clause)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+
+    product_ids = [p.id for p in products]
+    agg_rows = _build_agg_subquery(db, product_ids)
+    agg_by_id = {row.product_id: row for row in agg_rows}
+
+    cat_ids = {p.category_id for p in products if p.category_id}
+    col_ids = {p.collection_id for p in products if p.collection_id}
+    cat_map: dict = {}
+    col_map: dict = {}
+    if cat_ids:
+        cats = db.query(Category.id, Category.name).filter(Category.id.in_(cat_ids)).all()
+        cat_map = {c.id: c.name for c in cats}
+    if col_ids:
+        cols = db.query(Collection.id, Collection.name).filter(Collection.id.in_(col_ids)).all()
+        col_map = {c.id: c.name for c in cols}
+
+    items = [_build_product_response(p, agg_by_id.get(p.id), cat_map, col_map) for p in products]
+
+    return ProductListResponse(items=items, total=total, page=page, per_page=per_page, total_pages=total_pages)
+
+
+def get_product_by_slug(db: Session, slug: str) -> ProductResponse:
+    product = (
+        db.query(Product)
+        .options(selectinload(Product.variants))
+        .filter(
+            Product.slug == slug,
+            Product.deleted_at.is_(None),
+            Product.status == ProductStatus.published,
+        )
+        .first()
+    )
+    if not product:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Product '{slug}' not found.")
+
+    # Increment view count via raw UPDATE, then expire the cached attribute
+    # on the loaded object so the response reflects the new value.
+    increment_view_count(db, product.id)
+    db.expire(product, ["view_count"])
+
+    cat_map: dict = {}
+    col_map: dict = {}
+    if product.category_id:
+        cat = db.get(Category, product.category_id)
+        if cat:
+            cat_map[cat.id] = cat.name
+    if product.collection_id:
+        col = db.get(Collection, product.collection_id)
+        if col:
+            col_map[col.id] = col.name
+
+    return _build_product_response(product, category_map=cat_map, collection_map=col_map)
+
+
+def get_related_products(db: Session, product: ProductResponse, limit: int = 6) -> List[ProductResponse]:
+    """
+    Priority 1: Same collection_id
+    Priority 2: Same category_id
+    Priority 3: Best sellers
+    """
+    base = [
+        Product.deleted_at.is_(None),
+        Product.status == ProductStatus.published,
+        Product.id != product.id,
+    ]
+
+    def fetch(extra_filters, n) -> List[ProductResponse]:
+        rows = (
+            db.query(Product)
+            .options(selectinload(Product.variants))
+            .filter(*base, *extra_filters)
+            .limit(n)
+            .all()
+        )
+        if not rows:
+            return []
+        ids = [r.id for r in rows]
+        agg_rows = _build_agg_subquery(db, ids)
+        agg_by_id = {r.product_id: r for r in agg_rows}
+
+        # Resolve category/collection names for the fetched batch
+        c_ids = {r.category_id for r in rows if r.category_id}
+        co_ids = {r.collection_id for r in rows if r.collection_id}
+        c_map: dict = {}
+        co_map: dict = {}
+        if c_ids:
+            cats = db.query(Category.id, Category.name).filter(Category.id.in_(c_ids)).all()
+            c_map = {c.id: c.name for c in cats}
+        if co_ids:
+            cols = db.query(Collection.id, Collection.name).filter(Collection.id.in_(co_ids)).all()
+            co_map = {c.id: c.name for c in cols}
+
+        return [_build_product_response(p, agg_by_id.get(p.id), c_map, co_map) for p in rows]
+
+    results: List[ProductResponse] = []
+    seen_ids: set = set()
+
+    if product.collection_id:
+        for r in fetch([Product.collection_id == product.collection_id], limit):
+            if r.id not in seen_ids:
+                results.append(r)
+                seen_ids.add(r.id)
+
+    if len(results) < limit and product.category_id:
+        for r in fetch(
+            [Product.category_id == product.category_id, Product.id.not_in(seen_ids)],
+            limit - len(results),
+        ):
+            if r.id not in seen_ids:
+                results.append(r)
+                seen_ids.add(r.id)
+
+    if len(results) < limit:
+        for r in fetch(
+            [Product.is_best_seller == True, Product.id.not_in(seen_ids)],  # noqa: E712
+            limit - len(results),
+        ):
+            if r.id not in seen_ids:
+                results.append(r)
+                seen_ids.add(r.id)
+
+    return results[:limit]

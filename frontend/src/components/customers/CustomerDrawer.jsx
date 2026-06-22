@@ -11,6 +11,7 @@ import Badge from '../ui/Badge'
 import Avatar from '../ui/Avatar'
 import Drawer from '../ui/Drawer'
 import { customersAPI } from '../../services/api'
+import { getImageUrl } from '../../utils/productUtils'
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 function CustomerStatusBadge({ isActive }) {
@@ -223,15 +224,23 @@ export default function CustomerDrawer({ customerId, onClose, onStatusChange }) 
                 </div>
               </div>
             </div>
-
             {/* Toggle status */}
             <div className="flex items-center justify-between p-3 rounded-xl bg-surface border border-app">
               <div>
                 <p className="text-sm font-semibold text-app">Account Status</p>
-                <p className="text-xs text-muted">{profile.is_active ? 'Customer can place orders' : 'Customer is deactivated'}</p>
+                <p className="text-xs text-muted">
+                  {profile.is_active
+                    ? 'Customer can place orders'
+                    : 'Customer is deactivated'}
+                </p>
               </div>
               <button
-                onClick={() => statusMutation.mutate({ id: profile.id, is_active: !profile.is_active })}
+                onClick={() =>
+                  statusMutation.mutate({
+                    id: profile.id,
+                    is_active: !profile.is_active,
+                  })
+                }
                 disabled={statusMutation.isPending}
                 className={clsx(
                   'text-xs font-semibold px-4 py-2 rounded-xl transition-all',
@@ -246,11 +255,25 @@ export default function CustomerDrawer({ customerId, onClose, onStatusChange }) 
 
             {/* Spending stats */}
             <div>
-              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Spending Overview</p>
+              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">
+                Spending Overview
+              </p>
               <div className="grid grid-cols-2 gap-3">
-                <StatTile icon={ShoppingBag} label="Total Orders" value={profile.total_orders} />
-                <StatTile icon={CreditCard} label="Total Spent" value={fmt(profile.total_spent)} />
-                <StatTile icon={TrendingUp} label="Avg. Order Value" value={fmt(profile.average_order_value)} />
+                <StatTile
+                  icon={ShoppingBag}
+                  label="Total Orders"
+                  value={profile.total_orders}
+                />
+                <StatTile
+                  icon={CreditCard}
+                  label="Total Spent"
+                  value={fmt(profile.total_spent)}
+                />
+                <StatTile
+                  icon={TrendingUp}
+                  label="Avg. Order Value"
+                  value={fmt(profile.average_order_value)}
+                />
                 <StatTile
                   icon={Clock}
                   label="Last Order"
@@ -262,33 +285,58 @@ export default function CustomerDrawer({ customerId, onClose, onStatusChange }) 
             {/* Recent orders */}
             {profile.recent_orders?.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Recent Orders</p>
+                <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">
+                  Recent Orders
+                </p>
                 <div className="space-y-2">
                   {profile.recent_orders.map(order => (
-                    <div key={order.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-surface border border-app hover:border-brand-400 transition-colors">
+                    <div
+                      key={order.id}
+                      className="flex items-center justify-between gap-3 p-3 rounded-xl bg-surface border border-app hover:border-brand-400 transition-colors"
+                    >
                       <div className="flex items-center gap-3 min-w-0">
                         {order.product_image ? (
-                          <img src={order.product_image} alt={order.product_name} className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
+                          <img
+                            src={getImageUrl(order.product_image)}
+                            alt={order.product_name}
+                            className="w-9 h-9 rounded-lg object-cover flex-shrink-0"
+                            onError={(e) => {
+                              e.currentTarget.style.visibility = 'hidden'
+                            }}
+                          />
                         ) : (
                           <div className="w-9 h-9 rounded-lg bg-app flex items-center justify-center flex-shrink-0">
                             <Package size={14} className="text-muted" />
                           </div>
                         )}
+
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-app truncate">{order.order_number}</p>
-                          <p className="text-xs text-muted truncate">{order.product_name}</p>
+                          <p className="text-sm font-semibold text-app truncate">
+                            {order.order_number}
+                          </p>
+                          <p className="text-xs text-muted truncate">
+                            {order.product_name}
+                          </p>
                         </div>
                       </div>
+
                       <div className="flex-shrink-0 text-right">
-                        <p className="text-sm font-bold font-display text-app">{fmt(order.total_amount)}</p>
-                        <Badge label={order.tracking_status} variant={orderStatusVariant[order.tracking_status] || 'default'} />
+                        <p className="text-sm font-bold font-display text-app">
+                          {fmt(order.total_amount)}
+                        </p>
+                        <Badge
+                          label={order.tracking_status}
+                          variant={
+                            orderStatusVariant[order.tracking_status] ||
+                            'default'
+                          }
+                        />
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-
             {/* Tags */}
             <div>
               <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Tags</p>

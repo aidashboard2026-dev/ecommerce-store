@@ -37,6 +37,7 @@ class Order(Base):
 
     # Product
     product_name = Column(String(255), nullable=False)
+    product_id = Column(Integer, nullable=True, index=True)  # FK reference for reliable inventory lookup
 
     product_image = Column(String(500))
 

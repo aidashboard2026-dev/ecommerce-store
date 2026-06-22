@@ -4,17 +4,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   BASE LAYER — CSS variables + body defaults
+   ============================================================ */
 @layer base {
   :root {
-    --color-bg: #fafafa;
+    --color-bg: #f8f9fa;
     --color-surface: #ffffff;
-    --color-border: #e4e4e7;
+    --color-border: #e2e8f0;
     
-    --color-text: #000000;
-    --color-text-muted: #131313;
-    --color-brand: #4f46e5;
-    --color-brand-hover: #4338ca;
+    --color-text: #0f172a;
+    --color-text-muted: #64748b;
+    --color-brand: #5865f2;
+    --color-brand-hover: #404be0;
 
+    /* Aliases used by storefront + admin */
+    --color-text-1:       #0f172a;
+    --color-primary:      #0f172a;
+
+    /* Typography */
     --font-sans: 'Inter', 'DM Sans', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
     --font-display: 'Outfit', 'Inter', sans-serif;
@@ -24,9 +32,10 @@
     --radius-lg: 12px;
     --radius-xl: 16px;
 
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+    --shadow-xs: 0 1px 2px rgba(15,23,42,.04);
+    --shadow-sm: 0 2px 8px rgba(15,23,42,.06);
+    --shadow-md: 0 4px 16px rgba(15,23,42,.08);
+    --shadow-lg: 0 8px 30px rgba(15,23,42,.10), 0 2px 8px rgba(15,23,42,.04);
 
     color-scheme: light;
   }
@@ -40,12 +49,15 @@
     --color-text-muted: #a1a1aa;
     --color-brand: #6366f1;
     --color-brand-hover: #4f46e5;
+    --color-primary:     #f1f5f9;
+    --color-text-1:      #f1f5f9;
 
     color-scheme: dark;
   }
 
   * {
     border-color: var(--color-border);
+    font-family: var(--font-sans);
   }
 
   body {
@@ -55,7 +67,7 @@
     transition: background-color 0.2s ease, color 0.2s ease;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    overflow: hidden;
+    overflow-x: hidden;
   }
 }
 
@@ -74,8 +86,26 @@
   }
 }
 
+@layer utilities {
+  .bg-app {
+    background-color: var(--color-bg);
+  }
+  .text-app {
+    color: var(--color-text);
+  }
+  .border-app {
+    border-color: var(--color-border);
+  }
+  .bg-surface-hover {
+    background-color: var(--color-surface-hover);
+  }
+}
+
+/* ============================================================
+   COMPONENT LAYER — reusable UI primitives
+   ============================================================ */
 @layer components {
-  /* Cards */
+  /* Premium Card Styles */
   .card {
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
@@ -85,43 +115,93 @@
   }
 
   .card-hover:hover {
-    border-color: var(--color-brand);
-    box-shadow: var(--shadow-md);
+    border-color: rgba(88, 101, 242, 0.25);
+    box-shadow: var(--shadow-lg);
     transform: translateY(-1px);
   }
 
-  /* Form Fields */
+  /* Global Button Utilities */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    cursor: pointer;
+  }
+
+  .btn:active {
+    transform: scale(0.97);
+  }
+
+  .btn-primary {
+    @apply btn;
+    background-color: var(--color-brand);
+    color: #ffffff;
+  }
+
+  .btn-primary:hover {
+    background-color: var(--color-brand-hover);
+    box-shadow: 0 0 12px rgba(88, 101, 242, 0.25);
+  }
+
+  .btn-secondary {
+    @apply btn;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+  }
+
+  .btn-secondary:hover {
+    background-color: var(--color-bg);
+    border-color: var(--color-text-muted);
+  }
+
+  .btn-danger {
+    @apply btn;
+    background-color: #ef4444;
+    color: #ffffff;
+  }
+
+  .btn-danger:hover {
+    background-color: #dc2626;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
+  }
+
+  /* Universal Form Fields */
   .input-field {
     width: 100%;
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
-    padding: 8px 12px;
-    font-size: 13px;
+    padding: 10px 14px;
+    font-size: 13.5px;
     color: var(--color-text);
-    transition: all 0.15s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
   .input-field::placeholder {
     color: var(--color-text-muted);
-    opacity: 0.6;
+    opacity: 0.7;
   }
 
   .input-field:focus {
     outline: none;
     border-color: var(--color-brand);
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+    box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.15);
   }
-
   .input-field:disabled {
     opacity: 0.6;
     cursor: not-allowed;
-    background-color: var(--color-bg);
   }
 
-  /* Sidebar Nav Items */
+  /* Navigation Sidebar Items */
   .nav-item {
-    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold
+    @apply flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium
            transition-all duration-150 cursor-pointer;
     color: var(--color-text-muted);
   }
@@ -130,18 +210,17 @@
     color: var(--color-text);
     background-color: var(--color-bg);
   }
-
   .nav-item.active {
     color: var(--color-brand);
-    background-color: rgba(99, 102, 241, 0.08);
+    background-color: rgba(88, 101, 242, 0.08);
   }
 
   .dark .nav-item.active {
     color: var(--color-brand);
-    background-color: rgba(99, 102, 241, 0.12);
+    background-color: rgba(122, 143, 255, 0.12);
   }
 
-  /* Status Badges */
+  /* Custom Status Badges */
   .status-pill {
     display: inline-flex;
     align-items: center;
@@ -150,48 +229,135 @@
     padding: 2px 8px;
     border-radius: 999px;
     text-transform: capitalize;
+    white-space: nowrap;
     border: 1px solid transparent;
   }
 
-  .status-pill.published, .status-pill.active {
-    background-color: rgba(16, 185, 129, 0.1);
-    color: #10b981;
-    border-color: rgba(16, 185, 129, 0.2);
+  .status-pill.published {
+    background-color: #ecfdf5;
+    color: #059669;
+    border-color: #a7f3d0;
   }
 
-  .status-pill.draft, .status-pill.inactive {
-    background-color: rgba(113, 113, 122, 0.1);
-    color: #717172;
-    border-color: rgba(113, 113, 122, 0.2);
+  .dark .status-pill.published {
+    background-color: rgba(5, 150, 105, 0.15);
+    color: #34d399;
+    border-color: rgba(52, 211, 153, 0.25);
   }
 
-  .status-pill.archived, .status-pill.expired {
-    background-color: rgba(245, 158, 11, 0.1);
+  .status-pill.draft {
+    background-color: #f1f5f9;
+    color: #475569;
+    border-color: #cbd5e1;
+  }
+
+  .dark .status-pill.draft {
+    background-color: rgba(71, 85, 105, 0.15);
+    color: #94a3b8;
+    border-color: rgba(148, 163, 184, 0.2);
+  }
+
+  .status-pill.archived {
+    background-color: #fffbeb;
     color: #d97706;
-    border-color: rgba(245, 158, 11, 0.2);
+    border-color: #fde68a;
+  }
+
+  .dark .status-pill.archived {
+    background-color: rgba(217, 119, 6, 0.15);
+    color: #fbbf24;
+    border-color: rgba(251, 191, 36, 0.25);
   }
 }
 
-/* Custom Scrollbars */
+/* Custom Webkit Scrollbars */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 99px;
+.inv-variant-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+.inv-variant-table th {
+  background: var(--color-bg);
+  padding: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+.inv-variant-table td { padding: 12px; border-bottom: 1px solid var(--color-border); }
+.inv-variant-table tbody tr:hover { background: var(--color-bg); }
+
+.inv-size-chip {
+  background: rgba(99,102,241,.1);
+  color: #4f46e5;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-muted);
+.inv-add-variant-btn {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1px dashed #c7d2fe;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all .2s ease;
 }
+.inv-add-variant-btn:hover { background: #dfe7ff; border-color: #6366f1; }
 
-/* React Calendar Premium Theme Override */
+.inv-desc-section { padding: 20px 24px 0; }
+
+.inv-form-footer {
+  display: grid;
+  gap: 12px;
+  padding: 24px;
+  border-top: 1px solid var(--color-border);
+  margin-top: 24px;
+}
+.inv-footer-row { display: flex; gap: 14px; }
+
+.btn-inv-save,
+.btn-inv-publish,
+.btn-inv-cancel {
+  height: 50px;
+  border: none;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 700;
+  color: white;
+  transition: all .2s ease;
+}
+.btn-inv-save    { flex: 1; background: linear-gradient(135deg, #22c55e, #16a34a); box-shadow: 0 10px 20px rgba(34,197,94,.18); }
+.btn-inv-publish { flex: 1; background: linear-gradient(135deg, #3b82f6, #2563eb); box-shadow: 0 10px 20px rgba(37,99,235,.18); }
+.btn-inv-cancel  { width: 100%; background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 10px 20px rgba(239,68,68,.16); }
+.btn-inv-save:hover,
+.btn-inv-publish:hover,
+.btn-inv-cancel:hover { transform: translateY(-1px); filter: brightness(1.02); }
+
+/* ============================================================
+   REACT CALENDAR — premium theme-aware override
+   ============================================================ */
 .react-calendar {
   width: 100% !important;
   background: var(--color-surface) !important;
@@ -202,7 +368,6 @@
   /* box-shadow: var(--shadow-sm) !important; */
   font-family: var(--font-sans) !important;
 }
-
 .react-calendar__navigation button {
   color: var(--color-text) !important;
   min-width: 60px !important;
@@ -211,11 +376,7 @@
   font-weight: 600;
   font-size: 15px;
 }
-
-.react-calendar__navigation button:hover {
-  background: var(--color-bg) !important;
-}
-
+.react-calendar__navigation button:hover { background: var(--color-bg) !important; }
 .react-calendar__month-view__weekdays {
   color: var(--color-text-muted) !important;
   font-weight: 700 !important;
@@ -223,7 +384,6 @@
   font-size: 9px !important;
   padding-bottom: 4px;
 }
-
 .react-calendar__tile {
   color: var(--color-text) !important;
   border-radius: var(--radius-sm) !important;
@@ -231,7 +391,6 @@
   font-weight: 500 !important;
   padding: 6px !important;
 }
-
 .react-calendar__tile--active {
   background: var(--color-brand) !important;
   color: #ffffff !important;
@@ -246,4 +405,8 @@
 .react-calendar * {
   color: var(--color-text) !important;
   border-color: var(--color-border) !important;
+}
+
+.react-calendar__month-view__weekdays__weekday * {
+  text-decoration: none !important;
 }

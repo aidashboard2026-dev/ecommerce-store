@@ -46,9 +46,9 @@ export default function PageHeader({ title }) {
   }
 
   const goToSettings = () => {
-    navigate('/settings')
-    setProfileOpen(false)
-  }
+  navigate('/admin/settings')
+  setProfileOpen(false)
+}
 
   const names = admin?.name?.split(' ') || ['Admin']
   const firstName = names[0]

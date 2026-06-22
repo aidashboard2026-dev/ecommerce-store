@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { Link } from 'react-router-dom'
 import { loginThunk, clearError } from '../../store/authSlice'
 import { useTheme } from '../../hooks/useAuth'
 import { Eye, EyeOff, Zap, Sun, Moon } from 'lucide-react'
@@ -32,7 +31,7 @@ export default function LoginPage() {
     )
 
     if (loginThunk.fulfilled.match(result)) {
-      window.location.href = "/"
+      window.location.href = '/admin'
     }
   }
 
@@ -46,6 +45,7 @@ export default function LoginPage() {
 
       {/* Theme Toggle */}
       <button
+        id="theme-toggle"
         onClick={toggle}
         className="absolute top-5 right-5 w-8.5 h-8.5 rounded-xl bg-surface border border-app flex items-center justify-center text-muted hover:text-app transition-all shadow-sm active:scale-95"
       >
@@ -67,14 +67,18 @@ export default function LoginPage() {
         {/* Login Card */}
         <Card className="shadow-md">
           <CardContent className="p-6 sm:p-8 space-y-4">
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form id="admin-login-form" onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="bg-red-500/5 border border-red-500/10 text-red-500 text-xs px-3.5 py-2.5 rounded-lg animate-fade-in font-medium">
+                <div
+                  id="login-error-banner"
+                  className="bg-red-500/5 border border-red-500/10 text-red-500 text-xs px-3.5 py-2.5 rounded-lg animate-fade-in font-medium"
+                >
                   {error}
                 </div>
               )}
 
               <Input
+                id="admin-email"
                 label="Email Address"
                 type="email"
                 value={email}
@@ -85,6 +89,7 @@ export default function LoginPage() {
               />
 
               <Input
+                id="admin-password"
                 label="Password"
                 type={showPwd ? 'text' : 'password'}
                 value={password}
@@ -104,6 +109,7 @@ export default function LoginPage() {
               />
 
               <Button
+                id="admin-login-submit"
                 type="submit"
                 loading={loading}
                 className="w-full mt-2"
@@ -114,13 +120,15 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        {/* Footer info */}
+        {/*
+          SECURITY: No account creation prompt.
+          Admin accounts are provisioned via seeding or by an existing superadmin only.
+          Public registration for admin roles is intentionally disabled.
+        */}
         <div className="text-center space-y-2">
           <p className="text-xs text-muted">
-            Don&apos;t have an account?{' '}
-            <Link to="/signup" className="text-brand-500 hover:text-brand-400 font-bold transition-colors">
-              Create Account
-            </Link>
+            Need administrative access?{' '}
+            <span className="text-muted/80 font-medium">Contact the system administrator.</span>
           </p>
           <p className="text-[10px] text-muted/60">
             Protected by secure JWT session controls

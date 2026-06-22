@@ -14,6 +14,7 @@ import {
   UserRound,
   X,
   Zap,
+  Image,
   Bell
 } from 'lucide-react'
 import clsx from 'clsx'
@@ -24,12 +25,13 @@ import Avatar from '../ui/Avatar'
 import ProfileCard from '../ui/ProfileCard'
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/products', label: 'Products', icon: Package },
-  { to: '/orders', label: 'Orders', icon: ShoppingCart },
-  { to: '/offers', label: 'Offers', icon: Tags },
-  { to: '/customers', label: 'Customers', icon: UserRound },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/admin/products', label: 'Products', icon: Package },
+  { to: '/admin/orders', label: 'Orders', icon: ShoppingCart },
+  { to: '/admin/offers', label: 'Offers', icon: Tags },
+  { to: '/admin/banners', label: 'Banners', icon: Image },
+  { to: '/admin/customers', label: 'Customers', icon: UserRound },
+  { to: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 
 export default function Header() {

@@ -3,9 +3,9 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin123
-      POSTGRES_DB: admindb
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -26,10 +26,11 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_SERVER: db
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin123
-      POSTGRES_DB: admindb
+      POSTGRES_SERVER: ${POSTGRES_SERVER}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
       # SECRET_KEY: ${SECRET_KEY:-change-me-in-production-please-use-a-long-random-string}
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in your .env file}
       ACCESS_TOKEN_EXPIRE_MINUTES: 1440
@@ -38,7 +39,15 @@ services:
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-admin1234}
       # Upload directory — MUST match the named volume mount below.
       # Images written here persist in the `product_uploads` Docker named volume.
+      # Still used for offer banners (not yet migrated) and any pre-migration
+      # legacy product/banner images until migrate_images_to_supabase.py runs.
       UPLOAD_DIR: /app/uploads
+      # Supabase Storage — required for product & banner image uploads.
+      SUPABASE_URL: ${SUPABASE_URL:?Set SUPABASE_URL in your .env file}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?Set SUPABASE_SERVICE_ROLE_KEY in your .env file}
+      SUPABASE_PRODUCT_BUCKET: ${SUPABASE_PRODUCT_BUCKET:-product-images}
+      SUPABASE_BANNER_BUCKET: ${SUPABASE_BANNER_BUCKET:-banners}
     ports:
       - "8000:8000"
     depends_on:
