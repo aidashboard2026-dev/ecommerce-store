@@ -10,7 +10,7 @@ import CustomerPagination from '../../components/customers/CustomerPagination'
 import CustomerDrawer from '../../components/customers/CustomerDrawer'
 import CustomerFormModal from '../../components/customers/CustomerFormModal'
 import PageHeader from '../../components/ui/PageHeader'
-import SearchBar from "../../components/ui/SearchBar";
+import Button from '../../components/ui/Button'
 import { customersAPI } from '../../services/api'
 import { useDebounce } from '../../utils/productUtils'
 
@@ -92,35 +92,46 @@ export default function CustomersPage() {
 
       {/* ── Page header ───────────────────────────────────────────────────── */}
       <PageHeader
-        title="Customers"
-        description={total > 0 ? `${total.toLocaleString()} total customers` : 'Manage your customer base'}
-        actions={
-          <>
-            <button
-              onClick={() => refetch()}
-              className="btn-secondary p-2.5"
-              title="Refresh"
-            >
-              <RefreshCw size={15} className={isFetching ? 'animate-spin' : ''} />
-            </button>
-            <button
-              onClick={() => exportToCSV(customers)}
-              disabled={customers.length === 0}
-              className="btn-secondary flex items-center gap-2"
-            >
-              <Download size={15} />
-              Export
-            </button>
-            <button
-              onClick={() => setShowCreate(true)}
-              className="btn-primary flex items-center gap-2"
-            >
-              <Plus size={15} />
-              Add Customer
-            </button>
-          </>
-        }
-      />
+  title="Customers"
+  description={
+    total > 0
+      ? `${total.toLocaleString()} total customers`
+      : 'Manage your customer base'
+  }
+  actions={
+    <div className="flex items-center gap-2">
+      <button
+        onClick={() => refetch()}
+        className="btn-secondary border rounded-md p-2 hover:bg-gray-100"
+        title="Refresh"
+      >
+        <RefreshCw
+          size={15}
+          className={isFetching ? 'animate-spin' : ''}
+        />
+      </button>
+
+      <Button
+        onClick={() => exportToCSV(customers)}
+        disabled={customers.length === 0}
+        variant="download"
+        className="flex items-center gap-2"
+        icon={Download}
+      >
+        Export
+      </Button>
+
+      <Button
+        onClick={() => setShowCreate(true)}
+        variant="addvariant"
+        className="flex items-center gap-2"
+        icon={Plus}
+      >
+        Customer
+      </Button>
+    </div>
+  }
+/>
 
       {/* ── Analytics summary cards ───────────────────────────────────────── */}
       <CustomerAnalyticsCards analytics={analytics} />

@@ -5,3 +5,4 @@ from app.models.customer import Customer  # noqa: F401
 from app.models.product import Product, ProductVariant  # noqa: F401
 from app.models.order import Order  # noqa: F401
 from app.models.offer import Offer  # noqa: F401
+from app.models.settings import AdminSecurity, NotificationSetting, PaymentMethod, StoreSettings  # noqa: F401

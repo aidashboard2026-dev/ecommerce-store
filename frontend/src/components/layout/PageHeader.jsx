@@ -55,9 +55,9 @@ export default function PageHeader({ title }) {
   const lastName = names[1] || ''
 
   return (
-    <div className="flex md:border-b border-app md:bg-surface md:shadow-sm transition-all duration-300 py-3 px-6 items-center top-0 justify-between gap-4 h-[53px] ">
+    <div className="hidden md:flex md:border-b border-app md:bg-surface md:shadow-sm transition-all duration-300 py-3 px-6 items-center top-0 justify-between gap-4 h-[53px] ">
       {/* Left Side */}
-      <div>
+      <div className=''>
         <h1 className="text-xs font-bold uppercase tracking-wider text-app">
           {title}
         </h1>
@@ -89,13 +89,13 @@ export default function PageHeader({ title }) {
         </div>
 
         {/* Notifications */}
-        <button
+        {/* <button
           className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-app bg-surface hover:bg-app text-muted hover:text-app transition-all active:scale-95"
           aria-label="View notifications"
         >
           <Bell size={14} />
           <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />
-        </button>
+        </button> */}
 
         {/* Theme Toggle */}
         <button
