@@ -15,13 +15,24 @@ from app.core.config import settings
 
 def authenticate_admin(db: Session, email: str, password: str):
     admin = db.query(Admin).filter(Admin.email == email).first()
+
+    print("EMAIL SEARCH =", email)
+    print("ADMIN FOUND =", admin)
+
     if not admin:
+        print("ADMIN NOT FOUND")
         return None
-    if not verify_password(password, admin.password_hash):
+
+    print("HASH =", admin.password_hash)
+
+    is_valid = verify_password(password, admin.password_hash)
+
+    print("PASSWORD VALID =", is_valid)
+
+    if not is_valid:
         return None
+
     return admin
-
-
 def login_admin(db: Session, email: str, password: str):
     admin = authenticate_admin(db, email, password)
     if not admin:

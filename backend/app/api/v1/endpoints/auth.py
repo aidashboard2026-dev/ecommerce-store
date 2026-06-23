@@ -89,7 +89,16 @@ def login(
         samesite="lax",
         path="/",
     )
+    print("EMAIL =", login_data.email)
+    print("PASSWORD =", login_data.password)
 
+    # result = login_admin(
+    #     db,
+    #     login_data.email,
+    #     login_data.password
+    # )
+
+    print("LOGIN RESULT =", result)
     return result
 
 

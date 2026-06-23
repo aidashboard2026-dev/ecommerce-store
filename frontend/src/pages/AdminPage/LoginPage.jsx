@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPwd, setShowPwd] = useState(false)
-
+  
   useEffect(() => {
     dispatch(clearError())
   }, [dispatch])
@@ -33,6 +33,14 @@ export default function LoginPage() {
     if (loginThunk.fulfilled.match(result)) {
       window.location.href = '/admin'
     }
+    console.log("RESULT =", result)
+
+    
+
+    console.log("BEFORE REDIRECT")
+
+
+    console.log("AFTER REDIRECT")
   }
 
   return (

@@ -2,9 +2,8 @@ import axios from 'axios'
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
 
-// ─── Admin Axios instance ─────────────────────────────────────────────────────
-// Uses localStorage JWT. withCredentials intentionally false (not cookie-based).
 
+console.log("BASE URL =", BASE_URL);
 const api = axios.create({
   baseURL: BASE_URL,
   withCredentials: false,
@@ -196,6 +195,38 @@ export const storefrontAPI = {
   trackOrder:       (orderNumber) => storefrontClient.get(`/orders/track/${orderNumber}`),
 }
 
+export const customProductsAPI = {
+  adminList: (params = {}) => {
+    const cleaned = {}
+
+    Object.entries(params).forEach(([k, v]) => {
+      if (
+        v !== '' &&
+        v !== null &&
+        v !== undefined
+      ) {
+        cleaned[k] = v
+      }
+    })
+
+    return api.get(
+      '/custom-products/admin/all',
+      { params: cleaned }
+    )
+  },
+
+  get: (id) =>
+    api.get(`/custom-products/admin/${id}`),
+
+  create: (data) =>
+    api.post('/custom-products/admin', data),
+
+  update: (id, data) =>
+    api.put(`/custom-products/admin/${id}`, data),
+
+  delete: (id) =>
+    api.delete(`/custom-products/admin/${id}`),
+}
 // ─── Orders ───────────────────────────────────────────────────────────────────
 
 export const ordersAPI = {

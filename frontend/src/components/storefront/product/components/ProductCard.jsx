@@ -70,7 +70,7 @@ function ProductCard({ product }) {
   return (
     <Link
       to={`/products/${product.slug}`}
-      className="group relative flex flex-col rounded-2xl bg-app border border-app overflow-hidden hover:shadow-card dark:hover:shadow-card-dark transition-all duration-300 hover:-translate-y-1"
+      className="group relative flex flex-col rounded-none bg-white border border-gray-200 overflow-hidden hover:shadow-card dark:hover:shadow-card-dark transition-all duration-300 hover:-translate-y-2"
     >
       {/* Image */}
       <div className="relative aspect-[4/5] bg-surface overflow-hidden">
@@ -79,7 +79,14 @@ function ProductCard({ product }) {
             src={getImageUrl(product.thumbnail)}
             alt={product.title}
             loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="
+            w-full
+            h-full
+            object-cover
+            transition-all
+            duration-700
+            group-hover:scale-110
+            "
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted text-xs">
@@ -110,7 +117,7 @@ function ProductCard({ product }) {
         <button
           onClick={handleWishlist}
           aria-label="Toggle wishlist"
-          className="absolute top-3 right-3 p-2 rounded-full bg-app/80 backdrop-blur-sm hover:bg-app text-app transition-colors duration-200 shadow-sm"
+          className="absolute top-3 right-3 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white text-app transition-colors duration-200 shadow-sm"
         >
           <Heart
             size={16}
