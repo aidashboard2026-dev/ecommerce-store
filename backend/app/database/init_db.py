@@ -26,6 +26,7 @@ from app.core.security import get_password_hash
 from app.database.session import SessionLocal
 from app.models.admin import Admin
 from app.models.order import Order
+from app.models.delivery_zone import DeliveryZone
 from app.models.product import Category, Collection, Product, ProductVariant, ProductStatus
 
 logger = logging.getLogger(__name__)
@@ -64,9 +65,12 @@ def _validate_initial_admin_settings() -> tuple[str, str, str]:
 # Production master categories.
 # Add / rename here; existing rows are never touched once created.
 MASTER_CATEGORIES = [
-    {"name": "T-Shirts",         "sort_order": 1},
-    {"name": "Track Pants",      "sort_order": 2},
-    {"name": "Jerseys",          "sort_order": 3},
+    # sort_order controls homepage CategorySection tile order.
+    # Product type is the top level; gender lives as collections underneath.
+    {"name": "Track Pants",     "sort_order": 1},
+    {"name": "Jerseys",         "sort_order": 2},
+    {"name": "T-Shirts",        "sort_order": 3},
+    {"name": "Custom Printing", "sort_order": 4},
 ]
 
 def _seed_categories(db: Session) -> dict[str, int]:
@@ -111,12 +115,26 @@ def _seed_categories(db: Session) -> dict[str, int]:
 # Each collection can optionally be linked to a category by name.
 # category_name=None means the collection has no parent category FK (nullable).
 MASTER_COLLECTIONS = [
-    {"name": "Oversized",   "category_name": "T-Shirts"},
-    {"name": "Essentials",  "category_name": "T-Shirts"},
-    {"name": "Streetwear",  "category_name": "T-Shirts"},
-    {"name": "Summer",      "category_name": "T-Shirts"},
-    {"name": "Premium",     "category_name": "T-Shirts"},
-    {"name": "Sports",      "category_name": "Jerseys"},
+    # ── Track Pants ────────────────────────────────────────────────────────────
+    {"name": "Men's Track Pants",   "category_name": "Track Pants"},
+    {"name": "Women's Track Pants", "category_name": "Track Pants"},
+    {"name": "Kids' Track Pants",   "category_name": "Track Pants"},
+
+    # ── Jerseys ────────────────────────────────────────────────────────────────
+    {"name": "Men's Jerseys",   "category_name": "Jerseys"},
+    {"name": "Women's Jerseys", "category_name": "Jerseys"},
+    {"name": "Kids' Jerseys",   "category_name": "Jerseys"},
+
+    # ── T-Shirts ───────────────────────────────────────────────────────────────
+    {"name": "Men's T-Shirts",   "category_name": "T-Shirts"},
+    {"name": "Women's T-Shirts", "category_name": "T-Shirts"},
+    {"name": "Kids' T-Shirts",   "category_name": "T-Shirts"},
+
+    # ── Custom Printing ────────────────────────────────────────────────────────
+    {"name": "Magic Cup",        "category_name": "Custom Printing"},
+    {"name": "White Cup",        "category_name": "Custom Printing"},
+    {"name": "Keychain",         "category_name": "Custom Printing"},
+    {"name": "Embroidery Design","category_name": "Custom Printing"},
 ]
 
 def _seed_collections(db: Session, category_map: dict[str, int]) -> dict[str, int]:
@@ -350,6 +368,47 @@ def _seed_demo_products(db: Session, collection_map: dict[str, int], category_ma
 
 
 # ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+# TASK 6 — Delivery zone seeding
+# ─────────────────────────────────────────────────────────────
+
+# Tamil Nadu city delivery estimates (business days from dispatch).
+# Admin can override / extend via the /delivery-zones API without touching code.
+MASTER_DELIVERY_ZONES = [
+    ("Chennai", 3), ("Kanchipuram", 3),
+    ("Coimbatore", 4), ("Trichy", 4), ("Erode", 4), ("Tiruppur", 4),
+    ("Vellore", 4), ("Namakkal", 4), ("Karur", 4), ("Ranipet", 4),
+    ("Salem", 5), ("Cuddalore", 5), ("Dharmapuri", 5), ("Krishnagiri", 5),
+    ("Ariyalur", 5), ("Perambalur", 5), ("Tirupathur", 5),
+    ("Madurai", 6), ("Sivagangai", 6), ("Nagapattinam", 6),
+    ("Pudukkottai", 6), ("Nilgiris", 6), ("Mayiladuthurai", 6),
+    ("Tirunelveli", 7), ("Thoothukudi", 7), ("Ramanathapuram", 7),
+    ("Kanyakumari", 7), ("Virudhunagar", 6), ("Tenkasi", 7),
+    ("Thanjavur", 5), ("Dindigul", 5),
+]
+
+
+def _seed_delivery_zones(db: Session) -> None:
+    """
+    Insert delivery zone records that do not already exist.
+    Idempotent — existing zones are never overwritten so admin edits are safe.
+    """
+    existing_cities = {
+        row[0].lower()
+        for row in db.query(DeliveryZone.city).all()
+    }
+    created = 0
+    for city, days in MASTER_DELIVERY_ZONES:
+        if city.lower() not in existing_cities:
+            db.add(DeliveryZone(city=city, delivery_days=days))
+            created += 1
+    if created:
+        db.flush()
+        logger.info(f"Seeded {created} new delivery zones")
+    else:
+        logger.info("Delivery zones already up to date, skipping")
+
+
 # Main entry point
 # ─────────────────────────────────────────────────────────────
 
@@ -381,14 +440,17 @@ def init_db() -> None:
         # ── 3. Master collections ───────────────────────────────────────────────
         collection_map = _seed_collections(db, category_map)
 
-        # ── 4. Legacy migration ─────────────────────────────────────────────────
+        # ── 4. Delivery zones ───────────────────────────────────────────────────
+        _seed_delivery_zones(db)
+
+        # ── 5. Legacy migration ─────────────────────────────────────────────────
         # Must run AFTER collections are seeded so the FK targets exist.
         _migrate_legacy_collections(db, collection_map, category_map)
 
-        # ── 5. Demo products (only if table is empty) ───────────────────────────
+        # ── 6. Demo products (only if table is empty) ───────────────────────────
         _seed_demo_products(db, collection_map, category_map)
 
-        # ── 6. Demo order ───────────────────────────────────────────────────────
+        # ── 7. Demo order ───────────────────────────────────────────────────────
         now      = datetime.now(timezone.utc)
         week_start = now - timedelta(days=now.weekday())
         demo_orders = [

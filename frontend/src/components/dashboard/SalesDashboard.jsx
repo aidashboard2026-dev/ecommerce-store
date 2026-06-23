@@ -65,7 +65,7 @@ function ControlButton({ active, children, className, ...props }) {
 export default function SalesDashboard({ isDark }) {
   const [period, setPeriod] = useState('weekly')
   const [chartType, setChartType] = useState('bar')
-  const [anchorDate, setAnchorDate] = useState(todayISO)
+  const [anchorDate, setAnchorDate] = useState(todayISO())
   const [sales, setSales] = useState({ data: [], range_label: '' })
   const [loading, setLoading] = useState(true)
 

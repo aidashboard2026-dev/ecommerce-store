@@ -257,9 +257,17 @@ export const customersAPI = {
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export const dashboardAPI = {
-  stats:          () => api.get('/dashboard/stats'),
-  chartData:      () => api.get('/dashboard/chart-data'),
-  salesChart:     (params = {}) => api.get('/dashboard/sales-chart', { params }),
+  stats: () => api.get('/dashboard/stats'),
+  chartData: () => api.get('/dashboard/chart-data'),
+
+  salesChart: (period, anchorDate) =>
+    api.get('/dashboard/sales-chart', {
+      params: {
+        period,
+        anchor_date: anchorDate,
+      },
+    }),
+
   recentActivity: () => api.get('/dashboard/recent-activity'),
 }
 
