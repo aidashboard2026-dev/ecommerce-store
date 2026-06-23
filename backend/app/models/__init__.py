@@ -6,3 +6,4 @@ from app.models.product import Category, Collection, Product, ProductVariant  # 
 from app.models.order import Order  # noqa: F401
 from app.models.offer import Offer  # noqa: F401
 from app.models.banner import Banner  # noqa: F401
+from app.models.delivery_zone import DeliveryZone  # noqa: F401

@@ -49,8 +49,12 @@ export default function CheckoutPage() {
     dispatch(setOrderError(null))
 
     try {
-      // Backend order schema models one product per order — create one
-      // order per cart line, sharing the same shipping address & payment method.
+      // Generate one session UUID for this checkout.
+      // The backend creates one order row per cart item (Phase 1 architecture).
+      // cart_session_id groups all rows from this session so the admin can
+      // correlate them.  Phase 2 will replace this with a proper order_items table.
+      const cartSessionId = crypto.randomUUID()
+
       const createdOrders = []
       for (const item of items) {
         const orderPayload = {
@@ -74,6 +78,7 @@ export default function CheckoutPage() {
           payment_method: paymentMethod,
           payment_status: paymentMethod === 'COD' ? 'PENDING' : 'PENDING',
           tracking_status: 'PLACED',
+          cart_session_id: cartSessionId,
         }
         const created = await createOrderMutation.mutateAsync(orderPayload)
         createdOrders.push(created)
