@@ -6,7 +6,7 @@ import { useSelector, useDispatch } from 'react-redux'
 import { logoutThunk } from '../store/authSlice'
 import MainLayout from '../layouts/MainLayout'
 import AdminLoginPage from '../pages/AdminPage/LoginPage'
-import AdminSignupPage from '../pages/AdminPage/SignupPage'
+// import AdminSignupPage from '../pages/AdminPage/SignupPage'
 import DashboardPage from '../pages/AdminPage/DashboardPage'
 import AdminProductsPage from '../pages/AdminPage/ProductsPage'
 import AdminOrdersPage from '../pages/AdminPage/OrdersPage'
@@ -38,6 +38,7 @@ import WishlistGrid from '../components/storefront/WishlistGrid'
 
 import SubProductsPage from "../components/storefront/SubProductsPage";
 // import CategoryPage from '../components/storefront/CategoryPage'
+import CustomProductsPage from "../pages/AdminPage/CustomProductsPage";
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-app">
@@ -131,14 +132,14 @@ export default function AppRoutes() {
         }
       />
 
-      <Route
+      {/* <Route
         path="/admin/signup"
         element={
           <AdminPublicRoute>
             <AdminSignupPage />
           </AdminPublicRoute>
         }
-      />
+      /> */}
       
       {/* ── ADMIN DASHBOARD (structure unchanged) ──────────────────────────── */}
       <Route
@@ -151,6 +152,7 @@ export default function AppRoutes() {
       >
         <Route index element={<DashboardPage />} />
         <Route path="products" element={<AdminProductsPage />} />
+        <Route path="custom-products" element={<CustomProductsPage />} />
         <Route path="orders" element={<AdminOrdersPage />} />
         <Route path="offers" element={<OffersPage />} />
         <Route path="customers" element={<CustomersPage />} />

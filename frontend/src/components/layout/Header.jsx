@@ -27,6 +27,7 @@ import ProfileCard from '../ui/ProfileCard'
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/products', label: 'Products', icon: Package },
+  { to: "/admin/custom-products", label: "Custom Products", icon: Package},
   { to: '/admin/orders', label: 'Orders', icon: ShoppingCart },
   { to: '/admin/offers', label: 'Offers', icon: Tags },
   { to: '/admin/banners', label: 'Banners', icon: Image },
