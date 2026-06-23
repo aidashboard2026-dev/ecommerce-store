@@ -6,17 +6,19 @@ import { Card, CardContent } from '../ui/Card'
 function AnalyticsCard({ icon: Icon, label, value, iconClass, sub }) {
   return (
     <Card className="min-h-[120px] flex flex-col justify-between">
-      <CardContent className="p-4 space-y-3 flex flex-col justify-between h-full">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex-1 min-w-0">
+      <CardContent className="p-3 flex flex-col justify-between h-full">
+        <div className="flex flex-col items-start justify-between gap-3">
+          <div className="flex w-full justify-between items-center">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted">{label}</p>
-            <p className="mt-1 font-display text-2xl font-bold tracking-tight text-app leading-none">
+            <div className={clsx('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border shadow-sm', iconClass)}>
+              <Icon size={14} className="text-current" />
+            </div>
+          </div>
+
+           <p className=" font-display text-4xl font-bold tracking-tight text-app leading-none">
               {value}
             </p>
-          </div>
-          <div className={clsx('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border shadow-sm', iconClass)}>
-            <Icon size={14} className="text-current" />
-          </div>
+          
         </div>
         {sub && (
           <p className="text-[10px] font-semibold text-muted truncate border-t border-app/40 pt-2">
