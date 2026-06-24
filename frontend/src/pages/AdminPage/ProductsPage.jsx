@@ -48,6 +48,7 @@ const BULK_ACTIONS = [
   { value: 'archive',         label: 'Archive' },
   { value: 'move_category',   label: 'Move to Category…' },
   { value: 'move_collection', label: 'Move to Collection…' },
+  { value: 'move_sub_collection', label: 'Move to Sub-Collection…' },
   { value: 'delete',          label: 'Delete Selected', danger: true },
 ]
 
@@ -219,6 +220,7 @@ function BulkActionsBar({ selectedIds, onAction, categories, collections, onClea
   const [pendingAction, setPendingAction] = useState(null)
   const [targetCategoryId, setTargetCategoryId] = useState('')
   const [targetCollectionId, setTargetCollectionId] = useState('')
+  const [targetSubCollection, setTargetSubCollection] = useState('')
   const ref = React.useRef(null)
 
   React.useEffect(() => {
@@ -230,7 +232,7 @@ function BulkActionsBar({ selectedIds, onAction, categories, collections, onClea
 
   const handleAction = (action) => {
     setOpen(false)
-    if (action === 'move_category' || action === 'move_collection') {
+    if (action === 'move_category' || action === 'move_collection' || action === 'move_sub_collection') {
       setPendingAction(action)
     } else {
       onAction(action, {})
@@ -240,12 +242,15 @@ function BulkActionsBar({ selectedIds, onAction, categories, collections, onClea
   const confirmMove = () => {
     if (pendingAction === 'move_category') {
       onAction('move_category', { category_id: Number(targetCategoryId) })
-    } else {
+    } else if (pendingAction === 'move_collection') {
       onAction('move_collection', { collection_id: Number(targetCollectionId) })
+    } else if (pendingAction === 'move_sub_collection') {
+      onAction('move_sub_collection', { sub_collection: targetSubCollection })
     }
     setPendingAction(null)
     setTargetCategoryId('')
     setTargetCollectionId('')
+    setTargetSubCollection('')
   }
 
   if (selectedIds.size === 0) return null
@@ -261,16 +266,26 @@ function BulkActionsBar({ selectedIds, onAction, categories, collections, onClea
             <select value={targetCategoryId} onChange={e => setTargetCategoryId(e.target.value)}
               className="input-field py-1 text-xs">
               <option value="">Select category…</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {categories.filter(c => ["T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"].includes(c.name)).map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
             </select>
-          ) : (
+          ) : pendingAction === 'move_collection' ? (
             <select value={targetCollectionId} onChange={e => setTargetCollectionId(e.target.value)}
               className="input-field py-1 text-xs">
               <option value="">Select collection…</option>
               {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
+          ) : (
+            <input type="text" value={targetSubCollection} onChange={e => setTargetSubCollection(e.target.value)}
+              className="input-field py-1 text-xs" placeholder="Sub-Collection name…" />
           )}
-          <button onClick={confirmMove} disabled={pendingAction === 'move_category' ? !targetCategoryId : !targetCollectionId}
+          <button onClick={confirmMove}
+            disabled={
+              pendingAction === 'move_category' ? !targetCategoryId :
+              pendingAction === 'move_collection' ? !targetCollectionId :
+              false
+            }
             className="btn-primary text-xs py-1 px-3 disabled:opacity-40">Confirm</button>
           <button onClick={() => setPendingAction(null)} className="text-xs text-muted hover:text-app">Cancel</button>
         </div>
@@ -309,12 +324,14 @@ export default function ProductsPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [categoryId, setCategoryId]     = useState('')
   const [collectionId, setCollectionId] = useState('')
+  const [subCollection, setSubCollection] = useState('')
   const [stockStatus, setStockStatus]   = useState('')
   const [flagFilters, setFlagFilters]   = useState({})
   const [page, setPage]                 = useState(1)
   const [selectedIds, setSelectedIds]   = useState(new Set())
 
   const debouncedSearch = useDebounce(search, 400)
+  const debouncedSubCollection = useDebounce(subCollection, 400)
 
   // ── Modals ──────────────────────────────────────────────────────────────────
   const [formModal,      setFormModal]      = useState({ open: false, product: null })
@@ -323,9 +340,14 @@ export default function ProductsPage() {
   const [manageModal,    setManageModal]    = useState(false)
   const [quickEditModal, setQuickEditModal] = useState({ open: false, product: null })
 
+  // Stable key derived from flagFilters — avoids JSON.stringify inside deps array
+  // which produces a new string reference every render even when flags haven't changed.
+  const flagKey = Object.keys(flagFilters).filter(k => flagFilters[k]).sort().join(',')
+
   // Reset page on any filter change
   React.useEffect(() => { setPage(1); setSelectedIds(new Set()) },
-    [debouncedSearch, statusFilter, categoryId, collectionId, stockStatus, JSON.stringify(flagFilters)])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [debouncedSearch, statusFilter, categoryId, collectionId, debouncedSubCollection, stockStatus, flagKey])
 
   // ── Data queries ─────────────────────────────────────────────────────────────
 
@@ -334,6 +356,7 @@ export default function ProductsPage() {
     status_filter:  statusFilter,
     category_id:    categoryId    || undefined,
     collection_id:  collectionId  || undefined,
+    sub_collection: debouncedSubCollection || undefined,
     stock_status:   stockStatus   || undefined,
     is_featured:    flagFilters.is_featured    || undefined,
     is_trending:    flagFilters.is_trending    || undefined,
@@ -363,23 +386,30 @@ export default function ProductsPage() {
 
   // ── Mutations ────────────────────────────────────────────────────────────────
 
+  // Use prefix-only invalidation so this callback stays stable across filter
+  // changes and mutation closures never capture a stale queryParams snapshot.
   const invalidate = useCallback(
-    () => qc.invalidateQueries({ queryKey: ['products', queryParams] }),
-    [qc, queryParams]
+    () => qc.invalidateQueries({ queryKey: ['products'] }),
+    [qc]
   )
 
   const toggleStatus = useMutation({
     mutationFn: ({ id, status }) => productsApi.update(id, { status }),
     onMutate: async ({ id, status }) => {
-      await qc.cancelQueries({ queryKey: ['products', queryParams], exact: true })
-      const prev = qc.getQueryData(['products', queryParams])
-      qc.setQueryData(['products', queryParams], old =>
-        old ? { ...old, items: old.items.map(p => p.id === id ? { ...p, status } : p) } : old
+      // Cancel only the active products queries (prefix match) so the optimistic
+      // update is applied to whatever page the user is currently on, regardless
+      // of filter changes since the mutation was created.
+      await qc.cancelQueries({ queryKey: ['products'] })
+      // Snapshot all active product cache entries so we can roll back any of them
+      const snapshots = qc.getQueriesData({ queryKey: ['products'] })
+      qc.setQueriesData({ queryKey: ['products'] }, (old) =>
+        old ? { ...old, items: (old.items || []).map(p => p.id === id ? { ...p, status } : p) } : old
       )
-      return { prev }
+      return { snapshots }
     },
     onError: (_, __, ctx) => {
-      if (ctx?.prev) qc.setQueryData(['products', queryParams], ctx.prev)
+      // Restore every snapshotted cache entry on failure
+      ctx?.snapshots?.forEach(([key, data]) => qc.setQueryData(key, data))
       toast.error('Failed to update status')
     },
     onSettled: invalidate,
@@ -438,7 +468,7 @@ export default function ProductsPage() {
     bulkMutation.mutate({ product_ids: [...selectedIds], action, ...extra })
   }
 
-  const hasFilters = !!(statusFilter || categoryId || collectionId || stockStatus || Object.keys(flagFilters).some(k => flagFilters[k]))
+  const hasFilters = !!(statusFilter || categoryId || collectionId || subCollection || stockStatus || Object.keys(flagFilters).some(k => flagFilters[k]))
 
   const emptyState = useMemo(() => (
     <div className="py-20 text-center">
@@ -542,6 +572,10 @@ export default function ProductsPage() {
             </select>
           )}
 
+          {/* Sub-Collection filter */}
+          <input type="text" value={subCollection} onChange={e => setSubCollection(e.target.value)}
+            className="input-field py-1.5 text-xs max-w-[160px]" placeholder="All Sub-Collections" />
+
           {/* Stock status filter pills */}
           {STOCK_OPTIONS.map(opt => (
             <FilterPill
@@ -568,7 +602,7 @@ export default function ProductsPage() {
           {hasFilters && (
             <button onClick={() => {
               setStatusFilter(''); setCategoryId(''); setCollectionId('')
-              setStockStatus(''); setFlagFilters({})
+              setSubCollection(''); setStockStatus(''); setFlagFilters({})
             }} className="text-xs text-muted hover:text-app underline flex items-center gap-1">
               <X size={10} /> Clear filters
             </button>

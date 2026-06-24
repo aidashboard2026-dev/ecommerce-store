@@ -28,6 +28,7 @@ from app.models.admin import Admin
 from app.models.order import Order
 from app.models.delivery_zone import DeliveryZone
 from app.models.product import Category, Collection, Product, ProductVariant, ProductStatus
+from app.models.custom_product import CustomProduct
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,66 @@ def _make_slug(text: str) -> str:
     slug = re.sub(r"[^\w\s-]", "", slug)
     slug = re.sub(r"[\s_]+", "-", slug)
     return re.sub(r"-+", "-", slug).strip("-")
+
+
+def normalize_category_name(name: str) -> str | None:
+    # Strip and convert to lowercase, remove space, hyphen, underscore
+    val = name.strip().lower()
+    val = re.sub(r'[\s_-]+', '', val)
+    if val in {"tshirt", "tshirts", "tee", "tees"}:
+        return "T-Shirt"
+    if val in {"trackpant", "trackpants"}:
+        return "Track Pant"
+    if val in {"jersey", "jerseys"}:
+        return "Jersey"
+    if val in {"shirt", "shirts"}:
+        return "Shirt"
+    if val in {"trouser", "trousers"}:
+        return "Trouser"
+    return None
+
+
+def _normalize_existing_categories(db: Session) -> None:
+    APPROVED_SET = {"T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"}
+    categories = db.query(Category).all()
+    
+    cat_by_normalized = {}
+    for cat in categories:
+        norm = normalize_category_name(cat.name)
+        if norm:
+            if norm not in cat_by_normalized:
+                cat_by_normalized[norm] = []
+            cat_by_normalized[norm].append(cat)
+            
+    for target_name in APPROVED_SET:
+        matches = cat_by_normalized.get(target_name, [])
+        exact_match = None
+        other_matches = []
+        for m in matches:
+            if m.name == target_name:
+                exact_match = m
+            else:
+                other_matches.append(m)
+                
+        if not exact_match and other_matches:
+            exact_match = other_matches.pop(0)
+            exact_match.name = target_name
+            exact_match.slug = _make_slug(target_name)
+            db.flush()
+            
+        if exact_match:
+            for old_cat in other_matches:
+                db.query(Product).filter(Product.category_id == old_cat.id).update(
+                    {Product.category_id: exact_match.id}, synchronize_session=False
+                )
+                db.query(CustomProduct).filter(CustomProduct.category_id == old_cat.id).update(
+                    {CustomProduct.category_id: exact_match.id}, synchronize_session=False
+                )
+                db.query(Collection).filter(Collection.category_id == old_cat.id).update(
+                    {Collection.category_id: exact_match.id}, synchronize_session=False
+                )
+                db.delete(old_cat)
+                db.flush()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -67,10 +128,12 @@ def _validate_initial_admin_settings() -> tuple[str, str, str]:
 MASTER_CATEGORIES = [
     # sort_order controls homepage CategorySection tile order.
     # Product type is the top level; gender lives as collections underneath.
-    {"name": "Track Pants",     "sort_order": 1},
-    {"name": "Jerseys",         "sort_order": 2},
-    {"name": "T-Shirts",        "sort_order": 3},
-    {"name": "Custom Printing", "sort_order": 4},
+    {"name": "Track Pant",      "sort_order": 1},
+    {"name": "Jersey",          "sort_order": 2},
+    {"name": "T-Shirt",         "sort_order": 3},
+    {"name": "Shirt",           "sort_order": 4},
+    {"name": "Trouser",         "sort_order": 5},
+    {"name": "Custom Printing", "sort_order": 6},
 ]
 
 def _seed_categories(db: Session) -> dict[str, int]:
@@ -115,22 +178,12 @@ def _seed_categories(db: Session) -> dict[str, int]:
 # Each collection can optionally be linked to a category by name.
 # category_name=None means the collection has no parent category FK (nullable).
 MASTER_COLLECTIONS = [
-    # ── Track Pants ────────────────────────────────────────────────────────────
-    {"name": "Men's Track Pants",   "category_name": "Track Pants"},
-    {"name": "Women's Track Pants", "category_name": "Track Pants"},
-    {"name": "Kids' Track Pants",   "category_name": "Track Pants"},
+    # ── Core Gender Collections for Apparel (Main Products) ──
+    {"name": "Men",   "category_name": None},
+    {"name": "Women", "category_name": None},
+    {"name": "Kids",  "category_name": None},
 
-    # ── Jerseys ────────────────────────────────────────────────────────────────
-    {"name": "Men's Jerseys",   "category_name": "Jerseys"},
-    {"name": "Women's Jerseys", "category_name": "Jerseys"},
-    {"name": "Kids' Jerseys",   "category_name": "Jerseys"},
-
-    # ── T-Shirts ───────────────────────────────────────────────────────────────
-    {"name": "Men's T-Shirts",   "category_name": "T-Shirts"},
-    {"name": "Women's T-Shirts", "category_name": "T-Shirts"},
-    {"name": "Kids' T-Shirts",   "category_name": "T-Shirts"},
-
-    # ── Custom Printing ────────────────────────────────────────────────────────
+    # ── Custom Printing ────────────────────────────────────────
     {"name": "Magic Cup",        "category_name": "Custom Printing"},
     {"name": "White Cup",        "category_name": "Custom Printing"},
     {"name": "Keychain",         "category_name": "Custom Printing"},
@@ -175,6 +228,94 @@ def _seed_collections(db: Session, category_map: dict[str, int]) -> dict[str, in
 # TASK 4 — Migrate legacy Product.collection → collection_id
 # ─────────────────────────────────────────────────────────────
 
+def _normalize_existing_collections(db: Session) -> None:
+    """
+    Consolidates legacy collections into the normalized core collections (Men, Women, Kids),
+    re-links existing products, and cleans up redundant collection rows.
+    """
+    # 1. Fetch the core collections
+    core_names = {"Men", "Women", "Kids"}
+    core_map = {}
+    for name in core_names:
+        col = db.query(Collection).filter(Collection.name == name).first()
+        if col:
+            core_map[name] = col.id
+
+    if not all(name in core_map for name in core_names):
+        # Seed them if missing (should not be as they are in MASTER_COLLECTIONS)
+        for name in core_names:
+            if name not in core_map:
+                slug = _make_slug(name)
+                col = Collection(name=name, slug=slug, status="active")
+                db.add(col)
+                db.flush()
+                core_map[name] = col.id
+
+    # 2. Get all collections currently in the database
+    collections = db.query(Collection).all()
+    
+    # 3. For each non-core collection, if it normalizes to Men, Women, or Kids, we migrate its products
+    from app.services.product_service import normalize_collection_name
+    
+    for col in collections:
+        if col.name in core_names:
+            continue
+        
+        # If it's a Custom Printing collection, keep it!
+        if col.category_id:
+            cat = db.get(Category, col.category_id)
+            if cat and cat.name == "Custom Printing":
+                continue
+        
+        # Determine if it maps to Men, Women, or Kids
+        norm = normalize_collection_name(col.name)
+        if norm in core_names:
+            target_col_id = core_map[norm]
+            
+            # Update products: set collection_id to the core collection id
+            db.query(Product).filter(
+                Product.collection_id == col.id,
+                Product.deleted_at.is_(None)
+            ).update(
+                {Product.collection_id: target_col_id}, synchronize_session=False
+            )
+            
+            # Delete the old redundant collection
+            db.delete(col)
+            db.flush()
+        else:
+            # Non-gender collection (e.g. "Oversized", "Essentials", "Summer")
+            # Update product's sub-collection text field (product.collection) to the collection name,
+            # and set their collection_id to Men/Women/Kids.
+            products = db.query(Product).filter(
+                Product.collection_id == col.id,
+                Product.deleted_at.is_(None)
+            ).all()
+            
+            for p in products:
+                # Save as sub-collection text
+                p.collection = col.name
+                
+                # Guess collection_id
+                title_lower = p.title.lower()
+                desc_lower = (p.description or "").lower()
+                tags_str = "".join(p.tags).lower()
+                combined = f"{title_lower} {desc_lower} {tags_str}"
+                
+                if "women" in combined or "female" in combined or "girl" in combined or "lady" in combined or "ladies" in combined:
+                    guessed_col = core_map["Women"]
+                elif "kid" in combined or "child" in combined:
+                    guessed_col = core_map["Kids"]
+                else:
+                    guessed_col = core_map["Men"]
+                
+                p.collection_id = guessed_col
+            
+            # Delete this old non-gender collection from the table
+            db.delete(col)
+            db.flush()
+
+
 def _migrate_legacy_collections(db: Session, collection_map: dict[str, int], category_map: dict[str, int]) -> None:
     """
     For every product whose collection_id is still NULL but whose legacy
@@ -199,31 +340,55 @@ def _migrate_legacy_collections(db: Session, collection_map: dict[str, int], cat
     # Only migrate products that:
     #   - are not deleted
     #   - still have collection_id = NULL
-    #   - have a non-empty legacy collection string
     products_to_migrate = (
         db.query(Product)
         .filter(
             Product.deleted_at.is_(None),
             Product.collection_id.is_(None),
-            Product.collection.isnot(None),
-            Product.collection != "",
         )
         .all()
     )
 
     migrated = 0
+    from app.services.product_service import normalize_collection_name
     for product in products_to_migrate:
-        legacy_name = (product.collection or "").strip().lower()
-        if not legacy_name:
-            continue
+        legacy_name = (product.collection or "").strip()
+        
+        col_id = None
+        norm_col_name = normalize_collection_name(legacy_name)
+        if norm_col_name:
+            col_id = col_lower_map.get(norm_col_name.lower())
 
-        col_id = col_lower_map.get(legacy_name)
+        if not col_id and legacy_name:
+            col_id = col_lower_map.get(legacy_name.lower())
+            if not col_id:
+                # No exact match — try partial match
+                for col_name_lower, cid in col_lower_map.items():
+                    if col_name_lower in legacy_name.lower() or legacy_name.lower() in col_name_lower:
+                        col_id = cid
+                        break
+
+        # Fallback guessing logic for Main Products if collection_id is still NULL
         if not col_id:
-            # No exact match — try partial match (e.g. "oversized tee" → "Oversized")
-            for col_name_lower, cid in col_lower_map.items():
-                if col_name_lower in legacy_name or legacy_name in col_name_lower:
-                    col_id = cid
-                    break
+            cat_id = product.category_id
+            is_main = False
+            if cat_id:
+                cat = db.get(Category, cat_id)
+                if cat and cat.name in {"T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"}:
+                    is_main = True
+            
+            if is_main:
+                title_lower = product.title.lower()
+                desc_lower = (product.description or "").lower()
+                tags_str = "".join(product.tags).lower()
+                combined = f"{title_lower} {desc_lower} {tags_str}"
+                
+                if "women" in combined or "female" in combined or "girl" in combined or "lady" in combined or "ladies" in combined:
+                    col_id = col_lower_map.get("women")
+                elif "kid" in combined or "child" in combined:
+                    col_id = col_lower_map.get("kids")
+                else:
+                    col_id = col_lower_map.get("men")
 
         if col_id:
             product.collection_id = col_id
@@ -258,12 +423,10 @@ def _seed_demo_products(db: Session, collection_map: dict[str, int], category_ma
         return
 
     # Resolve IDs from maps (fall back to None if master data wasn't seeded for some reason)
-    tshirt_cat_id   = category_map.get("T-Shirts")
-    jerseys_cat_id  = category_map.get("Jerseys")
-    oversized_col   = collection_map.get("Oversized")
-    essentials_col  = collection_map.get("Essentials")
-    streetwear_col  = collection_map.get("Streetwear")
-    summer_col      = collection_map.get("Summer")
+    tshirt_cat_id    = category_map.get("T-Shirt")
+    trackpant_cat_id = category_map.get("Track Pant")
+    men_col          = collection_map.get("Men")
+    women_col        = collection_map.get("Women")
 
     demo_products = [
         {
@@ -271,7 +434,7 @@ def _seed_demo_products(db: Session, collection_map: dict[str, int], category_ma
             "description": "Premium heavyweight cotton oversized t-shirt with drop shoulders. Perfect for streetwear layering.",
             "collection":  "Oversized",          # legacy field kept for backward compat
             "category_id":    tshirt_cat_id,
-            "collection_id":  oversized_col,
+            "collection_id":  men_col,
             "tags": ["cotton", "streetwear", "oversized", "bestseller"],
             "status": ProductStatus.published,
             "is_featured": True,
@@ -286,7 +449,7 @@ def _seed_demo_products(db: Session, collection_map: dict[str, int], category_ma
             "description": "Clean white crew neck tee made from 100% organic cotton. Minimalist design for everyday wear.",
             "collection":  "Essentials",
             "category_id":    tshirt_cat_id,
-            "collection_id":  essentials_col,
+            "collection_id":  men_col,
             "tags": ["organic", "minimal", "crew-neck", "basics"],
             "status": ProductStatus.published,
             "is_featured": False,
@@ -300,7 +463,7 @@ def _seed_demo_products(db: Session, collection_map: dict[str, int], category_ma
             "description": "Acid-washed fleece hoodie in deep navy. Features kangaroo pocket and ribbed cuffs.",
             "collection":  "Streetwear",
             "category_id":    tshirt_cat_id,
-            "collection_id":  streetwear_col,
+            "collection_id":  men_col,
             "tags": ["hoodie", "acid-wash", "fleece", "winter"],
             "status": ProductStatus.published,
             "is_featured": True,
@@ -314,8 +477,8 @@ def _seed_demo_products(db: Session, collection_map: dict[str, int], category_ma
             "title":       "Olive Cargo Joggers",
             "description": "Relaxed fit cargo joggers with multiple utility pockets. Elastic waist and cuffed ankles.",
             "collection":  "Bottoms",
-            "category_id":    None,    # no Bottoms category in master list — left unmapped
-            "collection_id":  None,    # no Bottoms collection in master list — left unmapped
+            "category_id":    trackpant_cat_id,
+            "collection_id":  men_col,
             "tags": ["joggers", "cargo", "utility", "relaxed-fit"],
             "status": ProductStatus.draft,
             "is_featured": False,
@@ -329,7 +492,7 @@ def _seed_demo_products(db: Session, collection_map: dict[str, int], category_ma
             "description": "Vibrant tie-dye tank top for summer. Lightweight breathable fabric with a loose fit.",
             "collection":  "Summer",
             "category_id":    tshirt_cat_id,
-            "collection_id":  summer_col,
+            "collection_id":  women_col,
             "tags": ["tank-top", "tie-dye", "summer", "limited-edition"],
             "status": ProductStatus.archived,
             "is_featured": False,
@@ -434,11 +597,18 @@ def init_db() -> None:
             admin.role          = "superadmin"
             logger.info("Initial admin account updated")
 
+        # ── 1.5 Normalize existing categories ───────────────────────────────────
+        _normalize_existing_categories(db)
+
         # ── 2. Master categories ────────────────────────────────────────────────
         category_map = _seed_categories(db)
 
         # ── 3. Master collections ───────────────────────────────────────────────
         collection_map = _seed_collections(db, category_map)
+
+        # ── 3.5 Normalize existing collections ──────────────────────────────────
+        _normalize_existing_collections(db)
+        collection_map = {c.name: c.id for c in db.query(Collection.name, Collection.id).all()}
 
         # ── 4. Delivery zones ───────────────────────────────────────────────────
         _seed_delivery_zones(db)
