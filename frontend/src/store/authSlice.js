@@ -86,14 +86,17 @@ const authSlice = createSlice({
   extraReducers: (builder) => {
     builder
       // ── Login ──────────────────────────────────────────────────────────────
-      .addCase(loginThunk.pending,   (state)         => { state.loading = true;  state.error = null })
       .addCase(loginThunk.fulfilled, (state, action) => {
+        console.log("LOGIN PAYLOAD =", action.payload)
+
         state.loading = false
-        state.token   = action.payload.access_token
-        state.admin   = action.payload.admin
-        // Persist so page refresh re-hydrates correctly
+        state.token = action.payload.access_token
+        state.admin = action.payload.admin
+
         localStorage.setItem('token', action.payload.access_token)
         localStorage.setItem('admin', JSON.stringify(action.payload.admin))
+
+        console.log("TOKEN SAVED =", localStorage.getItem('token'))
       })
       .addCase(loginThunk.rejected,  (state, action) => { state.loading = false; state.error = action.payload })
 
@@ -117,7 +120,7 @@ const authSlice = createSlice({
       .addCase(signupThunk.pending,   (state)         => { state.loading = true;  state.error = null })
       .addCase(signupThunk.fulfilled, (state)         => { state.loading = false })
       .addCase(signupThunk.rejected,  (state, action) => { state.loading = false; state.error = action.payload })
-
+      
       // ── Logout ─────────────────────────────────────────────────────────────
       .addCase(logoutThunk.fulfilled, (state) => { state.loading = false })
   },

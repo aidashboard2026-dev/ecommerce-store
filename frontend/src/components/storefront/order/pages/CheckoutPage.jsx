@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import toast from 'react-hot-toast'
@@ -9,6 +9,7 @@ import { getImageUrl, formatPrice } from '../../../../utils/productUtils'
 import { selectSelectedAddress, setLastOrder, setPlacingOrder, setOrderError } from '../../../../store/checkoutStore'
 import { selectCartTotals, clearCart } from '../../../../store/cartSlice'
 import { useCreateOrder } from '../hooks/useOrders'
+import { deliveryZonesAPI } from '../../../../services/api'
 
 export default function CheckoutPage() {
   const dispatch = useDispatch()
@@ -22,6 +23,17 @@ export default function CheckoutPage() {
 
   const createOrderMutation = useCreateOrder()
   const [submitting, setSubmitting] = useState(false)
+  const [deliveryDays, setDeliveryDays] = useState(5)
+
+  // Fetch live delivery estimate whenever the selected address city changes.
+  // Falls back to 5 days if the API is unavailable or the city is unknown.
+  useEffect(() => {
+    const city = selectedAddress?.city
+    if (!city) return
+    deliveryZonesAPI.estimate(city)
+      .then((res) => setDeliveryDays(res.data.delivery_days))
+      .catch(() => setDeliveryDays(5))
+  }, [selectedAddress?.city])
 
   if (items.length === 0) {
     return (
@@ -49,8 +61,12 @@ export default function CheckoutPage() {
     dispatch(setOrderError(null))
 
     try {
-      // Backend order schema models one product per order — create one
-      // order per cart line, sharing the same shipping address & payment method.
+      // Generate one session UUID for this checkout.
+      // The backend creates one order row per cart item (Phase 1 architecture).
+      // cart_session_id groups all rows from this session so the admin can
+      // correlate them.  Phase 2 will replace this with a proper order_items table.
+      const cartSessionId = crypto.randomUUID()
+
       const createdOrders = []
       for (const item of items) {
         const orderPayload = {
@@ -74,6 +90,7 @@ export default function CheckoutPage() {
           payment_method: paymentMethod,
           payment_status: paymentMethod === 'COD' ? 'PENDING' : 'PENDING',
           tracking_status: 'PLACED',
+          cart_session_id: cartSessionId,
         }
         const created = await createOrderMutation.mutateAsync(orderPayload)
         createdOrders.push(created)

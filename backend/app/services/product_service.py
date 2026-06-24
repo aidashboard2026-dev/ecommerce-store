@@ -4,7 +4,7 @@ import uuid
 from typing import Optional, List
 
 from fastapi import HTTPException, status
-from sqlalchemy import or_, func as sqla_func
+from sqlalchemy import or_, func as sqla_func, cast, Text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -439,6 +439,9 @@ def get_products_paginated(
             Product.title.ilike(term),
             Product.slug.ilike(term),
             Product.collection.ilike(term),
+            Product.description.ilike(term),
+            Product.short_description.ilike(term),
+            cast(Product.tags, Text).ilike(term),
             Product.id.in_(sku_subq),
             Product.category_id.in_(cat_subq),
             Product.collection_id.in_(col_subq),
@@ -840,6 +843,9 @@ def get_products_public(
             Product.title.ilike(term),
             Product.slug.ilike(term),
             Product.collection.ilike(term),
+            Product.description.ilike(term),
+            Product.short_description.ilike(term),
+            cast(Product.tags, Text).ilike(term),
             Product.id.in_(sku_subq),
             Product.category_id.in_(cat_subq),
             Product.collection_id.in_(col_subq),

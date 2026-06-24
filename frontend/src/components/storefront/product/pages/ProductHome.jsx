@@ -17,7 +17,15 @@ function SectionHeader({ title, subtitle }) {
   return (
     <div className="flex items-end justify-between mb-6">
       <div>
-        <h2 className="font-display font-bold text-xl sm:text-2xl text-app">{title}</h2>
+        <h2 className="
+            font-display
+            font-light
+            uppercase
+            tracking-[0.2em]
+            text-3xl
+            lg:text-4xl
+            text-black
+            ">{title}</h2>
         {subtitle && <p className="text-sm text-muted mt-1">{subtitle}</p>}
       </div>
       <Link
@@ -52,7 +60,7 @@ export default function ProductHome() {
       {/* Offers */}
       {offers.length > 0 && (
         <section className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
             {offers.slice(0, 2).map((offer) => (
               <OfferBanner key={offer.id} offer={offer} />
             ))}

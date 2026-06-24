@@ -37,7 +37,7 @@ export default function OffersPage() {
   const fetchOffers = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/offers/");
+      const response = await api.get("/offers/admin/all");
       setOffers(response.data || []);
     } catch (error) {
       console.error(error);
@@ -146,7 +146,7 @@ export default function OffersPage() {
         formData.append("banner_image", bannerFile);
       }
 
-      await api.post("/offers/", formData, {
+      await api.post("/offers/admin", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -165,7 +165,7 @@ export default function OffersPage() {
 
   const publishOffer = async (offerId) => {
     try {
-      await api.put(`/offers/${offerId}`, { status: "published" });
+      await api.put(`/offers/admin/${offerId}`, { status: "published" });
       toast.success("Offer published successfully!");
       fetchOffers();
     } catch (error) {
@@ -176,7 +176,7 @@ export default function OffersPage() {
 
   const deleteOffer = async (offerId) => {
     try {
-      await api.delete(`/offers/${offerId}`);
+      await api.delete(`/offers/admin/${offerId}`);
       toast.success("Offer deleted successfully.");
       fetchOffers();
     } catch (error) {
@@ -379,7 +379,7 @@ export default function OffersPage() {
               ) : (
                 <div className="text-center p-4">
                   <ImageIcon size={24} className="text-muted mx-auto mb-1.5" />
-                  <p className="text-xs font-bold text-brand-500">Upload banner image</p>
+                  <p className="text-xs font-bold text-brand-500">Upload Offer & Campaign Image</p>
                   <p className="text-[10px] text-muted mt-0.5">Support PNG, JPG, WEBP (ratio 16:9)</p>
                 </div>
               )}
