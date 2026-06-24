@@ -57,7 +57,9 @@ EOF
 # ─────────────────────────────────────────────────────────────
 
 echo "[entrypoint] Running Alembic migrations..."
-alembic upgrade head
+# Allow applying all heads when multiple head revisions exist (possible
+# during merge/feature branches). 'heads' applies all current heads.
+alembic upgrade heads
 echo "[entrypoint] Migrations complete."
 
 # ─────────────────────────────────────────────────────────────
@@ -86,5 +88,5 @@ echo '[entrypoint] Starting Uvicorn...'
 exec uvicorn app.main:app \
     --host 0.0.0.0 \
     --port 8000 \
-    --workers 4
+    --workers 1
 
