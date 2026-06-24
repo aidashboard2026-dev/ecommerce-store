@@ -4,7 +4,7 @@ from sqlalchemy import (
     Column,
     Integer,
     String,
-    Float,
+    Numeric,
     DateTime,
     Text
 )
@@ -19,6 +19,12 @@ class Order(Base):
 
     # Order
     order_number = Column(String(50), unique=True, nullable=False, index=True)
+
+    # Groups all rows that belong to the same checkout session.
+    # One checkout with 3 cart items creates 3 Order rows — they share
+    # a cart_session_id so the admin can correlate them.
+    # Nullable: existing orders and single-item checkouts leave this as NULL.
+    cart_session_id = Column(String(50), nullable=True, index=True)
 
     # Customer
     customer_name = Column(String(255), nullable=False)
@@ -47,9 +53,11 @@ class Order(Base):
 
     quantity = Column(Integer, default=1)
 
-    price = Column(Float, default=0)
+    # Numeric(10, 2) — exact decimal arithmetic; no floating-point rounding errors.
+    # Migration b2c3d4e5f6a7 converted these from Float with USING cast.
+    price = Column(Numeric(precision=10, scale=2), default=0)
 
-    total_amount = Column(Float, default=0)
+    total_amount = Column(Numeric(precision=10, scale=2), default=0)
 
     # Payment
     payment_method = Column(

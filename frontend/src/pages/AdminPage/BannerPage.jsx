@@ -105,10 +105,10 @@ function BannerFormModal({ initial, onClose, onSaved, isDark }) {
       if (bannerFile) fd.append("banner_image", bannerFile);
 
       if (isEdit) {
-        await api.patch(`/banners/${initial.id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+        await api.patch(`/banners/admin/${initial.id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
         toast.success("✅ Banner updated!");
       } else {
-        await api.post("/banners/", fd, { headers: { "Content-Type": "multipart/form-data" } });
+        await api.post("/banners/admin", fd, { headers: { "Content-Type": "multipart/form-data" } });
         toast.success("🎉 Banner created!");
       }
       onSaved();
@@ -337,7 +337,7 @@ export default function BannerPage() {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await api.get("/banners/");
+      const res = await api.get("/banners/admin/all");
       setBanners(res.data);
     } catch (err) {
       console.error(err);
@@ -356,7 +356,7 @@ export default function BannerPage() {
 
   const toggleBanner = async (id) => {
     try {
-      await api.put(`/banners/${id}/toggle`);
+      await api.put(`/banners/admin/${id}/toggle`);
       toast.success("Banner status updated!");
       refresh();
     } catch (err) {
@@ -367,7 +367,7 @@ export default function BannerPage() {
 
   const deleteBanner = async (id) => {
     try {
-      await api.delete(`/banners/${id}`);
+      await api.delete(`/banners/admin/${id}`);
       toast.success("🗑️ Banner deleted!");
       setDeleteConfirm(null);
       refresh();

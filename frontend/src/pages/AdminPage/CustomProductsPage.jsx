@@ -619,12 +619,7 @@ export default function ProductsPage() {
               key={product.id}
               product={product}
               onEdit={openEdit}
-              onEdit={openEdit}
               onToggleStatus={doToggle}
-              onDelete={doDelete}
-              onCategoryEdit={openQuickEdit}
-              onToggleStatus={doToggle}
-             
               onDelete={doDelete}
               onCategoryEdit={openQuickEdit}
               deleteLoading={deletingIds.has(product.id)}
@@ -683,9 +678,7 @@ export default function ProductsPage() {
 
                 const sellingPrice =
                 product.selling_price_min
-                
-                const size =
-                product.size || '-'
+                const size = product.size || 'All Size'
                 // const sizes = [...new Set((product.variants || []).map(v => v.size))].join(', ')
                 const discPct =
                     product.original_price_min &&
