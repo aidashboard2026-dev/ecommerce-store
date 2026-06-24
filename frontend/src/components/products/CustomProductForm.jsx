@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Plus, X, Camera, Layers, ImageIcon, Trash2,
+  Plus, X, Camera, ImageIcon, 
   AlertTriangle, CheckCircle, Loader2,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { productsAPI as productsApi, categoriesAPI, collectionsAPI } from '../../services/api'
+import {customProductsAPI as customProductsApi, categoriesAPI, collectionsAPI } from '../../services/api'
 import {
-  formatPrice, getImageUrl, revokeObjectURLs, genLocalId, isDuplicateFile,
+  getImageUrl, revokeObjectURLs, genLocalId, isDuplicateFile,
 } from '../../utils/productUtils'
 import Select from '../ui/Select'
 import Badge from '../ui/Badge'
@@ -24,34 +24,34 @@ const ALLOWED_TYPES  = ['image/jpeg', 'image/png', 'image/webp']
 const SIZE_OPTIONS   = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 // COLLECTION_OPTIONS kept from branch — used as fallback display labels only;
 // the actual dropdown is driven by the collections API (FK-based).
-const COLLECTION_OPTIONS = [
-  'Oversized', 'Essentials', 'Streetwear', 'Bottoms',
-  'Summer', 'Hoodies', 'Joggers', 'Limited Edition',
-]
+// const COLLECTION_OPTIONS = [
+//   'Oversized', 'Essentials', 'Streetwear', 'Bottoms',
+//   'Summer', 'Hoodies', 'Joggers', 'Limited Edition',
+// ]
 
 // ─── Blank variant form (module-level — stable ref, no hook needed) ───────────
 
-const BLANK_VARIANT_FORM = {
-  size: 'M', color: '', color_hex: '', sku: '',
-  original_price: '', selling_price: '', discount_percentage: '',
-  stock_quantity: '', low_stock_threshold: 5,
-}
+// const BLANK_VARIANT_FORM = {
+//   size: 'M', color: '', color_hex: '', sku: '',
+//   original_price: '', selling_price: '', discount_percentage: '',
+//   stock_quantity: '', low_stock_threshold: 5,
+// }
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
-function FormField({ label, required, hint, htmlFor, children }) {
-  return (
-    <div className="space-y-1">
-      <div className="flex items-baseline justify-between">
-        <label htmlFor={htmlFor} className="block text-[11px] font-medium text-muted">
-          {label}{required && <span className="text-red-400 ml-0.5">*</span>}
-        </label>
-        {hint && <span className="text-[10px] text-muted italic">{hint}</span>}
-      </div>
-      {children}
-    </div>
-  )
-}
+// function FormField({ label, required, hint, htmlFor, children }) {
+//   return (
+//     <div className="space-y-1">
+//       <div className="flex items-baseline justify-between">
+//         <label htmlFor={htmlFor} className="block text-[11px] font-medium text-muted">
+//           {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+//         </label>
+//         {hint && <span className="text-[10px] text-muted italic">{hint}</span>}
+//       </div>
+//       {children}
+//     </div>
+//   )
+// }
 
 // Branch versions: properly use clsx + component props (HEAD had broken duplicate
 // StyledInput definition and referenced undefined `inputCls`).
@@ -122,161 +122,44 @@ function SaveProgressOverlay({ steps, onClose }) {
   )
 }
 
-// ─── Local Variant Form (new product only) ────────────────────────────────────
 
-function LocalVariantForm({ onAdd, existingVariants = [] }) {
-  const [form, setForm] = useState(BLANK_VARIANT_FORM)
-  const [open, setOpen] = useState(false)
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
-
-  useEffect(() => {
-    const orig = parseFloat(form.original_price)
-    const sell = parseFloat(form.selling_price)
-    if (orig > 0 && sell > 0 && sell <= orig) {
-      set('discount_percentage', (((orig - sell) / orig) * 100).toFixed(2))
-    }
-  }, [form.original_price, form.selling_price])
-
-  const sellNum  = parseFloat(form.selling_price || 0)
-  const origNum  = parseFloat(form.original_price || 0)
-  // HEAD named this `priceErr` — branch renamed to `priceError` but forgot to
-  // update the JSX references, causing a ReferenceError. Keeping `priceErr`.
-  const priceErr = !isNaN(sellNum) && !isNaN(origNum) && sellNum > origNum && form.selling_price !== ''
-
-  const handleAdd = () => {
-    if (!form.original_price || !form.selling_price) { toast.error('Price fields required'); return }
-    if (priceErr) { toast.error('Selling price cannot exceed original price'); return }
-    const stockQty = parseInt(form.stock_quantity || 0, 10)
-    if (stockQty < 0) { toast.error('Stock cannot be negative'); return }
-    const dupExists = existingVariants.some(
-      v => v.size === form.size && (v.color || '') === (form.color || '')
-    )
-    if (dupExists) {
-      toast.error(`Variant with size "${form.size}" and color "${form.color || 'none'}" already exists`)
-      return
-    }
-    onAdd({
-      _localId: genLocalId(),
-      size: form.size,
-      color: form.color || undefined,
-      color_hex: form.color_hex || undefined,
-      sku: form.sku.trim() || undefined,
-      original_price: parseFloat(form.original_price),
-      selling_price: parseFloat(form.selling_price),
-      discount_percentage: parseFloat(form.discount_percentage) || 0,
-      stock_quantity: stockQty,
-      low_stock_threshold: parseInt(form.low_stock_threshold || 5, 10),
-    })
-    setForm(BLANK_VARIANT_FORM)
-    setOpen(false)
-  }
-
-  if (!open) {
-    return (
-      <Button type="button" onClick={() => setOpen(true)} size="sm" icon={Plus} variant="addvariant"
-        className="min-w-[100px] whitespace-nowrap hover:bg-sky-400 hover:border-sky-600">
-        Add Variant
-      </Button>
-    )
-  }
-
-  return (
-    <div className="w-full border border-app rounded-xl p-4 space-y-4 mt-3">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-muted">New Variant</p>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-center text-center">
-        <FormField label="Size" required>
-          <StyledSelect value={form.size} onChange={e => set('size', e.target.value)}>
-            {SIZE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-          </StyledSelect>
-        </FormField>
-        <FormField label="Color">
-          <StyledInput value={form.color} onChange={e => set('color', e.target.value)} placeholder="Black" />
-        </FormField>
-        <FormField label="Color Hex">
-          <div className="relative">
-            <StyledInput value={form.color_hex} onChange={e => set('color_hex', e.target.value)} placeholder="#1A1A1A" />
-            {/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(form.color_hex) && (
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border border-app"
-                style={{ background: form.color_hex }} />
-            )}
-          </div>
-        </FormField>
-        <FormField label="SKU" hint="auto if blank">
-          <StyledInput value={form.sku} onChange={e => set('sku', e.target.value)} placeholder="auto" />
-        </FormField>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <FormField label="Original Price" required>
-          {/* Branch: added number spinner suppression classes */}
-          <StyledInput
-            type="number" min="0.01" step="0.01"
-            value={form.original_price} onChange={e => set('original_price', e.target.value)}
-            placeholder="999"
-            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          />
-        </FormField>
-        <FormField label="Selling Price" required>
-          <StyledInput
-            type="number" min="0.01" step="0.01"
-            value={form.selling_price} onChange={e => set('selling_price', e.target.value)}
-            placeholder="799"
-            className={`${priceErr ? 'border-red-400 focus:ring-red-400/30' : ''} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
-          />
-        </FormField>
-        <FormField label="Discount %">
-          <StyledInput
-            type="number" min="0" max="100" step="0.01"
-            value={form.discount_percentage} onChange={e => set('discount_percentage', e.target.value)}
-            placeholder="0"
-            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            readOnly={!!(form.original_price && form.selling_price)}
-          />
-        </FormField>
-        <FormField label="Stock">
-          <StyledInput
-            type="number" min="0"
-            value={form.stock_quantity} onChange={e => set('stock_quantity', e.target.value)}
-            placeholder="Enter Stock Quantity"
-            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          />
-        </FormField>
-      </div>
-
-      {priceErr && (
-        <p className="text-xs text-red-500 flex items-center gap-1.5">
-          <AlertTriangle size={12} /> Selling price cannot exceed original price
-        </p>
-      )}
-
-      <div className="flex items-center gap-2 w-full pt-1">
-        <Button type="button" onClick={handleAdd} disabled={priceErr} variant="addvariant"
-          className="min-w-[100px] whitespace-nowrap hover:bg-sky-400 hover:border-sky-600">
-          Add Variant
-        </Button>
-        <Button type="button" onClick={() => { setOpen(false); setForm(BLANK_VARIANT_FORM) }}
-          variant="delete" className="whitespace-nowrap hover:bg-red-500 hover:border hover:border-red-500">
-          Cancel
-        </Button>
-      </div>
-    </div>
-  )
-}
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function InlineProductForm({ product, onClose, onOpenVariant, onOpenImage }) {
+export default function CustomProductForm({ product, onClose, onOpenVariant, onOpenImage }) {
   const qc     = useQueryClient()
   const isEdit = !!product
 
   // ─── Blank form ref ──────────────────────────────────────────────────────────
   const blankForm = useRef({
-    title: '', description: '', short_description: '',
-    collection: '', category_id: '', collection_id: '',
-    tags: '', status: 'draft',
-    is_featured: false, is_trending: false, is_best_seller: false, is_new_arrival: false,
-    seo_title: '', seo_description: '',
+    title: '',
+    description: '',
+    short_description: '',
+
+    category_id: '',
+    collection_id: '',
+
+    status: 'draft',
+
+    tags: '',
+
+    original_price_min: '',
+    original_price_max: '',
+
+    selling_price_min: '',
+    selling_price_max: '',
+
+    stock_quantity: 0,
+
+    size: 'All Size',
+
+    is_featured: false,
+    is_trending: false,
+    is_best_seller: false,
+    is_new_arrival: false,
+
+    seo_title: '',
+    seo_description: '',
   })
 
   // ─── Form state — must be declared BEFORE any hook that reads `form` ─────────
@@ -300,9 +183,9 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
 
   // ─── Other state ─────────────────────────────────────────────────────────────
   const [localImages, setLocalImages]     = useState([])
-  const [localVariants, setLocalVariants] = useState([])
+  // const [localVariants, setLocalVariants] = useState([])
   const [saveSteps, setSaveSteps]         = useState(null)
-  const [deletingVariantIds, setDeletingVariantIds] = useState(() => new Set())
+  // const [deletingVariantIds, setDeletingVariantIds] = useState(() => new Set())
 
   const isSavingRef          = useRef(false)
   const isCriticalFailureRef = useRef(false)
@@ -327,7 +210,11 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
       collection:        p.collection        || '',
       category_id:       p.category_id       || '',
       collection_id:     p.collection_id     || '',
-      tags:              (p.tags || []).join(', '),
+      tags:
+      (form.tags || '')
+        .split(',')
+        .map(t => t.trim())
+        .filter(Boolean),
       status:            p.status,
       is_featured:       p.is_featured       || false,
       is_trending:       p.is_trending       || false,
@@ -337,7 +224,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
       seo_description:   p.seo_description   || '',
     } : blankForm.current)
     setLocalImages([])
-    setLocalVariants([])
+    
   }, [product?.id])
 
   // ─── Unsaved-changes guard ────────────────────────────────────────────────────
@@ -345,10 +232,10 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
   const hasUnsavedChanges = useMemo(() => {
     if (isEdit) return false
     return (
-      localImages.length > 0 || localVariants.length > 0 ||
+      localImages.length > 0 ||
       form.title.trim() !== '' || form.description.trim() !== ''
     )
-  }, [isEdit, localImages.length, localVariants.length, form.title, form.description])
+  }, [isEdit, localImages.length, form.title, form.description])
 
   useEffect(() => {
     if (!hasUnsavedChanges) return
@@ -369,37 +256,74 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
 
   const payload = () => ({
     ...form,
-    title:        form.title.trim(),
-    category_id:  form.category_id   ? Number(form.category_id)   : null,
-    collection_id: form.collection_id ? Number(form.collection_id) : null,
-    tags:         form.tags.split(',').map(t => t.trim()).filter(Boolean),
+
+    title: form.title.trim(),
+
+    category_id:
+      form.category_id
+        ? Number(form.category_id)
+        : null,
+
+    collection_id:
+      form.collection_id
+        ? Number(form.collection_id)
+        : null,
+
+    original_price_min:
+      Number(form.original_price_min),
+
+    original_price_max:
+      Number(form.original_price_max),
+
+    selling_price_min:
+      Number(form.selling_price_min),
+
+    selling_price_max:
+      Number(form.selling_price_max),
+
+    stock_quantity:
+      Number(form.stock_quantity),
+
+    tags:
+      form.tags
+        .split(',')
+        .map(t => t.trim())
+        .filter(Boolean),
   })
 
   // ─── Edit mutations ───────────────────────────────────────────────────────────
 
   const editMutation = useMutation({
-    mutationFn: data => productsApi.update(product.id, data),
-    onSuccess: () => { toast.success('Product updated'); qc.invalidateQueries({ queryKey: ['products'] }); onClose() },
-    onError: e => toast.error(e.response?.data?.detail || 'Something went wrong'),
+    mutationFn: data =>customProductsApi.update(product.id, data),
+    onSuccess: () => { toast.success('Product updated'); qc.invalidateQueries({queryKey: ['custom-products']}); onClose() },
+    onError: e => toast.error(
+      error?.response?.data?.detail ||
+      error?.message ||
+      'Something went wrong'
+    )
   })
 
   const editPubMutation = useMutation({
-    mutationFn: data => productsApi.update(product.id, { ...data, status: 'published' }),
-    onSuccess: () => { toast.success('Published!'); qc.invalidateQueries({ queryKey: ['products'] }); onClose() },
-    onError: e => toast.error(e.response?.data?.detail || 'Something went wrong'),
+    mutationFn: data => customProductsApi.update(product.id, { ...data, status: 'published' }),
+    onSuccess: () => { toast.success('Published!'); qc.invalidateQueries({queryKey: ['custom-products']}); onClose() },
+    onError: e => toast.error(
+      error?.response?.data?.detail ||
+      error?.message ||
+      'Something went wrong'
+    )
   })
 
   // ─── Variant delete mutation (edit mode) ──────────────────────────────────────
 
-  const deleteVariantMutation = useMutation({
-    mutationFn: variantId => productsApi.deleteVariant(product.id, variantId),
-    onMutate:  variantId  => setDeletingVariantIds(prev => new Set([...prev, variantId])),
-    onSettled: (_, __, variantId) => setDeletingVariantIds(prev => {
-      const s = new Set(prev); s.delete(variantId); return s
-    }),
-    onSuccess: () => { toast.success('Variant deleted'); qc.invalidateQueries({ queryKey: ['products'] }) },
-    onError: e => toast.error(e.response?.data?.detail || 'Failed to delete variant'),
-  })
+  // const deleteVariantMutation = useMutation({
+  //   mutationFn: variantId => productsApi.deleteVariant(product.id, variantId),
+  //   onMutate:  variantId  => setDeletingVariantIds(prev => new Set([...prev, variantId])),
+  //   onSettled: (_, __, variantId) => setDeletingVariantIds(prev => {
+  //     const s = new Set(prev); s.delete(variantId); return s
+  //   }),
+  //   onSuccess: () => { toast.success('Variant deleted'); qc.invalidateQueries({ queryKey: ['products'] }) },
+  //   onError: e => toast.error(e.response?.data?.detail || 'Failed to delete variant'),
+  // })
 
   // ─── New product: batch save ──────────────────────────────────────────────────
 
@@ -416,19 +340,19 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
       isSavingRef.current = false
       return
     }
-    if (overrideStatus === 'published' && localVariants.length === 0) {
-      toast.error('Add at least one variant before publishing')
-      isSavingRef.current = false
-      return
-    }
+    // if (overrideStatus === 'published' && localVariants.length === 0) {
+    //   toast.error('Add at least one variant before publishing')
+    //   isSavingRef.current = false
+    //   return
+    // }
 
     const imgCount = localImages.length
-    const varCount = localVariants.length
+    // const varCount = localVariants.length
 
     const steps = [
       { id: 'create-product',  label: 'Create product',                                              status: 'pending', details: null },
       ...(imgCount > 0 ? [{ id: 'upload-images',   label: `Upload ${imgCount} image${imgCount > 1 ? 's' : ''}`,   status: 'pending', details: null }] : []),
-      ...(varCount > 0 ? [{ id: 'create-variants', label: `Create ${varCount} variant${varCount > 1 ? 's' : ''}`, status: 'pending', details: null }] : []),
+      // ...(varCount > 0 ? [{ id: 'create-variants', label: `Create ${varCount} variant${varCount > 1 ? 's' : ''}`, status: 'pending', details: null }] : []),
     ]
 
     const updateStep = (id, updates) =>
@@ -441,16 +365,34 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
     // ── Step 1: Create product ──────────────────────────────────────────────────
     try {
       updateStep('create-product', { status: 'loading' })
-      const res = await productsApi.create(data)
+      const res =await customProductsApi.create(data)
       createdProduct = res.data
       updateStep('create-product', { status: 'done' })
     } catch (e) {
-      isCriticalFailureRef.current = true
-      updateStep('create-product', { status: 'error', details: e.response?.data?.detail || 'Failed to create product' })
-      toast.error(e.response?.data?.detail || 'Failed to create product')
-      isSavingRef.current = false
-      return
-    }
+
+        isCriticalFailureRef.current = true
+
+        const errorMessage =
+          Array.isArray(e?.response?.data?.detail)
+            ? e.response.data.detail
+                .map(err => err.msg)
+                .join(', ')
+            : String(
+                e?.response?.data?.detail ||
+                'Failed to create product'
+              )
+
+        updateStep('create-product', {
+          status: 'error',
+          details: errorMessage
+        })
+
+        toast.error(errorMessage)
+
+        isSavingRef.current = false
+
+        return
+      }
 
     // ── Step 2: Upload images ───────────────────────────────────────────────────
     if (imgCount > 0) {
@@ -463,7 +405,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
         const imageType = i === 0 ? 'thumbnail' : 'gallery'
         try {
           // BUG-2 FIX: pass img.file (raw File) — api.js builds FormData internally
-          await productsApi.uploadImage(createdProduct.id, img.file, imageType, i === 0)
+          await customProductsApi.uploadImage(createdProduct.id, img.file, imageType, i === 0)
           imgSucceeded++
         } catch (_) {
           imgFailed++
@@ -471,54 +413,57 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
       }
 
       if (imgFailed === 0) {
-        updateStep('upload-images', { status: 'done', details: `${imgSucceeded} uploaded` })
+        updateStep('upload-images', {
+          status: 'done',
+          details: `${imgSucceeded} uploaded`
+        })
       } else {
         hadPartialFailure = true
+
         updateStep('upload-images', {
-          status:  imgSucceeded > 0 ? 'done' : 'error',
+          status: imgSucceeded > 0 ? 'done' : 'error',
           details: `${imgSucceeded} uploaded, ${imgFailed} failed`,
         })
+
         toast.error(
-          imgSucceeded > 0
-            ? `${imgFailed} image${imgFailed > 1 ? 's' : ''} failed — add them later`
-            : 'Image upload failed — add images later via Edit'
+          `${imgFailed} image upload failed`
         )
       }
     }
 
-    // ── Step 3: Create variants ─────────────────────────────────────────────────
-    if (varCount > 0) {
-      updateStep('create-variants', { status: 'loading' })
-      try {
-        // BUG-3 FIX: wrap array in { variants: [...] } — matches BulkVariantCreate schema
-        const variantsPayload = localVariants.map(({ _localId, ...v }) => v)
-        const bulkRes = await productsApi.bulkCreateVariants(createdProduct.id, { variants: variantsPayload })
+    // // ── Step 3: Create variants ─────────────────────────────────────────────────
+    // if (varCount > 0) {
+    //   updateStep('create-variants', { status: 'loading' })
+    //   try {
+    //     // BUG-3 FIX: wrap array in { variants: [...] } — matches BulkVariantCreate schema
+    //     const variantsPayload = localVariants.map(({ _localId, ...v }) => v)
+    //     const bulkRes = await productsApi.bulkCreateVariants(createdProduct.id, { variants: variantsPayload })
 
-        // BUG-4 FIX: response is ProductResponse, not { total_created, total_failed }.
-        // Derive success count from the returned product's variants array.
-        const returnedProduct = bulkRes.data
-        const varSucceeded    = (returnedProduct?.variants || []).length
-        const varFailed       = varCount - varSucceeded
+    //     // BUG-4 FIX: response is ProductResponse, not { total_created, total_failed }.
+    //     // Derive success count from the returned product's variants array.
+    //     const returnedProduct = bulkRes.data
+    //     const varSucceeded    = (returnedProduct?.variants || []).length
+    //     const varFailed       = varCount - varSucceeded
 
-        if (varFailed <= 0) {
-          updateStep('create-variants', { status: 'done', details: `${varSucceeded} created` })
-        } else {
-          hadPartialFailure = true
-          updateStep('create-variants', {
-            status:  varSucceeded > 0 ? 'done' : 'error',
-            details: `${varSucceeded} created, ${varFailed} failed`,
-          })
-          toast.error(`${varFailed} variant${varFailed > 1 ? 's' : ''} failed — add them later via Edit`)
-        }
-      } catch (e) {
-        hadPartialFailure = true
-        updateStep('create-variants', {
-          status:  'error',
-          details: e.response?.data?.detail || 'Variant creation failed',
-        })
-        toast.error('Variant creation failed — add them later via Edit')
-      }
-    }
+    //     if (varFailed <= 0) {
+    //       updateStep('create-variants', { status: 'done', details: `${varSucceeded} created` })
+    //     } else {
+    //       hadPartialFailure = true
+    //       updateStep('create-variants', {
+    //         status:  varSucceeded > 0 ? 'done' : 'error',
+    //         details: `${varSucceeded} created, ${varFailed} failed`,
+    //       })
+    //       toast.error(`${varFailed} variant${varFailed > 1 ? 's' : ''} failed — add them later via Edit`)
+    //     }
+    //   } catch (e) {
+    //     hadPartialFailure = true
+    //     updateStep('create-variants', {
+    //       status:  'error',
+    //       details: e.response?.data?.detail || 'Variant creation failed',
+    //     })
+    //     toast.error('Variant creation failed — add them later via Edit')
+    //   }
+    // }
 
     // ── Finish ──────────────────────────────────────────────────────────────────
     revokeObjectURLs(localImages)
@@ -526,12 +471,12 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
 
     if (!hadPartialFailure) {
       toast.success(overrideStatus === 'published' ? 'Product published!' : 'Product created!')
-      qc.invalidateQueries({ queryKey: ['products'] })
+      qc.invalidateQueries({queryKey: ['custom-products']})
       setSaveSteps(null)
       isSavingRef.current = false
       onClose()
     } else {
-      qc.invalidateQueries({ queryKey: ['products'] })
+      qc.invalidateQueries({queryKey: ['custom-products']})
       isSavingRef.current = false
     }
   }
@@ -566,13 +511,13 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
     })
   }, [])
 
-  const addLocalVariant    = useCallback(v => setLocalVariants(prev => [...prev, v]), [])
-  const removeLocalVariant = useCallback(id => setLocalVariants(prev => prev.filter(v => v._localId !== id)), [])
+  // const addLocalVariant    = useCallback(v => setLocalVariants(prev => [...prev, v]), [])
+  // const removeLocalVariant = useCallback(id => setLocalVariants(prev => prev.filter(v => v._localId !== id)), [])
 
   // ─── Derived values ───────────────────────────────────────────────────────────
 
   const thumbnailUrl  = isEdit ? getImageUrl(product?.thumbnail) : (localImages[0]?.previewUrl || null)
-  const variants      = isEdit ? (product?.variants || []) : localVariants
+  // const variants      = isEdit ? (product?.variants || []) : localVariants
   const isBatchSaving = saveSteps !== null
 
   // ─── Render ───────────────────────────────────────────────────────────────────
@@ -684,13 +629,13 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                 <input id="product-title" className="input-field py-2.5 text-xs"
                   value={form.title} onChange={e => set('title', e.target.value)}
                   required minLength={2} placeholder="e.g. Classic Black Tee" />
-              </div>
+                </div>
 
               {/* Code / SKU (read-only) */}
               <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
                 <label className="text-xs font-bold text-muted">Code / SKU</label>
                 <input className="input-field py-2.5 text-xs opacity-60 cursor-not-allowed bg-app" readOnly
-                  value={isEdit && variants.length > 0 ? variants[0].sku : ''}
+                  value=""
                   placeholder={isEdit ? 'auto-generated on first variant' : 'set via variant'} />
               </div>
 
@@ -715,6 +660,110 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                   <option value="">— None —</option>
                   {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
+              </div>
+
+              {/* Price Range */}
+
+              <div className="grid grid-cols-2 gap-4">
+
+                <div>
+                  <label className="text-xs font-bold text-muted">
+                    Original Min Price
+                  </label>
+
+                  <input
+                    type="number"
+                    className="input-field py-2.5 text-xs"
+                    value={form.original_price_min}
+                    onChange={(e) =>
+                      set('original_price_min', e.target.value)
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-muted">
+                    Original Max Price
+                  </label>
+
+                  <input
+                    type="number"
+                    className="input-field py-2.5 text-xs"
+                    value={form.original_price_max}
+                    onChange={(e) =>
+                      set('original_price_max', e.target.value)
+                    }
+                  />
+                </div>
+
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+
+                <div>
+                  <label className="text-xs font-bold text-muted">
+                    Selling Min Price
+                  </label>
+
+                  <input
+                    type="number"
+                    className="input-field py-2.5 text-xs"
+                    value={form.selling_price_min}
+                    onChange={(e) =>
+                      set('selling_price_min', e.target.value)
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-muted">
+                    Selling Max Price
+                  </label>
+
+                  <input
+                    type="number"
+                    className="input-field py-2.5 text-xs"
+                    value={form.selling_price_max}
+                    onChange={(e) =>
+                      set('selling_price_max', e.target.value)
+                    }
+                  />
+                </div>
+
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+
+                <div>
+                  <label className="text-xs font-bold text-muted">
+                    Stock Quantity
+                  </label>
+
+                  <input
+                    type="number"
+                    className="input-field py-2.5 text-xs"
+                    value={form.stock_quantity}
+                    onChange={(e) =>
+                      set('stock_quantity', e.target.value)
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-muted">
+                    Size
+                  </label>
+
+                  <input
+                    className="input-field py-2.5 text-xs"
+                    value={form.size}
+                    onChange={(e) =>
+                      set('size', e.target.value)
+                    }
+                    placeholder="All Size"
+                  />
+                </div>
+
               </div>
 
               {/* Status + Tags */}
@@ -766,7 +815,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
             </div>
           </div>
 
-          {/* ── Variants section ── */}
+          {/* ── Variants section ──
           <div className="px-6 pt-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-3">Variants</p>
             {variants.length > 0 ? (
@@ -786,7 +835,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                     {variants.map(v => (
                       <TableRow key={isEdit ? v.id : v._localId}>
                         {/* HEAD: Badge component — cleaner than branch's oversized text-xl cell */}
-                        <TableCell><Badge label={v.size} variant="info" /></TableCell>
+                        {/* <TableCell><Badge label={v.size} variant="info" /></TableCell>
                         <TableCell className="font-medium">{formatPrice(v.original_price)}</TableCell>
                         <TableCell className="font-medium text-emerald-600 dark:text-emerald-400">{formatPrice(v.selling_price)}</TableCell>
                         <TableCell className="font-medium text-amber-600">
@@ -839,7 +888,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
             ) : (
               <LocalVariantForm onAdd={addLocalVariant} existingVariants={localVariants} />
             )}
-          </div>
+          </div> */} 
 
           {/* ── Description ── */}
           <div className="px-6 pt-4">
@@ -850,18 +899,18 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
           </div>
 
           {/* Ready badges */}
-          {!isEdit && (localImages.length > 0 || localVariants.length > 0) && (
+          {!isEdit && localImages.length > 0 && (
             <div className="mx-6 mt-3 flex flex-wrap gap-2">
               {localImages.length > 0 && (
                 <span className="inline-flex items-center gap-1 text-[10px] bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-full px-2.5 py-1 font-semibold">
                   <ImageIcon size={10} /> {localImages.length} image{localImages.length > 1 ? 's' : ''} ready
                 </span>
               )}
-              {localVariants.length > 0 && (
+              {/* {localVariants.length > 0 && (
                 <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full px-2.5 py-1 font-semibold">
                   <Layers size={10} /> {localVariants.length} variant{localVariants.length > 1 ? 's' : ''} ready
                 </span>
-              )}
+              )} */}
             </div>
           )}
 

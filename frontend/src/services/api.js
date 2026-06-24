@@ -226,6 +226,32 @@ export const customProductsAPI = {
 
   delete: (id) =>
     api.delete(`/custom-products/admin/${id}`),
+
+  uploadImage: (
+    productId,
+    file,
+    imageType = 'thumbnail',
+    setAsPrimary = false
+  ) => {
+    const formData = new FormData()
+
+    formData.append('file', file)
+    formData.append('image_type', imageType)
+    formData.append(
+      'set_as_primary',
+      String(setAsPrimary)
+    )
+
+    return api.post(
+      `/custom-products/admin/${productId}/images`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      }
+    )
+  },
 }
 // ─── Orders ───────────────────────────────────────────────────────────────────
 

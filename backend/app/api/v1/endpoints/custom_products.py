@@ -4,7 +4,14 @@ from fastapi import (
     APIRouter,
     Depends,
     status,
+    File,
+    Form,
+    UploadFile,
+    HTTPException,
 )
+
+from app.models.custom_product import CustomProduct
+from app.services import supabase_storage
 
 from sqlalchemy.orm import Session
 
@@ -112,3 +119,57 @@ def delete_custom_product_endpoint(
         product_id
     )
 
+@router.post("/admin/{product_id}/images")
+def upload_custom_product_image(
+    product_id: int,
+    file: UploadFile = File(...),
+    image_type: str = Form("thumbnail"),
+    set_as_primary: str = Form("true"),
+    db: Session = Depends(get_db),
+    _: Admin = Depends(get_current_admin),
+):
+    product = (
+        db.query(CustomProduct)
+        .filter(CustomProduct.id == product_id)
+        .first()
+    )
+
+    if not product:
+        raise HTTPException(
+            status_code=404,
+            detail="Custom Product not found"
+        )
+
+    contents = file.file.read()
+
+    image_url = supabase_storage.upload_product_image(
+        contents=contents,
+        original_filename=file.filename,
+        content_type=file.content_type,
+        product_id=product_id,
+    )
+
+    if image_type == "thumbnail":
+        product.thumbnail = image_url
+
+    elif image_type == "front":
+        product.image_front = image_url
+
+    elif image_type == "back":
+        product.image_back = image_url
+
+    elif image_type == "size_chart":
+        product.image_size_chart = image_url
+
+    elif image_type == "gallery":
+        gallery = product.gallery_images or []
+        gallery.append(image_url)
+        product.gallery_images = gallery
+
+    db.commit()
+    db.refresh(product)
+
+    return {
+        "success": True,
+        "url": image_url
+    }

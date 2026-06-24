@@ -683,7 +683,7 @@ export default function ProductsPage() {
 
                 const sellingPrice =
                 product.selling_price_min
-                const size = product.size || 'All Size'
+                
                 const size =
                 product.size || '-'
                 // const sizes = [...new Set((product.variants || []).map(v => v.size))].join(', ')
