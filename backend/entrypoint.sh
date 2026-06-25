@@ -57,7 +57,9 @@ EOF
 # ─────────────────────────────────────────────────────────────
 
 echo "[entrypoint] Running Alembic migrations..."
-alembic upgrade head
+# Allow applying all heads when multiple head revisions exist (possible
+# during merge/feature branches). 'heads' applies all current heads.
+alembic upgrade heads
 echo "[entrypoint] Migrations complete."
 
 # ─────────────────────────────────────────────────────────────
@@ -70,7 +72,7 @@ python -c "
 import logging
 logging.basicConfig(level=logging.INFO)
 
-from app.database.init_db import init_db
+from app.core.init_db import init_db
 
 init_db()
 

@@ -8,10 +8,10 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from sqlalchemy.exc import IntegrityError
 from app.core.config import settings
-from app.api.v1.router import api_router
+from app.api.router import api_router
 
 # Import all models so SQLAlchemy registers them
-import app.models  # noqa: F401
+import app.modules  # noqa: F401
 
 logger = logging.getLogger("app")
 
