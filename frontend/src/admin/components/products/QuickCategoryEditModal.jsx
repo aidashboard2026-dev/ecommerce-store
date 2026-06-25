@@ -11,15 +11,32 @@ import toast from 'react-hot-toast'
 import Modal from '@/shared/components/ui/Modal'
 import { productsAPI as productsApi, categoriesAPI, collectionsAPI } from '@/shared/services/api'
 
+function getNormalizedCollectionName(name) {
+  if (!name) return null;
+  const val = name.trim().toLowerCase().replace(/[\s_\-'\"]+/g, '');
+  if (val.includes('women') || val.includes('female') || val.includes('girl') || val.includes('lady') || val.includes('ladies')) {
+    return 'Women';
+  }
+  if (val.includes('men') || val.includes('male') || val.includes('boy')) {
+    return 'Men';
+  }
+  if (val.includes('kid') || val.includes('child')) {
+    return 'Kids';
+  }
+  return null;
+}
+
 export default function QuickCategoryEditModal({ isOpen, onClose, product }) {
   const qc = useQueryClient()
   const [categoryId, setCategoryId] = useState('')
   const [collectionId, setCollectionId] = useState('')
+  const [subCollection, setSubCollection] = useState('')
 
   useEffect(() => {
     if (isOpen && product) {
       setCategoryId(product.category_id || '')
       setCollectionId(product.collection_id || '')
+      setSubCollection(product.sub_collection || '')
     }
   }, [isOpen, product])
 
@@ -37,6 +54,18 @@ export default function QuickCategoryEditModal({ isOpen, onClose, product }) {
     staleTime: 30_000,
   })
 
+  const filteredCollections = React.useMemo(() => {
+    const selectedCat = categories.find(c => String(c.id) === String(categoryId));
+    const isMainProduct = selectedCat && ["T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"].includes(selectedCat.name);
+    if (isMainProduct) {
+      return collections.filter(c => {
+        const norm = getNormalizedCollectionName(c.name);
+        return ["Men", "Women", "Kids"].includes(norm);
+      });
+    }
+    return collections;
+  }, [collections, categoryId, categories]);
+
   const mutation = useMutation({
     mutationFn: (data) => productsApi.update(product.id, data),
     onSuccess: () => {
@@ -53,9 +82,25 @@ export default function QuickCategoryEditModal({ isOpen, onClose, product }) {
   }
 
   const handleSave = () => {
+    const selectedCat = categories.find(c => String(c.id) === String(categoryId));
+    const isMainProduct = selectedCat && ["T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"].includes(selectedCat.name);
+    if (isMainProduct) {
+      if (!collectionId) {
+        toast.error("Collection is required for Main Products.");
+        return;
+      }
+      const selectedCol = collections.find(c => String(c.id) === String(collectionId));
+      const normCol = selectedCol ? getNormalizedCollectionName(selectedCol.name) : null;
+      if (!selectedCol || !["Men", "Women", "Kids"].includes(normCol)) {
+        toast.error("Invalid collection. Collection must be Men, Women, or Kids.");
+        return;
+      }
+    }
+
     mutation.mutate({
       category_id: categoryId ? Number(categoryId) : null,
       collection_id: collectionId ? Number(collectionId) : null,
+      sub_collection: subCollection ? subCollection.trim() : null,
     })
   }
 
@@ -67,13 +112,15 @@ export default function QuickCategoryEditModal({ isOpen, onClose, product }) {
         <p className="text-xs text-muted truncate">
           <span className="font-semibold text-app">{product.title}</span>
         </p>
-
+ 
         <div className="space-y-1.5">
           <label className="text-[11px] font-medium text-muted">Category</label>
           <select value={categoryId} onChange={handleCategoryChange}
             className="w-full text-xs bg-app border border-app rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
             <option value="">— None —</option>
-            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {categories.filter(c => ["T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"].includes(c.name)).map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
           </select>
         </div>
 
@@ -82,8 +129,15 @@ export default function QuickCategoryEditModal({ isOpen, onClose, product }) {
           <select value={collectionId} onChange={e => setCollectionId(e.target.value)}
             className="w-full text-xs bg-app border border-app rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
             <option value="">— None —</option>
-            {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {filteredCollections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-[11px] font-medium text-muted">Sub-Collection</label>
+          <input type="text" value={subCollection} onChange={e => setSubCollection(e.target.value)}
+            className="w-full text-xs bg-app border border-app rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+            placeholder="e.g. Essentials, Casual" />
         </div>
 
         <div className="flex gap-3 pt-2">

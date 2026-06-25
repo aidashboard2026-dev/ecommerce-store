@@ -228,6 +228,7 @@ class ProductBase(BaseModel):
     short_description: Optional[str] = None
     # Legacy free-text collection kept for backward compat
     collection: Optional[str] = None
+    sub_collection: Optional[str] = None
     # New FK-based classification
     category_id: Optional[int] = None
     collection_id: Optional[int] = None
@@ -273,6 +274,7 @@ class ProductUpdate(BaseModel):
     description: Optional[str] = None
     short_description: Optional[str] = None
     collection: Optional[str] = None
+    sub_collection: Optional[str] = None
     category_id: Optional[int] = None
     collection_id: Optional[int] = None
     tags: Optional[List[str]] = None
@@ -364,14 +366,15 @@ class ProductListResponse(BaseModel):
 
 class BulkActionPayload(BaseModel):
     product_ids: List[int]
-    action: str          # "publish" | "unpublish" | "archive" | "delete" | "move_category" | "move_collection"
+    action: str          # "publish" | "unpublish" | "archive" | "delete" | "move_category" | "move_collection" | "move_sub_collection"
     category_id:   Optional[int] = None
     collection_id: Optional[int] = None
+    sub_collection: Optional[str] = None
 
     @field_validator("action")
     @classmethod
     def action_valid(cls, v):
-        allowed = {"publish", "unpublish", "archive", "delete", "move_category", "move_collection"}
+        allowed = {"publish", "unpublish", "archive", "delete", "move_category", "move_collection", "move_sub_collection"}
         if v not in allowed:
             raise ValueError(f"action must be one of: {', '.join(allowed)}")
         return v

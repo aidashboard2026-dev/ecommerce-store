@@ -264,7 +264,20 @@ function LocalVariantForm({ onAdd, existingVariants = [] }) {
   )
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+function getNormalizedCollectionName(name) {
+  if (!name) return null;
+  const val = name.trim().toLowerCase().replace(/[\s_\-'\"]+/g, '');
+  if (val.includes('women') || val.includes('female') || val.includes('girl') || val.includes('lady') || val.includes('ladies')) {
+    return 'Women';
+  }
+  if (val.includes('men') || val.includes('male') || val.includes('boy')) {
+    return 'Men';
+  }
+  if (val.includes('kid') || val.includes('child')) {
+    return 'Kids';
+  }
+  return null;
+}
 
 export default function InlineProductForm({ product, onClose, onOpenVariant, onOpenImage }) {
   const qc     = useQueryClient()
@@ -273,7 +286,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
   // ─── Blank form ref ──────────────────────────────────────────────────────────
   const blankForm = useRef({
     title: '', description: '', short_description: '',
-    collection: '', category_id: '', collection_id: '',
+    collection: '', category_id: '', collection_id: '', sub_collection: '',
     tags: '', status: 'draft',
     is_featured: false, is_trending: false, is_best_seller: false, is_new_arrival: false,
     seo_title: '', seo_description: '',
@@ -297,6 +310,18 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
         .then(r => r.data),
     staleTime: 5 * 60_000,
   })
+
+  const filteredCollections = useMemo(() => {
+    const selectedCat = categories.find(c => String(c.id) === String(form.category_id));
+    const isMainProduct = selectedCat && ["T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"].includes(selectedCat.name);
+    if (isMainProduct) {
+      return collections.filter(c => {
+        const norm = getNormalizedCollectionName(c.name);
+        return ["Men", "Women", "Kids"].includes(norm);
+      });
+    }
+    return collections;
+  }, [collections, form.category_id, categories])
 
   // ─── Other state ─────────────────────────────────────────────────────────────
   const [localImages, setLocalImages]     = useState([])
@@ -327,6 +352,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
       collection:        p.collection        || '',
       category_id:       p.category_id       || '',
       collection_id:     p.collection_id     || '',
+      sub_collection:    p.sub_collection    || '',
       tags:              (p.tags || []).join(', '),
       status:            p.status,
       is_featured:       p.is_featured       || false,
@@ -372,8 +398,31 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
     title:        form.title.trim(),
     category_id:  form.category_id   ? Number(form.category_id)   : null,
     collection_id: form.collection_id ? Number(form.collection_id) : null,
+    sub_collection: form.sub_collection ? form.sub_collection.trim() : null,
     tags:         form.tags.split(',').map(t => t.trim()).filter(Boolean),
   })
+
+  const validateForm = (data) => {
+    if (data.title.length < 2) {
+      toast.error('Product title must be at least 2 characters')
+      return false
+    }
+    const selectedCat = categories.find(c => String(c.id) === String(data.category_id))
+    const isMainProduct = selectedCat && ["T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"].includes(selectedCat.name)
+    if (isMainProduct) {
+      if (!data.collection_id) {
+        toast.error("Collection is required for Main Products.")
+        return false
+      }
+      const selectedCol = collections.find(c => String(c.id) === String(data.collection_id))
+      const normCol = selectedCol ? getNormalizedCollectionName(selectedCol.name) : null;
+      if (!selectedCol || !["Men", "Women", "Kids"].includes(normCol)) {
+        toast.error("Invalid collection. Collection must be Men, Women, or Kids.")
+        return false
+      }
+    }
+    return true
+  }
 
   // ─── Edit mutations ───────────────────────────────────────────────────────────
 
@@ -411,8 +460,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
     const data = payload()
     if (overrideStatus) data.status = overrideStatus
 
-    if (data.title.length < 2) {
-      toast.error('Product title must be at least 2 characters')
+    if (!validateForm(data)) {
       isSavingRef.current = false
       return
     }
@@ -588,7 +636,9 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
           onSubmit={e => {
             e.preventDefault()
             if (isSavingRef.current || editMutation.isPending || editPubMutation.isPending) return
-            if (isEdit) editMutation.mutate(payload())
+            const data = payload()
+            if (!validateForm(data)) return
+            if (isEdit) editMutation.mutate(data)
             else batchSave()
           }}>
 
@@ -701,7 +751,9 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                   value={form.category_id}
                   onChange={e => { set('category_id', e.target.value); set('collection_id', '') }}>
                   <option value="">— None —</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {categories.filter(c => ["T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"].includes(c.name)).map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
                 </select>
               </div>
 
@@ -713,8 +765,17 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                   value={form.collection_id}
                   onChange={e => set('collection_id', e.target.value)}>
                   <option value="">— None —</option>
-                  {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {filteredCollections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
+              </div>
+
+              {/* Sub-Collection */}
+              <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
+                <label className="text-xs font-bold text-muted">Sub-Collection</label>
+                <input className="input-field py-2.5 text-xs"
+                  value={form.sub_collection}
+                  onChange={e => set('sub_collection', e.target.value)}
+                  placeholder="e.g. Essentials, Casual" />
               </div>
 
               {/* Status + Tags */}
@@ -883,7 +944,9 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                 disabled={isBatchSaving || editPubMutation.isPending}
                 onClick={() => {
                   if (isSavingRef.current || editPubMutation.isPending) return
-                  if (isEdit) editPubMutation.mutate(payload())
+                  const data = payload()
+                  if (!validateForm(data)) return
+                  if (isEdit) editPubMutation.mutate(data)
                   else batchSave('published')
                 }}>
                 {(isBatchSaving || editPubMutation.isPending)
