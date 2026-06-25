@@ -31,6 +31,7 @@ from app.services.custom_product_service import (
     create_custom_product,
     get_custom_product,
     get_custom_products,
+    get_public_custom_products,
     update_custom_product,
     delete_custom_product,
 )
@@ -46,9 +47,9 @@ router = APIRouter()
     "/admin/all",
     response_model=CustomProductListResponse
 )
-def list_custom_products(
+def list_admin_custom_products(
     page: int = 1,
-    per_page: int = 15,
+    per_page: int = 20,
     search: Optional[str] = None,
     category_id: Optional[int] = None,
     db: Session = Depends(get_db),
@@ -173,3 +174,40 @@ def upload_custom_product_image(
         "success": True,
         "url": image_url
     }
+
+
+# ==========================================
+# PUBLIC (STORE FRONT)
+# ==========================================
+@router.get(
+    "",
+    response_model=CustomProductListResponse
+)
+def list_public_custom_products(
+    page: int = 1,
+    per_page: int = 20,
+    search: Optional[str] = None,
+    category_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    return get_public_custom_products(
+        db=db,
+        page=page,
+        per_page=per_page,
+        search=search,
+        category_id=category_id,
+    )
+@router.get(
+    "/{product_id}",
+    response_model=CustomProductResponse
+)
+def get_public_custom_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+):
+    return get_custom_product(
+        db,
+        product_id
+    )
+
+

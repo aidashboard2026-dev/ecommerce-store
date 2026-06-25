@@ -1,18 +1,25 @@
 import { useParams } from "react-router-dom";
-// import { products } from "../data/products";
+
 import { Link } from "react-router-dom";
-import { useEffect } from "react";
+
 
 import { useDispatch, useSelector } from "react-redux";
 import { addToCart } from "../../store/cartSlice";
 import { toggleWishlist } from "../../store/wishlistSlice";
 
 import toast from "react-hot-toast";
+
+import axios from "axios";
+import React, { useState, useEffect } from "react";
+
 export default function ProductDetailsPage() {
 
 
   const dispatch = useDispatch();
   const { id } = useParams();
+
+  const [product, setProduct] = useState(null);
+  const [relatedProducts, setRelatedProducts] = useState([]);
 
   const wishlistItems = useSelector(
     (state) => {
@@ -20,11 +27,7 @@ export default function ProductDetailsPage() {
     }
   );
 
-//   const product = products.find(
-//     (item) => {
-//           return item.id === Number(id);
-//     }
-//   );
+
 
   const isWishlisted = product
     ? wishlistItems.some(
@@ -32,9 +35,78 @@ export default function ProductDetailsPage() {
     )
   : false;
 
-//   const product = products.find(
-//     (item) => item.id === Number(id)
-//   );
+
+  
+
+ 
+  useEffect(() => {
+
+    const fetchProduct = async () => {
+        try {
+            const response = await axios.get(
+                `http://localhost:8000/api/v1/custom-products/${id}`
+            );
+
+            const item = response.data;
+
+            console.log("API Response:", item);
+
+            setProduct({
+                id: item.id,
+                name: item.title,
+                image: item.thumbnail,
+
+                sellingMinPrice: Number(item.selling_price_min),
+                sellingMaxPrice: Number(item.selling_price_max),
+
+                originalMinPrice: Number(item.original_price_min),
+                originalMaxPrice: Number(item.original_price_max),
+
+                description: item.description,
+                category: item.category_name || "General",
+                stock: item.stock_quantity,
+                rating: 4.5,
+            });
+
+
+            const relatedResponse = await axios.get(
+                "http://localhost:8000/api/v1/custom-products"
+            );
+
+            const related = relatedResponse.data.items
+                .filter(
+                    (p) =>
+                        p.id !== item.id &&
+                        p.category_name === item.category_name
+                )
+                .map((p) => ({
+                    id: p.id,
+                    name: p.title,
+                    image: p.thumbnail,
+
+                    sellingMinPrice: Number(p.selling_price_min),
+                    originalMaxPrice: Number(p.original_price_max),
+
+                    category: p.category_name || "General",
+                    stock: p.stock_quantity,
+                    rating: 4.5,
+                }))
+
+            setRelatedProducts(related);
+
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    fetchProduct();
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+    });
+
+  }, [id]);
 
   if (!product) {
     return (
@@ -43,18 +115,6 @@ export default function ProductDetailsPage() {
       </h1>
     );
   }
-
-  const relatedProducts = products.filter(
-    (item) =>
-      item.category === product.category &&
-      item.id !== product.id
-  );
-  useEffect(() => {
-    window.scrollTo({
-        top: 0,
-        behavior: "smooth",
-    });
-  }, [id]);
   return (
     <div className="max-w-7xl mx-auto px-6 py-10">
 
@@ -113,23 +173,24 @@ export default function ProductDetailsPage() {
             </p>
 
             {/* Price */}
-            <div className="flex items-center gap-4 mb-8">
+            <div className="flex flex-wrap items-center gap-4 mb-8">
 
                 <span className="text-5xl font-bold text-indigo-600">
-                ₹{product.price}
+                    ₹{product.sellingMinPrice}
                 </span>
 
                 <span className="line-through text-gray-400 text-2xl">
-                ₹{product.oldPrice}
+                    ₹{product.originalMaxPrice}
                 </span>
 
                 <span className="text-red-500 font-bold text-xl">
-                {Math.round(
-                    ((product.oldPrice - product.price) /
-                    product.oldPrice) *
-                    100
-                )}
-                % OFF
+                    {Math.round(
+                        (
+                            (product.originalMaxPrice - product.sellingMinPrice) /
+                            product.originalMaxPrice
+                        ) * 100
+                    )}
+                    % OFF
                 </span>
 
             </div>
@@ -210,7 +271,7 @@ export default function ProductDetailsPage() {
             </div>
 
             {/* Buttons */}
-            <div className="flex gap-4">
+            {/* <div className="flex gap-4">
 
                 <button
                 onClick={(e) => {
@@ -243,40 +304,53 @@ export default function ProductDetailsPage() {
                 "
                 >
                 🛒 Add To Cart
-                </button>
+                </button> */}
 
-                <button
-                    onClick={() => {
-                        const productUrl =
-                        `${window.location.origin}/product/${product.id}`;
+                <div className="w-full mt-6">
+                    <button
+                        onClick={() => {
+                            const productUrl =
+                                `${window.location.origin}/product/${product.id}`;
 
-                        const message = encodeURIComponent(`
-                    🛍 Product: ${product.name}
+                            const message = encodeURIComponent(`
+                🛍 Product: ${product.name}
 
-                    💰 Price: ₹${product.price}
+                💰 Price: ₹${product.sellingMinPrice}
 
-                    🏷 Original Price: ₹${product.oldPrice}
+                🏷 Original Price: ₹${product.originalMaxPrice}
 
-                    📂 Category: ${product.category}
+                📂 Category: ${product.category}
 
-                    🖼 Image:
-                    ${product.image}
+                🖼 Image:
+                ${product.image}
 
-                    🔗 View Product:
-                    ${productUrl}
-                    `);
+                🔗 View Product:
+                ${productUrl}
+                            `);
 
-                        window.open(
-                        `https://web.whatsapp.com/send?phone=918778021610&text=${message}`,
-                        "_blank"
-                        );
-                    }}
-                    className="flex-1 bg-green-500 text-white py-4 rounded-2xl font-bold"
+                            window.open(
+                                `https://web.whatsapp.com/send?phone=918778021610&text=${message}`,
+                                "_blank"
+                            );
+                        }}
+                        className="
+                            w-full
+                            bg-green-500
+                            hover:bg-green-600
+                            text-white
+                            py-4
+                            rounded-2xl
+                            font-bold
+                            text-lg
+                            transition-all
+                            duration-300
+                        "
                     >
-                    WhatsApp
-                </button>
+                        WhatsApp
+                    </button>
+                </div>
 
-            </div>
+            {/* </div> */}
 
         </div>
 
@@ -346,7 +420,7 @@ export default function ProductDetailsPage() {
                             productId: product.id,
                             title: product.name,
                             thumbnail: product.image,
-                            minPrice: product.price,
+                            minPrice: product.sellingMinPrice,
                         })
                         );
 
@@ -409,18 +483,20 @@ export default function ProductDetailsPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
+
                     <span className="text-3xl font-bold text-indigo-600">
-                    ₹{product.price}
+                        ₹{product.sellingMinPrice}
                     </span>
 
                     <span className="line-through text-gray-400">
-                    ₹{product.oldPrice}
+                        ₹{product.originalMaxPrice}
                     </span>
-                </div>
 
                 </div>
 
-                {/* Add To Cart */}
+                </div>
+
+                {/* Add To Cart
                 <button
                 onClick={(e) => {
                     e.preventDefault();
@@ -455,7 +531,7 @@ export default function ProductDetailsPage() {
                 "
                 >
                 🛒
-                </button>
+                </button> */}
 
             </Link>
             );

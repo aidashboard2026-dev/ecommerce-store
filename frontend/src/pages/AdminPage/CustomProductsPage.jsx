@@ -340,18 +340,20 @@ export default function ProductsPage() {
   // ── Data queries ─────────────────────────────────────────────────────────────
 
   const queryParams = {
-    search:         debouncedSearch,
-    status_filter:  statusFilter,
-    category_id:    categoryId    || undefined,
-    collection_id:  collectionId  || undefined,
-    stock_status:   stockStatus   || undefined,
-    is_featured:    flagFilters.is_featured    || undefined,
-    is_trending:    flagFilters.is_trending    || undefined,
+    search: debouncedSearch,
+    status_filter: statusFilter,
+    category_id: categoryId || undefined,
+    collection_id: collectionId || undefined,
+    stock_status: stockStatus || undefined,
+    is_featured: flagFilters.is_featured || undefined,
+    is_trending: flagFilters.is_trending || undefined,
     is_best_seller: flagFilters.is_best_seller || undefined,
     is_new_arrival: flagFilters.is_new_arrival || undefined,
     page,
-    per_page: 15,
+    per_page:15
   }
+
+  
 
   const { data, isLoading, isFetching, isError } = useQuery({
     queryKey: ['custom-products', queryParams],

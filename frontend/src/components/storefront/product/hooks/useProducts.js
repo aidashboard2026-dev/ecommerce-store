@@ -4,6 +4,8 @@ import {
   fetchProductBySlug,
   fetchOffers,
   fetchBanners,
+  fetchCustomProducts,
+  fetchCustomProduct,
 } from '../../../../services/storefront/productsService'
 
 const PER_PAGE = 12
@@ -89,5 +91,22 @@ export function useCollections() {
       })
       return Array.from(set)
     },
+  })
+}
+
+export function useCustomProducts(filters = {}) {
+  return useQuery({
+    queryKey: ['custom-products', filters],
+    queryFn: () => fetchCustomProducts(filters),
+    staleTime: 60_000,
+  })
+}
+
+export function useCustomProduct(id) {
+  return useQuery({
+    queryKey: ['custom-product', id],
+    queryFn: () => fetchCustomProduct(id),
+    enabled: !!id,
+    staleTime: 60_000,
   })
 }

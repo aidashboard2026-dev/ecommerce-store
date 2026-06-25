@@ -30,11 +30,11 @@ function OptionChips({ title, options, value, onChange }) {
   )
 }
 
-export default function CustomProductForm({ productType, initialStyle }) {
-  const [size, setSize] = useState(productType.sizes?.[0] || null)
-  const [color, setColor] = useState(productType.colors?.[0] || null)
-  const [style, setStyle] = useState(initialStyle || productType.styles?.[0] || null)
-  const [placement, setPlacement] = useState(productType.placements?.[0] || null)
+export default function CustomProductForm({ product }) {
+  const [size, setSize] = useState(product?.size || '')
+  const [color, setColor] = useState('')
+  const [style, setStyle] = useState('')
+  const [placement, setPlacement] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [notes, setNotes] = useState('')
   const [designFiles, setDesignFiles] = useState([])
@@ -47,7 +47,7 @@ export default function CustomProductForm({ productType, initialStyle }) {
   }
 
   const summaryLines = [
-    `Product: ${productType.label}`,
+    `Product: ${product.title}`,
     style && `Style: ${style}`,
     size && `Size: ${size}`,
     color && `Color: ${color}`,
@@ -61,26 +61,26 @@ export default function CustomProductForm({ productType, initialStyle }) {
     <div className="flex flex-col gap-6">
       <div className="bg-app border border-app rounded-2xl p-5 sm:p-6 flex flex-col gap-6">
         <div className="flex items-start gap-3">
-          <span className="text-3xl">{productType.emoji}</span>
+          <span className="text-3xl">📦</span>
           <div>
-            <h2 className="font-display font-bold text-lg text-app">{productType.label}</h2>
-            <p className="text-sm text-muted mt-0.5">{productType.description}</p>
+            <h2 className="font-display font-bold text-lg text-app">{product.title}</h2>
+            <p className="text-sm text-muted mt-0.5">{product.description}</p>
           </div>
         </div>
 
-        {productType.styles && (
+        {false && (
           <OptionChips title="Cup Style" options={productType.styles} value={style} onChange={setStyle} />
         )}
 
-        {productType.sizes && (
+        {false && (
           <OptionChips title="Size" options={productType.sizes} value={size} onChange={setSize} />
         )}
 
-        {productType.colors && (
+        {false && (
           <OptionChips title="Color" options={productType.colors} value={color} onChange={setColor} />
         )}
 
-        {productType.placements && (
+        {false && (
           <OptionChips title="Design Placement" options={productType.placements} value={placement} onChange={setPlacement} />
         )}
 

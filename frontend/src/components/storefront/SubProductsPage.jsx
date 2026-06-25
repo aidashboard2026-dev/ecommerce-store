@@ -3,17 +3,53 @@ import { toggleWishlist, selectIsWishlisted } from '../../store/wishlistSlice'
 import { addToCart } from '../../store/cartSlice'
 
 import toast from "react-hot-toast";
-import { products } from "../../data/products";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 // import { Link } from "react-router-dom";
 //   const dispatch = useDispatch()
 import { useDispatch } from "react-redux";
 import { useSelector } from "react-redux";
-    
+import axios from "axios";
+
 
 export default function SubProductsPage() {
   const dispatch = useDispatch();
+
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchProducts = async () => {
+
+    try {
+
+        const response = await axios.get(
+            "http://localhost:8000/api/v1/custom-products"
+        );
+
+        const formattedProducts = response.data.items.map((item) => ({
+            id: item.id,
+            name: item.title,
+            image: item.thumbnail,
+            price: Number(item.selling_price_min),
+            oldPrice: Number(item.original_price_max),
+            category: item.category_name || "General",
+            stock: item.stock_quantity,
+            rating: 4.5,
+        }));
+
+        setProducts(formattedProducts);
+
+    } catch (err) {
+
+        console.log(err);
+
+    } finally {
+
+        setLoading(false);
+
+    }
+
+  };
   const wishlistItems = useSelector(
     (state) => state.wishlist.items
   );
@@ -24,6 +60,7 @@ export default function SubProductsPage() {
   const [selectedRating, setSelectedRating] = useState("");
   const [inStockOnly, setInStockOnly] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  
   
   
   const categories = [
@@ -72,9 +109,9 @@ export default function SubProductsPage() {
             product.category === selectedCategory;
 
         const searchMatch =
-            product.name
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase());
+            (product.name || "")
+                .toLowerCase()
+                .includes(searchTerm.toLowerCase());
 
         let priceMatch = true;
 
@@ -116,7 +153,19 @@ export default function SubProductsPage() {
         );
     });
 
-    
+    useEffect(() => {
+
+        fetchProducts();
+
+    }, []);
+
+    if (loading) {
+        return (
+            <div className="text-center py-10">
+                Loading Products...
+            </div>
+        );
+    }
   return (
     <div className="max-w-7xl mx-auto px-6 py-10">
 
@@ -517,7 +566,7 @@ export default function SubProductsPage() {
                     </div>
 
                     {/* Hover Buttons */}
-                    <div
+                    {/* <div
                         className="
                         absolute
                         bottom-4
@@ -549,7 +598,7 @@ export default function SubProductsPage() {
                         Add To Cart
                         </button> */}
 
-                        <button
+                        {/* <button
                             onClick={(e) => {
                                
                                 toast.success("Added to cart succusssfully");
@@ -581,7 +630,7 @@ export default function SubProductsPage() {
                             🛒
                         </button>
 
-                    </div>
+                    </div> */} 
 
                 </Link>
 

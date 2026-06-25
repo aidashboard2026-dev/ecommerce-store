@@ -183,6 +183,11 @@ export const storefrontAPI = {
   getCollections:   (params = {}) => storefrontClient.get('/products/collections', { params }),
   getBanners:       ()            => storefrontClient.get('/banners/active/all'),
   getOffers:        ()            => storefrontClient.get('/offers/active/all'),
+  getCustomProducts: (params = {}) =>
+    storefrontClient.get('/custom-products', { params }),
+
+  getCustomProduct: (id) =>
+      storefrontClient.get(`/custom-products/${id}`),
 
   // ── Customer profile ──────────────────────────────────────────────────────
   updateProfile:    (data)        => storefrontClient.put('/customers/profile/update', data),

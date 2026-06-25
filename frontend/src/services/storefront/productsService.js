@@ -10,3 +10,9 @@ export const fetchProductBySlug = (slug) => storefrontAPI.getProductBySlug(slug)
 export const fetchOffers = () => storefrontAPI.getOffers().then((r) => r.data)
 
 export const fetchBanners = () => storefrontAPI.getBanners().then((r) => r.data)
+
+export const fetchCustomProducts = (params = {}) =>
+  storefrontAPI.getCustomProducts(params).then((r) => r.data)
+
+export const fetchCustomProduct = (id) =>
+  storefrontAPI.getCustomProduct(id).then((r) => r.data)
