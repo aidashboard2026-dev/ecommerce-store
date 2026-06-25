@@ -14,10 +14,10 @@ import OffersPage from '../pages/AdminPage/OffersPage'
 import CustomersPage from '../pages/AdminPage/CustomersPage'
 import SettingsPage from '../pages/AdminPage/SettingsPage'
 import BannerPage from '../pages/AdminPage/BannerPage'
-
+import CustomProductsPage from '../pages/AdminPage/CustomProductsPage'
 // Storefront Layout
 import StorefrontLayout from '../layouts/StorefrontLayout'
-import ProductDetailsPage from "../pages/CustomProductDetailsPage";
+// import ProductDetailsPage from "../pages/CustomProductDetailsPage";
 
 // Storefront Pages (consolidated — see /src/pages/storefront)
 import HomePage from '../pages/storefront/HomePage'
@@ -38,7 +38,7 @@ import WishlistGrid from '../components/storefront/WishlistGrid'
 
 import SubProductsPage from "../components/storefront/SubProductsPage";
 // import CategoryPage from '../components/storefront/CategoryPage'
-import CustomProductsPage from "../pages/AdminPage/CustomProductsPage";
+import CustomProductDetailsPage from "../pages/StoreFront/CustomProductDetailsPage"
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-app">
@@ -337,7 +337,7 @@ export default function AppRoutes() {
 
         <Route
           path="/product/:id"
-          element={<ProductDetailsPage />}
+          element={<CustomProductDetailsPage />}
         />
 
         {/* Storefront 404 — rendered inside the StorefrontLayout shell so

@@ -1,11 +1,11 @@
 import { useParams } from "react-router-dom";
-import { products } from "../data/products";
+// import { products } from "../data/products";
 import { Link } from "react-router-dom";
 import { useEffect } from "react";
 
 import { useDispatch, useSelector } from "react-redux";
-import { addToCart } from "../store/cartSlice";
-import { toggleWishlist } from "../store/wishlistSlice";
+import { addToCart } from "../../store/cartSlice";
+import { toggleWishlist } from "../../store/wishlistSlice";
 
 import toast from "react-hot-toast";
 export default function ProductDetailsPage() {
@@ -20,11 +20,11 @@ export default function ProductDetailsPage() {
     }
   );
 
-  const product = products.find(
-    (item) => {
-          return item.id === Number(id);
-    }
-  );
+//   const product = products.find(
+//     (item) => {
+//           return item.id === Number(id);
+//     }
+//   );
 
   const isWishlisted = product
     ? wishlistItems.some(

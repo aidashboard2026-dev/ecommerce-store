@@ -202,29 +202,65 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
   // Populate form when product prop changes (edit mode)
   useEffect(() => {
     revokeObjectURLs(localImagesRef.current)
+
     const p = productRef.current
-    setForm(p ? {
-      title:             p.title,
-      description:       p.description       || '',
-      short_description: p.short_description || '',
-      collection:        p.collection        || '',
-      category_id:       p.category_id       || '',
-      collection_id:     p.collection_id     || '',
-      tags:
-      (form.tags || '')
-        .split(',')
-        .map(t => t.trim())
-        .filter(Boolean),
-      status:            p.status,
-      is_featured:       p.is_featured       || false,
-      is_trending:       p.is_trending       || false,
-      is_best_seller:    p.is_best_seller    || false,
-      is_new_arrival:    p.is_new_arrival    || false,
-      seo_title:         p.seo_title         || '',
-      seo_description:   p.seo_description   || '',
-    } : blankForm.current)
+
+    setForm(
+      p
+        ? {
+            title: p.title || "",
+            description: p.description || "",
+            short_description: p.short_description || "",
+
+            category_id: p.category_id || "",
+            collection_id: p.collection_id || "",
+
+            status: p.status || "draft",
+
+            tags: Array.isArray(p.tags)
+              ? p.tags.join(", ")
+              : (p.tags || ""),
+
+            original_price_min:
+              p.original_price_min ?? "",
+
+            original_price_max:
+              p.original_price_max ?? "",
+
+            selling_price_min:
+              p.selling_price_min ?? "",
+
+            selling_price_max:
+              p.selling_price_max ?? "",
+
+            stock_quantity:
+              p.stock_quantity ?? 0,
+
+            size:
+              p.size || "All Size",
+
+            is_featured:
+              p.is_featured || false,
+
+            is_trending:
+              p.is_trending || false,
+
+            is_best_seller:
+              p.is_best_seller || false,
+
+            is_new_arrival:
+              p.is_new_arrival || false,
+
+            seo_title:
+              p.seo_title || "",
+
+            seo_description:
+              p.seo_description || "",
+          }
+        : blankForm.current
+    )
+
     setLocalImages([])
-    
   }, [product?.id])
 
   // ─── Unsaved-changes guard ────────────────────────────────────────────────────
