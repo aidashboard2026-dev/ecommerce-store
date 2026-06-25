@@ -72,7 +72,7 @@ python -c "
 import logging
 logging.basicConfig(level=logging.INFO)
 
-from app.database.init_db import init_db
+from app.core.init_db import init_db
 
 init_db()
 
