@@ -12,6 +12,8 @@
     --color-bg: #f8f9fa;
     --color-surface: #ffffff;
     --color-border: #e2e8f0;
+
+    --store-bg: #ffffff;
     
     --color-text: #0f172a;
     --color-text-muted: #64748b;
@@ -89,6 +91,9 @@
 @layer utilities {
   .bg-app {
     background-color: var(--color-bg);
+  }
+  .store-bg{
+    background-color: var(--store-bg);
   }
   .text-app {
     color: var(--color-text);
