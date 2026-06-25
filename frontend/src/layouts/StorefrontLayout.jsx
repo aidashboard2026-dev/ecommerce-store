@@ -108,18 +108,22 @@ export default function StorefrontLayout() {
             )}>
               Shop Catalog
             </Link>
-            <div>
-            <Link
-              to="/sub-products"
-              className={clsx(
-                "transition-colors duration-200 hover:text-brand-500",
-                location.pathname === "/sub-products"
-                  ? "text-brand-500 font-semibold"
-                  : "text-app/80"
-              )}
+            <div
+              className="relative py-1"
+              onMouseEnter={() => setShowSubProducts(true)}
+              onMouseLeave={() => setShowSubProducts(false)}
             >
-              Sub Products
-            </Link>
+              <Link
+                to="/products"
+                className={clsx(
+                  "transition-colors duration-200 hover:text-brand-500",
+                  location.pathname === "/sub-products" || location.pathname === "/products"
+                    ? "text-brand-500 font-semibold"
+                    : "text-app/80"
+                )}
+              >
+                Sub Products
+              </Link>
 
               {showSubProducts && (
                 <div
@@ -147,46 +151,46 @@ export default function StorefrontLayout() {
                   </h3>
 
                   <Link
-                    to="/category/round-neck"
+                    to="/products?category=T-Shirt"
                     onClick={() => setShowSubProducts(false)}
                     className="block mb-2 hover:text-brand-500"
                   >
                     Round neck T- shirt 
                   </Link>
 
-                  <Link to="/category/v-neck" className="block mb-2 hover:text-brand-500">
+                  <Link to="/products?category=T-Shirt" onClick={() => setShowSubProducts(false)} className="block mb-2 hover:text-brand-500">
                     V-Neck T-Shirt
                   </Link>
 
-                  <Link to="/category/polo" className="block mb-2 hover:text-brand-500">
+                  <Link to="/products?category=T-Shirt" onClick={() => setShowSubProducts(false)} className="block mb-2 hover:text-brand-500">
                     Polo T-Shirt
                   </Link>
 
-                  <Link to="/category/henley" className="block mb-2 hover:text-brand-500">
+                  <Link to="/products?category=T-Shirt" onClick={() => setShowSubProducts(false)} className="block mb-2 hover:text-brand-500">
                     Henley T-Shirt
                   </Link>
 
-                  <Link to="/category/oversized" className="block mb-2 hover:text-brand-500">
+                  <Link to="/products?category=T-Shirt&sub_collection=Oversized" onClick={() => setShowSubProducts(false)} className="block mb-2 hover:text-brand-500">
                     Oversized T-Shirt
                   </Link>
 
-                  <Link to="/category/graphic" className="block mb-2 hover:text-brand-500">
+                  <Link to="/products?category=T-Shirt&sub_collection=Printed" onClick={() => setShowSubProducts(false)} className="block mb-2 hover:text-brand-500">
                     Graphic Printed T-Shirt
                   </Link>
 
-                  <Link to="/category/plain" className="block mb-2 hover:text-brand-500">
+                  <Link to="/products?category=T-Shirt&sub_collection=Essentials" onClick={() => setShowSubProducts(false)} className="block mb-2 hover:text-brand-500">
                     Plain T-Shirt
                   </Link>
 
-                  <Link to="/category/back-print" className="block py-1 hover:text-brand-500 transition-colors">
+                  <Link to="/products?category=T-Shirt&sub_collection=Printed" onClick={() => setShowSubProducts(false)} className="block py-1 hover:text-brand-500 transition-colors">
                     Back Print T-Shirt
                   </Link>
 
-                  <Link to="/category/color-tshirt" className="block py-1 hover:text-brand-500 transition-colors">
+                  <Link to="/products?category=T-Shirt" onClick={() => setShowSubProducts(false)} className="block py-1 hover:text-brand-500 transition-colors">
                     Color T-Shirt
                   </Link>
 
-                  <Link to="/category/embroidery-tshirt" className="block py-1 hover:text-brand-500 transition-colors">
+                  <Link to="/custom/embroidery" onClick={() => setShowSubProducts(false)} className="block py-1 hover:text-brand-500 transition-colors">
                     Embroidery Design T-Shirt
                   </Link>
                 </div>
@@ -197,23 +201,23 @@ export default function StorefrontLayout() {
                     Premium Apparel
                   </h3>
 
-                  <Link to="/category/korean-shirt" className="block mb-2 hover:text-brand-500">
+                  <Link to="/products?category=Shirt&sub_collection=Casual" onClick={() => setShowSubProducts(false)} className="block mb-2 hover:text-brand-500">
                     Korean Style Shirts
                   </Link>
 
-                  <Link to="/category/minimal-polo" className="block mb-2 hover:text-brand-500">
+                  <Link to="/products?category=T-Shirt&sub_collection=Premium" onClick={() => setShowSubProducts(false)} className="block mb-2 hover:text-brand-500">
                     Minimal Premium Polo
                   </Link>
 
-                  <Link to="/category/hoodie" className="block mb-2 hover:text-brand-500">
+                  <Link to="/products?category=Shirt&sub_collection=Winter" onClick={() => setShowSubProducts(false)} className="block mb-2 hover:text-brand-500">
                     Hoodie
                   </Link>
 
-                  <Link to="/category/oversized-hoodie" className="block mb-2 hover:text-brand-500">
+                  <Link to="/products?category=Shirt&sub_collection=Oversized" onClick={() => setShowSubProducts(false)} className="block mb-2 hover:text-brand-500">
                     Oversized Hoodie
                   </Link>
 
-                  <Link to="/category/jersey" className="block hover:text-brand-500">
+                  <Link to="/products?category=Jersey" onClick={() => setShowSubProducts(false)} className="block hover:text-brand-500">
                     Jersey
                   </Link>
                 </div>
@@ -224,23 +228,23 @@ export default function StorefrontLayout() {
                     Sports Wear
                   </h3>
 
-                  <Link to="/category/sports-tshirt" className="block mb-2 hover:text-brand-500">
+                  <Link to="/products?category=T-Shirt&sub_collection=Sports" onClick={() => setShowSubProducts(false)} className="block mb-2 hover:text-brand-500">
                     Sports T-Shirts
                   </Link>
 
-                  <Link to="/category/sports-shorts" className="block mb-2 hover:text-brand-500">
+                  <Link to="/products?category=Trouser&sub_collection=Sports" onClick={() => setShowSubProducts(false)} className="block mb-2 hover:text-brand-500">
                     Sports Shorts
                   </Link>
 
-                  <Link to="/category/track-pants" className="block py-1 hover:text-brand-500 transition-colors">
+                  <Link to="/products?category=Track Pant" onClick={() => setShowSubProducts(false)} className="block py-1 hover:text-brand-500 transition-colors">
                     Track Pants
                   </Link>
 
-                  <Link to="/category/shorts" className="block py-1 hover:text-brand-500 transition-colors">
+                  <Link to="/products?category=Trouser" onClick={() => setShowSubProducts(false)} className="block py-1 hover:text-brand-500 transition-colors">
                     Shorts
                   </Link>
 
-                  <Link to="/category/pant"   className="block py-1 hover:text-brand-500 transition-colors">
+                  <Link to="/products?category=Trouser" onClick={() => setShowSubProducts(false)} className="block py-1 hover:text-brand-500 transition-colors">
                     Pant
                   </Link>
                 </div>
@@ -251,31 +255,31 @@ export default function StorefrontLayout() {
                     Gifts & Printing
                   </h3>
 
-                  <Link to="/category/magic-mug" className="block mb-2 hover:text-brand-500">
+                  <Link to="/custom/cup?style=Magic%20Cup" onClick={() => setShowSubProducts(false)} className="block mb-2 hover:text-brand-500">
                     Magic Mug Print
                   </Link>
 
-                  <Link to="/category/photo-frame" className="block mb-2 hover:text-brand-500">
+                  <Link to="/custom" onClick={() => setShowSubProducts(false)} className="block mb-2 hover:text-brand-500">
                     Photo Frames
                   </Link>
 
-                  <Link to="/category/metal-frame" className="block mb-2 hover:text-brand-500">
+                  <Link to="/custom" onClick={() => setShowSubProducts(false)} className="block mb-2 hover:text-brand-500">
                     Metal Frames
                   </Link>
 
-                  <Link to="/category/mouse-pad" className="block mb-2 hover:text-brand-500">
+                  <Link to="/custom/keychain" onClick={() => setShowSubProducts(false)} className="block mb-2 hover:text-brand-500">
                     Mouse Pads
                   </Link>
 
-                  <Link to="/category/personal-gifts" className="block hover:text-brand-500">
+                  <Link to="/custom" onClick={() => setShowSubProducts(false)} className="block hover:text-brand-500">
                     Personal Gifts
                   </Link>
 
-                  <Link to="/category/White Mug" className="block py-1 hover:text-brand-500 transition-colors">
+                  <Link to="/custom/cup?style=White%20Cup" onClick={() => setShowSubProducts(false)} className="block py-1 hover:text-brand-500 transition-colors">
                     White Mug
                   </Link>
 
-                  <Link to="/category/Sublimation-products" className="block py-1 hover:text-brand-500 transition-colors">
+                  <Link to="/custom" onClick={() => setShowSubProducts(false)} className="block py-1 hover:text-brand-500 transition-colors">
                     Sublimation Products
                   </Link>
                 </div>
@@ -286,30 +290,30 @@ export default function StorefrontLayout() {
                     Accessories
                   </h3>
 
-                  <Link to="/category/water-bottle" className="block mb-2 hover:text-brand-500">
+                  <Link to="/custom" onClick={() => setShowSubProducts(false)} className="block mb-2 hover:text-brand-500">
                     Water Bottles
                   </Link>
 
-                  <Link to="/category/tumbler" className="block mb-2 hover:text-brand-500">
+                  <Link to="/custom" onClick={() => setShowSubProducts(false)} className="block mb-2 hover:text-brand-500">
                     Skinny Tumblers
                   </Link>
 
-                  <Link to="/category/glassware" className="block mb-2 hover:text-brand-500">
+                  <Link to="/custom" onClick={() => setShowSubProducts(false)} className="block mb-2 hover:text-brand-500">
                     Glass Ware
                   </Link>
 
-                  <Link to="/category/hats" className="block mb-2 hover:text-brand-500">
+                  <Link to="/custom" onClick={() => setShowSubProducts(false)} className="block mb-2 hover:text-brand-500">
                     Hats & Caps
                   </Link>
 
-                  <Link to="/category/cards" className="block py-1 hover:text-brand-500 transition-colors">
+                  <Link to="/custom" onClick={() => setShowSubProducts(false)} className="block py-1 hover:text-brand-500 transition-colors">
                     Wedding & Greeting Cards
                   </Link>
 
-                  <Link to="/category/pillows" className="block py-1 hover:text-brand-500 transition-colors">
+                  <Link to="/custom" onClick={() => setShowSubProducts(false)} className="block py-1 hover:text-brand-500 transition-colors">
                     Pillows
                   </Link>
-                </div>
+                 </div>
 
               </div>
               )}
@@ -533,9 +537,9 @@ export default function StorefrontLayout() {
             <h4 className="text-xs font-bold uppercase tracking-wider text-app">Shop Catalog</h4>
             <div className="flex flex-col gap-2 text-xs">
               <Link to="/products" className="text-muted hover:text-app">All Products</Link>
-              <Link to="/products?collection=Summer" className="text-muted hover:text-app">Summer Collection</Link>
-              <Link to="/products?collection=Activewear" className="text-muted hover:text-app">Activewear</Link>
-              <Link to="/products?collection=Essentials" className="text-muted hover:text-app">Daily Essentials</Link>
+              <Link to="/products?sub_collection=Summer" className="text-muted hover:text-app">Summer Collection</Link>
+              <Link to="/products?sub_collection=Activewear" className="text-muted hover:text-app">Activewear</Link>
+              <Link to="/products?sub_collection=Essentials" className="text-muted hover:text-app">Daily Essentials</Link>
             </div>
           </div>
 

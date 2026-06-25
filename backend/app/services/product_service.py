@@ -1020,7 +1020,9 @@ def get_products_public(
     *,
     search: str = "",
     collection: Optional[str] = None,
+    sub_collection: Optional[str] = None,
     collection_id: Optional[int] = None,
+    category: Optional[str] = None,
     category_id: Optional[int] = None,
     is_featured: Optional[bool] = None,
     is_trending: Optional[bool] = None,
@@ -1075,9 +1077,20 @@ def get_products_public(
                 Product.collection_id.in_(col_subq),
             ))
     if collection:
-        base_filters.append(Product.collection.ilike(f"%{collection}%"))
+        # Check if collection name matches a normalized collection (Men, Women, Kids)
+        col_db = db.query(Collection.id).filter(Collection.name.ilike(collection)).first()
+        if col_db:
+            base_filters.append(Product.collection_id == col_db.id)
+        else:
+            base_filters.append(Product.collection.ilike(f"%{collection}%"))
     if collection_id:
         base_filters.append(Product.collection_id == collection_id)
+    if sub_collection:
+        base_filters.append(Product.collection.ilike(f"%{sub_collection}%"))
+    if category:
+        cat_db = db.query(Category.id).filter(Category.name.ilike(category)).first()
+        if cat_db:
+            base_filters.append(Product.category_id == cat_db.id)
     if category_id:
         base_filters.append(Product.category_id == category_id)
     if is_featured is not None:

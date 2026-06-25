@@ -472,12 +472,13 @@ def delete_gallery_image(
 # ─────────────────────────────────────────────────────────────
 # STOREFRONT (public) endpoints
 # ─────────────────────────────────────────────────────────────
-
 @router.get("/", response_model=ProductListResponse)
 def list_products_public(
     search: str = "",
     collection: Optional[str] = None,
+    sub_collection: Optional[str] = None,
     collection_id: Optional[int] = None,
+    category: Optional[str] = None,
     category_id: Optional[int] = None,
     is_featured: Optional[bool] = None,
     is_trending: Optional[bool] = None,
@@ -494,7 +495,9 @@ def list_products_public(
         db,
         search=search,
         collection=collection,
+        sub_collection=sub_collection,
         collection_id=collection_id,
+        category=category,
         category_id=category_id,
         is_featured=is_featured,
         is_trending=is_trending,

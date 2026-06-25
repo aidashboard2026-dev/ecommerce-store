@@ -48,13 +48,14 @@ export default function QuickCategoryEditModal({ isOpen, onClose, product }) {
   })
 
   const { data: collections = [] } = useQuery({
-    queryKey: ['collections', 'admin', categoryId],
-    queryFn: () => collectionsAPI.list(categoryId ? { category_id: categoryId } : {}).then(r => r.data),
+    queryKey: ['collections', 'admin'],
+    queryFn: () => collectionsAPI.list().then(r => r.data),
     enabled: isOpen,
     staleTime: 30_000,
   })
 
   const filteredCollections = React.useMemo(() => {
+    if (!categoryId) return []
     const selectedCat = categories.find(c => String(c.id) === String(categoryId));
     const isMainProduct = selectedCat && ["T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"].includes(selectedCat.name);
     if (isMainProduct) {
@@ -63,7 +64,7 @@ export default function QuickCategoryEditModal({ isOpen, onClose, product }) {
         return ["Men", "Women", "Kids"].includes(norm);
       });
     }
-    return collections;
+    return collections.filter(c => String(c.category_id) === String(categoryId));
   }, [collections, categoryId, categories]);
 
   const mutation = useMutation({
