@@ -84,7 +84,7 @@ export default function StoreHeader({
     <>
       <header
         className={clsx(
-          "sticky top-0 z-40 store-bg transition-all py-3 px-3 sm:px-10 w-full duration-300 border-b border-gray-200  shadow-[0_1px_20px_rgba(0,0,0,0.12)]",
+          "sticky top-0 z-40 store-bg transition-all py-3 px-3 sm:px-10 w-full duration-300 border-b border-app shadow-[0_1px_20px_rgba(0,0,0,0.12)]",
           scrolled, 
         )}
       >

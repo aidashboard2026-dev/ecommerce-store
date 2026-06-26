@@ -40,18 +40,22 @@ export default function CategorySection() {
           <Link
             key={cat.name}
             to={`/products?collection=${encodeURIComponent(cat.collection)}`}
-            className="group overflow-hidden rounded-2xl bg-white border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300"
+            className="group relative overflow-hidden rounded-2xl"
           >
-            <div className="overflow-hidden">
-              <img
-                src={cat.image}
-                alt={cat.name}
-                className="h-44 w-full object-cover transition-transform duration-500 group-hover:scale-110"
-              />
-            </div>
+            <img
+              src={cat.image}
+              alt={cat.name}
+              className="h-48 md:h-40 lg:h-80 w-full object-cover transition-transform duration-500 group-hover:scale-110"
+            />
 
-            <div className="p-4 text-center">
-              <h3 className="text-lg font-semibold text-app">{cat.name}</h3>
+            {/* Transparent Overlay */}
+            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition duration-300" />
+
+            {/* Text */}
+            <div className="absolute inset-0 flex items-end justify-center p-3">
+              <h3 className="text-black text-base font-semibold drop-shadow-lg">
+                {cat.name}
+              </h3>
             </div>
           </Link>
         ))}

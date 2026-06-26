@@ -23,11 +23,19 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.security import get_password_hash
-from app.database.session import SessionLocal
-from app.models.admin import Admin
-from app.models.order import Order
-from app.models.delivery_zone import DeliveryZone
-from app.models.product import Category, Collection, Product, ProductVariant, ProductStatus
+from app.core.database import SessionLocal
+from app.modules.custom_products.models import CustomProduct
+from app.modules.admins.models import Admin
+
+from app.modules.orders.models import Order
+from app.modules.delivery_zones.models import DeliveryZone
+from app.modules.products.models import (
+    Category,
+    Collection,
+    Product,
+    ProductVariant,
+    ProductStatus,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -254,7 +262,7 @@ def _normalize_existing_collections(db: Session) -> None:
     collections = db.query(Collection).all()
     
     # 3. For each non-core collection, if it normalizes to Men, Women, or Kids, we migrate its products
-    from app.services.product_service import normalize_collection_name
+    from app.modules.products.service import normalize_collection_name
     
     for col in collections:
         if col.name in core_names:
@@ -349,7 +357,7 @@ def _migrate_legacy_collections(db: Session, collection_map: dict[str, int], cat
     )
 
     migrated = 0
-    from app.services.product_service import normalize_collection_name
+    from app.modules.products.service import normalize_collection_name
     for product in products_to_migrate:
         legacy_name = (product.collection or "").strip()
         
