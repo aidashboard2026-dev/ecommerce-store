@@ -12,6 +12,8 @@ def create_offer(
         title=offer.title or "",
         percentage=offer.percentage or "",
         description=offer.description,
+        item_align=offer.item_align,
+        text_align=offer.text_align,
         banner_image=offer.banner_image,
 
         status=offer.status,

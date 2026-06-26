@@ -36,6 +36,8 @@ export default function OffersPage() {
   const [endTime, setEndTime] = useState("");
   const [banner, setBanner] = useState(null);
   const [bannerFile, setBannerFile] = useState(null);
+  const [editingOffer, setEditingOffer] = useState(null);
+  const [itemAlign, setitemAlign] = useState("left");
 
   // Listing states
   const [offers, setOffers] = useState([]);
@@ -131,28 +133,51 @@ export default function OffersPage() {
   };
 
   const clearForm = () => {
+    setEditingOffer(null);
+
     setOfferName("");
     setPercentage("");
     setDescription("");
+    setitemAlign("left");
+
     setStartDate("");
     setEndDate("");
+
     setStartTime("");
     setEndTime("");
+
     setBanner(null);
     setBannerFile(null);
+  };
+
+  const handleEdit = (offer) => {
+    setEditingOffer(offer);
+
+    setOfferName(offer.title || "");
+    setPercentage(offer.percentage || "");
+    setDescription(offer.description || "");
+    setStartDate(offer.start_date || "");
+    setEndDate(offer.end_date || "");
+    setStartTime(offer.start_time || "");
+    setEndTime(offer.end_time || "");
+    setitemAlign(offer.text_align || "left");
+
+    setBanner(getOfferImageUrl(offer.banner_image));
+
+    setShowAddOffer(true);
   };
 
   const handleSave = async (status = "saved") => {
     if (!validateOfferForm()) return;
 
     const isPub = status === "published";
+
     if (isPub) setPublishing(true);
     else setSaving(true);
 
     try {
       const formData = new FormData();
-      // formData.append("title", offerName);
-      // formData.append("percentage", percentage);
+
       if (offerName.trim()) {
         formData.append("title", offerName);
       }
@@ -162,6 +187,7 @@ export default function OffersPage() {
       }
 
       formData.append("description", description);
+      formData.append("text_align", itemAlign);
       formData.append("start_date", startDate);
       formData.append("end_date", endDate);
       formData.append("start_time", startTime);
@@ -172,21 +198,33 @@ export default function OffersPage() {
         formData.append("banner_image", bannerFile);
       }
 
-      await api.post("/offers/admin", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      if (editingOffer) {
+        await api.put(`/offers/admin/${editingOffer.id}`, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
 
-      toast.success(
-        isPub ? "Offer published successfully!" : "Offer saved as draft.",
-      );
+        toast.success("Campaign updated successfully!");
+      } else {
+        await api.post("/offers/admin", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+
+        toast.success(
+          isPub ? "Offer published successfully!" : "Offer saved as draft.",
+        );
+      }
+
       fetchOffers();
       clearForm();
+      setEditingOffer(null);
       setShowAddOffer(false);
     } catch (error) {
-      console.log("Full Response:", error.response.data);
-      console.log("Detail:", error.response.data.detail);
-      console.table(error.response.data.detail);
-      console.log(JSON.stringify(error.response.data.detail, null, 2));
+      console.log(error);
+
       const message =
         error.response?.data?.detail?.map((e) => e.msg).join(", ") ||
         "Unable to save offer.";
@@ -397,6 +435,13 @@ export default function OffersPage() {
                           Publish
                         </button>
                       )}
+                      <Button
+                        onClick={() => handleEdit(offer)}
+                        variant="secondary"
+                        icon={FileText}
+                      >
+                        Edit
+                      </Button>
                       <button
                         onClick={() => {
                           if (
@@ -512,7 +557,52 @@ export default function OffersPage() {
               className="input-field py-2.5 text-xs resize-none"
             />
           </div>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-app">
+              Text Alignment
+            </label>
 
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setitemAlign("left")}
+                className={clsx(
+                  "flex-1 rounded-lg border py-2 text-xs font-semibold transition",
+                  itemAlign === "left"
+                    ? "bg-brand-500 text-white border-brand-500"
+                    : "border-app hover:bg-app",
+                )}
+              >
+                Left
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setitemAlign("center")}
+                className={clsx(
+                  "flex-1 rounded-lg border py-2 text-xs font-semibold transition",
+                  itemAlign === "center"
+                    ? "bg-brand-500 text-white border-brand-500"
+                    : "border-app hover:bg-app",
+                )}
+              >
+                Center
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setitemAlign("right")}
+                className={clsx(
+                  "flex-1 rounded-lg border py-2 text-xs font-semibold transition",
+                  itemAlign === "right"
+                    ? "bg-brand-500 text-white border-brand-500"
+                    : "border-app hover:bg-app",
+                )}
+              >
+                Right
+              </button>
+            </div>
+          </div>
           {/* Start Date & Time */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
