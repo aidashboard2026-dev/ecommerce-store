@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { SlidersHorizontal } from 'lucide-react'
-import { useProductsInfinite, useCollections } from '@/storefront/hooks/useProducts'
+import { useProductsInfinite, useCollections, useCategories } from '@/storefront/hooks/useProducts'
+
 import ProductGrid from '@/storefront/components/ProductGrid'
 import ProductFilters from '@/storefront/components/ProductFilters'
 import { useDebounce } from '@/shared/utils/productUtils'
@@ -16,6 +17,10 @@ export default function ProductsList() {
   const [filters, setFilters] = useState({
     sort_by: searchParams.get('sort_by') || 'newest',
     collection_id: searchParams.get('collection_id') || '',
+    category_id: searchParams.get('category_id') || '',
+    category: searchParams.get('category') || '',
+    collection: searchParams.get('collection') || '',
+    sub_collection: searchParams.get('sub_collection') || '',
     min_price: searchParams.get('min_price') || '',
     max_price: searchParams.get('max_price') || '',
     rating: null,
@@ -23,12 +28,33 @@ export default function ProductsList() {
   })
 
   const { data: collections = [] } = useCollections()
+  const { data: categoriesData = [] } = useCategories()
+
+  const categories = useMemo(() => {
+    return categoriesData.filter(c => c.name !== "Custom Printing")
+  }, [categoriesData])
+
+  const subCollections = useMemo(() => [
+    'Casual',
+    'Essentials',
+    'Premium',
+    'Sports',
+    'Oversized',
+    'Printed',
+    'Lifestyle',
+    'Summer',
+    'Winter'
+  ], [])
 
   const queryFilters = useMemo(() => {
     const f = {
       sort_by: filters.sort_by,
       search: debouncedSearch || undefined,
       collection_id: filters.collection_id || undefined,
+      category_id: filters.category_id || undefined,
+      category: filters.category || undefined,
+      collection: filters.collection || undefined,
+      sub_collection: filters.sub_collection || undefined,
       min_price: filters.min_price || undefined,
       max_price: filters.max_price || undefined,
     }
@@ -42,13 +68,89 @@ export default function ProductsList() {
   useEffect(() => {
     const params = {}
     if (debouncedSearch) params.search = debouncedSearch
-    if (filters.collection_id) params.collection_id = filters.collection_id
+    
+    if (filters.collection_id) {
+      const colObj = collections.find(c => String(c.id) === String(filters.collection_id))
+      if (colObj) params.collection = colObj.name
+    } else if (filters.collection) {
+      params.collection = filters.collection
+    }
+    
+    if (filters.sub_collection) params.sub_collection = filters.sub_collection
+    
+    if (filters.category_id) {
+      const catObj = categories.find(c => String(c.id) === String(filters.category_id))
+      if (catObj) params.category = catObj.name
+    } else if (filters.category) {
+      params.category = filters.category
+    }
+
     if (filters.sort_by !== 'newest') params.sort_by = filters.sort_by
     if (filters.min_price) params.min_price = filters.min_price
     if (filters.max_price) params.max_price = filters.max_price
-    setSearchParams(params, { replace: true })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, filters])
+
+    const currentParams = Object.fromEntries(searchParams.entries())
+    const hasChanged = Object.keys(params).length !== Object.keys(currentParams).length ||
+      Object.keys(params).some(k => String(params[k]) !== String(currentParams[k]))
+
+    if (hasChanged) {
+      setSearchParams(params, { replace: true })
+    }
+  }, [debouncedSearch, filters, collections, categories, searchParams, setSearchParams])
+
+  // Sync URL params -> State (handles nav clicks & back button)
+  useEffect(() => {
+    setFilters((prev) => {
+      const newSort = searchParams.get('sort_by') || 'newest'
+      const newCol = searchParams.get('collection') || ''
+      const newSubCol = searchParams.get('sub_collection') || ''
+      const newCat = searchParams.get('category') || ''
+      const newMin = searchParams.get('min_price') || ''
+      const newMax = searchParams.get('max_price') || ''
+
+      let newColId = ''
+      if (newCol && collections.length > 0) {
+        const colObj = collections.find(c => c.name.toLowerCase() === newCol.toLowerCase())
+        if (colObj) newColId = String(colObj.id)
+      }
+
+      let newCatId = ''
+      if (newCat && categories.length > 0) {
+        const catObj = categories.find(c => c.name.toLowerCase() === newCat.toLowerCase())
+        if (catObj) newCatId = String(catObj.id)
+      }
+
+      if (
+        prev.sort_by === newSort &&
+        prev.collection_id === newColId &&
+        prev.collection === newCol &&
+        prev.sub_collection === newSubCol &&
+        prev.category_id === newCatId &&
+        prev.category === newCat &&
+        prev.min_price === newMin &&
+        prev.max_price === newMax
+      ) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        sort_by: newSort,
+        collection_id: newColId,
+        collection: newCol,
+        sub_collection: newSubCol,
+        category_id: newCatId,
+        category: newCat,
+        min_price: newMin,
+        max_price: newMax,
+      }
+    })
+
+    const newSearch = searchParams.get('search') || ''
+    if (search !== newSearch) {
+      setSearch(newSearch)
+    }
+  }, [searchParams, collections, categories])
 
   // Infinite scroll sentinel
   const sentinelRef = useRef(null)
@@ -77,6 +179,10 @@ export default function ProductsList() {
     setFilters({
       sort_by: 'newest',
       collection_id: '',
+      category_id: '',
+      category: '',
+      collection: '',
+      sub_collection: '',
       min_price: '',
       max_price: '',
       rating: null,
@@ -113,6 +219,8 @@ export default function ProductsList() {
       <div className="flex gap-8">
         <ProductFilters
           collections={collections}
+          categories={categories}
+          subCollections={subCollections}
           filters={filters}
           onChange={setFilters}
           onReset={handleReset}

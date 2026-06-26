@@ -337,7 +337,6 @@ export default function ProductsPage() {
   const [formModal,      setFormModal]      = useState({ open: false, product: null })
   const [variantModal,   setVariantModal]   = useState({ open: false, productId: null })
   const [imageModal,     setImageModal]     = useState({ open: false, product: null })
-  const [manageModal,    setManageModal]    = useState(false)
   const [quickEditModal, setQuickEditModal] = useState({ open: false, product: null })
 
   // Stable key derived from flagFilters — avoids JSON.stringify inside deps array
@@ -379,10 +378,23 @@ export default function ProductsPage() {
   })
 
   const { data: collections = [] } = useQuery({
-    queryKey: ['collections', 'admin', categoryId],
-    queryFn:  () => collectionsAPI.list(categoryId ? { category_id: categoryId } : {}).then(r => r.data),
+    queryKey: ['collections', 'admin'],
+    queryFn:  () => collectionsAPI.list().then(r => r.data),
     staleTime: 5 * 60_000,
   })
+
+  const filteredCollections = useMemo(() => {
+    if (!categoryId) return collections
+    const selectedCat = categories.find(c => String(c.id) === String(categoryId))
+    const isMainProduct = selectedCat && ["T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"].includes(selectedCat.name)
+    if (isMainProduct) {
+      return collections.filter(c => {
+        const norm = c.name.trim().toLowerCase()
+        return ["men", "women", "kids"].includes(norm) || String(c.category_id) === String(categoryId)
+      })
+    }
+    return collections.filter(c => String(c.category_id) === String(categoryId))
+  }, [collections, categoryId, categories])
 
   // ── Mutations ────────────────────────────────────────────────────────────────
 
@@ -508,16 +520,9 @@ export default function ProductsPage() {
           </span>
         }
         actions={
-          // HEAD: both buttons kept — branch silently dropped "Manage Categories" which
-          // is the only entry point to CategoryCollectionModal. Upgraded to <Button>.
-          <div className="flex items-center gap-2">
-            <Button onClick={() => setManageModal(true)} variant="secondary" icon={Settings2}>
-              Manage Categories
-            </Button>
-            <Button onClick={() => setFormModal({ open: true, product: null })} icon={Plus}>
-              Add Product
-            </Button>
-          </div>
+          <Button onClick={() => setFormModal({ open: true, product: null })} icon={Plus}>
+            Add Product
+          </Button>
         }
       />
 
@@ -564,11 +569,11 @@ export default function ProductsPage() {
           )}
 
           {/* Collection filter (scoped to selected category) */}
-          {collections.length > 0 && (
+          {filteredCollections.length > 0 && (
             <select value={collectionId} onChange={e => setCollectionId(e.target.value)}
               className="input-field py-1.5 text-xs max-w-[160px]">
               <option value="">All Collections</option>
-              {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {filteredCollections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )}
 
@@ -807,20 +812,14 @@ export default function ProductsPage() {
         <ImageUploadModal
           isOpen={imageModal.open}
           onClose={() => setImageModal({ open: false, product: null })}
-          product={imageModal.product}
-        />
-      </ProductErrorBoundary>
-      <ProductErrorBoundary title="Category manager error">
-        <CategoryCollectionModal
-          isOpen={manageModal}
-          onClose={() => setManageModal(false)}
+          product={data?.items?.find(p => p.id === imageModal.product?.id) || imageModal.product}
         />
       </ProductErrorBoundary>
       <ProductErrorBoundary title="Quick edit error">
         <QuickCategoryEditModal
           isOpen={quickEditModal.open}
           onClose={() => setQuickEditModal({ open: false, product: null })}
-          product={quickEditModal.product}
+          product={data?.items?.find(p => p.id === quickEditModal.product?.id) || quickEditModal.product}
         />
       </ProductErrorBoundary>
 

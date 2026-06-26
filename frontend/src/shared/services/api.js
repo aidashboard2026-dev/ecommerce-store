@@ -2,28 +2,31 @@ import axios from 'axios'
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
 
-
-console.log("BASE URL =", BASE_URL);
 const api = axios.create({
   baseURL: BASE_URL,
-  withCredentials: false,
+  // withCredentials: admin uses Bearer token stored in localStorage.
+  // Set to true so the httponly cookie set by the backend on login is also
+  // sent — keeps both auth mechanisms in sync and future-proofs cookie-based refresh.
+  withCredentials: true,
 })
 
+// ── Attach JWT token to every request ────────────────────────────────────────
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
+// ── Handle 401s globally ──────────────────────────────────────────────────────
 api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('admin')
       window.location.href = '/admin/login'
     }
-    return Promise.reject(err)
+    return Promise.reject(error)
   }
 )
 
@@ -137,6 +140,15 @@ export const productsAPI = {
   bulkCreateVariants: (productId, variantsPayload) =>
     api.post(`/products/admin/${productId}/variants/bulk`, variantsPayload),
 
+  /**
+   * Update an existing variant (partial — only send changed fields).
+   * @param {number} productId
+   * @param {number} variantId
+   * @param {object} data
+   */
+  updateVariant: (productId, variantId, data) =>
+    api.patch(`/products/admin/${productId}/variants/${variantId}`, data),
+
   // ── Images ──────────────────────────────────────────────────────────────────
 
   /**
@@ -147,7 +159,7 @@ export const productsAPI = {
    * @param {boolean} setAsPrimary - explicitly control primary flag instead of
    *                                 hard-coding based on type.
    */
-  uploadImage: (productId, file, imageType = 'thumbnail', setAsPrimary = false) => {
+  uploadImage: (productId, file, imageType = 'thumbnail', setAsPrimary = true) => {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('image_type', imageType)
@@ -158,11 +170,12 @@ export const productsAPI = {
   },
 
   /**
-   * Delete a product image record by its own image ID (not the product ID).
-   * @param {number} imageId - the PK of the ProductImage row
+   * Delete a named image from a product by type.
+   * @param {number} productId
+   * @param {string} imageType - 'thumbnail' | 'front' | 'back' | 'size_chart'
    */
-  deleteImage: (imageId) =>
-    api.delete(`/products/admin/images/${imageId}`),
+  deleteImage: (productId, imageType = 'thumbnail') =>
+    api.delete(`/products/admin/${productId}/images/${imageType}`),
 
   /**
    * Delete a gallery image by product + gallery index.

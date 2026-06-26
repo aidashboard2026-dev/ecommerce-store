@@ -150,6 +150,33 @@ class VariantCreate(VariantBase):
     def coerce_discount(cls, v):
         return Decimal(str(v)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
+
+class VariantUpdate(BaseModel):
+    """All fields optional — send only the ones you want to change."""
+    size: Optional[str] = None
+    color: Optional[str] = None
+    color_hex: Optional[str] = None
+    sku: Optional[str] = None
+    original_price: Optional[Decimal] = None
+    selling_price: Optional[Decimal] = None
+    discount_percentage: Optional[Decimal] = None
+    stock_quantity: Optional[int] = None
+    low_stock_threshold: Optional[int] = None
+
+    @field_validator("original_price", "selling_price", mode="before")
+    @classmethod
+    def coerce_price(cls, v):
+        if v is None:
+            return v
+        return Decimal(str(v)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    @field_validator("discount_percentage", mode="before")
+    @classmethod
+    def coerce_discount(cls, v):
+        if v is None:
+            return v
+        return Decimal(str(v)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
     @field_validator("original_price")
     @classmethod
     def original_price_positive(cls, v):
@@ -285,6 +312,10 @@ class ProductUpdate(BaseModel):
     is_new_arrival: Optional[bool] = None
     seo_title: Optional[str] = None
     seo_description: Optional[str] = None
+    thumbnail:        Optional[str] = None
+    image_front:      Optional[str] = None
+    image_back:       Optional[str] = None
+    image_size_chart: Optional[str] = None
 
     @field_validator("title")
     @classmethod

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import (
     Column,
@@ -10,6 +10,13 @@ from sqlalchemy import (
 )
 
 from app.core.database import Base
+
+
+def _utcnow():
+    """Timezone-aware UTC timestamp — avoids comparing naive/aware datetimes."""
+    return datetime.now(timezone.utc)
+
+
 
 
 class Order(Base):
@@ -54,27 +61,17 @@ class Order(Base):
     quantity = Column(Integer, default=1)
 
     # Numeric(10, 2) — exact decimal arithmetic; no floating-point rounding errors.
-    # Migration b2c3d4e5f6a7 converted these from Float with USING cast.
     price = Column(Numeric(precision=10, scale=2), default=0)
 
     total_amount = Column(Numeric(precision=10, scale=2), default=0)
 
     # Payment
-    payment_method = Column(
-        String(50),
-        default="COD"
-    )
+    payment_method = Column(String(50), default="COD")
 
-    payment_status = Column(
-        String(50),
-        default="PENDING"
-    )
+    payment_status = Column(String(50), default="PENDING")
 
     # Tracking
-    tracking_status = Column(
-        String(50),
-        default="PLACED"
-    )
+    tracking_status = Column(String(50), default="PLACED")
 
     tracking_note = Column(Text)
 
@@ -82,28 +79,14 @@ class Order(Base):
     logistics = Column(String(100), nullable=True)
     tracking_id = Column(String(100), nullable=True)
 
-    # Dates
-    ordered_at = Column(
-        DateTime,
-        default=datetime.utcnow
-    )
+    # Dates — timezone=True ensures TIMESTAMPTZ in PostgreSQL so comparisons
+    # with timezone-aware Python datetimes (dashboard queries) never raise TypeError.
+    ordered_at = Column(DateTime(timezone=True), default=_utcnow)
 
-    created_at = Column(
-        DateTime,
-        default=datetime.utcnow
-    )
+    created_at = Column(DateTime(timezone=True), default=_utcnow)
 
-    updated_at = Column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow
-    )
+    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
-    delivery_days = Column(
-        Integer,
-        default=5
-    )
+    delivery_days = Column(Integer, default=5)
 
-    expected_delivery_date = Column(
-        DateTime
-    )
+    expected_delivery_date = Column(DateTime(timezone=True))

@@ -10,7 +10,8 @@ from app.modules.admins.models import Admin
 from app.modules.customers.models import Customer
 from app.modules.orders.models import Order
 from app.modules.products.models import Product, ProductVariant
-from app.modules.orders.schemas import OrderCreate, OrderResponse, OrderUpdate
+from app.modules.orders.schemas import OrderCreate, OrderResponse, OrderTrackingResponse, OrderUpdate
+
 
 router = APIRouter()
 
@@ -34,18 +35,24 @@ def _find_variant_for_order(db: Session, order: Order) -> ProductVariant | None:
     restoration (on cancellation) targets the exact same variant that
     was decremented at order creation time.
     """
-    if not order.product_name or not order.size:
+    if not order.size:
         return None
 
     variant_q = (
         db.query(ProductVariant)
         .join(Product, Product.id == ProductVariant.product_id)
         .filter(
-            Product.title == order.product_name,
             ProductVariant.size == order.size,
             Product.deleted_at.is_(None),
         )
     )
+    if order.product_id:
+        variant_q = variant_q.filter(Product.id == order.product_id)
+    elif order.product_name:
+        variant_q = variant_q.filter(Product.title == order.product_name)
+    else:
+        return None
+
     if order.color:
         variant_q = variant_q.filter(ProductVariant.color == order.color)
 
@@ -393,11 +400,12 @@ def cancel_customer_order(
     return order
 
 
-@router.get("/track/{order_number}", response_model=OrderResponse)
+@router.get("/track/{order_number}", response_model=OrderTrackingResponse)
 def track_order_by_number(
     order_number: str,
     db: Session = Depends(get_db),
 ):
+    """Public order tracking — returns only shipping/status fields; no customer PII."""
     order = db.query(Order).filter(Order.order_number == order_number).first()
     if not order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")

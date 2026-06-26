@@ -1,5 +1,4 @@
 import os
-import uuid
 from datetime import date, datetime, time, timezone
 from typing import List, Optional
 
@@ -9,17 +8,94 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.dependencies import get_current_admin
 from app.core.config import settings
+
 from app.core.database import get_db
 from app.modules.admins.models import Admin
 from app.modules.offers.models import Offer
 from app.modules.offers.schemas import OfferCreate, OfferResponse
 from app.modules.offers.service import create_offer, delete_offer, get_offer, get_offers, update_offer
+from app.shared.storage import supabase_storage
+
 
 router = APIRouter()
 
-# Resolved absolute path inside the Docker named volume
-_OFFER_UPLOAD_DIR = os.path.join(os.path.abspath(settings.UPLOAD_DIR), "offers")
-os.makedirs(_OFFER_UPLOAD_DIR, exist_ok=True)
+ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+MAX_OFFER_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
+
+_MAGIC_BYTES: dict = {
+    b"\xff\xd8\xff": "image/jpeg",
+    b"\x89PNG":      "image/png",
+    b"RIFF":         "image/webp",
+}
+
+
+def _validate_magic_bytes(header: bytes) -> None:
+    """Reject files whose content doesn't match a supported image format."""
+    if len(header) < 4:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="File is too small to be a valid image.",
+        )
+    for magic, mime in _MAGIC_BYTES.items():
+        if header[:len(magic)] == magic:
+            if mime == "image/webp" and header[8:12] != b"WEBP":
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="File has RIFF header but is not a valid WebP image.",
+                )
+            return
+    raise HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail="File content does not match any supported image format.",
+    )
+
+
+async def _save_offer_image(banner_image: UploadFile) -> str:
+    """
+    Validates and uploads an offer banner image to Supabase Storage
+    (with local-disk fallback when Supabase is not configured),
+    returning the public URL / local path.
+    """
+    if banner_image.content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Only JPG, PNG, and WebP images are allowed. Got: {banner_image.content_type}",
+        )
+
+    ext = os.path.splitext(banner_image.filename or "")[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"File extension '{ext}' is not allowed. Use: {', '.join(ALLOWED_EXTENSIONS)}",
+        )
+
+    contents = await banner_image.read()
+
+    if not contents:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Uploaded file is empty.",
+        )
+
+    if len(contents) > MAX_OFFER_IMAGE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Image must be under {MAX_OFFER_IMAGE_SIZE // (1024 * 1024)} MB.",
+        )
+
+    _validate_magic_bytes(contents[:16])
+
+    return supabase_storage.upload_banner_image(
+        contents=contents,
+        original_filename=banner_image.filename or "offer.jpg",
+        content_type=banner_image.content_type,
+    )
+
+
+def _delete_offer_image(image_url: Optional[str]) -> None:
+    """Best-effort delete of an offer image from storage."""
+    supabase_storage.delete_banner_image(image_url)
 
 
 # ── Public storefront endpoint (MUST be registered BEFORE /{offer_id}) ────────
@@ -84,21 +160,8 @@ async def create_new_offer(
     expires_at: Optional[datetime] = None
     image_path: Optional[str] = None
 
-    # Save banner image to the named-volume path with a UUID filename
     if banner_image and banner_image.filename:
-        ext = os.path.splitext(banner_image.filename)[1].lower() or ".jpg"
-        unique_name = f"{uuid.uuid4().hex}{ext}"
-        file_path = os.path.join(_OFFER_UPLOAD_DIR, unique_name)
-        try:
-            contents = await banner_image.read()
-            with open(file_path, "wb") as buf:
-                buf.write(contents)
-            image_path = f"/uploads/offers/{unique_name}"
-        except OSError:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to save banner image.",
-            )
+        image_path = await _save_offer_image(banner_image)
 
     # Compute published_at / expires_at when publishing immediately
     if status_field == "published":
@@ -215,35 +278,14 @@ async def edit_offer(
     if end_time is not None:
         update_fields["end_time"] = end_time
 
-    # Save new banner image (same upload pattern as create) and clean up the
-    # old file so it doesn't become orphaned.
+    # Save new banner image via Supabase (mirrors banner upload pattern) and
+    # clean up the old image so it doesn't become an orphan in storage.
     if banner_image and banner_image.filename:
-        ext = os.path.splitext(banner_image.filename)[1].lower() or ".jpg"
-        unique_name = f"{uuid.uuid4().hex}{ext}"
-        file_path = os.path.join(_OFFER_UPLOAD_DIR, unique_name)
-        try:
-            contents = await banner_image.read()
-            with open(file_path, "wb") as buf:
-                buf.write(contents)
-        except OSError:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to save banner image.",
-            )
-
         old_image = offer.banner_image
-        update_fields["banner_image"] = f"/uploads/offers/{unique_name}"
-
+        new_image_url = await _save_offer_image(banner_image)
+        update_fields["banner_image"] = new_image_url
         if old_image:
-            old_path = os.path.join(
-                os.path.abspath(settings.UPLOAD_DIR),
-                old_image.lstrip("/").removeprefix("uploads/"),
-            )
-            if os.path.isfile(old_path):
-                try:
-                    os.remove(old_path)
-                except OSError:
-                    pass
+            _delete_offer_image(old_image)
 
     # Resolve effective values (new value if provided, else existing offer value)
     effective_status = status_field if status_field is not None else offer.status

@@ -20,6 +20,8 @@ const RATINGS = [4, 3, 2]
 
 export default function ProductFilters({
   collections = [],
+  categories = [],
+  subCollections = [],
   filters,
   onChange,
   onReset,
@@ -60,7 +62,7 @@ export default function ProductFilters({
         </div>
       </div>
 
-      {/* Category / Collection */}
+      {/* Collection */}
       {collections.length > 0 && (
         <div>
           <h4 className="text-xs font-bold uppercase tracking-wider text-app mb-3">Collection</h4>
@@ -85,6 +87,68 @@ export default function ProductFilters({
                   className="accent-brand-500"
                 />
                 {c.name}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Category */}
+      {categories.length > 0 && (
+        <div>
+          <h4 className="text-xs font-bold uppercase tracking-wider text-app mb-3">Category</h4>
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 text-sm text-app cursor-pointer">
+              <input
+                type="radio"
+                name="category_id"
+                checked={!filters.category_id}
+                onChange={() => update({ category_id: '' })}
+                className="accent-brand-500"
+              />
+              All Categories
+            </label>
+            {categories.map((c) => (
+              <label key={c.id} className="flex items-center gap-2 text-sm text-app cursor-pointer">
+                <input
+                  type="radio"
+                  name="category_id"
+                  checked={String(filters.category_id) === String(c.id)}
+                  onChange={() => update({ category_id: c.id })}
+                  className="accent-brand-500"
+                />
+                {c.name}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Sub Collection */}
+      {subCollections.length > 0 && (
+        <div>
+          <h4 className="text-xs font-bold uppercase tracking-wider text-app mb-3">Style / Sub-Collection</h4>
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 text-sm text-app cursor-pointer">
+              <input
+                type="radio"
+                name="sub_collection"
+                checked={!filters.sub_collection}
+                onChange={() => update({ sub_collection: '' })}
+                className="accent-brand-500"
+              />
+              All Styles
+            </label>
+            {subCollections.map((sc) => (
+              <label key={sc} className="flex items-center gap-2 text-sm text-app cursor-pointer">
+                <input
+                  type="radio"
+                  name="sub_collection"
+                  checked={filters.sub_collection === sc}
+                  onChange={() => update({ sub_collection: sc })}
+                  className="accent-brand-500"
+                />
+                {sc}
               </label>
             ))}
           </div>

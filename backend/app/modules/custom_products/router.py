@@ -120,6 +120,7 @@ def delete_custom_product_endpoint(
         product_id
     )
 
+
 @router.post("/admin/{product_id}/images")
 def upload_custom_product_image(
     product_id: int,
@@ -197,6 +198,7 @@ def list_public_custom_products(
         search=search,
         category_id=category_id,
     )
+
 @router.get(
     "/{product_id}",
     response_model=CustomProductResponse
@@ -209,5 +211,3 @@ def get_public_custom_product(
         db,
         product_id
     )
-
-

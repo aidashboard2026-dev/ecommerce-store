@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react'
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import React, { useEffect, useMemo } from 'react'
+import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 
 // Admin Layout & Pages
@@ -36,7 +36,6 @@ import CheckoutPage from '@/storefront/components/CheckoutPage'
 import WishlistGrid from '@/storefront/components/WishlistGrid'
 
 
-import SubProductsPage from "@/storefront/components/SubProductsPage";
 // import CategoryPage from '@/storefront/components/CategoryPage'
 import CustomProductsPage from "@/admin/pages/CustomProductsPage";
 
@@ -89,6 +88,28 @@ function CustomerPublicRoute({ children }) {
   return token && customer
     ? <Navigate to="/profile" replace />
     : children
+}
+// Helper component to redirect legacy category URLs to storefront catalog search
+function CategoryRedirect() {
+  const { slug } = useParams()
+  const normalizedCategory = useMemo(() => {
+    if (!slug) return ''
+    const mapping = {
+      't-shirt': 'T-Shirt',
+      'track-pant': 'Track Pant',
+      'jersey': 'Jersey',
+      'shirt': 'Shirt',
+      'trouser': 'Trouser',
+      't-shirts': 'T-Shirt',
+      'track-pants': 'Track Pant',
+      'jerseys': 'Jersey',
+      'shirts': 'Shirt',
+      'trousers': 'Trouser',
+    }
+    return mapping[slug.toLowerCase()] || slug
+  }, [slug])
+
+  return <Navigate to={`/products?category=${encodeURIComponent(normalizedCategory)}`} replace />
 }
 
 export default function AppRoutes() {
@@ -170,9 +191,8 @@ export default function AppRoutes() {
         <Route path="products/:slug" element={<ProductsPage />} />
 
 
-        <Route path="/sub-products" element={<SubProductsPage />} />
-{/* 
-        <Route path="category/:slug" element={<CategoryPage />} /> */}
+        <Route path="sub-products" element={<Navigate to="/products" replace />} />
+        <Route path="category/:slug" element={<CategoryRedirect />} />
 
         <Route path="cart" element={<CartPage />} />
 

@@ -29,7 +29,7 @@ WINDOW_SECONDS = 300    # 5-minute rolling window
 
 # ── Cookie configuration ──────────────────────────────────────────────────────
 _COOKIE_NAME    = "admin_token"
-_COOKIE_MAX_AGE = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+_COOKIE_MAX_AGE = settings.ADMIN_TOKEN_EXPIRE_MINUTES * 60
 
 
 def _check_rate_limit(ip: str) -> None:
@@ -89,16 +89,6 @@ def login(
         samesite="lax",
         path="/",
     )
-    print("EMAIL =", login_data.email)
-    print("PASSWORD =", login_data.password)
-
-    # result = login_admin(
-    #     db,
-    #     login_data.email,
-    #     login_data.password
-    # )
-
-    print("LOGIN RESULT =", result)
     return result
 
 
@@ -116,12 +106,14 @@ def logout(response: Response, current_admin: Admin = Depends(get_current_admin)
 # ── Customer signup ───────────────────────────────────────────────────────────
 
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
-def signup(signup_data: SignupRequest, db: Session = Depends(get_db)):
+def signup(request: Request, signup_data: SignupRequest, db: Session = Depends(get_db)):
     """
     Register a new customer account.
     Returns safe subset of customer data — no token issued at signup.
     Customer must call POST /auth/customer/login to obtain a JWT.
     """
+    ip = request.client.host if request.client else "unknown"
+    _check_rate_limit(ip)
     customer = register_customer(db, signup_data)
 
     return {

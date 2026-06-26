@@ -28,6 +28,33 @@ ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_BANNER_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
 
+_MAGIC_BYTES: dict = {
+    b"\xff\xd8\xff": "image/jpeg",
+    b"\x89PNG":      "image/png",
+    b"RIFF":         "image/webp",
+}
+
+
+def _validate_magic_bytes(header: bytes) -> None:
+    """Reject files whose content doesn't match a supported image format."""
+    if len(header) < 4:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="File is too small to be a valid image.",
+        )
+    for magic, mime in _MAGIC_BYTES.items():
+        if header[:len(magic)] == magic:
+            if mime == "image/webp" and header[8:12] != b"WEBP":
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="File has RIFF header but is not a valid WebP image.",
+                )
+            return
+    raise HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail="File content does not match any supported image format.",
+    )
+
 
 async def _save_banner_image(banner_image: UploadFile) -> str:
     """
@@ -60,6 +87,8 @@ async def _save_banner_image(banner_image: UploadFile) -> str:
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail=f"Image must be under {MAX_BANNER_IMAGE_SIZE // (1024 * 1024)} MB.",
         )
+
+    _validate_magic_bytes(contents[:16])
 
     return supabase_storage.upload_banner_image(
         contents=contents,

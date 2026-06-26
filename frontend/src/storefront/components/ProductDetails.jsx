@@ -165,10 +165,25 @@ export default function ProductDetails() {
   return (
     <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       {/* Breadcrumb */}
-      <div className="text-xs text-muted mb-6">
+      <div className="text-xs text-muted mb-6 flex flex-wrap gap-1 items-center">
         <Link to="/" className="hover:text-app">Home</Link> /{' '}
         <Link to="/products" className="hover:text-app">Shop</Link> /{' '}
-        <span className="text-app">{product.title}</span>
+        {product.collection_name && (
+          <>
+            <Link to={`/products?collection=${encodeURIComponent(product.collection_name)}`} className="hover:text-app">{product.collection_name}</Link> /{' '}
+          </>
+        )}
+        {product.category_name && (
+          <>
+            <Link to={`/products?collection=${encodeURIComponent(product.collection_name || '')}&category=${encodeURIComponent(product.category_name)}`} className="hover:text-app">{product.category_name}</Link> /{' '}
+          </>
+        )}
+        {product.collection && (
+          <>
+            <Link to={`/products?collection=${encodeURIComponent(product.collection_name || '')}&category=${encodeURIComponent(product.category_name || '')}&sub_collection=${encodeURIComponent(product.collection)}`} className="hover:text-app">{product.collection}</Link> /{' '}
+          </>
+        )}
+        <span className="text-app font-semibold">{product.title}</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">

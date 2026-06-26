@@ -18,9 +18,10 @@ import { useState, useEffect } from 'react'
 //       Set VITE_BACKEND_URL=https://api.mystore.com in .env
 //       → image src = 'https://api.mystore.com/uploads/products/…'
 //
-// NOTE: Do NOT derive BACKEND_URL by stripping /api/v1 from VITE_API_URL —
-// that breaks when VITE_API_URL is a relative path (the common dev setup).
-const _BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL ?? '').replace(/\/$/, '')
+// NOTE: VITE_BACKEND_URL must be set in production. No localhost fallback is used
+// here so that misconfigured deployments produce visible broken-image errors
+// (easy to diagnose) rather than silently resolving to a dev server.
+const _BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL || '').replace(/\/$/, '')
 
 export function getImageUrl(thumbnail) {
   if (!thumbnail) return null
