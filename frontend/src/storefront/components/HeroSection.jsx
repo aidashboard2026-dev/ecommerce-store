@@ -71,7 +71,7 @@ function BannerSlide({ banner }) {
     : getImageUrl(banner.banner_image);
 
   return (
-    <section className="relative  overflow-hidden rounded-3xl h-[300px] sm:h-[350px] md:h-[400px] lg:h-[500px] md:mx-8 md:mt-0 text-white">
+    <section className="relative  overflow-hidden rounded-3xl h-[300px] sm:h-[350px] md:h-[400px] lg:h-[500px] mx-4 sm:mx-6 md:mx-8 lg:mx-10 md:mt-0 text-white">
       {" "}
       {imageUrl && (
         <img
@@ -82,7 +82,7 @@ function BannerSlide({ banner }) {
         />
       )}
       {/* Legibility overlay over the banner image */}
-      <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
+      <div className="absolute inset-0 transition duration-300" />
       <div className="relative mx-auto h-full w-full max-w-[1400px] px-2 md:px-4 lg:px-8 py-12 md:py-28 lg:py-36 flex flex-col items-start justify-center gap-2 md:gap-6">
         <span className="inline-flex w-fit items-center gap-2 bg-white/15 backdrop-blur-sm text-[10px] p-1 px-2  font-semibold uppercase tracking-wider md:text-xs md:px-4 md:py-1.5 rounded-full">
           <Sparkles size={14} /> Featured
