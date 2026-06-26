@@ -183,6 +183,11 @@ export const storefrontAPI = {
   getCollections:   (params = {}) => storefrontClient.get('/products/collections', { params }),
   getBanners:       ()            => storefrontClient.get('/banners/active/all'),
   getOffers:        ()            => storefrontClient.get('/offers/active/all'),
+  getCustomProducts: (params = {}) =>
+    storefrontClient.get('/custom-products', { params }),
+
+  getCustomProduct: (id) =>
+      storefrontClient.get(`/custom-products/${id}`),
 
   // ── Customer profile ──────────────────────────────────────────────────────
   updateProfile:    (data)        => storefrontClient.put('/customers/profile/update', data),
@@ -226,6 +231,32 @@ export const customProductsAPI = {
 
   delete: (id) =>
     api.delete(`/custom-products/admin/${id}`),
+
+  uploadImage: (
+    productId,
+    file,
+    imageType = 'thumbnail',
+    setAsPrimary = false
+  ) => {
+    const formData = new FormData()
+
+    formData.append('file', file)
+    formData.append('image_type', imageType)
+    formData.append(
+      'set_as_primary',
+      String(setAsPrimary)
+    )
+
+    return api.post(
+      `/custom-products/admin/${productId}/images`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      }
+    )
+  },
 }
 // ─── Orders ───────────────────────────────────────────────────────────────────
 

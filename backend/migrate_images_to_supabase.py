@@ -33,12 +33,12 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app.core.config import settings  # noqa: E402
-from app.database.session import SessionLocal  # noqa: E402
-from app.models.banner import Banner  # noqa: E402
-from app.models.product import Product  # noqa: E402
-from app.services import supabase_storage  # noqa: E402
+from app.core.database import SessionLocal  # noqa: E402
 
-
+from app.modules.banners.models import Banner  # noqa: E402
+from app.modules.products.models import Product  # noqa: E402
+from app.shared.storage import supabase_storage
+  # noqa: E402
 def _is_local_path(value: str) -> bool:
     """True for legacy root-relative paths like /uploads/products/x.jpg."""
     if not value:

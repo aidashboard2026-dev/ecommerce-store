@@ -91,3 +91,20 @@ export function useCollections() {
     },
   })
 }
+
+export function useCustomProducts(filters = {}) {
+  return useQuery({
+    queryKey: ['custom-products', filters],
+    queryFn: () => fetchCustomProducts(filters),
+    staleTime: 60_000,
+  })
+}
+
+export function useCustomProduct(id) {
+  return useQuery({
+    queryKey: ['custom-product', id],
+    queryFn: () => fetchCustomProduct(id),
+    enabled: !!id,
+    staleTime: 60_000,
+  })
+}

@@ -1,5 +1,5 @@
 import React from 'react'
-import { useParams, useSearchParams, Link } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { PRODUCT_TYPES } from '@/storefront/components/customProductTypes'
 import CustomProductForm from '@/storefront/components/CustomProductForm'
@@ -8,17 +8,21 @@ import CustomProductForm from '@/storefront/components/CustomProductForm'
 // cards (Magic Cup / White Cup) per the brief's 9-section list, even though
 // both route to the same `cup` product type — the desired style is passed
 // through as a query param and used to preselect it on the form.
-const INDEX_CARDS = PRODUCT_TYPES.flatMap((type) => {
-  if (type.key === 'cup') {
-    return [
-      { ...type, cardLabel: 'Magic Cup Printing', style: 'Magic Cup' },
-      { ...type, cardLabel: 'White Cup Printing', style: 'White Cup' },
-    ]
-  }
-  return [{ ...type, cardLabel: type.label }]
-})
+// const INDEX_CARDS = PRODUCT_TYPES.flatMap((type) => {
+//   if (type.key === 'cup') {
+//     return [
+//       { ...type, cardLabel: 'Magic Cup Printing', style: 'Magic Cup' },
+//       { ...type, cardLabel: 'White Cup Printing', style: 'White Cup' },
+//     ]
+//   }
+//   return [{ ...type, cardLabel: type.label }]
+// })
 
 function ProductTypeGrid() {
+
+  const { data } = useCustomProducts()
+
+  const products = data?.items || []
   return (
     <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
       <div className="text-center mb-10">
@@ -30,19 +34,47 @@ function ProductTypeGrid() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {INDEX_CARDS.map((card) => (
+        {products.map((product) => (
           <Link
-            key={card.cardLabel}
-            to={card.style ? `/custom/${card.key}?style=${encodeURIComponent(card.style)}` : `/custom/${card.key}`}
+            key={product.id}
+            to={`/custom/${product.id}`}
             className="group flex flex-col items-center justify-center gap-3 rounded-2xl border border-app bg-surface p-6 sm:p-8 text-center hover:border-brand-500 hover:shadow-card dark:hover:shadow-card-dark transition-all duration-300"
-          >
-            <span className="text-3xl sm:text-4xl transition-transform duration-300 group-hover:scale-110">
-              {card.emoji}
-            </span>
-            <span className="text-sm font-semibold text-app">{card.cardLabel}</span>
+          > 
+            <p className="text-xs uppercase text-muted">
+
+              {product.category?.name}
+
+            </p>
+            <img
+                src={product.thumbnail}
+                alt={product.title}
+                className="w-20 h-20 rounded-xl object-cover"
+            />
+            <span className="text-sm font-semibold text-app">{product.title}</span>
+
+            <p className="text-xs text-muted line-clamp-2">
+                {product.short_description || product.description}
+            </p>
+
+            <p className="text-brand-600 font-bold">
+              ₹{product.selling_price_min}
+              {product.selling_price_max &&
+                  ` - ₹${product.selling_price_max}`}
+            </p>
+
+            <p className="text-xs line-through text-muted">
+              ₹{product.original_price_min}
+              {product.original_price_max &&
+                  ` - ₹${product.original_price_max}`}
+            </p>
+
+
           </Link>
+          
         ))}
       </div>
+
+      
     </div>
   )
 }
@@ -53,15 +85,20 @@ function ProductTypeGrid() {
 // reuse existing UI/upload patterns from elsewhere in the app.
 export default function CustomPage() {
   const { productType } = useParams()
-  const [searchParams] = useSearchParams()
+  // const [searchParams] = useSearchParams()
 
   if (!productType) {
     return <ProductTypeGrid />
   }
 
-  const config = PRODUCT_TYPES.find((t) => t.key === productType)
+  // const config = PRODUCT_TYPES.find((t) => t.key === productType)
+  const { data } = useCustomProducts()
 
-  if (!config) {
+  const product =
+      data?.items?.find(
+          (p) => String(p.id) === productType
+      )
+  if (!product) {
     return (
       <div className="mx-auto w-full max-w-[700px] px-4 sm:px-6 lg:px-8 py-20 text-center">
         <p className="text-app font-semibold mb-4">Unknown custom product type.</p>
@@ -77,7 +114,9 @@ export default function CustomPage() {
       <Link to="/custom" className="inline-flex items-center gap-2 text-sm text-muted hover:text-app mb-6">
         <ArrowLeft size={16} /> Back to Custom Orders
       </Link>
-      <CustomProductForm productType={config} initialStyle={searchParams.get('style')} />
+      <CustomProductForm
+        product={product}
+      />
     </div>
   )
 }

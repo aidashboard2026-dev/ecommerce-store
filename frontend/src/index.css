@@ -286,6 +286,15 @@
   background: transparent;
 }
 
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 .inv-variant-table {
   width: 100%;
   border-collapse: collapse;
