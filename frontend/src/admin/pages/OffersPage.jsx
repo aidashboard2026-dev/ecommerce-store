@@ -1,6 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
-import { Search, Plus, Calendar, Percent, Clock, Trash2, Eye, FileText, X, Image as ImageIcon, Loader2 } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Calendar,
+  Percent,
+  Clock,
+  Trash2,
+  Eye,
+  FileText,
+  X,
+  Image as ImageIcon,
+  Loader2,
+} from "lucide-react";
 import api from "@/shared/services/api";
 import clsx from "clsx";
 
@@ -8,12 +20,12 @@ import PageHeader from "@/shared/components/ui/PageHeader";
 import SearchBar from "@/shared/components/ui/SearchBar";
 import Drawer from "@/shared/components/ui/Drawer";
 import Badge from "@/shared/components/ui/Badge";
-import Button from '@/shared/components/ui/Button';
+import Button from "@/shared/components/ui/Button";
 
 export default function OffersPage() {
   const [search, setSearch] = useState("");
   const [showAddOffer, setShowAddOffer] = useState(false);
-  
+
   // Form states
   const [offerName, setOfferName] = useState("");
   const [percentage, setPercentage] = useState("");
@@ -24,13 +36,13 @@ export default function OffersPage() {
   const [endTime, setEndTime] = useState("");
   const [banner, setBanner] = useState(null);
   const [bannerFile, setBannerFile] = useState(null);
-  
+
   // Listing states
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  
+
   // Timer state
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -68,7 +80,7 @@ export default function OffersPage() {
 
   const filteredOffers = offers
     .filter((offer) =>
-      offer.title?.toLowerCase().includes(search.toLowerCase())
+      offer.title?.toLowerCase().includes(search.toLowerCase()),
     )
     .sort((a, b) => {
       if (a.status === "published" && b.status === "published") {
@@ -82,29 +94,35 @@ export default function OffersPage() {
   const validateOfferForm = () => {
     if (
       !bannerFile ||
-      !offerName.trim() ||
-      !percentage.trim() ||
+      // !offerName.trim() ||
+      // !percentage.trim() ||
       !startDate ||
       !startTime ||
       !endDate ||
       !endTime
     ) {
-      toast.error("Please fill all required fields, including the banner image.");
+      toast.error(
+        "Please fill all required fields, including the banner image.",
+      );
       return false;
     }
 
-    if (!/^\d+$/.test(percentage)) {
-      toast.error("Discount percentage must contain numbers only.");
-      return false;
+    if (percentage.trim()) {
+      if (!/^\d+$/.test(percentage)) {
+        toast.error("Discount percentage must contain numbers only.");
+        return false;
+      }
+
+      const pctNum = Number(percentage);
+      if (pctNum <= 0 || pctNum > 100) {
+        toast.error("Discount percentage must be between 1 and 100.");
+        return false;
+      }
     }
 
-    const pctNum = Number(percentage);
-    if (pctNum <= 0 || pctNum > 100) {
-      toast.error("Discount percentage must be between 1 and 100.");
-      return false;
-    }
-
-    if (new Date(`${endDate}T${endTime}`) <= new Date(`${startDate}T${startTime}`)) {
+    if (
+      new Date(`${endDate}T${endTime}`) <= new Date(`${startDate}T${startTime}`)
+    ) {
       toast.error("End Date & Time must be after Start Date & Time.");
       return false;
     }
@@ -126,15 +144,23 @@ export default function OffersPage() {
 
   const handleSave = async (status = "saved") => {
     if (!validateOfferForm()) return;
-    
+
     const isPub = status === "published";
     if (isPub) setPublishing(true);
     else setSaving(true);
 
     try {
       const formData = new FormData();
-      formData.append("title", offerName);
-      formData.append("percentage", percentage);
+      // formData.append("title", offerName);
+      // formData.append("percentage", percentage);
+      if (offerName.trim()) {
+        formData.append("title", offerName);
+      }
+
+      if (percentage.trim()) {
+        formData.append("percentage", percentage);
+      }
+
       formData.append("description", description);
       formData.append("start_date", startDate);
       formData.append("end_date", endDate);
@@ -150,13 +176,22 @@ export default function OffersPage() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      toast.success(isPub ? "Offer published successfully!" : "Offer saved as draft.");
+      toast.success(
+        isPub ? "Offer published successfully!" : "Offer saved as draft.",
+      );
       fetchOffers();
       clearForm();
       setShowAddOffer(false);
     } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.detail || "Unable to save offer campaign.");
+      console.log("Full Response:", error.response.data);
+      console.log("Detail:", error.response.data.detail);
+      console.table(error.response.data.detail);
+      console.log(JSON.stringify(error.response.data.detail, null, 2));
+      const message =
+        error.response?.data?.detail?.map((e) => e.msg).join(", ") ||
+        "Unable to save offer.";
+
+      toast.error(message);
     } finally {
       setSaving(false);
       setPublishing(false);
@@ -218,7 +253,10 @@ export default function OffersPage() {
               className="max-w-xs"
             />
             <Button
-              onClick={() => {  clearForm();  setShowAddOffer(true);}}
+              onClick={() => {
+                clearForm();
+                setShowAddOffer(true);
+              }}
               icon={Plus}
               variant="primary"
               className="flex flex-row w-fit whitespace-nowrap"
@@ -233,7 +271,9 @@ export default function OffersPage() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
-          <p className="text-xs font-medium text-muted">Syncing promotions...</p>
+          <p className="text-xs font-medium text-muted">
+            Syncing promotions...
+          </p>
         </div>
       ) : filteredOffers.length === 0 ? (
         <div className="card p-16 text-center border-dashed flex flex-col items-center justify-center max-w-xl mx-auto space-y-4">
@@ -241,11 +281,17 @@ export default function OffersPage() {
             <Percent size={20} />
           </div>
           <div>
-            <h3 className="font-bold text-app text-sm">No promotional campaigns found</h3>
-            <p className="text-muted text-xs mt-1">Create banners and discount deals to boost your customer engagement.</p>
+            <h3 className="font-bold text-app text-sm">
+              No promotional campaigns found
+            </h3>
+            <p className="text-muted text-xs mt-1">
+              Create banners and discount deals to boost your customer
+              engagement.
+            </p>
           </div>
-         <Button
-            onClick={() => setShowAddOffer(true)} icon={Plus}
+          <Button
+            onClick={() => setShowAddOffer(true)}
+            icon={Plus}
             variant="addvariant"
             className="flex items-center gap-2 py-2 bg-sky-500 text-xs font-semibold whitespace-nowrap"
           >
@@ -255,8 +301,14 @@ export default function OffersPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredOffers.map((offer) => {
-            const expired = offer.expires_at && new Date(offer.expires_at + "Z") <= currentTime;
-            const statusVariant = expired ? 'default' : offer.status === 'published' ? 'success' : 'warning';
+            const expired =
+              offer.expires_at &&
+              new Date(offer.expires_at + "Z") <= currentTime;
+            const statusVariant = expired
+              ? "default"
+              : offer.status === "published"
+                ? "success"
+                : "warning";
             return (
               <div
                 key={offer.id}
@@ -269,7 +321,9 @@ export default function OffersPage() {
                       src={getOfferImageUrl(offer.banner_image)}
                       alt={offer.title}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      onError={(e) => { e.currentTarget.src = ""; }}
+                      onError={(e) => {
+                        e.currentTarget.src = "";
+                      }}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-muted">
@@ -287,14 +341,24 @@ export default function OffersPage() {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Badge
-                        label={expired ? "Expired" : offer.status === "published" ? "Published" : "Draft"}
+                        label={
+                          expired
+                            ? "Expired"
+                            : offer.status === "published"
+                              ? "Published"
+                              : "Draft"
+                        }
                         variant={statusVariant}
                         dot
                       />
                     </div>
-                    <h3 className="font-bold text-sm text-app leading-snug">{offer.title}</h3>
+                    <h3 className="font-bold text-sm text-app leading-snug">
+                      {offer.title}
+                    </h3>
                     {offer.description && (
-                      <p className="text-xs text-muted leading-relaxed line-clamp-2">{offer.description}</p>
+                      <p className="text-xs text-muted leading-relaxed line-clamp-2">
+                        {offer.description}
+                      </p>
                     )}
                   </div>
 
@@ -304,11 +368,15 @@ export default function OffersPage() {
                       <div className="text-[10px] space-y-1 text-app font-medium leading-relaxed bg-app/50 p-2.5 rounded-lg border border-app">
                         <div className="flex items-center gap-1.5">
                           <Calendar size={12} className="text-muted" />
-                          <span>Start: {offer.start_date} {offer.start_time}</span>
+                          <span>
+                            Start: {offer.start_date} {offer.start_time}
+                          </span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Clock size={12} className="text-muted" />
-                          <span>End: {offer.end_date} {offer.end_time}</span>
+                          <span>
+                            End: {offer.end_date} {offer.end_time}
+                          </span>
                         </div>
                       </div>
                     ) : (
@@ -322,8 +390,8 @@ export default function OffersPage() {
                     <div className="flex justify-end gap-2 pt-1">
                       {offer.status === "saved" && (
                         <button
-                          onClick={() => publishOffer(offer.id)} 
-                          variant='addvariant'
+                          onClick={() => publishOffer(offer.id)}
+                          variant="addvariant"
                           className="px-3 py-1.5 rounded-l text-white font-bold text-[11px] transition-all"
                         >
                           Publish
@@ -331,7 +399,11 @@ export default function OffersPage() {
                       )}
                       <button
                         onClick={() => {
-                          if (confirm("Are you sure you want to delete this campaign?")) {
+                          if (
+                            confirm(
+                              "Are you sure you want to delete this campaign?",
+                            )
+                          ) {
                             deleteOffer(offer.id);
                           }
                         }}
@@ -360,7 +432,9 @@ export default function OffersPage() {
         <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
           {/* Image upload preview box */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-app">Campaign Banner <span className="text-red-500">*</span></label>
+            <label className="text-xs font-semibold text-app">
+              Campaign Banner <span className="text-red-500">*</span>
+            </label>
             <label className="w-full h-36 border-2 border-dashed border-gray-500/50 hover:border-brand-500 rounded-xl cursor-pointer overflow-hidden bg-app flex flex-col items-center justify-center gap-2 transition-colors">
               <input
                 type="file"
@@ -375,12 +449,20 @@ export default function OffersPage() {
                 }}
               />
               {banner ? (
-                <img src={banner} alt="Offer Preview" className="w-full h-full object-cover" />
+                <img
+                  src={banner}
+                  alt="Offer Preview"
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <div className="text-center p-4">
                   <ImageIcon size={24} className="text-muted mx-auto mb-1.5" />
-                  <p className="text-xs font-bold text-brand-500">Upload Offer & Campaign Image</p>
-                  <p className="text-[10px] text-muted mt-0.5">Support PNG, JPG, WEBP (ratio 16:9)</p>
+                  <p className="text-xs font-bold text-brand-500">
+                    Upload Offer & Campaign Image
+                  </p>
+                  <p className="text-[10px] text-muted mt-0.5">
+                    Support PNG, JPG, WEBP (ratio 16:9)
+                  </p>
                 </div>
               )}
             </label>
@@ -388,7 +470,7 @@ export default function OffersPage() {
 
           {/* Offer Title */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-app">Offer Name <span className="text-red-500">*</span></label>
+            <label className="text-xs font-semibold text-app">Offer Name</label>
             <input
               type="text"
               placeholder="e.g. Summer Clearance Sale"
@@ -400,7 +482,9 @@ export default function OffersPage() {
 
           {/* Percentage */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-app">Discount Percentage (%) <span className="text-red-500">*</span></label>
+            <label className="text-xs font-semibold text-app">
+              Discount Percentage (%)
+            </label>
             <div className="relative">
               <input
                 type="text"
@@ -409,13 +493,17 @@ export default function OffersPage() {
                 onChange={(e) => setPercentage(e.target.value)}
                 className="input-field pl-9 py-2.5 text-xs"
               />
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-bold text-xs">%</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-bold text-xs">
+                %
+              </span>
             </div>
           </div>
 
           {/* Description */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-app">Description</label>
+            <label className="text-xs font-semibold text-app">
+              Description
+            </label>
             <textarea
               placeholder="Briefly describe the promotional campaign terms..."
               value={description}
@@ -428,7 +516,9 @@ export default function OffersPage() {
           {/* Start Date & Time */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-app">Start Date <span className="text-red-500">*</span></label>
+              <label className="text-xs font-semibold text-app">
+                Start Date <span className="text-red-500">*</span>
+              </label>
               <input
                 type="date"
                 value={startDate}
@@ -438,7 +528,9 @@ export default function OffersPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-app">Start Time <span className="text-red-500">*</span></label>
+              <label className="text-xs font-semibold text-app">
+                Start Time <span className="text-red-500">*</span>
+              </label>
               <input
                 type="time"
                 value={startTime}
@@ -451,7 +543,9 @@ export default function OffersPage() {
           {/* End Date & Time */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-app">End Date <span className="text-red-500">*</span></label>
+              <label className="text-xs font-semibold text-app">
+                End Date <span className="text-red-500">*</span>
+              </label>
               <input
                 type="date"
                 value={endDate}
@@ -460,7 +554,9 @@ export default function OffersPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-app">End Time <span className="text-red-500">*</span></label>
+              <label className="text-xs font-semibold text-app">
+                End Time <span className="text-red-500">*</span>
+              </label>
               <input
                 type="time"
                 value={endTime}
@@ -474,22 +570,22 @@ export default function OffersPage() {
           <div className="border-t border-app pt-4 mt-6 flex gap-3">
             <Button
               type="button"
-              onClick={() => handleSave('saved')}
+              onClick={() => handleSave("saved")}
               disabled={saving || publishing}
               variant="save"
               className="flex-1"
             >
-              {saving ? 'Saving...' : 'Save Draft'}
+              {saving ? "Saving..." : "Save Draft"}
             </Button>
 
             <Button
               type="button"
-              onClick={() => handleSave('published')}
+              onClick={() => handleSave("published")}
               disabled={saving || publishing}
               variant="addvariant"
               className="flex-1"
             >
-              {publishing ? 'Publishing...' : 'Publish Campaign'}
+              {publishing ? "Publishing..." : "Publish Campaign"}
             </Button>
 
             <Button

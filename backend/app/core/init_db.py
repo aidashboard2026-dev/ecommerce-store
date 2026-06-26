@@ -24,13 +24,11 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.security import get_password_hash
 from app.core.database import SessionLocal
+from app.modules.custom_products.models import CustomProduct
 from app.modules.admins.models import Admin
 
-
 from app.modules.orders.models import Order
-
 from app.modules.delivery_zones.models import DeliveryZone
-
 from app.modules.products.models import (
     Category,
     Collection,
