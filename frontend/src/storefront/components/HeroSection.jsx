@@ -10,7 +10,7 @@ function HeroCta({ banner }) {
   if (!banner.cta_text) return null
 
   const className =
-    'inline-flex items-center gap-2 bg-white text-brand-600 font-semibold text-sm px-6 py-3 rounded-full hover:bg-white/90 transition-all duration-200 shadow-lg'
+    'inline-flex items-center gap-2 bg-black text-brand-600 font-semibold text-sm px-6 py-3 rounded-full hover:bg-white/90 transition-all duration-200 shadow-lg'
 
   if (!banner.cta_link) {
     return <span className={className}>{banner.cta_text}</span>
