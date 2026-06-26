@@ -42,14 +42,14 @@ export default function QuickCategoryEditModal({ isOpen, onClose, product }) {
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories', 'admin'],
-    queryFn: () => categoriesAPI.list().then(r => r.data),
+    queryFn: () =>customCategoriesAPI.list().then(r => r.data),
     enabled: isOpen,
     staleTime: 30_000,
   })
 
   const { data: collections = [] } = useQuery({
     queryKey: ['collections', 'admin', categoryId],
-    queryFn: () => collectionsAPI.list(categoryId ? { category_id: categoryId } : {}).then(r => r.data),
+    queryFn: () => customCollectionsAPI.list(categoryId ? { category_id: categoryId } : {}).then(r => r.data),
     enabled: isOpen,
     staleTime: 30_000,
   })

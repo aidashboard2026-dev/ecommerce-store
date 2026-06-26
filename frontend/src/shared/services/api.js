@@ -99,6 +99,16 @@ export const collectionsAPI = {
   listPublic: (params = {}) => storefrontClient.get('/products/collections', { params }),
 }
 
+export const customCategoriesAPI = {
+    list: () =>
+        api.get("/custom-products/categories"),
+}
+
+export const customCollectionsAPI = {
+    list: (params) =>
+        api.get("/custom-products/collections", { params }),
+}
+
 // ─── Products ─────────────────────────────────────────────────────────────────
 
 export const productsAPI = {

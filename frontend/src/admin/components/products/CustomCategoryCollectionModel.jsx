@@ -8,15 +8,36 @@ import { categoriesAPI, collectionsAPI } from '@/shared/services/api'
 
 const isMainCategory = (name) => {
   if (!name) return false;
-  const norm = name.trim().toLowerCase().replace(/[\s_-]+/g, '');
-  return ['tshirt', 'tshirts', 'trackpant', 'trackpants', 'jersey', 'jerseys', 'shirt', 'shirts', 'trouser', 'trousers'].includes(norm);
-}
 
-const isMainCollection = (name) => {
-  if (!name) return false;
-  const norm = name.trim().toLowerCase().replace(/[\s_\-\'\"]+/g, '');
-  return ['men', 'women', 'kids'].includes(norm);
-}
+  const norm = name
+    .trim()
+    .toLowerCase()
+    .replace(/[\s&_-]+/g, "");
+
+  return [
+    "oversizedtshirt",
+    "graphicprintedtshirt",
+    "backprinttshirt",
+    "embroiderydesigntshirt",
+    "jersey",
+    "giftsprinting",
+    "magicmugprint",
+    "photoframes",
+    "metalframes",
+    "mousepads",
+    "personalgifts",
+    "whitemug",
+    "sublimationproducts",
+    "waterbottles",
+    "skinnytumblers",
+    "glassware",
+    "hatscaps",
+    "weddinggreetingcards",
+    "pillows",
+  ].includes(norm);
+};
+
+const isMainCollection = () => false;
 
 // ─── Editable row ─────────────────────────────────────────────────────────────
 
@@ -166,14 +187,14 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
 
   const { data: categories = [], isLoading: catLoading } = useQuery({
     queryKey: ['categories', 'admin'],
-    queryFn: () => categoriesAPI.list().then(r => r.data),
+    queryFn: () => customCategoriesAPI.list().then(r => r.data),
     enabled: isOpen,
     staleTime: 30_000,
   })
 
   const { data: collections = [], isLoading: colLoading } = useQuery({
     queryKey: ['collections', 'admin', 'all'],
-    queryFn: () => collectionsAPI.list().then(r => r.data),
+    queryFn: () => customCollectionsAPI.list().then(r => r.data),
     enabled: isOpen,
     staleTime: 30_000,
   })

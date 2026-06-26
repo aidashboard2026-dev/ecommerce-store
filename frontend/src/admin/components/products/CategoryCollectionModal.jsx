@@ -166,14 +166,14 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
 
   const { data: categories = [], isLoading: catLoading } = useQuery({
     queryKey: ['categories', 'admin'],
-    queryFn: () => categoriesAPI.list().then(r => r.data),
+    queryFn: () => customCategoriesAPI.list().then(r => r.data),
     enabled: isOpen,
     staleTime: 30_000,
   })
 
   const { data: collections = [], isLoading: colLoading } = useQuery({
     queryKey: ['collections', 'admin', 'all'],
-    queryFn: () => collectionsAPI.list().then(r => r.data),
+    queryFn: () => customCollectionsAPI.list().then(r => r.data),
     enabled: isOpen,
     staleTime: 30_000,
   })

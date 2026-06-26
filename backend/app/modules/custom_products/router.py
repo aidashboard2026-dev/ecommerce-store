@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import (
     APIRouter,
@@ -34,6 +34,34 @@ from app.modules.custom_products.service import (
     get_public_custom_products,
     update_custom_product,
     delete_custom_product,
+)
+
+
+
+
+from app.modules.products.schemas import (
+    CategoryCreate,
+    CategoryUpdate,
+    CategoryResponse,
+    CollectionCreate,
+    CollectionUpdate,
+    CollectionResponse,
+)
+
+from app.modules.products.service import (
+    # Category
+    get_categories,
+    
+    create_category,
+    update_category,
+    delete_category,
+
+  
+    get_collections,
+   
+    create_collection,
+    update_collection,
+    delete_collection,
 )
 
 router = APIRouter()
@@ -211,3 +239,81 @@ def get_public_custom_product(
     )
 
 
+@router.get("/admin/categories", response_model=List[CategoryResponse])
+def list_categories(
+    status_filter: Optional[str] = None,
+    db: Session = Depends(get_db),
+    _: Admin = Depends(get_current_admin),
+):
+    return get_categories(db, status_filter=status_filter)
+
+
+@router.post("/admin/categories", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
+def create_category_endpoint(
+    data: CategoryCreate,
+    db: Session = Depends(get_db),
+    _: Admin = Depends(get_current_admin),
+):
+    return create_category(db, data)
+
+
+@router.patch("/admin/categories/{category_id}", response_model=CategoryResponse)
+def update_category_endpoint(
+    category_id: int,
+    data: CategoryUpdate,
+    db: Session = Depends(get_db),
+    _: Admin = Depends(get_current_admin),
+):
+    return update_category(db, category_id, data)
+
+
+@router.delete("/admin/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_category_endpoint(
+    category_id: int,
+    db: Session = Depends(get_db),
+    _: Admin = Depends(get_current_admin),
+):
+    delete_category(db, category_id)
+
+
+
+@router.get("/admin/collections", response_model=List[CollectionResponse])
+def list_collections(
+    category_id: Optional[int] = None,
+    status_filter: Optional[str] = None,
+    db: Session = Depends(get_db),
+    _: Admin = Depends(get_current_admin),
+):
+    return get_collections(
+        db,
+        category_id=category_id,
+        status_filter=status_filter,
+    )
+
+
+@router.post("/admin/collections", response_model=CollectionResponse, status_code=status.HTTP_201_CREATED)
+def create_collection_endpoint(
+    data: CollectionCreate,
+    db: Session = Depends(get_db),
+    _: Admin = Depends(get_current_admin),
+):
+    return create_collection(db, data)
+
+
+@router.patch("/admin/collections/{collection_id}", response_model=CollectionResponse)
+def update_collection_endpoint(
+    collection_id: int,
+    data: CollectionUpdate,
+    db: Session = Depends(get_db),
+    _: Admin = Depends(get_current_admin),
+):
+    return update_collection(db, collection_id, data)
+
+
+@router.delete("/admin/collections/{collection_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_collection_endpoint(
+    collection_id: int,
+    db: Session = Depends(get_db),
+    _: Admin = Depends(get_current_admin),
+):
+    delete_collection(db, collection_id)

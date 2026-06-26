@@ -298,7 +298,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
   // ─── BUG-1 FIX: useQuery calls moved here, after `form` is declared ──────────
   const { data: categories = [] } = useQuery({
     queryKey: ['categories', 'admin'],
-    queryFn: () => categoriesAPI.list().then(r => r.data),
+    queryFn: () => customCategoriesAPI.list().then(r => r.data),
     staleTime: 5 * 60_000,
   })
 
@@ -306,7 +306,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
     // queryKey includes form.category_id so it refetches when category changes
     queryKey: ['collections', 'admin', form.category_id],
     queryFn: () =>
-      collectionsAPI.list(form.category_id ? { category_id: form.category_id } : {})
+      customCollectionsAPI.list(form.category_id ? { category_id: form.category_id } : {})
         .then(r => r.data),
     staleTime: 5 * 60_000,
   })
