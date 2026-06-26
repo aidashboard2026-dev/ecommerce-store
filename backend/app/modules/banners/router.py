@@ -20,13 +20,16 @@ from app.modules.banners.service import (
 
 router = APIRouter()
 
+from app.core.constants import MAX_IMAGE_SIZE
+
+
 # ─────────────────────────────────────────────────────────────
 # Image validation — same constraints as product images
 # ─────────────────────────────────────────────────────────────
 
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
-MAX_BANNER_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
+
 
 _MAGIC_BYTES: dict = {
     b"\xff\xd8\xff": "image/jpeg",
@@ -82,10 +85,10 @@ async def _save_banner_image(banner_image: UploadFile) -> str:
             detail="Uploaded file is empty.",
         )
 
-    if len(contents) > MAX_BANNER_IMAGE_SIZE:
+    if len(contents) > MAX_IMAGE_SIZE:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"Image must be under {MAX_BANNER_IMAGE_SIZE // (1024 * 1024)} MB.",
+            detail=f"Image must be under {MAX_IMAGE_SIZE // (1024 * 1024)} MB.",
         )
 
     _validate_magic_bytes(contents[:16])

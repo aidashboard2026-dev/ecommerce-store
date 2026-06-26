@@ -71,7 +71,7 @@ function BannerSlide({ banner }) {
     : getImageUrl(banner.banner_image);
 
   return (
-    <section className="relative  overflow-hidden rounded-3xl h-[300px] sm:h-[350px] md:h-[400px] lg:h-[500px] md:mx-8 md:mt-0 text-white">
+    <section className="relative  overflow-hidden rounded-3xl h-[300px] sm:h-[350px] md:h-[400px] lg:h-[500px] mx-4 sm:mx-6 md:mx-8 lg:mx-10 md:mt-0 text-white">
       {" "}
       {imageUrl && (
         <img

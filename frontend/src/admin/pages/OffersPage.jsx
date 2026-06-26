@@ -225,9 +225,15 @@ export default function OffersPage() {
     } catch (error) {
       console.log(error);
 
-      const message =
-        error.response?.data?.detail?.map((e) => e.msg).join(", ") ||
-        "Unable to save offer.";
+      const detail = error.response?.data?.detail;
+
+      let message = "Unable to save offer.";
+
+      if (Array.isArray(detail)) {
+        message = detail.map((e) => e.msg).join(", ");
+      } else if (typeof detail === "string") {
+        message = detail;
+      }
 
       toast.error(message);
     } finally {
