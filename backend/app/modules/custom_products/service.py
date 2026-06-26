@@ -163,3 +163,45 @@ def get_custom_products(
         "per_page": per_page,
         "total_pages": ceil(total / per_page) if total else 1,
     }
+
+def get_public_custom_products(
+    db: Session,
+    page: int = 1,
+    per_page: int = 15,
+    search: str | None = None,
+    category_id: int | None = None,
+):
+    query = (
+        db.query(CustomProduct)
+        .filter(
+            CustomProduct.deleted_at.is_(None),
+            CustomProduct.status == "published"
+        )
+    )
+
+    if search:
+        query = query.filter(
+            CustomProduct.title.ilike(f"%{search}%")
+        )
+
+    if category_id:
+        query = query.filter(
+            CustomProduct.category_id == category_id
+        )
+
+    total = query.count()
+
+    items = (
+        query.order_by(CustomProduct.created_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": ceil(total / per_page) if total else 1,
+    }    

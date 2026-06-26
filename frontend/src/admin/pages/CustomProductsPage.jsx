@@ -340,18 +340,20 @@ export default function ProductsPage() {
   // ── Data queries ─────────────────────────────────────────────────────────────
 
   const queryParams = {
-    search:         debouncedSearch,
-    status_filter:  statusFilter,
-    category_id:    categoryId    || undefined,
-    collection_id:  collectionId  || undefined,
-    stock_status:   stockStatus   || undefined,
-    is_featured:    flagFilters.is_featured    || undefined,
-    is_trending:    flagFilters.is_trending    || undefined,
+    search: debouncedSearch,
+    status_filter: statusFilter,
+    category_id: categoryId || undefined,
+    collection_id: collectionId || undefined,
+    stock_status: stockStatus || undefined,
+    is_featured: flagFilters.is_featured || undefined,
+    is_trending: flagFilters.is_trending || undefined,
     is_best_seller: flagFilters.is_best_seller || undefined,
     is_new_arrival: flagFilters.is_new_arrival || undefined,
     page,
-    per_page: 15,
+    per_page:15
   }
+
+  
 
   const { data, isLoading, isFetching, isError } = useQuery({
     queryKey: ['custom-products', queryParams],
@@ -681,15 +683,15 @@ export default function ProductsPage() {
                 const size = product.size || 'All Size'
                 // const sizes = [...new Set((product.variants || []).map(v => v.size))].join(', ')
                 const discPct =
-                    product.original_price_min &&
-                    product.selling_price_min
+                  product.original_price_max &&
+                  product.selling_price_min
                     ? `${Math.round(
                         (
-                            (product.original_price_min -
-                            product.selling_price_min)
-                            / product.original_price_min
+                          (product.original_price_max -
+                          product.selling_price_min)
+                          / product.original_price_max
                         ) * 100
-                        )}%`
+                      )}%`
                     : '—'
                 const statusMap = { published: 'success', draft: 'default', archived: 'warning' }
                 return (
@@ -727,8 +729,17 @@ export default function ProductsPage() {
                         {product.sku || '—'}
                       </span>
                     </TableCell>
-                    <TableCell className="font-medium text-app">{formatPrice(product.original_price_min)}</TableCell>
-                    <TableCell className="font-semibold text-emerald-600 dark:text-emerald-400">{formatPrice(product.selling_price_min)}</TableCell>
+                    <TableCell className="font-medium text-app">
+                      {product.original_price_max
+                        ? `${formatPrice(product.original_price_min)} - ${formatPrice(product.original_price_max)}`
+                        : formatPrice(product.original_price_min)}
+                    </TableCell>
+
+                    <TableCell className="font-semibold text-emerald-600 dark:text-emerald-400">
+                      {product.selling_price_max
+                        ? `${formatPrice(product.selling_price_min)} - ${formatPrice(product.selling_price_max)}`
+                        : formatPrice(product.selling_price_min)}
+                    </TableCell>
                     <TableCell className="font-medium text-amber-600">{discPct}</TableCell>
                     <TableCell><StockBadge stock={product.stock_quantity} /></TableCell>
                     <TableCell className="text-muted">{product.size || '—'}</TableCell>
