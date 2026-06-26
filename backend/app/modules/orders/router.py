@@ -35,18 +35,24 @@ def _find_variant_for_order(db: Session, order: Order) -> ProductVariant | None:
     restoration (on cancellation) targets the exact same variant that
     was decremented at order creation time.
     """
-    if not order.product_name or not order.size:
+    if not order.size:
         return None
 
     variant_q = (
         db.query(ProductVariant)
         .join(Product, Product.id == ProductVariant.product_id)
         .filter(
-            Product.title == order.product_name,
             ProductVariant.size == order.size,
             Product.deleted_at.is_(None),
         )
     )
+    if order.product_id:
+        variant_q = variant_q.filter(Product.id == order.product_id)
+    elif order.product_name:
+        variant_q = variant_q.filter(Product.title == order.product_name)
+    else:
+        return None
+
     if order.color:
         variant_q = variant_q.filter(ProductVariant.color == order.color)
 

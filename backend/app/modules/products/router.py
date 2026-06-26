@@ -323,11 +323,20 @@ def delete_product_by_id(
     _: Admin = Depends(get_current_admin),
 ):
     product = get_product(db, product_id)
-    if product.thumbnail:
-        try:
-            supabase_storage.delete_product_image(product.thumbnail)
-        except Exception:
-            pass
+    for img_attr in ["thumbnail", "image_front", "image_back", "image_size_chart"]:
+        img_url = getattr(product, img_attr)
+        if img_url:
+            try:
+                supabase_storage.delete_product_image(img_url)
+            except Exception:
+                pass
+    if product.gallery_images:
+        for img_url in product.gallery_images:
+            if img_url:
+                try:
+                    supabase_storage.delete_product_image(img_url)
+                except Exception:
+                    pass
     soft_delete_product(db, product_id)
 
 
