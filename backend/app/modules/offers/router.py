@@ -66,8 +66,8 @@ def get_all_offers(
 
 @router.post("/admin", response_model=OfferResponse)
 async def create_new_offer(
-    title: str = Form(...),
-    percentage: str = Form(...),
+    title: Optional[str] = Form(None),
+    percentage: Optional[str] = Form(None),
     description: str = Form(""),
     status_field: str = Form("saved", alias="status"),
     start_date: date = Form(...),

@@ -4,9 +4,9 @@ from typing import Optional
 
 
 class OfferCreate(BaseModel):
-    title: str
-    percentage: str
-
+    title: Optional[str] = None
+    percentage: Optional[str] = None
+    
     description: Optional[str] = None
     banner_image: Optional[str] = None
 
