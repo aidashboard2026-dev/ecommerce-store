@@ -9,8 +9,8 @@ def create_offer(
     offer: OfferCreate
 ):
     db_offer = Offer(
-        title=offer.title,
-        percentage=offer.percentage,
+        title=offer.title or "",
+        percentage=offer.percentage or "",
         description=offer.description,
         banner_image=offer.banner_image,
 

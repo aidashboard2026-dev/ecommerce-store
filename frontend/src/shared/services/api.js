@@ -10,21 +10,23 @@ const api = axios.create({
   withCredentials: true,
 })
 
+// ── Attach JWT token to every request ────────────────────────────────────────
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
+// ── Handle 401s globally ──────────────────────────────────────────────────────
 api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('admin')
       window.location.href = '/admin/login'
     }
-    return Promise.reject(err)
+    return Promise.reject(error)
   }
 )
 
@@ -138,6 +140,15 @@ export const productsAPI = {
   bulkCreateVariants: (productId, variantsPayload) =>
     api.post(`/products/admin/${productId}/variants/bulk`, variantsPayload),
 
+  /**
+   * Update an existing variant (partial — only send changed fields).
+   * @param {number} productId
+   * @param {number} variantId
+   * @param {object} data
+   */
+  updateVariant: (productId, variantId, data) =>
+    api.patch(`/products/admin/${productId}/variants/${variantId}`, data),
+
   // ── Images ──────────────────────────────────────────────────────────────────
 
   /**
@@ -173,15 +184,6 @@ export const productsAPI = {
    */
   deleteGalleryImage: (productId, index) =>
     api.delete(`/products/admin/${productId}/images/gallery/${index}`),
-
-  /**
-   * Update an existing variant (partial — only send changed fields).
-   * @param {number} productId
-   * @param {number} variantId
-   * @param {object} data
-   */
-  updateVariant: (productId, variantId, data) =>
-    api.patch(`/products/admin/${productId}/variants/${variantId}`, data),
 }
 
 // ─── Storefront Client ────────────────────────────────────────────────────────
@@ -194,6 +196,11 @@ export const storefrontAPI = {
   getCollections:   (params = {}) => storefrontClient.get('/products/collections', { params }),
   getBanners:       ()            => storefrontClient.get('/banners/active/all'),
   getOffers:        ()            => storefrontClient.get('/offers/active/all'),
+  getCustomProducts: (params = {}) =>
+    storefrontClient.get('/custom-products', { params }),
+
+  getCustomProduct: (id) =>
+      storefrontClient.get(`/custom-products/${id}`),
 
   // ── Customer profile ──────────────────────────────────────────────────────
   updateProfile:    (data)        => storefrontClient.put('/customers/profile/update', data),
@@ -237,6 +244,32 @@ export const customProductsAPI = {
 
   delete: (id) =>
     api.delete(`/custom-products/admin/${id}`),
+
+  uploadImage: (
+    productId,
+    file,
+    imageType = 'thumbnail',
+    setAsPrimary = false
+  ) => {
+    const formData = new FormData()
+
+    formData.append('file', file)
+    formData.append('image_type', imageType)
+    formData.append(
+      'set_as_primary',
+      String(setAsPrimary)
+    )
+
+    return api.post(
+      `/custom-products/admin/${productId}/images`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      }
+    )
+  },
 }
 // ─── Orders ───────────────────────────────────────────────────────────────────
 

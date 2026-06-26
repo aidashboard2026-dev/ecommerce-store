@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { SlidersHorizontal } from 'lucide-react'
 import { useProductsInfinite, useCollections, useCategories } from '@/storefront/hooks/useProducts'
+
 import ProductGrid from '@/storefront/components/ProductGrid'
 import ProductFilters from '@/storefront/components/ProductFilters'
 import { useDebounce } from '@/shared/utils/productUtils'

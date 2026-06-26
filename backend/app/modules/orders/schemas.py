@@ -18,7 +18,7 @@ class OrderBase(BaseModel):
     pincode: Optional[str] = Field(None, max_length=20)
 
     product_name: str = Field(..., min_length=1, max_length=300)
-    product_id: Optional[int] = None
+    product_id: Optional[int] = None  # used for reliable inventory lookup
     product_image: Optional[str] = Field(None, max_length=2048)
 
     size: Optional[str] = Field(None, max_length=50)
@@ -26,6 +26,7 @@ class OrderBase(BaseModel):
 
     quantity: int = Field(1, ge=1, le=1000)
 
+    # Decimal matches Numeric(10,2) on the database — no floating-point rounding.
     price: Decimal = Field(default=Decimal("0.00"), ge=0)
     total_amount: Decimal = Field(default=Decimal("0.00"), ge=0)
 
@@ -43,6 +44,10 @@ class OrderBase(BaseModel):
 
     ordered_at: Optional[datetime] = None
 
+    # Groups all rows from the same checkout session (one session = one UUID).
+    # The frontend generates a UUID before the checkout loop and sends it
+    # with every order in that session.  NULL for single-item checkouts
+    # and all pre-existing orders.
     cart_session_id: Optional[str] = Field(None, max_length=100)
 
 
@@ -95,4 +100,3 @@ class OrderTrackingResponse(BaseModel):
 
     class Config:
         from_attributes = True
-

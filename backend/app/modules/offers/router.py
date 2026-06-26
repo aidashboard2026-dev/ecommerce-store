@@ -7,12 +7,15 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.modules.auth.dependencies import get_current_admin
+from app.core.config import settings
+
 from app.core.database import get_db
 from app.modules.admins.models import Admin
 from app.modules.offers.models import Offer
 from app.modules.offers.schemas import OfferCreate, OfferResponse
 from app.modules.offers.service import create_offer, delete_offer, get_offer, get_offers, update_offer
 from app.shared.storage import supabase_storage
+
 
 router = APIRouter()
 
@@ -139,8 +142,8 @@ def get_all_offers(
 
 @router.post("/admin", response_model=OfferResponse)
 async def create_new_offer(
-    title: str = Form(...),
-    percentage: str = Form(...),
+    title: Optional[str] = Form(None),
+    percentage: Optional[str] = Form(None),
     description: str = Form(""),
     status_field: str = Form("saved", alias="status"),
     start_date: date = Form(...),

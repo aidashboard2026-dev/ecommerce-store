@@ -39,6 +39,7 @@ from app.modules.products.models import Product  # noqa: E402
 from app.shared.storage import supabase_storage  # noqa: E402
 
 
+
 def _is_local_path(value: str) -> bool:
     """True for legacy root-relative paths like /uploads/products/x.jpg."""
     if not value:
