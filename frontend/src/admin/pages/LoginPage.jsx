@@ -33,14 +33,6 @@ export default function LoginPage() {
     if (loginThunk.fulfilled.match(result)) {
       window.location.href = '/admin'
     }
-    console.log("RESULT =", result)
-
-    
-
-    console.log("BEFORE REDIRECT")
-
-
-    console.log("AFTER REDIRECT")
   }
 
   return (

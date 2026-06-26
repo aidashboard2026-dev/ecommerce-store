@@ -6,7 +6,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { useTheme } from "@/shared/hooks/useAuth";
 
 // ─── Image helper (no localhost dependency) ─────────────────────────────────
-const _BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL ?? "").replace(/\/$/, "");
+const _BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL || "http://localhost:8000").replace(/\/$/, "");
 function getImageUrl(path) {
   if (!path) return null;
   if (path.startsWith("blob:") || path.startsWith("http://") || path.startsWith("https://")) return path;

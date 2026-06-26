@@ -54,7 +54,6 @@ export default function StorefrontLayout() {
         <Outlet />
       </main>
 
-      {/* Modern High-End Footer */}
       <StoreFooter />
     </div>
   );

@@ -306,27 +306,29 @@ def create_category(db: Session, data: CategoryCreate) -> CategoryResponse:
 def update_category(db: Session, category_id: int, data: CategoryUpdate) -> CategoryResponse:
     cat = get_category(db, category_id)
     APPROVED_SET = {"T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"}
+    patch = data.model_dump(exclude_unset=True)
+
     if cat.name in APPROVED_SET:
-        patch = data.model_dump(exclude_unset=True)
+        # Only the name field is protected — status, description, sort_order can change
         if "name" in patch and patch["name"] != cat.name:
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST,
                 "Category renaming is disabled for Main Product categories."
             )
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            "Category editing is disabled for Main Product categories."
-        )
+        # Remove name from patch to be safe; allow all other fields
+        patch.pop("name", None)
+        patch.pop("slug", None)
 
-    patch = data.model_dump(exclude_unset=True)
-    if "name" in patch:
-        norm_name = normalize_category_name(patch["name"])
-        if norm_name:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                f"Cannot rename category to '{norm_name}' as it is a reserved Main Product category."
-            )
-        patch["slug"] = _unique_slug(db, Category, _slugify(patch["name"]), exclude_id=category_id)
+    else:
+        if "name" in patch:
+            norm_name = normalize_category_name(patch["name"])
+            if norm_name:
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST,
+                    f"Cannot rename category to '{norm_name}' as it is a reserved Main Product category."
+                )
+            patch["slug"] = _unique_slug(db, Category, _slugify(patch["name"]), exclude_id=category_id)
+
     for k, v in patch.items():
         setattr(cat, k, v)
     try:
@@ -440,29 +442,31 @@ def create_collection(db: Session, data: CollectionCreate) -> CollectionResponse
 def update_collection(db: Session, collection_id: int, data: CollectionUpdate) -> CollectionResponse:
     col = get_collection(db, collection_id)
     APPROVED_COLLECTIONS = {"Men", "Women", "Kids"}
+    patch = data.model_dump(exclude_unset=True)
+
     if col.name in APPROVED_COLLECTIONS:
-        patch = data.model_dump(exclude_unset=True)
+        # Only the name field is protected — status and description can change
         if "name" in patch and patch["name"] != col.name:
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST,
                 "Collection renaming is disabled for Main Product collections."
             )
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            "Collection editing is disabled for Main Product collections."
-        )
+        # Remove name/slug from patch to be safe; allow all other fields
+        patch.pop("name", None)
+        patch.pop("slug", None)
 
-    patch = data.model_dump(exclude_unset=True)
-    if "category_id" in patch and patch["category_id"]:
-        get_category(db, patch["category_id"])
-    if "name" in patch:
-        norm_name = normalize_collection_name(patch["name"])
-        if norm_name:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                f"Cannot rename collection to '{norm_name}' as it is a reserved Main Product collection."
-            )
-        patch["slug"] = _unique_slug(db, Collection, _slugify(patch["name"]), exclude_id=collection_id)
+    else:
+        if "category_id" in patch and patch["category_id"]:
+            get_category(db, patch["category_id"])
+        if "name" in patch:
+            norm_name = normalize_collection_name(patch["name"])
+            if norm_name:
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST,
+                    f"Cannot rename collection to '{norm_name}' as it is a reserved Main Product collection."
+                )
+            patch["slug"] = _unique_slug(db, Collection, _slugify(patch["name"]), exclude_id=collection_id)
+
     for k, v in patch.items():
         setattr(col, k, v)
     try:
@@ -965,23 +969,19 @@ def add_variants_bulk(db: Session, product_id: int, variants_in: list) -> Produc
                 break
             sku = generate_sku(product.title, v.size, v.color)
 
-        variant = ProductVariant(
-            product_id=product_id, sku=sku, size=v.size, color=v.color,
-            color_hex=v.color_hex, original_price=v.original_price,
-            selling_price=v.selling_price, discount_percentage=v.discount_percentage,
-            stock_quantity=v.stock_quantity, reserved_stock=0,
-            low_stock_threshold=v.low_stock_threshold,
-        )
-        db.add(variant)
-
         try:
-            # flush() writes just this row; if it raises, the transaction is
-            # still open — we expire the failed object and carry on.
-            db.flush()
+            with db.begin_nested():
+                variant = ProductVariant(
+                    product_id=product_id, sku=sku, size=v.size, color=v.color,
+                    color_hex=v.color_hex, original_price=v.original_price,
+                    selling_price=v.selling_price, discount_percentage=v.discount_percentage,
+                    stock_quantity=v.stock_quantity, reserved_stock=0,
+                    low_stock_threshold=v.low_stock_threshold,
+                )
+                db.add(variant)
+                db.flush()
             succeeded += 1
         except IntegrityError as exc:
-            # expire_all() discards the failed object from the identity map
-            # without rolling back previously flushed (good) rows.
             db.expire_all()
             if "uq_variant_product_size_color" in str(exc):
                 errors.append(f"Duplicate size+color: {v.size}/{v.color}")
@@ -1011,6 +1011,63 @@ def delete_variant(db: Session, product_id: int, variant_id: int) -> ProductResp
     return get_product_response(db, product_id)
 
 
+def update_variant(db: Session, product_id: int, variant_id: int, data) -> ProductResponse:
+    """Partially update an existing variant. Only provided fields are changed."""
+    get_product(db, product_id)
+    variant = db.query(ProductVariant).filter(
+        ProductVariant.id == variant_id,
+        ProductVariant.product_id == product_id,
+    ).first()
+    if not variant:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Variant {variant_id} not found on product {product_id}.")
+
+    patch = data.model_dump(exclude_unset=True)
+
+    # Price cross-validation using effective values (new or existing)
+    eff_orig = patch.get("original_price", variant.original_price)
+    eff_sell = patch.get("selling_price", variant.selling_price)
+    if eff_orig is not None and eff_orig <= 0:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "original_price must be greater than zero.")
+    if eff_sell is not None and eff_sell <= 0:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "selling_price must be greater than zero.")
+    if eff_orig is not None and eff_sell is not None and eff_sell > eff_orig:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"selling_price ({eff_sell}) cannot exceed original_price ({eff_orig})."
+        )
+    if "stock_quantity" in patch and patch["stock_quantity"] < 0:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "stock_quantity cannot be negative.")
+    if "color_hex" in patch and patch["color_hex"] and not _HEX_RE.match(patch["color_hex"]):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"color_hex must be a valid CSS hex colour (e.g. #FF0000). Got: {patch['color_hex']}"
+        )
+
+    # If SKU is being changed, ensure uniqueness
+    if "sku" in patch and patch["sku"] and patch["sku"] != variant.sku:
+        existing_sku = db.query(ProductVariant).filter(
+            ProductVariant.sku == patch["sku"],
+            ProductVariant.id != variant_id,
+        ).first()
+        if existing_sku:
+            raise HTTPException(status.HTTP_409_CONFLICT, f"SKU '{patch['sku']}' is already in use.")
+
+    for k, v in patch.items():
+        setattr(variant, k, v)
+
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        if "uq_variant_product_size_color" in str(exc):
+            raise HTTPException(status.HTTP_409_CONFLICT, "Duplicate size + color combination.")
+        if "sku" in str(exc).lower():
+            raise HTTPException(status.HTTP_409_CONFLICT, "SKU already in use.")
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to update variant.")
+
+    return get_product_response(db, product_id)
+
+
 # ─────────────────────────────────────────────────────────────
 # STOREFRONT QUERIES
 # ─────────────────────────────────────────────────────────────
@@ -1020,7 +1077,9 @@ def get_products_public(
     *,
     search: str = "",
     collection: Optional[str] = None,
+    sub_collection: Optional[str] = None,
     collection_id: Optional[int] = None,
+    category: Optional[str] = None,
     category_id: Optional[int] = None,
     is_featured: Optional[bool] = None,
     is_trending: Optional[bool] = None,
@@ -1075,9 +1134,20 @@ def get_products_public(
                 Product.collection_id.in_(col_subq),
             ))
     if collection:
-        base_filters.append(Product.collection.ilike(f"%{collection}%"))
+        # Check if collection name matches a normalized collection (Men, Women, Kids)
+        col_db = db.query(Collection.id).filter(Collection.name.ilike(collection)).first()
+        if col_db:
+            base_filters.append(Product.collection_id == col_db.id)
+        else:
+            base_filters.append(Product.collection.ilike(f"%{collection}%"))
     if collection_id:
         base_filters.append(Product.collection_id == collection_id)
+    if sub_collection:
+        base_filters.append(Product.collection.ilike(f"%{sub_collection}%"))
+    if category:
+        cat_db = db.query(Category.id).filter(Category.name.ilike(category)).first()
+        if cat_db:
+            base_filters.append(Product.category_id == cat_db.id)
     if category_id:
         base_filters.append(Product.category_id == category_id)
     if is_featured is not None:

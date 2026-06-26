@@ -114,27 +114,88 @@ def update_password(
     return update_admin_password(db, current_admin, payload)
 
 
+_LOGO_ALLOWED_MIME   = {"image/jpeg", "image/png", "image/webp"}
+_LOGO_ALLOWED_EXT    = {".jpg", ".jpeg", ".png", ".webp"}
+_LOGO_MAX_BYTES      = 5 * 1024 * 1024  # 5 MB
+_LOGO_MAGIC: dict    = {
+    b"\xff\xd8\xff": "image/jpeg",
+    b"\x89PNG":      "image/png",
+    b"RIFF":         "image/webp",
+}
+
+
 @router.post("/logo", response_model=StoreSettingsResponse)
 def upload_logo(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_admin),
 ):
-    # Basic validation for file type and size
-    if file.content_type.split("/")[0] != "image":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file must be an image.")
+    import uuid as _uuid
 
+    # MIME type allowlist
+    if file.content_type not in _LOGO_ALLOWED_MIME:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Only JPG, PNG, and WebP images are allowed. Got: {file.content_type}",
+        )
+
+    # Extension allowlist
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in _LOGO_ALLOWED_EXT:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Extension '{ext}' not allowed. Use: {', '.join(_LOGO_ALLOWED_EXT)}",
+        )
+
+    contents = file.file.read()
+
+    if not contents:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Uploaded file is empty.",
+        )
+
+    if len(contents) > _LOGO_MAX_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Logo must be under {_LOGO_MAX_BYTES // (1024 * 1024)} MB.",
+        )
+
+    # Magic-byte validation — reject disguised files
+    header = contents[:16]
+    for magic, mime in _LOGO_MAGIC.items():
+        if header[:len(magic)] == magic:
+            if mime == "image/webp" and header[8:12] != b"WEBP":
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="File has RIFF header but is not a valid WebP image.",
+                )
+            break
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="File content does not match any supported image format.",
+        )
+
+    # Safe filename — never trust the original filename from the client
     uploads_root = os.path.abspath(app_settings.UPLOAD_DIR)
     logos_dir = os.path.join(uploads_root, "logos")
     os.makedirs(logos_dir, exist_ok=True)
 
-    filename = f"logo_{int(__import__('time').time())}_{file.filename}"
-    dest_path = os.path.join(logos_dir, filename)
+    safe_name = f"logo_{_uuid.uuid4().hex}{ext}"
+    dest_path = os.path.join(logos_dir, safe_name)
+
+    # Path-traversal guard
+    if not os.path.normpath(dest_path).startswith(logos_dir + os.sep):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file path.",
+        )
 
     with open(dest_path, "wb") as out_file:
-        out_file.write(file.file.read())
+        out_file.write(contents)
 
-    public_url = f"/uploads/logos/{filename}"
+    public_url = f"/uploads/logos/{safe_name}"
 
     settings_row = db.query(StoreSettings).order_by(StoreSettings.id.asc()).first()
     if not settings_row:

@@ -23,27 +23,34 @@ export default function OrdersPage() {
     tracking_id: "",
   };
 
-  const [orders, setOrders] = useState([]);
-  const [date, setDate] = useState(new Date());
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
+  const PAGE_SIZE = 20;
+
+  const [orders, setOrders]         = useState([]);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [date, setDate]             = useState(new Date());
+  const [search, setSearch]         = useState("");
+  const [loading, setLoading]       = useState(true);
   const [orderDrafts, setOrderDrafts] = useState({});
 
   useEffect(() => {
-    loadOrders();
-  }, []);
+    loadOrders(currentPage);
+  }, [currentPage]);
 
-  const loadOrders = async () => {
+  const loadOrders = async (page = 1) => {
     try {
       setLoading(true);
-      const data = await getOrders();
-      setOrders(data);
+      const result = await getOrders(page, PAGE_SIZE);
+      setOrders(result.orders);
+      setTotalOrders(result.total);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
+
+  const totalPages = Math.max(1, Math.ceil(totalOrders / PAGE_SIZE));
 
   const downloadInvoice = (order) => {
     const pdf = new jsPDF();
@@ -259,19 +266,15 @@ export default function OrdersPage() {
   const handleStatusUpdate = async (orderId, newStatus) => {
     try {
       await updateOrderStatus(orderId, newStatus);
+      // Optimistic update in local state first for instant UI feedback
       setOrders((prev) =>
         prev.map((order) =>
-          order.id === orderId
-            ? {
-                ...order,
-                tracking_status: newStatus,
-              }
-            : order
+          order.id === orderId ? { ...order, tracking_status: newStatus } : order
         )
       );
     } catch (error) {
       console.error(error);
-      alert("Status update failed");
+      toast.error("Status update failed. Please try again.");
     }
   };
 
@@ -634,6 +637,50 @@ export default function OrdersPage() {
           ))
         )}
       </div>
+
+      {/* ── Pagination ──────────────────────────────────────────────────── */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-700 mt-2">
+          <p className="text-sm text-gray-400">
+            Page <span className="font-medium text-white">{currentPage}</span> of{" "}
+            <span className="font-medium text-white">{totalPages}</span>{" "}
+            &mdash; {totalOrders} total orders
+          </p>
+          <div className="flex gap-2">
+            <button
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className="px-3 py-1 text-sm rounded bg-gray-700 text-white disabled:opacity-40 hover:bg-gray-600 transition-colors"
+            >
+              ← Prev
+            </button>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
+              const page  = start + i;
+              return page <= totalPages ? (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-1 text-sm rounded transition-colors ${
+                    page === currentPage
+                      ? "bg-indigo-600 text-white"
+                      : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                  }`}
+                >
+                  {page}
+                </button>
+              ) : null;
+            })}
+            <button
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className="px-3 py-1 text-sm rounded bg-gray-700 text-white disabled:opacity-40 hover:bg-gray-600 transition-colors"
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

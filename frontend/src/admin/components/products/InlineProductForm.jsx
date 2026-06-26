@@ -303,15 +303,13 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
   })
 
   const { data: collections = [] } = useQuery({
-    // queryKey includes form.category_id so it refetches when category changes
-    queryKey: ['collections', 'admin', form.category_id],
-    queryFn: () =>
-      customCollectionsAPI.list(form.category_id ? { category_id: form.category_id } : {})
-        .then(r => r.data),
+    queryKey: ['collections', 'admin'],
+    queryFn: () => collectionsAPI.list().then(r => r.data),
     staleTime: 5 * 60_000,
   })
 
   const filteredCollections = useMemo(() => {
+    if (!form.category_id) return []
     const selectedCat = categories.find(c => String(c.id) === String(form.category_id));
     const isMainProduct = selectedCat && ["T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"].includes(selectedCat.name);
     if (isMainProduct) {
@@ -320,7 +318,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
         return ["Men", "Women", "Kids"].includes(norm);
       });
     }
-    return collections;
+    return collections.filter(c => String(c.category_id) === String(form.category_id));
   }, [collections, form.category_id, categories])
 
   // ─── Other state ─────────────────────────────────────────────────────────────

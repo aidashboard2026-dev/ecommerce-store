@@ -49,8 +49,6 @@ def _add_months(value: date, months: int) -> date:
 
 def _orders_between(db: Session, start_at: datetime, end_at: datetime) -> list[Order]:
 
-    # print("START:", start_at)
-    # print("END:", end_at)
 
     orders = (
         db.query(Order)
@@ -62,7 +60,6 @@ def _orders_between(db: Session, start_at: datetime, end_at: datetime) -> list[O
         .all()
     )
 
-    # print("FOUND ORDERS:", len(orders))
 
     # for order in orders:
     #     print(
@@ -137,17 +134,16 @@ def _payment_revenue_summary(db: Session, payment_methods: tuple[str, ...], star
 
 
 def _top_categories(db: Session) -> list[dict]:
-    category_name = func.coalesce(func.nullif(Product.collection, ""), "Uncategorized")
-
+    from app.modules.products.models import Category
     rows = (
         db.query(
-            category_name.label("name"),
+            Category.name.label("name"),
             func.count(Product.id).label("styles"),
         )
-        .filter(Product.deleted_at.is_(None))
-        .group_by(category_name)
-        .order_by(func.count(Product.id).desc(), category_name.asc())
-        .limit(3)
+        .outerjoin(Product, (Product.category_id == Category.id) & Product.deleted_at.is_(None))
+        .group_by(Category.name)
+        .order_by(func.count(Product.id).desc(), Category.name.asc())
+        .limit(5)
         .all()
     )
 
@@ -433,39 +429,43 @@ def get_sales_chart(
 
 @router.get("/recent-activity")
 def get_recent_activity(
+    db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_admin),
 ):
-    activities = [
-        {
-            "id": 1,
-            "type": "user_created",
-            "message": "New admin Jane Smith joined",
-            "time": "2 min ago",
-        },
-        {
-            "id": 2,
-            "type": "product_updated",
-            "message": "Product #1024 inventory updated",
-            "time": "15 min ago",
-        },
-        {
-            "id": 3,
-            "type": "login",
-            "message": "Super Admin logged in from new device",
-            "time": "1 hr ago",
-        },
-        {
-            "id": 4,
-            "type": "revenue",
-            "message": "Sales dashboard refreshed from orders",
-            "time": "3 hrs ago",
-        },
-        {
-            "id": 5,
-            "type": "alert",
-            "message": "Server load peaked at 87%",
-            "time": "5 hrs ago",
-        },
-    ]
+    activities = []
 
-    return {"activities": activities}
+    # Recent orders (last 5)
+    recent_orders = (
+        db.query(Order)
+        .order_by(Order.ordered_at.desc())
+        .limit(5)
+        .all()
+    )
+    for order in recent_orders:
+        activities.append({
+            "id": f"order-{order.id}",
+            "type": "order_placed",
+            "message": f"New order {order.order_number} from {order.customer_name}",
+            "time": order.ordered_at.isoformat() if order.ordered_at else "",
+        })
+
+    # Recent products (last 3)
+    recent_products = (
+        db.query(Product)
+        .filter(Product.deleted_at.is_(None))
+        .order_by(Product.created_at.desc())
+        .limit(3)
+        .all()
+    )
+    for product in recent_products:
+        activities.append({
+            "id": f"product-{product.id}",
+            "type": "product_updated",
+            "message": f"Product '{product.title}' added/updated",
+            "time": product.updated_at.isoformat() if product.updated_at else "",
+        })
+
+    # Sort all by time descending, return top 10
+    activities.sort(key=lambda x: x.get("time", ""), reverse=True)
+
+    return {"activities": activities[:10]}

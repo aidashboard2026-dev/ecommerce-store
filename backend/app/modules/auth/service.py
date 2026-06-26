@@ -40,7 +40,7 @@ def login_admin(db: Session, email: str, password: str):
 
     access_token = create_access_token(
         subject=admin.id,
-        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+        expires_delta=timedelta(minutes=settings.ADMIN_TOKEN_EXPIRE_MINUTES),
         token_type="admin",
     )
     return {"access_token": access_token, "token_type": "bearer", "admin": admin}
