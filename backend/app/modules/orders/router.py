@@ -10,7 +10,7 @@ from app.modules.admins.models import Admin
 from app.modules.customers.models import Customer
 from app.modules.orders.models import Order
 from app.modules.products.models import Product, ProductVariant
-from app.modules.orders.schemas import OrderCreate, OrderResponse, OrderUpdate
+from app.modules.orders.schemas import OrderCreate, OrderResponse, OrderTrackingResponse, OrderUpdate
 
 router = APIRouter()
 
@@ -393,11 +393,12 @@ def cancel_customer_order(
     return order
 
 
-@router.get("/track/{order_number}", response_model=OrderResponse)
+@router.get("/track/{order_number}", response_model=OrderTrackingResponse)
 def track_order_by_number(
     order_number: str,
     db: Session = Depends(get_db),
 ):
+    """Public order tracking — returns only shipping/status fields; no customer PII."""
     order = db.query(Order).filter(Order.order_number == order_number).first()
     if not order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")

@@ -527,7 +527,6 @@ export default function SettingsPage() {
             channel: field === "email_enabled" ? "Email" : "WhatsApp",
           },
         ];
-        console.log("Saving:", updated);
         localStorage.setItem("notificationActivity", JSON.stringify(updated));
       } else {
         const updated = existing.filter((item) => item.id !== key);

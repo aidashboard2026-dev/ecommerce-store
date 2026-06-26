@@ -218,6 +218,7 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
     onSuccess: () => {
       toast.success(`${IMAGE_TABS.find(t => t.key === activeTab)?.label || 'Image'} uploaded`)
       qc.invalidateQueries({ queryKey: ['products'] })
+      qc.invalidateQueries({ queryKey: ['products', product.id] })
       clearSelection()
       if (activeTab !== 'gallery') {
         // Stay open so user can upload other types
@@ -229,8 +230,12 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
   // ── Delete single image mutation ──────────────────────────────────────────────
 
   const deleteMutation = useMutation({
-    mutationFn: () => productsApi.deleteImage(product.id),
-    onSuccess: () => { toast.success('Image removed'); qc.invalidateQueries({ queryKey: ['products'] }) },
+    mutationFn: () => productsApi.deleteImage(product.id, activeTab),
+    onSuccess: () => {
+      toast.success('Image removed')
+      qc.invalidateQueries({ queryKey: ['products'] })
+      qc.invalidateQueries({ queryKey: ['products', product.id] })
+    },
     onError: () => toast.error('Failed to remove image'),
   })
 
@@ -240,7 +245,11 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
     mutationFn: (index) => productsApi.deleteGalleryImage(product.id, index),
     onMutate:  (index) => setDeletingIndex(index),
     onSettled: ()      => setDeletingIndex(null),
-    onSuccess: () => { toast.success('Gallery image removed'); qc.invalidateQueries({ queryKey: ['products'] }) },
+    onSuccess: () => {
+      toast.success('Gallery image removed')
+      qc.invalidateQueries({ queryKey: ['products'] })
+      qc.invalidateQueries({ queryKey: ['products', product.id] })
+    },
     onError: () => toast.error('Failed to remove gallery image'),
   })
 
@@ -300,19 +309,7 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
           <SingleImageSlot
             label={currentTab?.label || ''}
             imageUrl={currentImageUrl}
-            onDelete={() => {
-              if (isThumbnail) {
-                deleteMutation.mutate()
-              } else {
-                // Clear the specific image field (image_front, image_back, image_size_chart) via PATCH
-                productsApi.update(product.id, { [currentTab.field]: null })
-                  .then(() => {
-                    toast.success(`${currentTab.label} removed`)
-                    qc.invalidateQueries({ queryKey: ['products'] })
-                  })
-                  .catch(() => toast.error('Failed to remove image'))
-              }
-            }}
+            onDelete={() => deleteMutation.mutate()}
             isPending={deleteMutation.isPending}
           />
         )}

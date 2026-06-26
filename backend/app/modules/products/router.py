@@ -29,7 +29,7 @@ from app.modules.products.schemas import (
     CategoryCreate, CategoryUpdate, CategoryResponse,
     CollectionCreate, CollectionUpdate, CollectionResponse,
     ProductCreate, ProductListResponse, ProductResponse, ProductUpdate,
-    VariantCreate,
+    VariantCreate, VariantUpdate,
 )
 from app.shared.storage import supabase_storage
 from app.modules.products.service import (
@@ -41,7 +41,7 @@ from app.modules.products.service import (
     add_variant, add_variants_bulk, bulk_action,
     create_product, delete_variant, get_product, get_product_response,
     get_products_paginated, get_related_products, increment_view_count,
-    soft_delete_product, update_product,
+    soft_delete_product, update_product, update_variant,
     # Storefront
     get_products_public, get_product_by_slug,
 )
@@ -216,20 +216,38 @@ def delete_collection_endpoint(
 # Image delete — must be registered before /{product_id}
 # ─────────────────────────────────────────────────────────────
 
-@router.delete("/admin/images/{product_id}")
-def delete_product_image(
+@router.delete("/admin/{product_id}/images/{image_type}")
+def delete_product_image_by_type(
     product_id: int,
+    image_type: str,
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_admin),
 ):
+    """
+    Remove a named image from a product by type.
+    image_type: thumbnail | front | back | size_chart
+    For gallery images use DELETE /admin/{product_id}/images/gallery/{index}
+    """
+    field_map = {
+        "thumbnail":   "thumbnail",
+        "front":       "image_front",
+        "back":        "image_back",
+        "size_chart":  "image_size_chart",
+    }
+    if image_type not in field_map:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Unknown image_type '{image_type}'. Use: thumbnail, front, back, size_chart, or gallery/<index>."
+        )
     product = get_product(db, product_id)
-    if not product.thumbnail:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Product has no thumbnail image.")
-    old_url = product.thumbnail
-    product.thumbnail = None
+    field = field_map[image_type]
+    old_url = getattr(product, field)
+    if not old_url:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Product has no {image_type} image.")
+    setattr(product, field, None)
     db.commit()
     supabase_storage.delete_product_image(old_url)
-    return {"message": "Thumbnail removed."}
+    return {"message": f"{image_type.replace('_', ' ').title()} image removed."}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -360,6 +378,18 @@ def delete_variant_endpoint(
     return delete_variant(db, product_id, variant_id)
 
 
+@router.patch("/admin/{product_id}/variants/{variant_id}", response_model=ProductResponse)
+def update_variant_endpoint(
+    product_id: int,
+    variant_id: int,
+    data: VariantUpdate,
+    db: Session = Depends(get_db),
+    _: Admin = Depends(get_current_admin),
+):
+    """Partially update an existing variant — send only the fields you want to change."""
+    return update_variant(db, product_id, variant_id, data)
+
+
 # ─────────────────────────────────────────────────────────────
 # IMAGE UPLOAD — multi-type support
 # ─────────────────────────────────────────────────────────────
@@ -418,14 +448,10 @@ def upload_product_image(
 
     elif field_name:
         old_url = getattr(product, field_name)
-        # thumbnail: always set as primary if set_as_primary=true
-        if image_type == "thumbnail" and set_as_primary.lower() == "true":
+        setattr(product, field_name, image_url)
+        # Also set thumbnail from front image if no thumbnail yet
+        if image_type == "front" and not product.thumbnail:
             product.thumbnail = image_url
-        elif image_type != "thumbnail":
-            setattr(product, field_name, image_url)
-            # Also set thumbnail from front image if no thumbnail yet
-            if image_type == "front" and not product.thumbnail:
-                product.thumbnail = image_url
         try:
             db.commit()
         except Exception:

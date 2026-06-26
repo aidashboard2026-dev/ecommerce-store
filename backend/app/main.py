@@ -98,8 +98,45 @@ async def _body_size_limit_middleware(request: Request, call_next):
 # Application lifespan — RUNTIME ONLY
 # ──────────────────────────────────────────────────────────────────────────────
 
+_IS_PRODUCTION = os.getenv("ENVIRONMENT", "development").lower() == "production"
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # ── Fix 8: Fail loudly if Supabase credentials are absent in production ──
+    if _IS_PRODUCTION and not (settings.SUPABASE_URL and settings.SUPABASE_SERVICE_ROLE_KEY):
+        raise RuntimeError(
+            "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in production. "
+            "Uploaded images would be written to an ephemeral local directory and "
+            "lost on every container restart. Set these env vars and redeploy."
+        )
+
+    # ── Fix 9: Verify configured bucket names exist and are reachable ────────
+    if settings.SUPABASE_URL and settings.SUPABASE_SERVICE_ROLE_KEY:
+        import httpx as _httpx
+        _headers = {
+            "Authorization": f"Bearer {settings.SUPABASE_SERVICE_ROLE_KEY}",
+            "apikey": settings.SUPABASE_SERVICE_ROLE_KEY,
+        }
+        for bucket in (settings.SUPABASE_PRODUCT_BUCKET, settings.SUPABASE_BANNER_BUCKET):
+            _url = f"{settings.SUPABASE_URL.rstrip('/')}/storage/v1/bucket/{bucket}"
+            try:
+                resp = _httpx.get(_url, headers=_headers, timeout=10.0)
+                if resp.status_code == 404:
+                    raise RuntimeError(
+                        f"Supabase bucket '{bucket}' does not exist. "
+                        f"Create it in your Supabase project or update "
+                        f"SUPABASE_PRODUCT_BUCKET / SUPABASE_BANNER_BUCKET in .env."
+                    )
+                if resp.status_code not in (200, 201):
+                    logger.warning(
+                        "Could not verify Supabase bucket '%s' (HTTP %s). "
+                        "Image uploads may fail at runtime.",
+                        bucket, resp.status_code,
+                    )
+            except _httpx.HTTPError as exc:
+                logger.warning("Supabase bucket check failed for '%s': %s", bucket, exc)
+
     yield
 
 
@@ -111,7 +148,11 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description="Admin Dashboard API",
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    # Disable Swagger UI and OpenAPI schema in production — they enumerate every
+    # endpoint, parameter name, schema, and error shape for free.
+    openapi_url=None if _IS_PRODUCTION else f"{settings.API_V1_STR}/openapi.json",
+    docs_url=None if _IS_PRODUCTION else "/docs",
+    redoc_url=None if _IS_PRODUCTION else "/redoc",
     lifespan=lifespan,
 )
 
@@ -123,17 +164,32 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_origins=settings.ALL_CORS_ORIGINS,
     allow_credentials=True,
     # FIX (SEC-09): was ["*"] — explicitly list only the methods this API uses
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    # Explicitly enumerate needed headers instead of wildcard "*"
+    allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
 )
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Request body limit middleware
+# Security response headers
 # ──────────────────────────────────────────────────────────────────────────────
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    if _IS_PRODUCTION:
+        response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
+    return response
+
+
 
 @app.middleware("http")
 async def body_size_limit_middleware(request: Request, call_next):

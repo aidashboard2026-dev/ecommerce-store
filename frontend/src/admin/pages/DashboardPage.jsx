@@ -392,38 +392,60 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2 mb-5 pb-4 border-b border-app">
           <Clock size={15} className="text-muted" />
           <h2 className="font-bold text-xs text-app uppercase tracking-wider">
-            Recent System Logs
+            Recent Activity
           </h2>
         </div>
         <div className="relative border-l border-app ml-3 space-y-5">
-          {activity.map((item) => {
-            const Icon = activityIcons[item.type] || Activity;
-            const colorClass =
-              activityColors[item.type] || activityColors.alert;
-            return (
-              <div
-                key={item.id}
-                className="relative pl-6 flex items-start gap-4 transition-all"
-              >
-                {/* Timeline node */}
-                <div className="absolute -left-3.5 top-0.5 w-7 h-7 rounded-full bg-surface border border-app flex items-center justify-center text-app shadow-sm">
-                  <div
-                    className={`w-5 h-5 rounded-md flex items-center justify-center ${colorClass}`}
-                  >
-                    <Icon size={11} />
+          {activity.length === 0 ? (
+            <p className="pl-6 text-xs text-muted">No recent activity yet.</p>
+          ) : (
+            activity.map((item) => {
+              const Icon = activityIcons[item.type] || Activity;
+              const colorClass =
+                activityColors[item.type] || activityColors.alert;
+
+              // Format ISO timestamp to human-readable relative or absolute time
+              const formattedTime = (() => {
+                if (!item.time) return "";
+                try {
+                  const d = new Date(item.time);
+                  const diffMs = Date.now() - d.getTime();
+                  const diffMin = Math.floor(diffMs / 60000);
+                  if (diffMin < 1)   return "Just now";
+                  if (diffMin < 60)  return `${diffMin} min ago`;
+                  const diffHr = Math.floor(diffMin / 60);
+                  if (diffHr < 24)   return `${diffHr} hr ago`;
+                  return d.toLocaleDateString();
+                } catch {
+                  return item.time;
+                }
+              })();
+
+              return (
+                <div
+                  key={item.id}
+                  className="relative pl-6 flex items-start gap-4 transition-all"
+                >
+                  {/* Timeline node */}
+                  <div className="absolute -left-3.5 top-0.5 w-7 h-7 rounded-full bg-surface border border-app flex items-center justify-center text-app shadow-sm">
+                    <div
+                      className={`w-5 h-5 rounded-md flex items-center justify-center ${colorClass}`}
+                    >
+                      <Icon size={11} />
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-app">
+                      {item.message}
+                    </p>
+                    <p className="text-[10px] text-muted font-medium mt-1">
+                      {formattedTime}
+                    </p>
                   </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-app">
-                    {item.message}
-                  </p>
-                  <p className="text-[10px] text-muted font-medium mt-1">
-                    {item.time}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
     </div>

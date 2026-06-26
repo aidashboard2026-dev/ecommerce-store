@@ -97,17 +97,34 @@ class Settings(BaseSettings):
         return v
 
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 8        # 8 h — customer sessions
+    ADMIN_TOKEN_EXPIRE_MINUTES: int = 60              # 1 h — admin sessions (shorter by design)
 
     # ------------------------------------------------------------------
     # CORS
+    # Set BACKEND_CORS_ORIGINS as a comma-separated string in .env:
+    #   BACKEND_CORS_ORIGINS=http://localhost:5173,https://yourdomain.com
     # ------------------------------------------------------------------
 
-    BACKEND_CORS_ORIGINS: List[str] = [
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://frontend:5173",
-    ]
+    BACKEND_CORS_ORIGINS: List[str] = []
+
+    PRODUCTION_FRONTEND_URL: str = ""
+
+    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v):
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
+
+    @computed_field
+    @property
+    def ALL_CORS_ORIGINS(self) -> List[str]:
+        """Merges BACKEND_CORS_ORIGINS with PRODUCTION_FRONTEND_URL if set."""
+        origins = list(self.BACKEND_CORS_ORIGINS)
+        if self.PRODUCTION_FRONTEND_URL and self.PRODUCTION_FRONTEND_URL not in origins:
+            origins.append(self.PRODUCTION_FRONTEND_URL)
+        return origins
 
     # ------------------------------------------------------------------
     # File Uploads
