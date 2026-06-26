@@ -192,7 +192,10 @@ export default function AppRoutes() {
             one page component that dispatches internally on the route */}
         <Route path="tracking" element={<OrdersPage />} />
         <Route path="wishlist" element={<WishlistGrid />} />
-
+        <Route
+            path="/product/:id"
+            element={<ProductDetailsPage />}
+        />
         {/* Customer Auth — login/register/forgot-password consolidated;
             /auth/signup kept as a legacy alias for /auth/register */}
         <Route
@@ -335,10 +338,7 @@ export default function AppRoutes() {
           }
         />
 
-        <Route
-          path="/product/:id"
-          element={<CustomProductDetailsPage />}
-        />
+   
 
         {/* Storefront 404 — rendered inside the StorefrontLayout shell so
             unmatched paths still get the site header/footer. (Previously

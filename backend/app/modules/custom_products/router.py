@@ -10,8 +10,8 @@ from fastapi import (
     HTTPException,
 )
 
-from app.models.custom_product import CustomProduct
-from app.services import supabase_storage
+from app.modules.custom_products.models import CustomProduct
+from app.shared.storage import supabase_storage
 
 from sqlalchemy.orm import Session
 
