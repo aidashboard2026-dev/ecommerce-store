@@ -68,10 +68,10 @@ class Order(Base):
     # Payment
     payment_method = Column(String(50), default="COD")
 
-    payment_status = Column(String(50), default="PENDING")
+    payment_status = Column(String(50), default="PENDING", index=True)
 
     # Tracking
-    tracking_status = Column(String(50), default="PLACED")
+    tracking_status = Column(String(50), default="PLACED", index=True)
 
     tracking_note = Column(Text)
 
@@ -81,7 +81,7 @@ class Order(Base):
 
     # Dates — timezone=True ensures TIMESTAMPTZ in PostgreSQL so comparisons
     # with timezone-aware Python datetimes (dashboard queries) never raise TypeError.
-    ordered_at = Column(DateTime(timezone=True), default=_utcnow)
+    ordered_at = Column(DateTime(timezone=True), default=_utcnow, index=True)
 
     created_at = Column(DateTime(timezone=True), default=_utcnow)
 

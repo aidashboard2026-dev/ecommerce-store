@@ -26,13 +26,13 @@ def upgrade() -> None:
 
     # Indexes on product variants
     op.create_index('ix_product_variants_selling_price', 'product_variants', ['selling_price'])
-    op.create_index('ix_product_variants_stock_quantity', 'product_variants', ['stock_quantity'])
+    #op.create_index('ix_product_variants_stock_quantity', 'product_variants', ['stock_quantity'])
     op.create_index('ix_product_variants_low_stock_threshold', 'product_variants', ['low_stock_threshold'])
 
 
 def downgrade() -> None:
     op.drop_index('ix_product_variants_low_stock_threshold', table_name='product_variants')
-    op.drop_index('ix_product_variants_stock_quantity', table_name='product_variants')
+    #op.drop_index('ix_product_variants_stock_quantity', table_name='product_variants')
     op.drop_index('ix_product_variants_selling_price', table_name='product_variants')
 
     op.drop_index('ix_orders_ordered_at', table_name='orders')

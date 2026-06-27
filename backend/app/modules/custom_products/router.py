@@ -11,7 +11,7 @@ DOMAIN BOUNDARY RULES (NON-NEGOTIABLE):
 """
 import logging
 import os
-from typing import Optional, List
+from typing import Optional, List, Any
 
 from fastapi import (
     APIRouter,
@@ -479,6 +479,19 @@ def list_public_custom_products(
         search=search,
         custom_category_id=custom_category_id,
     )
+
+
+@router.get("/collections", response_model=List[Any])
+def list_custom_collections(
+    category_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+):
+    """
+    List custom collections.
+    Since Custom Products domain does not support collections, this returns an empty list
+    to satisfy frontend contract requirements and prevent 422 errors.
+    """
+    return []
 
 
 @router.get("/{product_id}", response_model=CustomProductResponse)

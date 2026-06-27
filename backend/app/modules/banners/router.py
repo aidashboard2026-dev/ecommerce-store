@@ -93,7 +93,9 @@ async def _save_banner_image(banner_image: UploadFile) -> str:
 
     _validate_magic_bytes(contents[:16])
 
-    return supabase_storage.upload_banner_image(
+    from fastapi.concurrency import run_in_threadpool
+    return await run_in_threadpool(
+        supabase_storage.upload_banner_image,
         contents=contents,
         original_filename=banner_image.filename or "banner.jpg",
         content_type=banner_image.content_type,
@@ -274,7 +276,8 @@ async def edit_banner(
         )
 
     if old_image_to_delete:
-        _delete_banner_image_file(old_image_to_delete)
+        from fastapi.concurrency import run_in_threadpool
+        await run_in_threadpool(_delete_banner_image_file, old_image_to_delete)
 
     return updated
 

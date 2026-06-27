@@ -168,12 +168,12 @@ class ProductVariant(Base):
     color_hex = Column(String(7),   nullable=True)
 
     original_price      = Column(Numeric(10, 2), nullable=False)
-    selling_price       = Column(Numeric(10, 2), nullable=False)
+    selling_price       = Column(Numeric(10, 2), nullable=False, index=True)
     discount_percentage = Column(Numeric(5, 2),  default=0.00)
 
-    stock_quantity     = Column(Integer, default=0, nullable=False)
+    stock_quantity     = Column(Integer, default=0, nullable=False, index=True)
     reserved_stock     = Column(Integer, default=0, nullable=False)
-    low_stock_threshold = Column(Integer, default=5, nullable=False)
+    low_stock_threshold = Column(Integer, default=5, nullable=False, index=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

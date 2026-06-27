@@ -1198,18 +1198,22 @@ def get_products_public(
     total_pages = math.ceil(total / per_page) if total else 1
 
     if sort_by in ("price_asc", "price_desc"):
-        min_price_sub = (
-            db.query(sqla_func.min(ProductVariant.selling_price))
-            .filter(ProductVariant.product_id == Product.id)
-            .correlate(Product)
-            .scalar_subquery()
+        price_sub = (
+            db.query(
+                ProductVariant.product_id,
+                sqla_func.min(ProductVariant.selling_price).label("min_price")
+            )
+            .group_by(ProductVariant.product_id)
+            .subquery()
         )
-        order_clause = min_price_sub.asc() if sort_by == "price_asc" else min_price_sub.desc()
+        order_clause = price_sub.c.min_price.asc() if sort_by == "price_asc" else price_sub.c.min_price.desc()
+        query = db.query(Product).outerjoin(price_sub, Product.id == price_sub.c.product_id)
     else:
         order_clause = Product.created_at.desc()
+        query = db.query(Product)
 
     products = (
-        db.query(Product)
+        query
         .options(selectinload(Product.variants))
         .filter(*base_filters)
         .order_by(order_clause)
