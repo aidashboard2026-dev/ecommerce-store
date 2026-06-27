@@ -43,16 +43,16 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        # Advisory lock prevents multiple workers running migrations simultaneously
-        connection.execute(text("SELECT pg_advisory_lock(98765)"))
-        try:
-            context.configure(
-                connection=connection, target_metadata=target_metadata
-            )
-            with context.begin_transaction():
-                context.run_migrations()
-        finally:
-            connection.execute(text("SELECT pg_advisory_unlock(98765)"))
+        context.configure(
+            connection=connection, target_metadata=target_metadata
+        )
+
+        with context.begin_transaction():
+            # Use transaction-level advisory lock instead of session-level.
+            # This prevents lock leaks and is compatible with transaction-mode poolers
+            # (like Supabase Pooler/PgBouncer) while preventing concurrent migrations.
+            connection.execute(text("SELECT pg_advisory_xact_lock(98765)"))
+            context.run_migrations()
 
 
 if context.is_offline_mode():
