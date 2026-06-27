@@ -22,6 +22,10 @@ class Offer(Base):
     percentage = Column(String(50), nullable=True)
 
     description = Column(Text)
+    
+    item_align = Column(String(20), default="left")
+    
+    text_align = Column(String(20), default="left")
 
     banner_image = Column(String(500))
 

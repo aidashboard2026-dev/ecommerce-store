@@ -24,7 +24,9 @@ os.makedirs(os.path.join(UPLOADS_ROOT, "custom_products"), exist_ok=True)
 # Request body size limit
 # ──────────────────────────────────────────────────────────────────────────────
 
-_MAX_BODY_BYTES = 6 * 1024 * 1024
+from app.core.constants import MAX_IMAGE_SIZE
+
+_MAX_BODY_BYTES = MAX_IMAGE_SIZE
 
 # Methods that never carry a body — skip all body-inspection entirely.
 _BODYLESS_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "DELETE"})

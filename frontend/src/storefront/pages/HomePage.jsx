@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import HeroSection from "@/storefront/components/HeroSection";
 import CategorySection from "@/storefront/components/CategorySection";
-import OfferBanner from "@/storefront/components/OfferBanner";
+import OfferSection from "@/storefront/components/OfferSection";
 import ProductGrid from "@/storefront/components/ProductGrid";
 
 import {
@@ -44,11 +44,10 @@ export default function HomePage() {
 
   const scrollRef = useRef(null);
 
-  const handleWheel = (e) => {
-    if (scrollRef.current) {
-      e.preventDefault();
-      scrollRef.current.scrollLeft += e.deltaY;
-    }
+  const onWheel = (e) => {
+    if (!scrollRef.current) return;
+
+    scrollRef.current.scrollLeft += e.deltaY;
   };
 
   // Only the "hero" placement belongs in the hero slider — other placements
@@ -64,21 +63,11 @@ export default function HomePage() {
       <CategorySection />
 
       {/* Offers */}
-      {offers.length > 0 && (
-        <section className="mx-auto w-full h-[400px] max-w-[1400px] px-4 sm:px-6 lg:px-8 py-6">
-          <div
-            ref={scrollRef}
-            onWheel={handleWheel}
-            className="flex gap-4 overflow-x-auto overflow-y-hidden scrollbar-hide"
-          >
-            {offers.slice(0, 9).map((offer) => (
-              <div key={offer.id} className="flex-none h-[500px] w-[350px]">
-                <OfferBanner offer={offer} />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      <OfferSection
+        offers={offers}
+        scrollRef={scrollRef}
+        handleWheel={onWheel}
+      />
 
       {/* Featured Products */}
       {(loadingFeatured || featured.length > 0) && (

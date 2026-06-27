@@ -45,6 +45,8 @@ from app.modules.products.service import (
     # Storefront
     get_products_public, get_product_by_slug,
 )
+from app.core.constants import MAX_IMAGE_SIZE
+
 
 router = APIRouter()
 
@@ -54,7 +56,6 @@ router = APIRouter()
 
 ALLOWED_MIME_TYPES  = {"image/jpeg", "image/png", "image/webp"}
 ALLOWED_EXTENSIONS  = {".jpg", ".jpeg", ".png", ".webp"}
-MAX_IMAGE_SIZE      = 5 * 1024 * 1024  # 5 MB
 
 MAGIC_BYTES: dict = {
     b"\xff\xd8\xff": "image/jpeg",
@@ -101,8 +102,8 @@ def _read_and_validate_upload(file: UploadFile) -> bytes:
         total_bytes += len(chunk)
         if total_bytes > MAX_IMAGE_SIZE:
             raise HTTPException(
-                status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                f"Image must be under {MAX_IMAGE_SIZE // (1024 * 1024)} MB.",
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"Image must be under {MAX_IMAGE_SIZE // (1024 * 1024)} MB.",
             )
         chunks.append(chunk)
     contents = b"".join(chunks)

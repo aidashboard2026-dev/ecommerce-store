@@ -8,6 +8,8 @@ class OfferCreate(BaseModel):
     percentage: Optional[str] = None
     
     description: Optional[str] = None
+    item_align: Optional[str] = "left"
+    text_align: Optional[str] = "left"
     banner_image: Optional[str] = None
 
     status: str = "saved"
@@ -28,6 +30,8 @@ class OfferUpdate(BaseModel):
     percentage: Optional[str] = None
 
     description: Optional[str] = None
+    item_align: Optional[str] = None
+    text_align: Optional[str] = None
     banner_image: Optional[str] = None
 
     status: Optional[str] = None
@@ -47,6 +51,8 @@ class OfferResponse(BaseModel):
     title: str
     percentage: str
     description: Optional[str] = None
+    item_align: Optional[str] = "left"
+    text_align: Optional[str] = "left"
     banner_image: Optional[str] = None
     status: str
 
