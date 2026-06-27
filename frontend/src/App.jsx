@@ -2,9 +2,9 @@ import React, { useEffect } from 'react'
 import { BrowserRouter } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { Toaster } from 'react-hot-toast'
-import { fetchMeThunk } from './store/authSlice'
-import { fetchCustomerMeThunk } from './store/customerSlice'
-import AppRoutes from './routes/AppRoutes'
+import { fetchMeThunk } from '@/admin/store/authSlice'
+import { fetchCustomerMeThunk } from '@/storefront/store/customerSlice'
+import AppRoutes from '@/shared/routes/AppRoutes'
 
 
 function App() {

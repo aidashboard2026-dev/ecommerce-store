@@ -9,15 +9,7 @@ const api = axios.create({
 
 // ── Attach JWT token to every request ────────────────────────────────────────
 api.interceptors.request.use((config) => {
-  const isCustomerApi = 
-    config.url.includes('/orders/customer') || 
-    config.url.includes('/customers/profile') || 
-    config.url.includes('/auth/customer')
-
-  const token = isCustomerApi 
-    ? localStorage.getItem('customer_token') 
-    : localStorage.getItem('token')
-
+  const token = localStorage.getItem('token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
@@ -27,48 +19,18 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      const currentPath = window.location.pathname
-      const url = error.config?.url || ''
-      const isCustomerApi = 
-        url.includes('/orders/customer') || 
-        url.includes('/customers/profile') || 
-        url.includes('/auth/customer')
-
-      if (isCustomerApi) {
-        localStorage.removeItem('customer_token')
-        localStorage.removeItem('customer')
-        
-        const customerProtectedPaths = ['/checkout', '/payment', '/profile', '/orders']
-        const isProtected = customerProtectedPaths.some(p => currentPath.startsWith(p))
-        if (isProtected) {
-          window.location.href = '/auth/login'
-        } else {
-          window.location.reload()
-        }
-      } else {
-        localStorage.removeItem('token')
-        localStorage.removeItem('admin')
-        
-        if (currentPath.startsWith('/admin') && currentPath !== '/admin/login' && currentPath !== '/admin/signup') {
-          window.location.href = '/admin/login'
-        }
-      }
+      localStorage.removeItem('token')
+      localStorage.removeItem('admin')
+      window.location.href = '/login'
     }
     return Promise.reject(error)
   }
 )
 
-// ─── Auth ─────────────────────────────────────────────────────────────────────
 export const authAPI = {
-  // Admin auth
-  login:  (email, password) => api.post('/auth/login', { email, password }),
-  getMe:  ()                => api.get('/auth/me'),
-  logout: ()                => api.post('/auth/logout'),
-
-  // Customer auth — FIX: signup was undefined (TypeError in signupThunk)
-  signup:        (data)            => api.post('/auth/signup', data),
-  customerLogin: (email, password) => api.post('/auth/customer/login', { email, password }),
-  customerMe:    ()                => api.get('/auth/customer/me'),
+  login: (email, password) => api.post('/auth/login', { email, password }),
+  getMe: () => api.get('/auth/me'),
+  logout: () => api.post('/auth/logout'),
 }
 
 // ─── Admins ───────────────────────────────────────────────────────────────────
@@ -105,80 +67,32 @@ export const customersAPI = {
   profile:     (id)          => api.get(`/customers/${id}/profile`),
   create:      (data)        => api.post('/customers/', data),
   update:      (id, data)    => api.put(`/customers/${id}`, data),
-  setStatus:   (id, is_active)  => api.patch(`/customers/${id}/status`, { is_active }),
-  updateNotes: (id, notes)      => api.patch(`/customers/${id}/notes`, { notes }),
-  updateTags:  (id, tags)       => api.patch(`/customers/${id}/tags`, { tags }),
-  analytics:   ()               => api.get('/customers/analytics'),
+  setStatus:   (id, is_active) => api.patch(`/customers/${id}/status`, { is_active }),
+  updateNotes: (id, notes)   => api.patch(`/customers/${id}/notes`, { notes }),
+  updateTags:  (id, tags)    => api.patch(`/customers/${id}/tags`, { tags }),
+  analytics:   ()            => api.get('/customers/analytics'),
 }
 
 // ─── Products ─────────────────────────────────────────────────────────────────
 export const productsAPI = {
   adminList: (params) => {
-    // Strip empty string params so FastAPI doesn't reject "" as an invalid enum value
     const cleaned = {}
     for (const [key, value] of Object.entries(params)) {
       if (value !== '' && value != null) cleaned[key] = value
     }
     return api.get('/products/admin/all', { params: cleaned })
   },
-
-  get:    (id)       => api.get(`/products/admin/${id}`),
-  create: (data)     => api.post('/products/admin', data),
-  update: (id, data) => api.patch(`/products/admin/${id}`, data),
-  delete: (id)       => api.delete(`/products/admin/${id}`),
-
-  // ── Variants ───────────────────────────────────────────────────────────────
-
-  createVariant: (productId, data) =>
-    api.post(`/products/admin/${productId}/variants`, data),
-
-  // FIX (CRIT-05): was MISSING — InlineProductForm.jsx line 319 called
-  // productsApi.deleteVariant(...) which threw "is not a function" at runtime,
-  // silently breaking variant delete in edit mode.
-  deleteVariant: (productId, variantId) =>
-    api.delete(`/products/admin/${productId}/variants/${variantId}`),
-
-  // FIX (CRIT-05): was MISSING — InlineProductForm.jsx batchSave line 413 called
-  // productsApi.bulkCreateVariants(...) which threw "is not a function" at runtime,
-  // completely breaking the create flow for any product that has variants.
-  bulkCreateVariants: (productId, variantsPayload) =>
-    api.post(`/products/admin/${productId}/variants/bulk`, variantsPayload),
-
-  // ── Images ─────────────────────────────────────────────────────────────────
-
-  uploadImage: (productId, formData) =>
+  get:             (id)              => api.get(`/products/admin/${id}`),
+  create:          (data)            => api.post('/products/admin', data),
+  update:          (id, data)        => api.patch(`/products/admin/${id}`, data),
+  delete:          (id)              => api.delete(`/products/admin/${id}`),
+  createVariant:   (productId, data) => api.post(`/products/admin/${productId}/variants`, data),
+  uploadImage:     (productId, formData) =>
     api.post(`/products/admin/${productId}/images`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-
-  // Renamed for clarity: deletes the product's current thumbnail
-  deleteProductImage: (productId) =>
-    api.delete(`/products/admin/images/${productId}`),
-
-  // Backward-compat alias
-  deleteImage: (productId) =>
-    api.delete(`/products/admin/images/${productId}`),
-}
-
-// ─── Storefront Client ────────────────────────────────────────────────────────
-export const storefrontAPI = {
-  // Products
-  getProducts: (params = {}) => api.get('/products/', { params }),
-  getProductBySlug: (slug) => api.get(`/products/slug/${slug}`),
-  
-  // Banners & Offers
-  getBanners: () => api.get('/banners/active/all'),
-  getOffers: () => api.get('/offers/active/all'),
-  
-  // Orders
-  createOrder: (data) => api.post('/orders/customer', data),
-  getOrders: () => api.get('/orders/customer/all'),
-  getOrder: (id) => api.get(`/orders/customer/${id}`),
-  cancelOrder: (id) => api.post(`/orders/customer/${id}/cancel`),
-  trackOrder: (orderNumber) => api.get(`/orders/track/${orderNumber}`),
-  
-  // Profile
-  updateProfile: (data) => api.put('/customers/profile/update', data),
+  deleteProductImage: (productId) => api.delete(`/products/admin/images/${productId}`),
+  deleteImage:        (productId) => api.delete(`/products/admin/images/${productId}`),
 }
 
 export default api

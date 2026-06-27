@@ -97,17 +97,59 @@ class Settings(BaseSettings):
         return v
 
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 8        # 8 h — customer sessions
+    ADMIN_TOKEN_EXPIRE_MINUTES: int = 60              # 1 h — admin sessions (shorter by design)
 
     # ------------------------------------------------------------------
     # CORS
+    # Set BACKEND_CORS_ORIGINS as a comma-separated string in .env:
+    #   BACKEND_CORS_ORIGINS=http://localhost:5173,https://yourdomain.com
     # ------------------------------------------------------------------
 
-    BACKEND_CORS_ORIGINS: List[str] = [
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://frontend:5173",
-    ]
+    BACKEND_CORS_ORIGINS: List[str] = []
+
+    PRODUCTION_FRONTEND_URL: str = ""
+
+    # ------------------------------------------------------------------
+    # Email (password reset, transactional)
+    # Set RESEND_API_KEY for Resend (recommended), or configure SMTP.
+    # ------------------------------------------------------------------
+
+    # Resend (https://resend.com) — simplest integration with FastAPI
+    RESEND_API_KEY: str = ""
+
+    # SMTP fallback (leave blank if using Resend)
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = "noreply@yourdomain.com"
+    SMTP_FROM_NAME: str = "AuraStore"
+    SMTP_TLS: bool = True
+
+    # URL of the frontend — used to build password-reset links in emails.
+    # For local dev: http://localhost:5173
+    # For production: https://yourdomain.com
+    FRONTEND_URL: str = "http://localhost:5173"
+
+    # How long (minutes) a password-reset token stays valid
+    PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 60
+
+    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v):
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
+
+    @computed_field
+    @property
+    def ALL_CORS_ORIGINS(self) -> List[str]:
+        """Merges BACKEND_CORS_ORIGINS with PRODUCTION_FRONTEND_URL if set."""
+        origins = list(self.BACKEND_CORS_ORIGINS)
+        if self.PRODUCTION_FRONTEND_URL and self.PRODUCTION_FRONTEND_URL not in origins:
+            origins.append(self.PRODUCTION_FRONTEND_URL)
+        return origins
 
     # ------------------------------------------------------------------
     # File Uploads
@@ -120,7 +162,8 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------
     # Supabase Storage
     # ------------------------------------------------------------------
-    # All product and banner images live in Supabase Storage buckets.
+    # All product, custom product, and banner images live in Supabase Storage
+    # buckets. Each domain has its own bucket to enforce storage isolation.
     # SUPABASE_SERVICE_ROLE_KEY is used server-side only (never exposed to the
     # frontend) so the backend can upload/delete objects regardless of bucket
     # RLS policies. SUPABASE_ANON_KEY is kept for any future client-side use.
@@ -129,6 +172,7 @@ class Settings(BaseSettings):
     SUPABASE_ANON_KEY: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
     SUPABASE_PRODUCT_BUCKET: str = "product-images"
+    SUPABASE_CUSTOM_PRODUCT_BUCKET: str = "custom-product-images"
     SUPABASE_BANNER_BUCKET: str = "banners"
 
     @field_validator("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", mode="after")

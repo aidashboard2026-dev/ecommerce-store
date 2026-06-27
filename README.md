@@ -111,131 +111,124 @@ docker compose up db -d
 
 ## Project Structure
 
-```
+```text
 ecommerce-store/
 ├── docker-compose.yml
 ├── .env.example
 │
 ├── backend/
-│   ├── alembic/                        # Database migrations
+│   ├── alembic/
 │   ├── app/
-│   │   ├── api/v1/
-│   │   │   ├── endpoints/
-│   │   │   │   ├── auth.py             # Admin login, customer login, signup, /me
-│   │   │   │   ├── admins.py           # Admin user CRUD
-│   │   │   │   ├── products.py         # Product & variant management
-│   │   │   │   ├── orders.py           # Admin & customer order endpoints
-│   │   │   │   ├── customers.py        # Customer management & self-service
-│   │   │   │   ├── offers.py           # Discount offer management
-│   │   │   │   ├── banners.py          # Storefront banner management
-│   │   │   │   └── dashboard.py        # Stats, charts, activity feed
-│   │   │   └── router.py
+│   │
+│   │── main.py
+│   │
+│   ├── api/
+│   │   ├── router.py
+│   │   └── v1/
+│   │       └── router.py
+│   │
+│   ├── core/
+│   │   ├── config.py
+│   │   ├── security.py
+│   │   └── database.py
+│   │
+│   ├── shared/
+│   │   ├── utils/
+│   │   ├── storage/
+│   │   │   └── supabase_storage.py
+│   │   ├── dependencies/
+│   │   ├── exceptions/
+│   │   └── middleware/
+│   │
+│   ├── modules/
+│   │
 │   │   ├── auth/
-│   │   │   └── dependencies.py         # JWT bearer — get_current_admin / get_current_customer
-│   │   ├── core/
-│   │   │   ├── config.py               # Pydantic settings (reads .env)
-│   │   │   └── security.py             # JWT creation + bcrypt utilities
-│   │   ├── database/
-│   │   │   ├── base.py                 # SQLAlchemy DeclarativeBase
-│   │   │   ├── session.py              # Engine + SessionLocal
-│   │   │   └── init_db.py              # Seed superadmin from .env
-│   │   ├── models/                     # SQLAlchemy ORM models
-│   │   │   ├── admin.py
-│   │   │   ├── customer.py
-│   │   │   ├── product.py
-│   │   │   ├── order.py
-│   │   │   ├── offer.py
-│   │   │   └── banner.py
-│   │   ├── schemas/                    # Pydantic request / response schemas
-│   │   │   ├── auth.py
-│   │   │   ├── admin.py
-│   │   │   ├── customer.py
-│   │   │   ├── product.py
-│   │   │   ├── order.py
-│   │   │   ├── offer.py
-│   │   │   └── banner.py
-│   │   ├── services/                   # Business logic
-│   │   │   ├── auth_service.py
-│   │   │   ├── admin_service.py
-│   │   │   ├── product_service.py
-│   │   │   ├── order_service.py
-│   │   │   └── customer_service.py
-│   │   └── main.py                     # FastAPI app entry point + CORS + lifespan
-│   ├── requirements.txt
-│   └── Dockerfile
+│   │   │   ├── router.py
+│   │   │   ├── service.py
+│   │   │   ├── schemas.py
+│   │   │   ├── dependencies.py
+│   │   │   └── models.py
+│   │   │
+│   │   ├── admins/
+│   │   │   ├── router.py
+│   │   │   ├── service.py
+│   │   │   ├── schemas.py
+│   │   │   └── models.py
+│   │   │
+│   │   ├── customers/
+│   │   │   ├── router.py
+│   │   │   ├── service.py
+│   │   │   ├── schemas.py
+│   │   │   └── models.py
+│   │   │
+│   │   ├── products/
+│   │   │   ├── router.py
+│   │   │   ├── service.py
+│   │   │   ├── schemas.py
+│   │   │   └── models.py
+│   │   │
+│   │   ├── orders/
+│   │   │   ├── router.py
+│   │   │   ├── service.py
+│   │   │   ├── schemas.py
+│   │   │   └── models.py
+│   │   │
+│   │   ├── offers/
+│   │   ├── banners/
+│   │   ├── settings/
+│   │   ├── delivery_zones/
+│   │   ├── custom_products/
+│   │   └── dashboard/
+│   │
+│   └── database/
+│       ├── base.py
+│       ├── session.py
+│       └── init_db.py
 │
-└── frontend/
-    ├── src/
-    │   ├── components/
-    │   │   ├── common/                 # Modal, Badge, Spinner
-    │   │   ├── layout/                 # Header, PageHeader
-    │   │   ├── dashboard/              # StatCard, SalesDashboard, OrderStatusAnalytics
-    │   │   ├── customers/              # CustomerTable, CustomerDrawer, CustomerFilters, etc.
-    │   │   ├── products/               # InlineProductForm, VariantFormModal, ImageUploadModal
-    │   │   └── storefront/             # Customer-facing reusable components (flat)
-    │   │       ├── ProductCard.jsx, ProductGrid.jsx, ProductFilters.jsx,
-    │   │       ├── HeroSection.jsx, OfferBanner.jsx, CategorySection.jsx
-    │   │       ├── ProductsList.jsx, ProductDetails.jsx   # views composed by pages/storefront/ProductsPage
-    │   │       ├── CartItem.jsx, CartSummary.jsx, CouponSection.jsx, CartView.jsx
-    │   │       ├── CheckoutForm.jsx, PaymentSection.jsx, CheckoutPage.jsx
-    │   │       ├── OrderTimeline.jsx, OrdersList.jsx, OrderDetails.jsx, OrderSuccess.jsx,
-    │   │       │   OrderTrackingLookup.jsx                # views composed by pages/storefront/OrdersPage
-    │   │       ├── LoginForm.jsx, RegisterForm.jsx        # views composed by pages/storefront/AuthPage
-    │   │       ├── WishlistGrid.jsx                       # view composed by pages/storefront/ProfilePage (+ /wishlist route)
-    │   │       └── CustomProductForm.jsx, UploadDesign.jsx, DesignPreview.jsx,
-    │   │           QuoteRequest.jsx, customProductTypes.js  # views composed by pages/storefront/CustomPage
-    │   ├── layouts/
-    │   │   ├── MainLayout.jsx          # Admin shell — sidebar + header + outlet
-    │   │   └── StorefrontLayout.jsx    # Storefront shell — navbar + footer
-    │   ├── pages/
-    │   │   ├── admin/
-    │   │   │   ├── LoginPage.jsx
-    │   │   │   ├── SignupPage.jsx
-    │   │   │   ├── DashboardPage.jsx
-    │   │   │   ├── ProductsPage.jsx
-    │   │   │   ├── OrdersPage.jsx
-    │   │   │   ├── CustomersPage.jsx
-    │   │   │   ├── OffersPage.jsx
-    │   │   │   ├── BannerPage.jsx
-    │   │   │   └── SettingsPage.jsx
-    │   │   └── storefront/             # Consolidated top-level storefront pages
-    │   │       ├── HomePage.jsx
-    │   │       ├── ProductsPage.jsx    # list (/products) + details (/products/:slug)
-    │   │       ├── CartPage.jsx
-    │   │       ├── OrdersPage.jsx      # list, details, success/payment, tracking
-    │   │       ├── ProfilePage.jsx     # profile, orders, addresses, wishlist, settings tabs
-    │   │       ├── AuthPage.jsx        # login, register, forgot-password
-    │   │       ├── SupportPage.jsx     # contact, FAQ, about, privacy, terms, returns
-    │   │       ├── CustomPage.jsx      # custom product quote requests
-    │   │       └── NotFoundPage.jsx
-    │   ├── routes/
-    │   │   └── AppRoutes.jsx           # All routes — admin + storefront + protected guards
-    │   ├── hooks/
-    │   │   ├── useAuth.js              # Admin auth + theme hooks
-    │   │   ├── useProducts.js          # Storefront product queries (React Query)
-    │   │   └── useOrders.js            # Storefront order queries/mutations (React Query)
-    │   ├── store/
-    │   │   ├── store.js                # Redux store (7 slices)
-    │   │   ├── authSlice.js            # Admin auth state + thunks
-    │   │   ├── customerSlice.js        # Customer auth state + thunks
-    │   │   ├── cartSlice.js            # Cart items + coupon + totals (localStorage)
-    │   │   ├── wishlistSlice.js        # Wishlist items (localStorage)
-    │   │   ├── checkoutStore.js        # Address, payment method, last order
-    │   │   ├── themeSlice.js           # Dark / light mode
-    │   │   └── uiSlice.js              # Sidebar + modal state
-    │   ├── services/
-    │   │   ├── api.js                  # Axios instance + authAPI + storefrontAPI
-    │   │   └── storefront/
-    │   │       ├── productsService.js
-    │   │       ├── cartService.js
-    │   │       └── ordersService.js
-    │   ├── utils/
-    │   │   └── productUtils.js         # getImageUrl, formatPrice, useDebounce
-    │   ├── App.jsx
-    │   └── main.jsx
-    ├── tailwind.config.js
-    ├── vite.config.js
-    └── Dockerfile
+│── requirements.txt
+└── Dockerfile
+
+
+frontend/
+│
+├── src/
+│
+├── admin/
+│   ├── pages/
+│   ├── components/
+│   ├── layouts/
+│   ├── routes/
+│   ├── services/
+│   ├── hooks/
+│   └── store/
+│
+├── storefront/
+│   ├── pages/
+│   ├── components/
+│   ├── layouts/
+│   ├── routes/
+│   ├── services/
+│   ├── hooks/
+│   └── store/
+│
+├── shared/
+│   ├── components/
+│   ├── assets/
+│   ├── hooks/
+│   ├── services/
+│   ├── utils/
+│   ├── constants/
+│   ├── data/
+│   ├── routes/
+│   └── store/
+│
+├── App.jsx
+├── main.jsx
+└── index.css
+
+tailwind.config.js
+vite.config.js
+Dockerfile
 ```
 
 ---

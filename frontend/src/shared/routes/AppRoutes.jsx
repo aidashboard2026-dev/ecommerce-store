@@ -1,0 +1,366 @@
+import React, { useEffect, useMemo, lazy, Suspense } from 'react'
+import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { useSelector, useDispatch } from 'react-redux'
+
+// Admin Layout & Pages
+import { logoutThunk } from '@/admin/store/authSlice'
+import MainLayout from '@/admin/layouts/MainLayout'
+
+// Storefront Layout
+import StorefrontLayout from '@/storefront/layouts/StorefrontLayout'
+
+// Lazy loaded pages/components to optimize bundle sizes
+const AdminLoginPage = lazy(() => import('@/admin/pages/LoginPage'))
+const DashboardPage = lazy(() => import('@/admin/pages/DashboardPage'))
+const AdminProductsPage = lazy(() => import('@/admin/pages/ProductsPage'))
+const AdminOrdersPage = lazy(() => import('@/admin/pages/OrdersPage'))
+const OffersPage = lazy(() => import('@/admin/pages/OffersPage'))
+const CustomersPage = lazy(() => import('@/admin/pages/CustomersPage'))
+const SettingsPage = lazy(() => import('@/admin/pages/SettingsPage'))
+const BannerPage = lazy(() => import('@/admin/pages/BannerPage'))
+const CustomProductsPage = lazy(() => import('@/admin/pages/CustomProductsPage'))
+
+// Storefront Pages
+const HomePage = lazy(() => import('@/storefront/pages/HomePage'))
+const ProductsPage = lazy(() => import('@/storefront/pages/ProductsPage'))
+const CartPage = lazy(() => import('@/storefront/pages/CartPage'))
+const OrdersPage = lazy(() => import('@/storefront/pages/OrdersPage'))
+const ProfilePage = lazy(() => import('@/storefront/pages/ProfilePage'))
+const AuthPage = lazy(() => import('@/storefront/pages/AuthPage'))
+const ResetPasswordPage = lazy(() => import('@/storefront/pages/ResetPasswordPage'))
+const SupportPage = lazy(() => import('@/storefront/pages/SupportPage'))
+const CustomPage = lazy(() => import('@/storefront/pages/CustomPage'))
+const NotFoundPage = lazy(() => import('@/storefront/pages/NotFoundPage'))
+
+// Storefront components used directly as route elements
+const CheckoutPage = lazy(() => import('@/storefront/components/CheckoutPage'))
+const WishlistGrid = lazy(() => import('@/storefront/components/WishlistGrid'))
+const ProductDetailsPage = lazy(() => import('@/storefront/pages/CustomProductDetailsPage'))
+
+const Spinner = () => (
+  <div className="min-h-screen flex items-center justify-center bg-app">
+    <div className="w-10 h-10 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+  </div>
+)
+
+// ── ADMIN AUTH STATE ──────────────────────────────────────────────────────────
+function useAdminAuthState() {
+  return useSelector((s) => ({
+    isAuthenticated: !!s.auth.admin,
+    initialized: s.auth.initialized,
+  }))
+}
+
+function AdminProtectedRoute({ children }) {
+  const { isAuthenticated, initialized } = useAdminAuthState()
+
+  if (!initialized) return <Spinner />
+
+  return isAuthenticated
+    ? children
+    : <Navigate to="/admin/login" replace />
+}
+
+function AdminPublicRoute({ children }) {
+  const { isAuthenticated, initialized } = useAdminAuthState()
+
+  if (!initialized) return <Spinner />
+
+  return isAuthenticated
+    ? <Navigate to="/admin" replace />
+    : children
+}
+
+// ── CUSTOMER AUTH STATE ──────────────────────────────────────────────────────
+function CustomerProtectedRoute({ children }) {
+  const { token, customer } = useSelector((s) => s.customer)
+
+  return token && customer
+    ? children
+    : <Navigate to="/auth/login" replace />
+}
+
+function CustomerPublicRoute({ children }) {
+  const { token, customer } = useSelector((s) => s.customer)
+
+  return token && customer
+    ? <Navigate to="/profile" replace />
+    : children
+}
+// Helper component to redirect legacy category URLs to storefront catalog search
+function CategoryRedirect() {
+  const { slug } = useParams()
+  const normalizedCategory = useMemo(() => {
+    if (!slug) return ''
+    const mapping = {
+      't-shirt': 'T-Shirt',
+      'track-pant': 'Track Pant',
+      'jersey': 'Jersey',
+      'shirt': 'Shirt',
+      'trouser': 'Trouser',
+      't-shirts': 'T-Shirt',
+      'track-pants': 'Track Pant',
+      'jerseys': 'Jersey',
+      'shirts': 'Shirt',
+      'trousers': 'Trouser',
+    }
+    return mapping[slug.toLowerCase()] || slug
+  }, [slug])
+
+  return <Navigate to={`/products?category=${encodeURIComponent(normalizedCategory)}`} replace />
+}
+
+export default function AppRoutes() {
+  const navigate = useNavigate()
+  const dispatch = useDispatch()
+
+  // Admin unauthorized/session expiration handler
+  useEffect(() => {
+    const handle = () => {
+      dispatch(logoutThunk())
+      navigate('/admin/login', { replace: true })
+    }
+
+    window.addEventListener('auth:unauthorized', handle)
+
+    return () => {
+      window.removeEventListener('auth:unauthorized', handle)
+    }
+  }, [dispatch, navigate])
+
+  return (
+    <Suspense fallback={<Spinner />}>
+      <Routes>
+        {/* ── BACKWARD COMPATIBILITY REDIRECTS ─────────────────────────────── */}
+        <Route
+          path="/login"
+          element={<Navigate to="/admin/login" replace />}
+        />
+
+        <Route
+          path="/signup"
+          element={<Navigate to="/admin/signup" replace />}
+        />
+
+        {/* ── ADMIN AUTH ROUTES (structure unchanged) ───────────────────────── */}
+        <Route
+          path="/admin/login"
+          element={
+            <AdminPublicRoute>
+              <AdminLoginPage />
+            </AdminPublicRoute>
+          }
+        />
+
+        {/* ── ADMIN DASHBOARD (structure unchanged) ──────────────────────────── */}
+        <Route
+          path="/admin"
+          element={
+            <AdminProtectedRoute>
+              <MainLayout />
+            </AdminProtectedRoute>
+          }
+        >
+          <Route index element={<DashboardPage />} />
+          <Route path="products" element={<AdminProductsPage />} />
+          <Route path="custom-products" element={<CustomProductsPage />} />
+          <Route path="orders" element={<AdminOrdersPage />} />
+          <Route path="offers" element={<OffersPage />} />
+          <Route path="customers" element={<CustomersPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="banners" element={<BannerPage />} />
+        </Route>
+
+        {/* ── STOREFRONT ROUTES ───────────────────────────────────────────── */}
+        <Route path="/" element={<StorefrontLayout />}>
+          <Route index element={<HomePage />} />
+
+          {/* Products — list (/products) and details (/products/:slug) share
+              a single consolidated page component */}
+          <Route path="products" element={<ProductsPage />} />
+          <Route path="products/:slug" element={<ProductsPage />} />
+
+
+          <Route path="sub-products" element={<Navigate to="/products" replace />} />
+          <Route path="category/:slug" element={<CategoryRedirect />} />
+
+          <Route path="cart" element={<CartPage />} />
+
+          {/* Custom orders (new) */}
+          <Route path="custom" element={<CustomPage />} />
+          <Route path="custom/:productType" element={<CustomPage />} />
+
+          {/* Support / info (new) */}
+          <Route path="support" element={<SupportPage />} />
+          <Route path="support/faq" element={<SupportPage />} />
+          <Route path="support/about" element={<SupportPage />} />
+          <Route path="support/privacy" element={<SupportPage />} />
+          <Route path="support/terms" element={<SupportPage />} />
+          <Route path="support/returns" element={<SupportPage />} />
+
+          {/* Orders, success/payment, and tracking — all consolidated into
+              one page component that dispatches internally on the route */}
+          <Route path="tracking" element={<OrdersPage />} />
+          <Route path="wishlist" element={<WishlistGrid />} />
+          <Route
+              path="/product/:id"
+              element={<ProductDetailsPage />}
+          />
+          {/* Customer Auth — login/register/forgot-password consolidated;
+              /auth/signup kept as a legacy alias for /auth/register */}
+          <Route
+            path="auth/login"
+            element={
+              <CustomerPublicRoute>
+                <AuthPage />
+              </CustomerPublicRoute>
+            }
+          />
+
+          <Route
+            path="auth/register"
+            element={
+              <CustomerPublicRoute>
+                <AuthPage />
+              </CustomerPublicRoute>
+            }
+          />
+
+          <Route
+            path="auth/signup"
+            element={
+              <CustomerPublicRoute>
+                <AuthPage />
+              </CustomerPublicRoute>
+            }
+          />
+
+          <Route
+            path="auth/forgot-password"
+            element={
+              <CustomerPublicRoute>
+                <AuthPage />
+              </CustomerPublicRoute>
+            }
+          />
+
+          <Route
+            path="auth/reset-password"
+            element={<ResetPasswordPage />}
+          />
+
+          {/* Protected Customer Routes */}
+          <Route
+            path="checkout"
+            element={
+              <CustomerProtectedRoute>
+                <CheckoutPage />
+              </CustomerProtectedRoute>
+            }
+          />
+
+          <Route
+            path="payment"
+            element={
+              <CustomerProtectedRoute>
+                <OrdersPage />
+              </CustomerProtectedRoute>
+            }
+          />
+
+          {/* Profile — profile / orders / addresses / wishlist / settings tabs
+              are all handled internally by ProfilePage */}
+          <Route
+            path="profile"
+            element={
+              <CustomerProtectedRoute>
+                <ProfilePage />
+              </CustomerProtectedRoute>
+            }
+          />
+
+          <Route
+            path="profile/orders"
+            element={
+              <CustomerProtectedRoute>
+                <ProfilePage />
+              </CustomerProtectedRoute>
+            }
+          />
+
+          <Route
+            path="profile/addresses"
+            element={
+              <CustomerProtectedRoute>
+                <ProfilePage />
+              </CustomerProtectedRoute>
+            }
+          />
+
+          <Route
+            path="profile/wishlist"
+            element={
+              <CustomerProtectedRoute>
+                <ProfilePage />
+              </CustomerProtectedRoute>
+            }
+          />
+
+          <Route
+            path="profile/settings"
+            element={
+              <CustomerProtectedRoute>
+                <ProfilePage />
+              </CustomerProtectedRoute>
+            }
+          />
+
+          {/* Orders list / details / success / per-order tracking — all one
+              consolidated page component (see OrdersPage internals) */}
+          <Route
+            path="orders"
+            element={
+              <CustomerProtectedRoute>
+                <OrdersPage />
+              </CustomerProtectedRoute>
+            }
+          />
+
+          <Route
+            path="orders/success"
+            element={
+              <CustomerProtectedRoute>
+                <OrdersPage />
+              </CustomerProtectedRoute>
+            }
+          />
+
+          <Route
+            path="orders/:id"
+            element={
+              <CustomerProtectedRoute>
+                <OrdersPage />
+              </CustomerProtectedRoute>
+            }
+          />
+
+          <Route
+            path="orders/:id/tracking"
+            element={
+              <CustomerProtectedRoute>
+                <OrdersPage />
+              </CustomerProtectedRoute>
+            }
+          />
+
+          {/* Storefront 404 — rendered inside the StorefrontLayout shell so
+              unmatched paths still get the site header/footer. (Previously
+              any unmatched path silently redirected to "/"; seeing an actual
+              not-found page here is the one intentional behavior change in
+              this refactor — see summary.) */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Routes>
+    </Suspense>
+  )
+}
