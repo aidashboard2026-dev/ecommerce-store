@@ -1,302 +1,222 @@
-import os
+"""
+app/modules/banners/router.py
+
+Banners router — admin and public storefront endpoints.
+
+Phase 5 changes:
+  - Image validation now uses shared utility (was duplicated inline)
+  - Direct db.query() in router moved to service calls
+  - Audit logging added to all admin write operations
+"""
+
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.modules.auth.dependencies import get_current_admin
 from app.core.database import get_db
 from app.modules.admins.models import Admin
-from app.modules.banners.models import Banner
+from app.modules.audit.service import audit
+from app.modules.auth.dependencies import get_current_admin
 from app.modules.banners.schemas import BannerCreate, BannerResponse
-from app.shared.storage import supabase_storage
 from app.modules.banners.service import (
-    create_banner,
-    delete_banner,
-    get_banner,
-    get_banners,
-    update_banner,
+    create_banner, delete_banner, get_active_banners,
+    get_banner, get_banners, toggle_banner, update_banner,
 )
+from app.shared.storage import supabase_storage
+from app.shared.utils.image import validate_and_read_image
 
 router = APIRouter()
 
-from app.core.constants import MAX_IMAGE_SIZE
 
-
-# ─────────────────────────────────────────────────────────────
-# Image validation — same constraints as product images
-# ─────────────────────────────────────────────────────────────
-
-ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
-ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
-
-
-_MAGIC_BYTES: dict = {
-    b"\xff\xd8\xff": "image/jpeg",
-    b"\x89PNG":      "image/png",
-    b"RIFF":         "image/webp",
-}
-
-
-def _validate_magic_bytes(header: bytes) -> None:
-    """Reject files whose content doesn't match a supported image format."""
-    if len(header) < 4:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="File is too small to be a valid image.",
-        )
-    for magic, mime in _MAGIC_BYTES.items():
-        if header[:len(magic)] == magic:
-            if mime == "image/webp" and header[8:12] != b"WEBP":
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail="File has RIFF header but is not a valid WebP image.",
-                )
-            return
-    raise HTTPException(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        detail="File content does not match any supported image format.",
-    )
-
-
-async def _save_banner_image(banner_image: UploadFile) -> str:
-    """
-    Validates and uploads a banner image directly to Supabase Storage,
-    returning its public URL. No file is ever written to local disk.
-    """
-    if banner_image.content_type not in ALLOWED_MIME_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Only JPG, PNG, and WebP images are allowed. Got: {banner_image.content_type}",
-        )
-
-    ext = os.path.splitext(banner_image.filename or "")[1].lower()
-    if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"File extension '{ext}' is not allowed. Use: {', '.join(ALLOWED_EXTENSIONS)}",
-        )
-
-    contents = await banner_image.read()
-
-    if not contents:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Uploaded file is empty.",
-        )
-
-    if len(contents) > MAX_IMAGE_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"Image must be under {MAX_IMAGE_SIZE // (1024 * 1024)} MB.",
-        )
-
-    _validate_magic_bytes(contents[:16])
-
-    from fastapi.concurrency import run_in_threadpool
-    return await run_in_threadpool(
-        supabase_storage.upload_banner_image,
+def _upload_banner_image(file: UploadFile) -> str:
+    """Validate and upload a banner image. Returns the public URL."""
+    contents = validate_and_read_image(file)
+    return supabase_storage.upload_banner_image(
         contents=contents,
-        original_filename=banner_image.filename or "banner.jpg",
-        content_type=banner_image.content_type,
+        original_filename=file.filename or "banner.jpg",
+        content_type=file.content_type,
     )
 
 
-def _delete_banner_image_file(image_url: Optional[str]) -> None:
-    """
-    Best-effort delete of a banner image from Supabase Storage. Safe to
-    call with None or with a legacy local path (e.g. /uploads/banners/...)
-    left over from before this migration — those simply won't match the
-    Supabase public-URL shape and will be skipped.
-    """
-    supabase_storage.delete_banner_image(image_url)
-
-
-# ── Public storefront endpoint (MUST be registered BEFORE /admin/{banner_id}) ─
-#
-# FastAPI matches routes in registration order. Static path segments registered
-# after /{banner_id} are shadowed by the dynamic route. Keeping /active/all and
-# /admin/* named routes here, before any dynamic segment, guarantees they are
-# matched correctly without any parameter coercion.
+# ── Public — MUST be registered before /admin/{banner_id} ────────────────────
 
 @router.get("/active/all", response_model=List[BannerResponse])
-def get_active_banners_storefront(
-    db: Session = Depends(get_db),
-):
-    """
-    Public endpoint — no authentication required.
-    Returns all active banners ordered for display on the storefront.
-    """
-    return (
-        db.query(Banner)
-        .filter(Banner.is_active == True)
-        .order_by(Banner.sort_order.asc(), Banner.id.desc())
-        .all()
-    )
+def get_active_banners_storefront(db: Session = Depends(get_db)):
+    """Public — active banners ordered for storefront display."""
+    return get_active_banners(db)
 
 
-# ── Admin: List all banners ────────────────────────────────────────────────────
+# ── Admin: List ───────────────────────────────────────────────────────────────
 
 @router.get("/admin/all", response_model=List[BannerResponse])
 def get_all_banners(
     db: Session = Depends(get_db),
-    current_admin: Admin = Depends(get_current_admin),
+    _:  Admin   = Depends(get_current_admin),
 ):
-    """Admin-only: returns every banner regardless of active status."""
     return get_banners(db)
 
 
-# ── Create banner ─────────────────────────────────────────────────────────────
+# ── Create ────────────────────────────────────────────────────────────────────
 
 @router.post("/admin", response_model=BannerResponse)
 async def create_new_banner(
-    title: str = Form(...),
-    subtitle: str = Form(""),
-    cta_text: str = Form(""),
-    cta_link: str = Form(""),
-    placement: str = Form("hero"),
-    sort_order: int = Form(0),
-    is_active: bool = Form(True),
+    request:      Request,
+    title:        str                  = Form(...),
+    subtitle:     str                  = Form(""),
+    cta_text:     str                  = Form(""),
+    cta_link:     str                  = Form(""),
+    placement:    str                  = Form("hero"),
+    sort_order:   int                  = Form(0),
+    is_active:    bool                 = Form(True),
     banner_image: Optional[UploadFile] = File(None),
-    db: Session = Depends(get_db),
-    current_admin: Admin = Depends(get_current_admin),
+    db:           Session              = Depends(get_db),
+    current_admin:Admin                = Depends(get_current_admin),
 ):
     image_path: Optional[str] = None
-
     if banner_image and banner_image.filename:
-        image_path = await _save_banner_image(banner_image)
+        image_path = _upload_banner_image(banner_image)
 
     banner_data = BannerCreate(
-        title=title,
-        subtitle=subtitle or None,
+        title=title, subtitle=subtitle or None,
         banner_image=image_path,
-        cta_text=cta_text or None,
-        cta_link=cta_link or None,
-        placement=placement,
-        sort_order=sort_order,
-        is_active=is_active,
+        cta_text=cta_text or None, cta_link=cta_link or None,
+        placement=placement, sort_order=sort_order, is_active=is_active,
     )
-    return create_banner(db, banner_data)
+    result = create_banner(db, banner_data)
+
+    audit.created(
+        db=db, admin=current_admin,
+        resource_type="banner",
+        resource_id=result.id,
+        resource_label=result.title,
+        payload={"placement": result.placement, "is_active": result.is_active},
+        request=request,
+    )
+    db.commit()
+    return result
 
 
-# ── Get single banner (admin) ─────────────────────────────────────────────────
+# ── Get single ────────────────────────────────────────────────────────────────
 
 @router.get("/admin/{banner_id}", response_model=BannerResponse)
 def get_single_banner(
     banner_id: int,
     db: Session = Depends(get_db),
-    current_admin: Admin = Depends(get_current_admin),
+    _:  Admin   = Depends(get_current_admin),
 ):
     banner = get_banner(db, banner_id)
     if not banner:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Banner not found",
-        )
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Banner not found.")
     return banner
 
 
-# ── Toggle banner active/inactive ─────────────────────────────────────────────
+# ── Toggle active/inactive ────────────────────────────────────────────────────
 
 @router.put("/admin/{banner_id}/toggle", response_model=BannerResponse)
 def toggle_banner_status(
-    banner_id: int,
-    db: Session = Depends(get_db),
-    current_admin: Admin = Depends(get_current_admin),
+    banner_id:    int,
+    request:      Request,
+    db:           Session = Depends(get_db),
+    current_admin:Admin   = Depends(get_current_admin),
 ):
-    banner = db.query(Banner).filter(Banner.id == banner_id).first()
-    if not banner:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Banner not found",
-        )
+    result = toggle_banner(db, banner_id)
+    if not result:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Banner not found.")
 
-    banner.is_active = not banner.is_active
+    audit.updated(
+        db=db, admin=current_admin,
+        resource_type="banner",
+        resource_id=banner_id,
+        resource_label=result.title,
+        after={"is_active": result.is_active},
+        request=request,
+    )
     db.commit()
-    db.refresh(banner)
-    return banner
+    return result
 
 
-# ── Edit banner (title, fields, image, placement, sort order, status) ─────────
+# ── Edit ──────────────────────────────────────────────────────────────────────
 
 @router.patch("/admin/{banner_id}", response_model=BannerResponse)
 async def edit_banner(
-    banner_id: int,
-    title: Optional[str] = Form(None),
-    subtitle: Optional[str] = Form(None),
-    cta_text: Optional[str] = Form(None),
-    cta_link: Optional[str] = Form(None),
-    placement: Optional[str] = Form(None),
-    sort_order: Optional[int] = Form(None),
-    is_active: Optional[bool] = Form(None),
+    banner_id:    int,
+    request:      Request,
+    title:        Optional[str]        = Form(None),
+    subtitle:     Optional[str]        = Form(None),
+    cta_text:     Optional[str]        = Form(None),
+    cta_link:     Optional[str]        = Form(None),
+    placement:    Optional[str]        = Form(None),
+    sort_order:   Optional[int]        = Form(None),
+    is_active:    Optional[bool]       = Form(None),
     banner_image: Optional[UploadFile] = File(None),
-    db: Session = Depends(get_db),
-    current_admin: Admin = Depends(get_current_admin),
+    db:           Session              = Depends(get_db),
+    current_admin:Admin                = Depends(get_current_admin),
 ):
     banner = get_banner(db, banner_id)
     if not banner:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Banner not found",
-        )
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Banner not found.")
 
     update_fields: dict = {}
+    for field, value in [
+        ("title", title), ("subtitle", subtitle), ("cta_text", cta_text),
+        ("cta_link", cta_link), ("placement", placement),
+        ("sort_order", sort_order), ("is_active", is_active),
+    ]:
+        if value is not None:
+            update_fields[field] = value
 
-    if title is not None:
-        update_fields["title"] = title
-    if subtitle is not None:
-        update_fields["subtitle"] = subtitle
-    if cta_text is not None:
-        update_fields["cta_text"] = cta_text
-    if cta_link is not None:
-        update_fields["cta_link"] = cta_link
-    if placement is not None:
-        update_fields["placement"] = placement
-    if sort_order is not None:
-        update_fields["sort_order"] = sort_order
-    if is_active is not None:
-        update_fields["is_active"] = is_active
-
-    # Upload the new image first, then only delete the old one after the
-    # DB update has committed successfully — avoids losing the old image
-    # if the update fails partway through.
-    old_image_to_delete: Optional[str] = None
+    # Upload new image before clearing old — never lose an image on DB error
+    old_image: Optional[str] = None
     if banner_image and banner_image.filename:
-        old_image_to_delete = banner.banner_image
-        update_fields["banner_image"] = await _save_banner_image(banner_image)
+        old_image                      = banner.banner_image
+        update_fields["banner_image"]  = _upload_banner_image(banner_image)
 
     if not update_fields:
         return banner
 
-    updated = update_banner(db, banner_id, update_fields)
-    if not updated:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Banner not found",
-        )
+    result = update_banner(db, banner_id, update_fields)
+    if not result:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Banner not found.")
 
-    if old_image_to_delete:
-        from fastapi.concurrency import run_in_threadpool
-        await run_in_threadpool(_delete_banner_image_file, old_image_to_delete)
+    if old_image:
+        supabase_storage.delete_banner_image(old_image)
 
-    return updated
+    audit.updated(
+        db=db, admin=current_admin,
+        resource_type="banner",
+        resource_id=banner_id,
+        resource_label=result.title,
+        after={k: str(v) for k, v in update_fields.items()},
+        request=request,
+    )
+    db.commit()
+    return result
 
 
-# ── Delete banner ──────────────────────────────────────────────────────────────
+# ── Delete ────────────────────────────────────────────────────────────────────
 
 @router.delete("/admin/{banner_id}")
 def remove_banner(
-    banner_id: int,
-    db: Session = Depends(get_db),
-    current_admin: Admin = Depends(get_current_admin),
+    banner_id:    int,
+    request:      Request,
+    db:           Session = Depends(get_db),
+    current_admin:Admin   = Depends(get_current_admin),
 ):
     banner = get_banner(db, banner_id)
     if not banner:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Banner not found",
-        )
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Banner not found.")
 
-    _delete_banner_image_file(banner.banner_image)
+    label = banner.title
+    supabase_storage.delete_banner_image(banner.banner_image)
     delete_banner(db, banner_id)
-    return {"message": "Banner deleted successfully"}
+
+    audit.deleted(
+        db=db, admin=current_admin,
+        resource_type="banner",
+        resource_id=banner_id,
+        resource_label=label,
+        request=request,
+    )
+    db.commit()
+    return {"message": "Banner deleted successfully."}

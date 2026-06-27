@@ -87,3 +87,23 @@ def delete_banner(
         db.commit()
 
     return banner
+
+def get_active_banners(db):
+    """Active banners ordered for storefront display. Extracted from router."""
+    return (
+        db.query(Banner)
+        .filter(Banner.is_active == True)  # noqa: E712
+        .order_by(Banner.sort_order.asc(), Banner.id.desc())
+        .all()
+    )
+
+
+def toggle_banner(db, banner_id: int):
+    """Toggle a banner's is_active flag. Extracted from router."""
+    banner = db.query(Banner).filter(Banner.id == banner_id).first()
+    if not banner:
+        return None
+    banner.is_active = not banner.is_active
+    db.commit()
+    db.refresh(banner)
+    return banner

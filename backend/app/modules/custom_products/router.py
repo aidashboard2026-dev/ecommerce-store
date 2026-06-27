@@ -9,67 +9,48 @@ DOMAIN BOUNDARY RULES (NON-NEGOTIABLE):
 - All category endpoints here manage custom_categories (not products.categories).
 - Image uploads use the dedicated custom-product-images storage bucket.
 """
+
 import logging
 import os
-from typing import Optional, List, Any
+from typing import List, Optional
 
 from fastapi import (
-    APIRouter,
-    Depends,
-    File,
-    Form,
-    HTTPException,
-    Query,
-    UploadFile,
-    status,
+    APIRouter, Depends, File, Form,
+    HTTPException, Query, Request, UploadFile, status,
 )
 from sqlalchemy.orm import Session
 
-from app.modules.auth.dependencies import get_current_admin
 from app.core.database import get_db
 from app.modules.admins.models import Admin
-from app.shared.storage import supabase_storage
-
+from app.modules.audit.service import audit
+from app.modules.auth.dependencies import get_current_admin
 from app.modules.custom_products.schemas import (
-    CustomCategoryCreate,
-    CustomCategoryUpdate,
-    CustomCategoryResponse,
-    CustomProductCreate,
-    CustomProductUpdate,
-    CustomProductResponse,
-    CustomProductListResponse,
-    CustomProductBulkActionPayload,
+    CustomCategoryCreate, CustomCategoryResponse, CustomCategoryUpdate,
+    CustomProductBulkActionPayload, CustomProductCreate,
+    CustomProductListResponse, CustomProductResponse, CustomProductUpdate,
 )
 from app.modules.custom_products.service import (
-    # Custom Category
-    get_custom_categories,
-    get_custom_category,
-    create_custom_category,
-    update_custom_category,
-    delete_custom_category,
-    # Custom Product
-    get_custom_product,
-    get_custom_product_orm,
-    get_custom_products,
-    get_public_custom_products,
-    create_custom_product,
-    update_custom_product,
-    delete_custom_product,
     bulk_action_custom_products,
+    create_custom_category, create_custom_product,
+    delete_custom_category, delete_custom_product,
+    get_custom_categories, get_custom_category,
+    get_custom_product, get_custom_product_orm,
+    get_custom_products, get_public_custom_products,
     increment_custom_product_view_count,
+    update_custom_category, update_custom_product,
 )
+from app.shared.storage import supabase_storage
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
-
+router  = APIRouter()
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Image validation helpers (own implementation — not shared with products)
+# Image validation helpers — own implementation, not shared with products
 # ─────────────────────────────────────────────────────────────────────────────
 
-_ALLOWED_MIME_TYPES  = {"image/jpeg", "image/png", "image/webp"}
-_ALLOWED_EXTENSIONS  = {".jpg", ".jpeg", ".png", ".webp"}
-_MAX_IMAGE_SIZE      = 5 * 1024 * 1024  # 5 MB
+_ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
+_ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+_MAX_IMAGE_SIZE     = 5 * 1024 * 1024   # 5 MB
 
 _MAGIC_BYTES: dict = {
     b"\xff\xd8\xff": "image/jpeg",
@@ -80,41 +61,28 @@ _MAGIC_BYTES: dict = {
 
 def _validate_image_magic_bytes(header: bytes) -> None:
     if len(header) < 4:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "File is too small to be a valid image.",
-        )
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "File is too small to be a valid image.")
     detected_mime = None
     for magic, mime in _MAGIC_BYTES.items():
         if header[: len(magic)] == magic:
             detected_mime = mime
             break
     if not detected_mime:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "File content does not match any supported image format (JPEG, PNG, WebP).",
-        )
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            "File content does not match any supported image format (JPEG, PNG, WebP).")
     if detected_mime == "image/webp" and header[8:12] != b"WEBP":
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "File has RIFF header but is not a valid WebP image.",
-        )
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            "File has RIFF header but is not a valid WebP image.")
 
 
 def _read_and_validate_upload(file: UploadFile) -> bytes:
-    """Read upload, validate MIME type, extension, size, and magic bytes. Returns raw bytes."""
     if file.content_type not in _ALLOWED_MIME_TYPES:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            f"Only JPG, PNG, and WebP are allowed. Got: {file.content_type}",
-        )
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            f"Only JPG, PNG, and WebP are allowed. Got: {file.content_type}")
     ext = os.path.splitext(file.filename or "image.jpg")[1].lower()
     if ext not in _ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            f"Extension '{ext}' not allowed. Use: {', '.join(_ALLOWED_EXTENSIONS)}",
-        )
-
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            f"Extension '{ext}' not allowed. Use: {', '.join(_ALLOWED_EXTENSIONS)}")
     _CHUNK = 65_536
     chunks: list = []
     total_bytes = 0
@@ -124,81 +92,96 @@ def _read_and_validate_upload(file: UploadFile) -> bytes:
             break
         total_bytes += len(chunk)
         if total_bytes > _MAX_IMAGE_SIZE:
-            raise HTTPException(
-                status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                f"Image must be under {_MAX_IMAGE_SIZE // (1024 * 1024)} MB.",
-            )
+            raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                                f"Image must be under {_MAX_IMAGE_SIZE // (1024 * 1024)} MB.")
         chunks.append(chunk)
-
     contents = b"".join(chunks)
     if not contents:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "Uploaded file is empty.",
-        )
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Uploaded file is empty.")
     _validate_image_magic_bytes(contents[:16])
     return contents
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CUSTOM CATEGORY endpoints
-# These manage custom_categories — NOT products.categories.
+# Manage custom_categories — NOT products.categories.
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/admin/categories", response_model=List[CustomCategoryResponse])
 def list_custom_categories_admin(
     status_filter: Optional[str] = None,
     db: Session = Depends(get_db),
-    _: Admin = Depends(get_current_admin),
+    _:  Admin   = Depends(get_current_admin),
 ):
-    """List all custom categories (admin view)."""
     return get_custom_categories(db, status_filter=status_filter)
 
 
 @router.get("/categories", response_model=List[CustomCategoryResponse])
-def list_custom_categories_public(
-    db: Session = Depends(get_db),
-):
-    """List active custom categories (public storefront view)."""
+def list_custom_categories_public(db: Session = Depends(get_db)):
+    """Active custom categories for the storefront."""
     return get_custom_categories(db, status_filter="active")
 
 
-@router.post(
-    "/admin/categories",
-    response_model=CustomCategoryResponse,
-    status_code=status.HTTP_201_CREATED,
-)
+@router.post("/admin/categories", response_model=CustomCategoryResponse,
+             status_code=status.HTTP_201_CREATED)
 def create_custom_category_endpoint(
-    data: CustomCategoryCreate,
-    db: Session = Depends(get_db),
-    _: Admin = Depends(get_current_admin),
+    data:          CustomCategoryCreate,
+    request:       Request,
+    db:            Session = Depends(get_db),
+    current_admin: Admin   = Depends(get_current_admin),
 ):
-    """Create a new custom category. No limit on custom category count."""
-    return create_custom_category(db, data)
+    result = create_custom_category(db, data)
+    audit.created(
+        db=db, admin=current_admin,
+        resource_type="custom_category",
+        resource_id=result.id,
+        resource_label=result.name,
+        payload={"name": result.name},
+        request=request,
+    )
+    db.commit()
+    return result
 
 
 @router.patch("/admin/categories/{category_id}", response_model=CustomCategoryResponse)
 def update_custom_category_endpoint(
-    category_id: int,
-    data: CustomCategoryUpdate,
-    db: Session = Depends(get_db),
-    _: Admin = Depends(get_current_admin),
+    category_id:   int,
+    data:          CustomCategoryUpdate,
+    request:       Request,
+    db:            Session = Depends(get_db),
+    current_admin: Admin   = Depends(get_current_admin),
 ):
-    """Update an existing custom category."""
-    return update_custom_category(db, category_id, data)
+    result = update_custom_category(db, category_id, data)
+    audit.updated(
+        db=db, admin=current_admin,
+        resource_type="custom_category",
+        resource_id=category_id,
+        resource_label=result.name,
+        after=data.model_dump(exclude_unset=True),
+        request=request,
+    )
+    db.commit()
+    return result
 
 
-@router.delete(
-    "/admin/categories/{category_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-)
+@router.delete("/admin/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_custom_category_endpoint(
-    category_id: int,
-    db: Session = Depends(get_db),
-    _: Admin = Depends(get_current_admin),
+    category_id:   int,
+    request:       Request,
+    db:            Session = Depends(get_db),
+    current_admin: Admin   = Depends(get_current_admin),
 ):
-    """Delete a custom category."""
+    cat      = get_custom_category(db, category_id)
+    cat_name = cat.name if hasattr(cat, "name") else str(category_id)
     delete_custom_category(db, category_id)
+    audit.deleted(
+        db=db, admin=current_admin,
+        resource_type="custom_category",
+        resource_id=category_id,
+        resource_label=cat_name,
+        request=request,
+    )
+    db.commit()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -207,21 +190,17 @@ def delete_custom_category_endpoint(
 
 @router.get("/admin/all", response_model=CustomProductListResponse)
 def list_admin_custom_products(
-    page: int = Query(1, ge=1),
-    per_page: int = Query(15, ge=1, le=100),
-    search: Optional[str] = None,
-    custom_category_id: Optional[int] = None,
-    status_filter: Optional[str] = None,
+    page:               int            = Query(1,  ge=1),
+    per_page:           int            = Query(15, ge=1, le=100),
+    search:             Optional[str]  = None,
+    custom_category_id: Optional[int]  = None,
+    status_filter:      Optional[str]  = None,
     db: Session = Depends(get_db),
-    _: Admin = Depends(get_current_admin),
+    _:  Admin   = Depends(get_current_admin),
 ):
-    """List all custom products with pagination and filtering (admin view)."""
     return get_custom_products(
-        db=db,
-        page=page,
-        per_page=per_page,
-        search=search,
-        custom_category_id=custom_category_id,
+        db=db, page=page, per_page=per_page,
+        search=search, custom_category_id=custom_category_id,
         status_filter=status_filter,
     )
 
@@ -230,80 +209,109 @@ def list_admin_custom_products(
 def get_custom_product_endpoint(
     product_id: int,
     db: Session = Depends(get_db),
-    _: Admin = Depends(get_current_admin),
+    _:  Admin   = Depends(get_current_admin),
 ):
-    """Get a single custom product by ID (admin view)."""
     return get_custom_product(db, product_id)
 
 
-@router.post(
-    "/admin",
-    response_model=CustomProductResponse,
-    status_code=status.HTTP_201_CREATED,
-)
+@router.post("/admin", response_model=CustomProductResponse,
+             status_code=status.HTTP_201_CREATED)
 def create_custom_product_endpoint(
-    data: CustomProductCreate,
-    db: Session = Depends(get_db),
-    _: Admin = Depends(get_current_admin),
+    data:          CustomProductCreate,
+    request:       Request,
+    db:            Session = Depends(get_db),
+    current_admin: Admin   = Depends(get_current_admin),
 ):
-    """Create a new custom product."""
-    return create_custom_product(db, data)
+    result = create_custom_product(db, data)
+    audit.created(
+        db=db, admin=current_admin,
+        resource_type="custom_product",
+        resource_id=result.id,
+        resource_label=result.title,
+        payload={"title": result.title, "status": result.status},
+        request=request,
+    )
+    db.commit()
+    return result
 
 
 @router.patch("/admin/{product_id}", response_model=CustomProductResponse)
 def update_custom_product_endpoint(
-    product_id: int,
-    data: CustomProductUpdate,
-    db: Session = Depends(get_db),
-    _: Admin = Depends(get_current_admin),
+    product_id:    int,
+    data:          CustomProductUpdate,
+    request:       Request,
+    db:            Session = Depends(get_db),
+    current_admin: Admin   = Depends(get_current_admin),
 ):
-    """Partially update an existing custom product."""
-    return update_custom_product(db, product_id, data)
+    result = update_custom_product(db, product_id, data)
+    audit.updated(
+        db=db, admin=current_admin,
+        resource_type="custom_product",
+        resource_id=product_id,
+        resource_label=result.title,
+        after=data.model_dump(exclude_unset=True),
+        request=request,
+    )
+    db.commit()
+    return result
 
 
-@router.delete(
-    "/admin/{product_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-)
+@router.delete("/admin/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_custom_product_endpoint(
-    product_id: int,
-    db: Session = Depends(get_db),
-    current_admin: Admin = Depends(get_current_admin),
+    product_id:    int,
+    request:       Request,
+    db:            Session = Depends(get_db),
+    current_admin: Admin   = Depends(get_current_admin),
 ):
-    """Soft-delete a custom product."""
-    # Cleanup images before soft-deleting
     product = get_custom_product_orm(db, product_id)
-    for img_attr in ["thumbnail", "image_front", "image_back", "image_size_chart"]:
-        img_url = getattr(product, img_attr, None)
-        if img_url:
+    title   = product.title
+    # Cleanup images from dedicated custom-product bucket before soft-delete
+    for attr in ["thumbnail", "image_front", "image_back", "image_size_chart"]:
+        url = getattr(product, attr, None)
+        if url:
             try:
-                supabase_storage.delete_custom_product_image(img_url)
+                supabase_storage.delete_custom_product_image(url)
             except Exception:
                 pass
-    if product.gallery_images:
-        for img_url in product.gallery_images:
-            if img_url:
-                try:
-                    supabase_storage.delete_custom_product_image(img_url)
-                except Exception:
-                    pass
-
+    for url in product.gallery_images or []:
+        if url:
+            try:
+                supabase_storage.delete_custom_product_image(url)
+            except Exception:
+                pass
     delete_custom_product(db, product_id)
+    audit.deleted(
+        db=db, admin=current_admin,
+        resource_type="custom_product",
+        resource_id=product_id,
+        resource_label=title,
+        request=request,
+    )
+    db.commit()
 
 
 @router.post("/admin/bulk-action")
 def bulk_action_endpoint(
-    payload: CustomProductBulkActionPayload,
-    db: Session = Depends(get_db),
-    _: Admin = Depends(get_current_admin),
+    payload:       CustomProductBulkActionPayload,
+    request:       Request,
+    db:            Session = Depends(get_db),
+    current_admin: Admin   = Depends(get_current_admin),
 ):
-    """Apply a bulk action to multiple custom products."""
-    return bulk_action_custom_products(db, payload)
+    result = bulk_action_custom_products(db, payload)
+    audit.bulk(
+        db=db, admin=current_admin,
+        resource_type="custom_product",
+        action_name=payload.action,
+        ids=payload.product_ids,
+        extra={"updated": result.get("updated"), "not_found": result.get("not_found")},
+        request=request,
+    )
+    db.commit()
+    return result
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# IMAGE UPLOAD for custom products
-# Uses dedicated custom-product-images Supabase bucket (separate from products).
+# IMAGE UPLOAD — dedicated custom-product-images bucket
 # ─────────────────────────────────────────────────────────────────────────────
 
 _CP_IMAGE_TYPE_FIELDS = {
@@ -316,19 +324,18 @@ _CP_IMAGE_TYPE_FIELDS = {
 
 @router.post("/admin/{product_id}/images")
 def upload_custom_product_image(
-    product_id: int,
-    file: UploadFile = File(...),
-    image_type: str = Form("thumbnail"),  # thumbnail | front | back | size_chart | gallery
-    db: Session = Depends(get_db),
-    _: Admin = Depends(get_current_admin),
+    product_id:    int,
+    request:       Request,
+    file:          UploadFile = File(...),
+    image_type:    str        = Form("thumbnail"),
+    db:            Session    = Depends(get_db),
+    current_admin: Admin      = Depends(get_current_admin),
 ):
-    """Upload an image for a custom product to the dedicated custom product bucket."""
-    product = get_custom_product_orm(db, product_id)
+    """Upload an image to the dedicated custom-product-images Supabase bucket."""
+    product    = get_custom_product_orm(db, product_id)
+    contents   = _read_and_validate_upload(file)
 
-    contents = _read_and_validate_upload(file)
-
-    # Upload to the dedicated custom product bucket — never the product-images bucket
-    image_url = supabase_storage.upload_custom_product_image(
+    image_url  = supabase_storage.upload_custom_product_image(
         contents=contents,
         original_filename=file.filename or "image.jpg",
         content_type=file.content_type,
@@ -338,26 +345,19 @@ def upload_custom_product_image(
     field_name = _CP_IMAGE_TYPE_FIELDS.get(image_type)
 
     if image_type == "gallery":
-        old_gallery = list(product.gallery_images or [])
-        new_gallery = old_gallery + [image_url]
-        product.gallery_images = new_gallery
+        product.gallery_images = list(product.gallery_images or []) + [image_url]
         try:
             db.commit()
         except Exception:
             db.rollback()
             supabase_storage.delete_custom_product_image(image_url)
-            raise HTTPException(
-                status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "Failed to update gallery.",
-            )
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to update gallery.")
         db.refresh(product)
-        return {
-            "id": product.id,
-            "url": image_url,
-            "image_type": "gallery",
-            "gallery_images": product.gallery_images,
-            "message": "Gallery image added.",
-        }
+        audit.log(db=db, admin=current_admin, action="custom_product.gallery_image_added",
+                  resource_type="custom_product", resource_id=product_id, request=request)
+        db.commit()
+        return {"id": product.id, "url": image_url, "image_type": "gallery",
+                "gallery_images": product.gallery_images, "message": "Gallery image added."}
 
     elif field_name:
         old_url = getattr(product, field_name)
@@ -369,40 +369,35 @@ def upload_custom_product_image(
         except Exception:
             db.rollback()
             supabase_storage.delete_custom_product_image(image_url)
-            raise HTTPException(
-                status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "Failed to update custom product image.",
-            )
-        # Cleanup old image from custom product bucket
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                "Failed to update custom product image.")
         if old_url and old_url != image_url:
             try:
                 supabase_storage.delete_custom_product_image(old_url)
             except Exception:
                 pass
         db.refresh(product)
-        return {
-            "id": product.id,
-            "url": image_url,
-            "image_type": image_type,
-            "message": f"{image_type.replace('_', ' ').title()} image uploaded.",
-        }
+        audit.log(db=db, admin=current_admin, action="custom_product.image_uploaded",
+                  resource_type="custom_product", resource_id=product_id,
+                  changes={"image_type": image_type}, request=request)
+        db.commit()
+        return {"id": product.id, "url": image_url, "image_type": image_type,
+                "message": f"{image_type.replace('_', ' ').title()} image uploaded."}
 
     else:
         supabase_storage.delete_custom_product_image(image_url)
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            f"Unknown image_type '{image_type}'. Use: thumbnail, front, back, size_chart, gallery.",
-        )
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            f"Unknown image_type '{image_type}'. Use: thumbnail, front, back, size_chart, gallery.")
 
 
 @router.delete("/admin/{product_id}/images/{image_type}")
 def delete_custom_product_image_by_type(
-    product_id: int,
-    image_type: str,
-    db: Session = Depends(get_db),
-    _: Admin = Depends(get_current_admin),
+    product_id:    int,
+    image_type:    str,
+    request:       Request,
+    db:            Session = Depends(get_db),
+    current_admin: Admin   = Depends(get_current_admin),
 ):
-    """Remove a named image from a custom product by type."""
     field_map = {
         "thumbnail":  "thumbnail",
         "front":      "image_front",
@@ -410,45 +405,40 @@ def delete_custom_product_image_by_type(
         "size_chart": "image_size_chart",
     }
     if image_type not in field_map:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            f"Unknown image_type '{image_type}'. Use: thumbnail, front, back, size_chart.",
-        )
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            f"Unknown image_type '{image_type}'. Use: thumbnail, front, back, size_chart.")
     product = get_custom_product_orm(db, product_id)
-    field = field_map[image_type]
+    field   = field_map[image_type]
     old_url = getattr(product, field)
     if not old_url:
-        raise HTTPException(
-            status.HTTP_404_NOT_FOUND,
-            f"Custom product has no {image_type} image.",
-        )
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Custom product has no {image_type} image.")
     setattr(product, field, None)
     db.commit()
     try:
         supabase_storage.delete_custom_product_image(old_url)
     except Exception:
         pass
+    audit.log(db=db, admin=current_admin, action="custom_product.image_deleted",
+              resource_type="custom_product", resource_id=product_id,
+              changes={"image_type": image_type}, request=request)
+    db.commit()
     return {"message": f"{image_type.replace('_', ' ').title()} image removed."}
 
 
-@router.delete(
-    "/admin/{product_id}/images/gallery/{index}",
-    status_code=status.HTTP_200_OK,
-)
+@router.delete("/admin/{product_id}/images/gallery/{index}",
+               status_code=status.HTTP_200_OK)
 def delete_custom_product_gallery_image(
-    product_id: int,
-    index: int,
-    db: Session = Depends(get_db),
-    _: Admin = Depends(get_current_admin),
+    product_id:    int,
+    index:         int,
+    request:       Request,
+    db:            Session = Depends(get_db),
+    current_admin: Admin   = Depends(get_current_admin),
 ):
-    """Remove a gallery image from a custom product by its position index."""
     product = get_custom_product_orm(db, product_id)
     gallery = list(product.gallery_images or [])
     if index < 0 or index >= len(gallery):
-        raise HTTPException(
-            status.HTTP_404_NOT_FOUND,
-            f"Gallery image at index {index} not found.",
-        )
+        raise HTTPException(status.HTTP_404_NOT_FOUND,
+                            f"Gallery image at index {index} not found.")
     old_url = gallery.pop(index)
     product.gallery_images = gallery
     db.commit()
@@ -456,6 +446,10 @@ def delete_custom_product_gallery_image(
         supabase_storage.delete_custom_product_image(old_url)
     except Exception:
         pass
+    audit.log(db=db, admin=current_admin, action="custom_product.gallery_image_deleted",
+              resource_type="custom_product", resource_id=product_id,
+              changes={"index": index}, request=request)
+    db.commit()
     return {"message": "Gallery image removed.", "gallery_images": product.gallery_images}
 
 
@@ -465,33 +459,17 @@ def delete_custom_product_gallery_image(
 
 @router.get("", response_model=CustomProductListResponse)
 def list_public_custom_products(
-    page: int = Query(1, ge=1),
-    per_page: int = Query(15, ge=1, le=100),
-    search: Optional[str] = None,
+    page:               int           = Query(1,  ge=1),
+    per_page:           int           = Query(15, ge=1, le=100),
+    search:             Optional[str] = None,
     custom_category_id: Optional[int] = None,
     db: Session = Depends(get_db),
 ):
-    """List published custom products for the storefront."""
+    """Published custom products for the storefront."""
     return get_public_custom_products(
-        db=db,
-        page=page,
-        per_page=per_page,
-        search=search,
-        custom_category_id=custom_category_id,
+        db=db, page=page, per_page=per_page,
+        search=search, custom_category_id=custom_category_id,
     )
-
-
-@router.get("/collections", response_model=List[Any])
-def list_custom_collections(
-    category_id: Optional[int] = Query(None),
-    db: Session = Depends(get_db),
-):
-    """
-    List custom collections.
-    Since Custom Products domain does not support collections, this returns an empty list
-    to satisfy frontend contract requirements and prevent 422 errors.
-    """
-    return []
 
 
 @router.get("/{product_id}", response_model=CustomProductResponse)
@@ -499,8 +477,7 @@ def get_public_custom_product(
     product_id: int,
     db: Session = Depends(get_db),
 ):
-    """Get a single published custom product by ID for the storefront."""
+    """Single published custom product for the storefront."""
     product = get_custom_product(db, product_id)
-    # Increment view count asynchronously (best-effort)
     increment_custom_product_view_count(db, product_id)
     return product

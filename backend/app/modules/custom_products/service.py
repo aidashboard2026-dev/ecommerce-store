@@ -15,6 +15,10 @@ import uuid
 from typing import Optional, List
 
 from fastapi import HTTPException, status
+from app.shared.exceptions import (
+    NotFoundError, ConflictError, BusinessRuleError,
+    ValidationError as DomainValidationError,
+)
 from sqlalchemy import func as sqla_func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -498,7 +502,7 @@ def bulk_action_custom_products(
     )
 
     if not products:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "No matching custom products found.")
+        raise NotFoundError("No matching custom products found.", code="CUSTOM_PRODUCT_NOT_FOUND")
 
     action = payload.action
 

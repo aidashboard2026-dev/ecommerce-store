@@ -3,13 +3,27 @@ import os
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from sqlalchemy.exc import IntegrityError
 from app.core.config import settings
 from app.api.router import api_router
+
+# Domain exception hierarchy — handlers registered below
+from app.shared.exceptions import (
+    AppException,
+    NotFoundError,
+    ConflictError,
+    ValidationError as DomainValidationError,
+    AuthenticationError,
+    AuthorizationError,
+    BusinessRuleError,
+    StorageError,
+    IntegrityError as DomainIntegrityError,
+    RateLimitError,
+    ExternalServiceError,
+)
 
 # Import all models so SQLAlchemy registers them
 import app.modules  # noqa: F401
@@ -25,9 +39,7 @@ os.makedirs(os.path.join(UPLOADS_ROOT, "custom_products"), exist_ok=True)
 # Request body size limit
 # ──────────────────────────────────────────────────────────────────────────────
 
-from app.core.constants import MAX_IMAGE_SIZE
-
-_MAX_BODY_BYTES = MAX_IMAGE_SIZE
+_MAX_BODY_BYTES = 6 * 1024 * 1024
 
 # Methods that never carry a body — skip all body-inspection entirely.
 _BODYLESS_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "DELETE"})
@@ -122,25 +134,24 @@ async def lifespan(app: FastAPI):
             "Authorization": f"Bearer {settings.SUPABASE_SERVICE_ROLE_KEY}",
             "apikey": settings.SUPABASE_SERVICE_ROLE_KEY,
         }
-        async with _httpx.AsyncClient(timeout=10.0) as client:
-            for bucket in (settings.SUPABASE_PRODUCT_BUCKET, settings.SUPABASE_CUSTOM_PRODUCT_BUCKET, settings.SUPABASE_BANNER_BUCKET):
-                _url = f"{settings.SUPABASE_URL.rstrip('/')}/storage/v1/bucket/{bucket}"
-                try:
-                    resp = await client.get(_url, headers=_headers)
-                    if resp.status_code == 404:
-                        raise RuntimeError(
-                            f"Supabase bucket '{bucket}' does not exist. "
-                            f"Create it in your Supabase project or update "
-                            f"SUPABASE_PRODUCT_BUCKET / SUPABASE_BANNER_BUCKET in .env."
-                        )
-                    if resp.status_code not in (200, 201):
-                        logger.warning(
-                            "Could not verify Supabase bucket '%s' (HTTP %s). "
-                            "Image uploads may fail at runtime.",
-                            bucket, resp.status_code,
-                        )
-                except _httpx.HTTPError as exc:
-                    logger.warning("Supabase bucket check failed for '%s': %s", bucket, exc)
+        for bucket in (settings.SUPABASE_PRODUCT_BUCKET, settings.SUPABASE_CUSTOM_PRODUCT_BUCKET, settings.SUPABASE_BANNER_BUCKET):
+            _url = f"{settings.SUPABASE_URL.rstrip('/')}/storage/v1/bucket/{bucket}"
+            try:
+                resp = _httpx.get(_url, headers=_headers, timeout=10.0)
+                if resp.status_code == 404:
+                    raise RuntimeError(
+                        f"Supabase bucket '{bucket}' does not exist. "
+                        f"Create it in your Supabase project or update "
+                        f"SUPABASE_PRODUCT_BUCKET / SUPABASE_BANNER_BUCKET in .env."
+                    )
+                if resp.status_code not in (200, 201):
+                    logger.warning(
+                        "Could not verify Supabase bucket '%s' (HTTP %s). "
+                        "Image uploads may fail at runtime.",
+                        bucket, resp.status_code,
+                    )
+            except _httpx.HTTPError as exc:
+                logger.warning("Supabase bucket check failed for '%s': %s", bucket, exc)
 
     yield
 
@@ -176,8 +187,6 @@ app.add_middleware(
     # Explicitly enumerate needed headers instead of wildcard "*"
     allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
 )
-
-app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -216,6 +225,88 @@ app.mount(
     StaticFiles(directory=UPLOADS_ROOT),
     name="uploads",
 )
+
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Domain exception handlers
+# Maps app.shared.exceptions → consistent HTTP responses.
+# These run before FastAPI's own HTTPException handler.
+# Existing `raise HTTPException(...)` calls are unaffected.
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _error_body(error: str, code=None, field=None) -> dict:
+    """Build a standardized error response body."""
+    body: dict = {"success": False, "error": error}
+    if code:
+        body["code"] = code
+    if field:
+        body["field"] = field
+    return body
+
+
+@app.exception_handler(NotFoundError)
+async def not_found_handler(request: Request, exc: NotFoundError):
+    return JSONResponse(status_code=404, content=_error_body(exc.detail, exc.code, exc.field))
+
+
+@app.exception_handler(ConflictError)
+async def conflict_handler(request: Request, exc: ConflictError):
+    return JSONResponse(status_code=409, content=_error_body(exc.detail, exc.code, exc.field))
+
+
+@app.exception_handler(DomainValidationError)
+async def domain_validation_handler(request: Request, exc: DomainValidationError):
+    return JSONResponse(status_code=422, content=_error_body(exc.detail, exc.code, exc.field))
+
+
+@app.exception_handler(AuthenticationError)
+async def authentication_handler(request: Request, exc: AuthenticationError):
+    return JSONResponse(
+        status_code=401,
+        content=_error_body(exc.detail, exc.code),
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+@app.exception_handler(AuthorizationError)
+async def authorization_handler(request: Request, exc: AuthorizationError):
+    return JSONResponse(status_code=403, content=_error_body(exc.detail, exc.code))
+
+
+@app.exception_handler(BusinessRuleError)
+async def business_rule_handler(request: Request, exc: BusinessRuleError):
+    return JSONResponse(status_code=400, content=_error_body(exc.detail, exc.code, exc.field))
+
+
+@app.exception_handler(DomainIntegrityError)
+async def domain_integrity_handler(request: Request, exc: DomainIntegrityError):
+    return JSONResponse(status_code=409, content=_error_body(exc.detail, exc.code))
+
+
+@app.exception_handler(StorageError)
+async def storage_error_handler(request: Request, exc: StorageError):
+    logger.error("StorageError on %s %s: %s", request.method, request.url.path, exc)
+    return JSONResponse(status_code=503, content=_error_body(exc.detail, exc.code))
+
+
+@app.exception_handler(RateLimitError)
+async def rate_limit_handler(request: Request, exc: RateLimitError):
+    return JSONResponse(status_code=429, content=_error_body(exc.detail, exc.code))
+
+
+@app.exception_handler(ExternalServiceError)
+async def external_service_handler(request: Request, exc: ExternalServiceError):
+    logger.error("ExternalServiceError on %s %s: %s", request.method, request.url.path, exc)
+    return JSONResponse(status_code=502, content=_error_body(exc.detail, exc.code))
+
+
+@app.exception_handler(AppException)
+async def generic_app_exception_handler(request: Request, exc: AppException):
+    """Catch-all for any AppException subclass not matched above."""
+    logger.error("Unhandled AppException %s on %s %s: %s",
+                 type(exc).__name__, request.method, request.url.path, exc)
+    return JSONResponse(status_code=500, content=_error_body(exc.detail, exc.code))
 
 
 # ──────────────────────────────────────────────────────────────────────────────
