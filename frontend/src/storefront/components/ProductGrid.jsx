@@ -35,7 +35,7 @@ export default function ProductGrid({ products, loading, skeletonCount = 8, empt
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+    <div className="grid  grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 bg-slate-300 gap-2">
       {products.map((product) => (
         <ProductCard key={product.id} product={product} />
       ))}

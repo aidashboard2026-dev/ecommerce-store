@@ -1,35 +1,39 @@
-import React, { memo } from 'react'
-import { Link } from 'react-router-dom'
-import { useDispatch, useSelector } from 'react-redux'
-import { Heart, ShoppingBag, Star } from 'lucide-react'
-import clsx from 'clsx'
-import { getImageUrl, formatPrice } from '@/shared/utils/productUtils'
-import { toggleWishlist, selectIsWishlisted } from '@/storefront/store/wishlistSlice'
-import { addToCart } from '@/storefront/store/cartSlice'
-import toast from 'react-hot-toast'
+import React, { memo } from "react";
+import { Link } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { Heart, ShoppingBag, Star } from "lucide-react";
+import clsx from "clsx";
+import { getImageUrl, formatPrice } from "@/shared/utils/productUtils";
+import {
+  toggleWishlist,
+  selectIsWishlisted,
+} from "@/storefront/store/wishlistSlice";
+import { addToCart } from "@/storefront/store/cartSlice";
+import toast from "react-hot-toast";
 
 function ProductCard({ product }) {
-  const dispatch = useDispatch()
-  const isWishlisted = useSelector(selectIsWishlisted(product.id))
+  const dispatch = useDispatch();
+  const isWishlisted = useSelector(selectIsWishlisted(product.id));
 
-  const variants = product.variants || []
-  const inStock = (product.total_stock ?? 0) > 0
-  const minPrice = product.min_price
-  const firstVariant = variants[0]
+  const variants = product.variants || [];
+  const inStock = (product.total_stock ?? 0) > 0;
+  const minPrice = product.min_price;
+  const firstVariant = variants[0];
   const hasDiscount =
     firstVariant &&
-    Number(firstVariant.original_price) > Number(firstVariant.selling_price)
+    Number(firstVariant.original_price) > Number(firstVariant.selling_price);
   const discountPct = hasDiscount
     ? Math.round(
-        ((Number(firstVariant.original_price) - Number(firstVariant.selling_price)) /
+        ((Number(firstVariant.original_price) -
+          Number(firstVariant.selling_price)) /
           Number(firstVariant.original_price)) *
-          100
+          100,
       )
-    : 0
+    : 0;
 
   const handleWishlist = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
+    e.preventDefault();
+    e.stopPropagation();
     dispatch(
       toggleWishlist({
         productId: product.id,
@@ -37,17 +41,17 @@ function ProductCard({ product }) {
         slug: product.slug,
         thumbnail: product.thumbnail,
         minPrice: product.min_price,
-      })
-    )
-    toast.success(isWishlisted ? 'Removed from wishlist' : 'Added to wishlist')
-  }
+      }),
+    );
+    toast.success(isWishlisted ? "Removed from wishlist" : "Added to wishlist");
+  };
 
   const handleQuickAdd = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
+    e.preventDefault();
+    e.stopPropagation();
     if (!inStock || !firstVariant) {
-      toast.error('Out of stock')
-      return
+      toast.error("Out of stock");
+      return;
     }
     dispatch(
       addToCart({
@@ -62,18 +66,18 @@ function ProductCard({ product }) {
         originalPrice: Number(firstVariant.original_price),
         stockQuantity: firstVariant.stock_quantity,
         quantity: 1,
-      })
-    )
-    toast.success('Added to cart')
-  }
+      }),
+    );
+    toast.success("Added to cart");
+  };
 
   return (
     <Link
       to={`/products/${product.slug}`}
-      className="group relative flex flex-col rounded-2xl bg-app border border-app overflow-hidden hover:shadow-card dark:hover:shadow-card-dark transition-all duration-300 hover:-translate-y-1"
+      className="group relative flex flex-col w-fit overflow-hidden transition-all duration-300 hover:-translate-y-1"
     >
       {/* Image */}
-      <div className="relative aspect-[4/5] bg-surface overflow-hidden">
+      <div className="relative w-52 h-60 rounded-2xl bg-surface overflow-hidden">
         {product.thumbnail ? (
           <img
             src={getImageUrl(product.thumbnail)}
@@ -94,13 +98,9 @@ function ProductCard({ product }) {
               Featured
             </span>
           )}
-          {hasDiscount && (
-            <span className="bg-red-500 text-white text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full">
-              {discountPct}% OFF
-            </span>
-          )}
+
           {!inStock && (
-            <span className="bg-gray-700 text-white text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full">
+            <span className="bg-gray-700/20 text-white text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full">
               Out of Stock
             </span>
           )}
@@ -110,51 +110,43 @@ function ProductCard({ product }) {
         <button
           onClick={handleWishlist}
           aria-label="Toggle wishlist"
-          className="absolute top-3 right-3 p-2 rounded-full bg-app/80 backdrop-blur-sm hover:bg-app text-app transition-colors duration-200 shadow-sm"
+          className="absolute top-3 right-3 p-2 rounded-full bg-app/80 backdrop-blur-sm hover:bg-gray-200/20 text-app transition-colors duration-200 shadow-sm"
         >
           <Heart
             size={16}
-            className={clsx(isWishlisted ? 'fill-red-500 text-red-500' : 'text-app')}
+            className={clsx(
+              isWishlisted ? "fill-red-500 text-red-500" : "text-app",
+            )}
           />
         </button>
 
         {/* Quick add */}
-        <button
-          onClick={handleQuickAdd}
-          disabled={!inStock}
-          className={clsx(
-            'absolute bottom-3 right-3 p-2.5 rounded-full shadow-glow-sm transition-all duration-300',
-            'translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100',
-            inStock
-              ? 'bg-brand-500 hover:bg-brand-600 text-white'
-              : 'bg-gray-400 text-white cursor-not-allowed'
-          )}
-          aria-label="Quick add to cart"
-        >
-          <ShoppingBag size={16} />
-        </button>
       </div>
 
       {/* Info */}
-      <div className="flex flex-col gap-1 p-3.5">
+      <div className="flex flex-col gap-1 py-3" >
         {(product.collection_name || product.collection) && (
           <span className="text-[10px] uppercase tracking-wider text-muted font-semibold">
             {product.collection_name || product.collection}
           </span>
         )}
-        <h3 className="text-sm font-semibold text-app line-clamp-2 leading-snug">
+        <div className="flex flex-row items-center justify-between">
+          <h3 className="text-lg font-thin text-app line-clamp-2 leading-snug">
           {product.title}
         </h3>
 
-        <div className="flex items-center gap-1.5 mt-1">
-          <Star size={12} className="fill-amber-400 text-amber-400" />
-          <span className="text-[11px] text-muted">4.5</span>
+        <div className="flex items-center border rounded-md w-fit gap-1.5 p-1">
+          <span className="text-[13px] text-app">4.5</span>
+          <Star size={13} className="fill-green-600 text-green-600" />
         </div>
-
-        <div className="flex items-baseline gap-2 mt-1">
+        </div>
+        
+        <div className="flex items-center justify-between">
           {minPrice != null ? (
             <>
-              <span className="text-sm font-bold text-app">{formatPrice(minPrice)}</span>
+              <span className="text-xl font-bold text-app">
+                {formatPrice(minPrice)}
+              </span>
               {hasDiscount && (
                 <span className="text-xs text-muted line-through">
                   {formatPrice(firstVariant.original_price)}
@@ -164,10 +156,30 @@ function ProductCard({ product }) {
           ) : (
             <span className="text-xs text-muted">Price unavailable</span>
           )}
+          {hasDiscount && (
+          <span className="text-red-500 w-fit text-[13px] font-extralight uppercase tracking-wide px-2 py-1 rounded-full">
+            {discountPct}%
+          </span>
+        )}
         </div>
+        <button
+          onClick={handleQuickAdd}
+          disabled={!inStock}
+          className={clsx(
+            "absolute bottom-0 right-0 p-2.5 w-full uppercase flex flex-row gap-3 items-center bg-zinc-950 text-white justify-center rounded-md shadow-glow-sm duration-300",
+            "translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100",
+            // inStock
+            //   ? "bg-brand-500 hover:bg-brand-600 text-white"
+            //   : "bg-gray-500/65 text-white cursor-not-allowed",
+          )}
+          aria-label="Quick add to cart"
+        >
+          <ShoppingBag size={16} />
+          Add to Card
+        </button>
       </div>
     </Link>
-  )
+  );
 }
 
-export default memo(ProductCard)
+export default memo(ProductCard);
