@@ -373,7 +373,7 @@ export default function ProductsPage() {
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories', 'admin'],
-    queryFn:  () => customCategoriesAPI.list().then(r => r.data),
+    queryFn:  () => categoriesAPI.list().then(r => r.data),
     staleTime: 5 * 60_000,
   })
 

@@ -191,6 +191,68 @@ def delete_product_image(image_url: Optional[str]) -> None:
 
 
 # ─────────────────────────────────────────────────────────────
+# Public API — custom product images (SEPARATE from product images)
+# Custom products use their own Supabase bucket to enforce domain isolation.
+# Never call upload_product_image() for custom products — use these instead.
+# ─────────────────────────────────────────────────────────────
+
+def upload_custom_product_image(
+    contents: bytes,
+    original_filename: str,
+    content_type: str,
+    product_id: int,
+) -> str:
+    """Uploads a custom product image to the dedicated custom-product-images bucket.
+
+    Returns the public Supabase URL or a local fallback path under
+    uploads/custom_products/. This function MUST NOT be called for regular
+    products — it uses a completely separate storage bucket.
+    """
+    if not is_supabase_configured():
+        logger.warning("Supabase Storage not configured. Falling back to local disk storage.")
+        ext = os.path.splitext(original_filename or "")[1].lower() or ".jpg"
+        filename = f"{product_id}_{uuid.uuid4().hex[:12]}{ext}"
+        target_dir = os.path.join(settings.UPLOAD_DIR, "custom_products")
+        os.makedirs(target_dir, exist_ok=True)
+        file_path = os.path.join(target_dir, filename)
+        with open(file_path, "wb") as f:
+            f.write(contents)
+        return f"/uploads/custom_products/{filename}"
+
+    object_path = _generate_unique_filename(original_filename, prefix=f"cp_{product_id}_")
+    return _upload_object(settings.SUPABASE_CUSTOM_PRODUCT_BUCKET, object_path, contents, content_type)
+
+
+def delete_custom_product_image(image_url: Optional[str]) -> None:
+    """Deletes a custom product image from Supabase or local storage.
+
+    Uses the custom-product-images bucket — never touches the product-images bucket.
+    """
+    if not image_url:
+        return
+
+    # Check for local fallback path
+    if image_url.startswith("/uploads/"):
+        filename = os.path.basename(image_url)
+        if filename:
+            file_path = os.path.normpath(os.path.join(settings.UPLOAD_DIR, "custom_products", filename))
+            safe_prefix = os.path.normpath(os.path.join(settings.UPLOAD_DIR, "custom_products")) + os.sep
+            if file_path.startswith(safe_prefix) and os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except OSError:
+                    pass
+        return
+
+    if not is_supabase_configured():
+        return
+
+    object_path = _object_path_from_public_url(image_url, settings.SUPABASE_CUSTOM_PRODUCT_BUCKET)
+    if object_path:
+        _delete_object(settings.SUPABASE_CUSTOM_PRODUCT_BUCKET, object_path)
+
+
+# ─────────────────────────────────────────────────────────────
 # Public API — banner images
 # ─────────────────────────────────────────────────────────────
 

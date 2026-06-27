@@ -39,7 +39,7 @@ export default function CategorySection() {
         {CATEGORIES.map((cat) => (
           <Link
             key={cat.name}
-            to={`/products?collection=${encodeURIComponent(cat.collection)}`}
+            to={`/products?sub_collection=${encodeURIComponent(cat.collection)}`}
             className="group relative overflow-hidden rounded-2xl"
           >
             <img

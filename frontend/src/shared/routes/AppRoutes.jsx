@@ -26,6 +26,7 @@ import CartPage from '@/storefront/pages/CartPage'
 import OrdersPage from '@/storefront/pages/OrdersPage'
 import ProfilePage from '@/storefront/pages/ProfilePage'
 import AuthPage from '@/storefront/pages/AuthPage'
+import ResetPasswordPage from '@/storefront/pages/ResetPasswordPage'
 import SupportPage from '@/storefront/pages/SupportPage'
 import CustomPage from '@/storefront/pages/CustomPage'
 import NotFoundPage from '@/storefront/pages/NotFoundPage'
@@ -252,6 +253,11 @@ export default function AppRoutes() {
               <AuthPage />
             </CustomerPublicRoute>
           }
+        />
+
+        <Route
+          path="auth/reset-password"
+          element={<ResetPasswordPage />}
         />
 
         {/* Protected Customer Routes */}

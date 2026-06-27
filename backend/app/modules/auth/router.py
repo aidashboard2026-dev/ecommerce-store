@@ -1,3 +1,4 @@
+import logging
 import time
 import threading
 from collections import defaultdict
@@ -11,11 +12,12 @@ from app.modules.admins.models import Admin
 from app.modules.customers.models import Customer
 from app.modules.admins.schemas import AdminResponse, LoginRequest, Token
 from app.modules.customers.schemas import CustomerResponse
-from app.modules.auth.service import login_admin, login_customer, register_customer
+from app.modules.auth.service import login_admin, login_customer, register_customer, request_password_reset, reset_password
 from app.core.config import settings
-from app.modules.auth.schemas import CustomerLoginRequest, SignupRequest
+from app.modules.auth.schemas import CustomerLoginRequest, SignupRequest, ForgotPasswordRequest, ResetPasswordRequest
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # ── In-memory brute-force throttle ───────────────────────────────────────────
 # NOTE: Works correctly with --workers 1 (dev/demo). For multi-worker prod,
@@ -89,16 +91,7 @@ def login(
         samesite="lax",
         path="/",
     )
-    print("EMAIL =", login_data.email)
-    print("PASSWORD =", login_data.password)
-
-    # result = login_admin(
-    #     db,
-    #     login_data.email,
-    #     login_data.password
-    # )
-
-    print("LOGIN RESULT =", result)
+    logger.info("Admin login successful: email=%s", login_data.email)
     return result
 
 
@@ -187,3 +180,79 @@ def get_customer_me(current_customer: Customer = Depends(get_current_customer)):
         "phone": current_customer.phone,
         "is_active": current_customer.is_active,
     }
+
+
+@router.post("/customer/logout")
+def customer_logout(current_customer: Customer = Depends(get_current_customer)):
+    """
+    Server-side customer logout.
+    The JWT remains cryptographically valid until expiry (stateless tokens
+    cannot be invalidated without a denylist), but this endpoint provides
+    a clean logout surface for audit logging and future token revocation
+    (e.g. Redis denylist) without requiring a client-side change.
+    """
+    logger.info("Customer logout: id=%s email=%s", current_customer.id, current_customer.email)
+    return {"message": "Logged out successfully"}
+
+
+# ── Forgot Password ────────────────────────────────────────────────────────────
+
+@router.post("/forgot-password")
+async def forgot_password(
+    request: Request,
+    body: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Request a password-reset email.
+
+    ALWAYS returns 200 with the same generic message regardless of whether
+    the email exists — this prevents user enumeration (SEC-08).
+
+    Rate-limited to 5 requests per IP per 5-minute window (shared limiter).
+    """
+    ip = request.client.host if request.client else "unknown"
+    _check_rate_limit(ip)
+
+    raw_token = request_password_reset(db, body.email)
+
+    if raw_token:
+        from app.shared.email.service import send_password_reset_email
+        reset_url = f"{settings.FRONTEND_URL}/auth/reset-password?token={raw_token}"
+        await send_password_reset_email(to_email=body.email, reset_url=reset_url)
+
+    # Always return 200 — never reveal whether the email is registered
+    return {
+        "message": (
+            "If an account with that email exists, "
+            "you'll receive a password-reset link shortly."
+        )
+    }
+
+
+# ── Reset Password ─────────────────────────────────────────────────────────────
+
+@router.post("/reset-password")
+def do_reset_password(
+    request: Request,
+    body: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Validate a password-reset token and set a new password.
+
+    The token is consumed on first use (one-time use).
+    Invalid or expired tokens return 400.
+    """
+    ip = request.client.host if request.client else "unknown"
+    _check_rate_limit(ip)
+
+    success = reset_password(db, body.token, body.new_password)
+    if not success:
+        _record_failure(ip)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This reset link is invalid or has expired. Please request a new one.",
+        )
+
+    return {"message": "Password updated successfully. You can now sign in."}

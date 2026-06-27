@@ -1,3 +1,4 @@
+import logging
 import math
 import re
 import uuid
@@ -20,6 +21,9 @@ from app.modules.products.schemas import (
 )
 
 MAX_PER_PAGE = 100
+MAX_PRODUCT_CATEGORIES = 5  # Product categories are capped at 5. Custom products have their own separate categories.
+
+logger = logging.getLogger(__name__)
 
 
 def normalize_category_name(name: str) -> Optional[str]:
@@ -279,6 +283,16 @@ def get_category(db: Session, category_id: int) -> Category:
 
 
 def create_category(db: Session, data: CategoryCreate) -> CategoryResponse:
+    # Enforce the maximum 5 product categories limit
+    existing_count = (
+        db.query(sqla_func.count(Category.id)).scalar() or 0
+    )
+    if existing_count >= MAX_PRODUCT_CATEGORIES:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Maximum of {MAX_PRODUCT_CATEGORIES} product categories allowed. "
+            "Delete an existing category before creating a new one.",
+        )
     norm_name = normalize_category_name(data.name)
     if norm_name:
         raise HTTPException(
@@ -300,6 +314,7 @@ def create_category(db: Session, data: CategoryCreate) -> CategoryResponse:
     except IntegrityError:
         db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, f"Category name '{data.name}' already exists.")
+    logger.info("Product category created: id=%s name=%s", cat.id, cat.name)
     return CategoryResponse.model_validate(cat)
 
 

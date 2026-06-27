@@ -20,23 +20,12 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    console.log("LOGIN BUTTON CLICKED")
-
-    const result = await dispatch(
+    await dispatch(
       loginThunk({
         email,
         password,
       })
     )
-
-    console.log("RESULT =", result)
-
-    
-
-    console.log("BEFORE REDIRECT")
-
-
-    console.log("AFTER REDIRECT")
   }
 
   return (

@@ -5,13 +5,13 @@ from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_current_admin
-from app.database.session import get_db
-from app.models.admin import Admin
-from app.schemas.admin import AdminResponse, LoginRequest, Token
-from app.services.auth_service import login_admin, register_customer
+from app.modules.auth.dependencies import get_current_admin
+from app.core.database import get_db
+from app.modules.admins.models import Admin
+from app.modules.admins.schemas import AdminResponse, LoginRequest, Token
+from app.modules.auth.service import login_admin, register_customer
 from app.core.config import settings
-from app.schemas.auth import SignupRequest
+from app.modules.auth.schemas import SignupRequest
 
 router = APIRouter()
 
@@ -102,16 +102,6 @@ def login(
         samesite="lax",     # CSRF: blocks cross-site POSTs, allows same-site nav
         path="/",
     )
-    print("EMAIL =", login_data.email)
-    print("PASSWORD =", login_data.password)
-
-    # result = login_admin(
-    #     db,
-    #     login_data.email,
-    #     login_data.password
-    # )
-
-    print("LOGIN RESULT =", result)
     return result
 
 

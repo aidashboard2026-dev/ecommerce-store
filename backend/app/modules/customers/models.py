@@ -27,6 +27,13 @@ class Customer(Base):
     # ── Auth (admin-created; password_hash kept from original) ───────────────
     password_hash = Column(String(255), nullable=True)   # nullable — admin-created customers may not have a password
 
+    # ── Email verification ───────────────────────────────────────────────────
+    email_verified = Column(Boolean, default=False, nullable=False)
+
+    # ── Password reset (hashed token + expiry) ───────────────────────────────
+    password_reset_token = Column(String(255), nullable=True, index=True, unique=True)
+    password_reset_expires = Column(DateTime(timezone=True), nullable=True)
+
     # ── Status & Segmentation ────────────────────────────────────────────────
     is_active = Column(Boolean, default=True, nullable=False)
     # Comma-separated tags: "vip,wholesale,returner"
@@ -41,6 +48,7 @@ class Customer(Base):
     notes = Column(Text, nullable=True)
 
     # ── Timestamps ───────────────────────────────────────────────────────────
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),

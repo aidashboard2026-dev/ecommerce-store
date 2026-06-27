@@ -17,6 +17,7 @@ logger = logging.getLogger("app")
 
 UPLOADS_ROOT = os.path.abspath(settings.UPLOAD_DIR)
 os.makedirs(os.path.join(UPLOADS_ROOT, "products"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_ROOT, "custom_products"), exist_ok=True)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -118,7 +119,7 @@ async def lifespan(app: FastAPI):
             "Authorization": f"Bearer {settings.SUPABASE_SERVICE_ROLE_KEY}",
             "apikey": settings.SUPABASE_SERVICE_ROLE_KEY,
         }
-        for bucket in (settings.SUPABASE_PRODUCT_BUCKET, settings.SUPABASE_BANNER_BUCKET):
+        for bucket in (settings.SUPABASE_PRODUCT_BUCKET, settings.SUPABASE_CUSTOM_PRODUCT_BUCKET, settings.SUPABASE_BANNER_BUCKET):
             _url = f"{settings.SUPABASE_URL.rstrip('/')}/storage/v1/bucket/{bucket}"
             try:
                 resp = _httpx.get(_url, headers=_headers, timeout=10.0)
