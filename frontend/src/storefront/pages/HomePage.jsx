@@ -44,10 +44,11 @@ export default function HomePage() {
 
   const scrollRef = useRef(null);
 
-  const onWheel = (e) => {
-    if (!scrollRef.current) return;
-
-    scrollRef.current.scrollLeft += e.deltaY;
+  const handleWheel = (e) => {
+    if (scrollRef.current) {
+     
+      scrollRef.current.scrollLeft += e.deltaY;
+    }
   };
 
   // Only the "hero" placement belongs in the hero slider — other placements
@@ -66,7 +67,7 @@ export default function HomePage() {
       <OfferSection
         offers={offers}
         scrollRef={scrollRef}
-        handleWheel={onWheel}
+        handleWheel={handleWheel}
       />
 
       {/* Featured Products */}
