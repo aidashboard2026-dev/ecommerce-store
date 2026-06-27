@@ -3,7 +3,6 @@ import { toggleWishlist, selectIsWishlisted } from '@/storefront/store/wishlistS
 import { addToCart } from '@/storefront/store/cartSlice'
 
 import toast from "react-hot-toast";
-import { products } from "@/shared/data/products";
 
 import React, { useState, useEffect } from "react";
 // import { Link } from "react-router-dom";
@@ -54,6 +53,7 @@ export default function SubProductsPage() {
     }
 
   };
+
   const wishlistItems = useSelector(
     (state) => state.wishlist.items
   );
@@ -170,6 +170,7 @@ export default function SubProductsPage() {
             </div>
         );
     }
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-10">
 
@@ -513,21 +514,6 @@ export default function SubProductsPage() {
                         >
                         {isWishlisted ? "❤️" : "🤍"}
                     </button>
-                    {/* Quick add
-                    <button
-                      onClick={handleQuickAdd}
-                      disabled={!inStock}
-                      className={clsx(
-                        'absolute bottom-3 right-3 p-2.5 rounded-full shadow-glow-sm transition-all duration-300',
-                        'translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100',
-                        inStock
-                        ? 'bg-brand-500 hover:bg-brand-600 text-white'
-                        : 'bg-gray-400 text-white cursor-not-allowed'
-                      )}
-                    aria-label="Quick add to cart"
-                    >
-                    <ShoppingBag size={16} />
-                    </button> */}
 
                     {/* Image */}
                     <div className="overflow-hidden">
@@ -563,7 +549,7 @@ export default function SubProductsPage() {
                         </span>
                         </div>
 
-                       <div className="mt-2 space-y-1">
+                        <div className="mt-2 space-y-1">
 
                             {/* Selling Price */}
                             <div
@@ -609,7 +595,7 @@ export default function SubProductsPage() {
 
                     </div>
 
-                    {/* Hover Buttons */}
+                    {/* Hover Buttons — commented out, preserved for future use */}
                     {/* <div
                         className="
                         absolute
@@ -626,23 +612,7 @@ export default function SubProductsPage() {
                         duration-300
                         "
                     >
-
-                        {/* <button
-                        onClick={() => dispatch(addToCart(product))}
-                        className="
-                            flex-1
-                            bg-brand-500
-                            hover:bg-brand-600
-                            text-white
-                            py-3
-                            rounded-xl
-                            font-semibold
-                        "
-                        >
-                        Add To Cart
-                        </button> */}
-
-                        {/* <button
+                        <button
                             onClick={(e) => {
                                
                                 toast.success("Added to cart succusssfully");
@@ -673,8 +643,7 @@ export default function SubProductsPage() {
                             >
                             🛒
                         </button>
-
-                    </div> */} 
+                    </div> */}
 
                 </Link>
 
@@ -693,4 +662,3 @@ export default function SubProductsPage() {
 </div>
 );
 }
-
