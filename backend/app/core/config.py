@@ -137,7 +137,8 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------
     # Supabase Storage
     # ------------------------------------------------------------------
-    # All product and banner images live in Supabase Storage buckets.
+    # All product, custom product, and banner images live in Supabase Storage
+    # buckets. Each domain has its own bucket to enforce storage isolation.
     # SUPABASE_SERVICE_ROLE_KEY is used server-side only (never exposed to the
     # frontend) so the backend can upload/delete objects regardless of bucket
     # RLS policies. SUPABASE_ANON_KEY is kept for any future client-side use.
@@ -146,6 +147,7 @@ class Settings(BaseSettings):
     SUPABASE_ANON_KEY: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
     SUPABASE_PRODUCT_BUCKET: str = "product-images"
+    SUPABASE_CUSTOM_PRODUCT_BUCKET: str = "custom-product-images"
     SUPABASE_BANNER_BUCKET: str = "banners"
 
     @field_validator("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", mode="after")

@@ -1,3 +1,4 @@
+import logging
 import time
 import threading
 from collections import defaultdict
@@ -16,6 +17,7 @@ from app.core.config import settings
 from app.modules.auth.schemas import CustomerLoginRequest, SignupRequest
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # ── In-memory brute-force throttle ───────────────────────────────────────────
 # NOTE: Works correctly with --workers 1 (dev/demo). For multi-worker prod,
@@ -89,16 +91,7 @@ def login(
         samesite="lax",
         path="/",
     )
-    print("EMAIL =", login_data.email)
-    print("PASSWORD =", login_data.password)
-
-    # result = login_admin(
-    #     db,
-    #     login_data.email,
-    #     login_data.password
-    # )
-
-    print("LOGIN RESULT =", result)
+    logger.info("Admin login successful: email=%s", login_data.email)
     return result
 
 

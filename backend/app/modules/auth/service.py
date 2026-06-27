@@ -1,3 +1,4 @@
+import logging
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -10,26 +11,22 @@ from app.modules.auth.schemas import SignupRequest
 from datetime import timedelta
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
+
 
 # ── Admin auth ────────────────────────────────────────────────────────────────
 
 def authenticate_admin(db: Session, email: str, password: str):
     admin = db.query(Admin).filter(Admin.email == email).first()
 
-    print("EMAIL SEARCH =", email)
-    print("ADMIN FOUND =", admin)
-
     if not admin:
-        print("ADMIN NOT FOUND")
+        logger.debug("Admin login failed: email not found (email=%s)", email)
         return None
-
-    print("HASH =", admin.password_hash)
 
     is_valid = verify_password(password, admin.password_hash)
 
-    print("PASSWORD VALID =", is_valid)
-
     if not is_valid:
+        logger.debug("Admin login failed: invalid password (email=%s)", email)
         return None
 
     return admin
