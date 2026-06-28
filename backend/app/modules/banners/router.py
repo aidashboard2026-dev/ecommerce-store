@@ -9,15 +9,18 @@ Phase 5 changes:
   - Audit logging added to all admin write operations
 """
 
+import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.constants import MAX_BANNERS
 from app.modules.admins.models import Admin
 from app.modules.audit.service import audit
 from app.modules.auth.dependencies import get_current_admin
+from app.modules.banners.models import Banner
 from app.modules.banners.schemas import BannerCreate, BannerResponse
 from app.modules.banners.service import (
     create_banner, delete_banner, get_active_banners,
@@ -27,6 +30,7 @@ from app.shared.storage import supabase_storage
 from app.shared.utils.image import validate_and_read_image
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _upload_banner_image(file: UploadFile) -> str:
@@ -73,6 +77,21 @@ async def create_new_banner(
     db:           Session              = Depends(get_db),
     current_admin:Admin                = Depends(get_current_admin),
 ):
+    existing_count = db.query(Banner).count()
+    if existing_count >= MAX_BANNERS:
+        logger.warning(f"Attempted to upload {existing_count + 1}th banner")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"You have reached the maximum allowed limit of {MAX_BANNERS} banners. Please delete an existing banner before creating a new one."
+        )
+
+    existing_sort = db.query(Banner).filter(Banner.sort_order == sort_order).first()
+    if existing_sort:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Banner sort order {sort_order} is already in use."
+        )
+
     image_path: Optional[str] = None
     if banner_image and banner_image.filename:
         image_path = _upload_banner_image(banner_image)
@@ -83,17 +102,24 @@ async def create_new_banner(
         cta_text=cta_text or None, cta_link=cta_link or None,
         placement=placement, sort_order=sort_order, is_active=is_active,
     )
-    result = create_banner(db, banner_data)
 
-    audit.created(
-        db=db, admin=current_admin,
-        resource_type="banner",
-        resource_id=result.id,
-        resource_label=result.title,
-        payload={"placement": result.placement, "is_active": result.is_active},
-        request=request,
-    )
-    db.commit()
+    try:
+        result = create_banner(db, banner_data)
+        audit.created(
+            db=db, admin=current_admin,
+            resource_type="banner",
+            resource_id=result.id,
+            resource_label=result.title,
+            payload={"placement": result.placement, "is_active": result.is_active},
+            request=request,
+        )
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        if image_path:
+            supabase_storage.delete_banner_image(image_path)
+        raise e
+
     return result
 
 
@@ -157,6 +183,14 @@ async def edit_banner(
     if not banner:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Banner not found.")
 
+    if sort_order is not None:
+        existing_sort = db.query(Banner).filter(Banner.sort_order == sort_order, Banner.id != banner_id).first()
+        if existing_sort:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Banner sort order {sort_order} is already in use."
+            )
+
     update_fields: dict = {}
     for field, value in [
         ("title", title), ("subtitle", subtitle), ("cta_text", cta_text),
@@ -175,22 +209,28 @@ async def edit_banner(
     if not update_fields:
         return banner
 
-    result = update_banner(db, banner_id, update_fields)
-    if not result:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Banner not found.")
+    try:
+        result = update_banner(db, banner_id, update_fields)
+        if not result:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Banner not found.")
 
-    if old_image:
-        supabase_storage.delete_banner_image(old_image)
+        if old_image:
+            supabase_storage.delete_banner_image(old_image)
 
-    audit.updated(
-        db=db, admin=current_admin,
-        resource_type="banner",
-        resource_id=banner_id,
-        resource_label=result.title,
-        after={k: str(v) for k, v in update_fields.items()},
-        request=request,
-    )
-    db.commit()
+        audit.updated(
+            db=db, admin=current_admin,
+            resource_type="banner",
+            resource_id=banner_id,
+            resource_label=result.title,
+            after={k: str(v) for k, v in update_fields.items()},
+            request=request,
+        )
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        if "banner_image" in update_fields:
+            supabase_storage.delete_banner_image(update_fields["banner_image"])
+        raise e
     return result
 
 
@@ -207,16 +247,22 @@ def remove_banner(
     if not banner:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Banner not found.")
 
-    label = banner.title
-    supabase_storage.delete_banner_image(banner.banner_image)
-    delete_banner(db, banner_id)
+    try:
+        label = banner.title
+        banner_img = banner.banner_image
+        delete_banner(db, banner_id)
+        if banner_img:
+            supabase_storage.delete_banner_image(banner_img)
 
-    audit.deleted(
-        db=db, admin=current_admin,
-        resource_type="banner",
-        resource_id=banner_id,
-        resource_label=label,
-        request=request,
-    )
-    db.commit()
+        audit.deleted(
+            db=db, admin=current_admin,
+            resource_type="banner",
+            resource_id=banner_id,
+            resource_label=label,
+            request=request,
+        )
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
     return {"message": "Banner deleted successfully."}

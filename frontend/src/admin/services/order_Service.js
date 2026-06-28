@@ -11,26 +11,28 @@ import api from "@/shared/services/api";
 export const getOrders = async (page = 1, pageSize = 20, filters = {}) => {
   const skip = (page - 1) * pageSize;
 
-  // Remove empty/null filters so FastAPI enum validators don't reject them
   const cleanFilters = {};
   Object.entries(filters).forEach(([k, v]) => {
-    if (v !== '' && v !== null && v !== undefined) {
+    if (v !== "" && v !== null && v !== undefined) {
       cleanFilters[k] = v;
     }
   });
 
   const response = await api.get("/orders/", {
-    params: { skip, limit: pageSize, ...cleanFilters },
+    params: {
+      skip,
+      limit: pageSize,
+      ...cleanFilters,
+    },
   });
 
-  // Backend returns { orders: [...], total: n } — normalise so callers
-  // always get a consistent shape even if the backend shape changes.
   const data = response.data;
+
   return {
-    orders:    Array.isArray(data) ? data : (data.orders ?? []),
-    total:     data.total ?? (Array.isArray(data) ? data.length : 0),
-    page,
-    page_size: pageSize,
+    orders: Array.isArray(data?.items) ? data.items : [],
+    total: Number(data?.total ?? 0),
+    page: Number(data?.page ?? page),
+    page_size: Number(data?.page_size ?? pageSize),
   };
 };
 

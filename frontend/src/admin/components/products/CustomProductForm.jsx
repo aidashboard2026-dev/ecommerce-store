@@ -18,8 +18,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STATUS_OPTIONS = ['draft', 'published', 'archived']
-const MAX_IMAGES     = 10                          // HEAD: 10 (branch had 5)
-const MAX_FILE_SIZE  = 5 * 1024 * 1024
+const MAX_IMAGES     = 7
+const MAX_FILE_SIZE  = 10 * 1024 * 1024
 const ALLOWED_TYPES  = ['image/jpeg', 'image/png', 'image/webp']
 const SIZE_OPTIONS   = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 // COLLECTION_OPTIONS kept from branch — used as fallback display labels only;
@@ -330,21 +330,21 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
   // ─── Edit mutations ───────────────────────────────────────────────────────────
 
   const editMutation = useMutation({
-    mutationFn: data =>customProductsApi.update(product.id, data),
-    onSuccess: () => { toast.success('Product updated'); qc.invalidateQueries({queryKey: ['custom-products']}); onClose() },
+    mutationFn: data => customProductsApi.update(product.id, data),
+    onSuccess: () => { toast.success('Product updated successfully.'); qc.invalidateQueries({queryKey: ['custom-products']}); onClose() },
     onError: e => toast.error(
-      error?.response?.data?.detail ||
-      error?.message ||
+      e?.response?.data?.detail ||
+      e?.message ||
       'Something went wrong'
     )
   })
 
   const editPubMutation = useMutation({
     mutationFn: data => customProductsApi.update(product.id, { ...data, status: 'published' }),
-    onSuccess: () => { toast.success('Published!'); qc.invalidateQueries({queryKey: ['custom-products']}); onClose() },
+    onSuccess: () => { toast.success('Product published successfully.'); qc.invalidateQueries({queryKey: ['custom-products']}); onClose() },
     onError: e => toast.error(
-      error?.response?.data?.detail ||
-      error?.message ||
+      e?.response?.data?.detail ||
+      e?.message ||
       'Something went wrong'
     )
   })
@@ -506,7 +506,7 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
     await new Promise(r => setTimeout(r, hadPartialFailure ? 1500 : 800))
 
     if (!hadPartialFailure) {
-      toast.success(overrideStatus === 'published' ? 'Product published!' : 'Product created!')
+      toast.success(overrideStatus === 'published' ? 'Product published successfully.' : 'Product created successfully.')
       qc.invalidateQueries({queryKey: ['custom-products']})
       setSaveSteps(null)
       isSavingRef.current = false

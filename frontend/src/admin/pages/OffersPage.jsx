@@ -205,7 +205,7 @@ export default function OffersPage() {
           },
         });
 
-        toast.success("Campaign updated successfully!");
+        toast.success("Offer updated successfully.");
       } else {
         await api.post("/offers/admin", formData, {
           headers: {
@@ -214,7 +214,7 @@ export default function OffersPage() {
         });
 
         toast.success(
-          isPub ? "Offer published successfully!" : "Offer saved as draft.",
+          isPub ? "Offer published successfully." : "Offer saved as draft successfully.",
         );
       }
 
@@ -245,7 +245,7 @@ export default function OffersPage() {
   const publishOffer = async (offerId) => {
     try {
       await api.put(`/offers/admin/${offerId}`, { status: "published" });
-      toast.success("Offer published successfully!");
+      toast.success("Offer published successfully.");
       fetchOffers();
     } catch (error) {
       console.error(error);
@@ -281,6 +281,37 @@ export default function OffersPage() {
     return `Ends in: ${hours}h ${minutes}m`;
   };
 
+  const handleCreateCampaignClick = () => {
+    if (offers.length >= 5) {
+      toast.error(
+        <div>
+          <strong style={{ display: "block", marginBottom: "4px" }}>Maximum Limit Reached</strong>
+          <div style={{ whiteSpace: "pre-line", fontSize: "12px", lineHeight: "1.4" }}>
+            You have reached the maximum allowed limit of 5 offers.{"\n"}Please delete an existing offer before creating a new one.
+          </div>
+        </div>
+      );
+      return;
+    }
+    clearForm();
+    setShowAddOffer(true);
+  };
+
+  const handleAddFirstOfferClick = () => {
+    if (offers.length >= 5) {
+      toast.error(
+        <div>
+          <strong style={{ display: "block", marginBottom: "4px" }}>Maximum Limit Reached</strong>
+          <div style={{ whiteSpace: "pre-line", fontSize: "12px", lineHeight: "1.4" }}>
+            You have reached the maximum allowed limit of 5 offers.{"\n"}Please delete an existing offer before creating a new one.
+          </div>
+        </div>
+      );
+      return;
+    }
+    setShowAddOffer(true);
+  };
+
   return (
     <div className="space-y-6 ">
       {/* Header Panel */}
@@ -297,13 +328,12 @@ export default function OffersPage() {
               className="max-w-xs"
             />
             <Button
-              onClick={() => {
-                clearForm();
-                setShowAddOffer(true);
-              }}
+              onClick={handleCreateCampaignClick}
+              disabled={offers.length >= 5}
               icon={Plus}
-              variant="primary"
-              className="flex flex-row w-fit whitespace-nowrap"
+              variant={offers.length >= 5 ? "secondary" : "primary"}
+              title={offers.length >= 5 ? "Maximum limit reached.\nDelete an existing item to continue." : ""}
+              className={clsx("flex flex-row w-fit whitespace-nowrap", offers.length >= 5 && "opacity-50 cursor-not-allowed")}
             >
               <span>Create Campaign</span>
             </Button>
@@ -334,10 +364,12 @@ export default function OffersPage() {
             </p>
           </div>
           <Button
-            onClick={() => setShowAddOffer(true)}
+            onClick={handleAddFirstOfferClick}
+            disabled={offers.length >= 5}
             icon={Plus}
             variant="addvariant"
-            className="flex items-center gap-2 py-2 bg-sky-500 text-xs font-semibold whitespace-nowrap"
+            title={offers.length >= 5 ? "Maximum limit reached.\nDelete an existing item to continue." : ""}
+            className={clsx("flex items-center gap-2 py-2 text-xs font-semibold whitespace-nowrap", offers.length >= 5 ? "bg-gray-500 cursor-not-allowed opacity-50" : "bg-sky-500")}
           >
             Add First Offer
           </Button>
@@ -494,6 +526,15 @@ export default function OffersPage() {
                 onChange={(e) => {
                   const file = e.target.files[0];
                   if (file) {
+                    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+                    if (!allowedTypes.includes(file.type)) {
+                      toast.error("Only JPG, PNG, and WebP images are allowed.");
+                      return;
+                    }
+                    if (file.size > 10 * 1024 * 1024) {
+                      toast.error("Image size must be under 10 MB.");
+                      return;
+                    }
                     setBanner(URL.createObjectURL(file));
                     setBannerFile(file);
                   }

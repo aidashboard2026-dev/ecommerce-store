@@ -1,6 +1,7 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from datetime import date, time, datetime
 from typing import Optional
+from app.core.constants import MIN_OFFER_TITLE_LENGTH, MAX_OFFER_TITLE_LENGTH
 
 
 class OfferCreate(BaseModel):
@@ -11,6 +12,17 @@ class OfferCreate(BaseModel):
     item_align: Optional[str] = "left"
     text_align: Optional[str] = "left"
     banner_image: Optional[str] = None
+
+    @field_validator("title")
+    @classmethod
+    def title_valid(cls, v):
+        if v is not None:
+            v = v.strip()
+            if not v:
+                raise ValueError("Offer title cannot be empty or whitespace only")
+            if len(v) < MIN_OFFER_TITLE_LENGTH or len(v) > MAX_OFFER_TITLE_LENGTH:
+                raise ValueError(f"Offer title must be between {MIN_OFFER_TITLE_LENGTH} and {MAX_OFFER_TITLE_LENGTH} characters")
+        return v
 
     status: str = "saved"
 
@@ -33,6 +45,17 @@ class OfferUpdate(BaseModel):
     item_align: Optional[str] = None
     text_align: Optional[str] = None
     banner_image: Optional[str] = None
+
+    @field_validator("title")
+    @classmethod
+    def title_valid(cls, v):
+        if v is not None:
+            v = v.strip()
+            if not v:
+                raise ValueError("Offer title cannot be empty or whitespace only")
+            if len(v) < MIN_OFFER_TITLE_LENGTH or len(v) > MAX_OFFER_TITLE_LENGTH:
+                raise ValueError(f"Offer title must be between {MIN_OFFER_TITLE_LENGTH} and {MAX_OFFER_TITLE_LENGTH} characters")
+        return v
 
     status: Optional[str] = None
 

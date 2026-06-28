@@ -223,7 +223,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
 
   const createCategory = useMutation({
     mutationFn: (name) => categoriesAPI.create({ name }),
-    onSuccess: () => { toast.success('Category created'); invalidateCatCol() },
+    onSuccess: () => { toast.success('Category created successfully.'); invalidateCatCol() },
     onError: e => toast.error(e.response?.data?.detail || 'Failed to create category'),
   })
 
@@ -231,7 +231,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
     mutationFn: ({ id, data }) => categoriesAPI.update(id, data),
     onMutate:  ({ id }) => setSavingCatId(id),
     onSettled: ()       => setSavingCatId(null),
-    onSuccess: () => { toast.success('Category updated'); invalidateCatCol() },
+    onSuccess: () => { toast.success('Category updated successfully.'); invalidateCatCol() },
     onError: e => toast.error(e.response?.data?.detail || 'Failed to update category'),
   })
 
@@ -240,7 +240,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
     onMutate:  (id) => setDeletingCatId(id),
     onSettled: ()   => setDeletingCatId(null),
     onSuccess: () => {
-      toast.success('Category deleted — products in it were unassigned, not deleted')
+      toast.success('Category deleted successfully.')
       invalidateCatCol()
     },
     onError: e => toast.error(e.response?.data?.detail || 'Failed to delete category'),
@@ -257,7 +257,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
       category_id: newCollectionCategoryId ? Number(newCollectionCategoryId) : null,
     }),
     onSuccess: () => {
-      toast.success('Collection created')
+      toast.success('Collection created successfully.')
       setNewCollectionCategoryId('')
       invalidateCatCol()
     },
@@ -268,7 +268,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
     mutationFn: ({ id, data }) => collectionsAPI.update(id, data),
     onMutate:  ({ id }) => setSavingColId(id),
     onSettled: ()       => setSavingColId(null),
-    onSuccess: () => { toast.success('Collection updated'); invalidateCatCol() },
+    onSuccess: () => { toast.success('Collection updated successfully.'); invalidateCatCol() },
     onError: e => toast.error(e.response?.data?.detail || 'Failed to update collection'),
   })
 
@@ -277,7 +277,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
     onMutate:  (id) => setDeletingColId(id),
     onSettled: ()   => setDeletingColId(null),
     onSuccess: () => {
-      toast.success('Collection deleted — products in it were unassigned, not deleted')
+      toast.success('Collection deleted successfully.')
       invalidateCatCol()
     },
     onError: e => toast.error(e.response?.data?.detail || 'Failed to delete collection'),

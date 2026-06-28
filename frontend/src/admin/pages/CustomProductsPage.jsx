@@ -404,7 +404,7 @@ export default function ProductsPage() {
     onMutate:  id  => setDeletingIds(prev => new Set([...prev, id])),
     onSettled: (_, __, id) => setDeletingIds(prev => { const s = new Set(prev); s.delete(id); return s }),
     onSuccess: () => {
-      toast.success('Product deleted')
+      toast.success('Product deleted successfully.')
       const isLastOnPage = (data?.items?.length ?? 0) === 1
       if (isLastOnPage && page > 1) setPage(p => p - 1)
       else invalidate()
@@ -415,7 +415,7 @@ export default function ProductsPage() {
   const bulkMutation = useMutation({
     mutationFn: (payload) => customProductsApi.bulkAction(payload),
     onSuccess: (res) => {
-      toast.success(`${res.data?.updated ?? 0} products updated`)
+      toast.success(`${res.data?.updated ?? 0} products updated successfully.`)
       setSelectedIds(new Set())
       invalidate()
     },

@@ -114,30 +114,32 @@ function EditableRow({ item, onSave, onDelete, isSaving, isDeleting, extra, disa
 
 // ─── New item form ─────────────────────────────────────────────────────────────
 
-function NewItemForm({ placeholder, onAdd, isAdding, extra }) {
+function NewItemForm({ placeholder, onAdd, isAdding, extra, disabled }) {
   const [name, setName] = useState('')
 
   const submit = () => {
-    const trimmed = name.trim()
+    if (disabled) return
+    const trimmed = name.strip ? name.strip() : name.trim()
     if (!trimmed) return
     onAdd(trimmed)
     setName('')
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 w-full" title={disabled ? "Maximum limit reached.\nDelete an existing item to continue." : ""}>
       <input
         value={name}
         onChange={e => setName(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') submit() }}
-        placeholder={placeholder}
-        className="flex-1 min-w-0 text-xs bg-app border border-app rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+        placeholder={disabled ? "Maximum limit reached" : placeholder}
+        disabled={disabled}
+        className="flex-1 min-w-0 text-xs bg-app border border-app rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
       />
       {extra}
       <button
         onClick={submit}
-        disabled={isAdding || !name.trim()}
-        className="btn-primary py-1.5 px-3 text-xs flex items-center gap-1 disabled:opacity-40 whitespace-nowrap"
+        disabled={isAdding || disabled || !name.trim()}
+        className="btn-primary py-1.5 px-3 text-xs flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
       >
         {isAdding ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
         Add
@@ -202,7 +204,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
 
   const createCategory = useMutation({
     mutationFn: (name) => categoriesAPI.create({ name }),
-    onSuccess: () => { toast.success('Category created'); invalidateCatCol() },
+    onSuccess: () => { toast.success('Category created successfully.'); invalidateCatCol() },
     onError: e => toast.error(e.response?.data?.detail || 'Failed to create category'),
   })
 
@@ -210,7 +212,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
     mutationFn: ({ id, data }) => categoriesAPI.update(id, data),
     onMutate:  ({ id }) => setSavingCatId(id),
     onSettled: ()       => setSavingCatId(null),
-    onSuccess: () => { toast.success('Category updated'); invalidateCatCol() },
+    onSuccess: () => { toast.success('Category updated successfully.'); invalidateCatCol() },
     onError: e => toast.error(e.response?.data?.detail || 'Failed to update category'),
   })
 
@@ -219,7 +221,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
     onMutate:  (id) => setDeletingCatId(id),
     onSettled: ()   => setDeletingCatId(null),
     onSuccess: () => {
-      toast.success('Category deleted — products in it were unassigned, not deleted')
+      toast.success('Category deleted successfully.')
       invalidateCatCol()
     },
     onError: e => toast.error(e.response?.data?.detail || 'Failed to delete category'),
@@ -236,7 +238,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
       category_id: newCollectionCategoryId ? Number(newCollectionCategoryId) : null,
     }),
     onSuccess: () => {
-      toast.success('Collection created')
+      toast.success('Collection created successfully.')
       setNewCollectionCategoryId('')
       invalidateCatCol()
     },
@@ -247,7 +249,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
     mutationFn: ({ id, data }) => collectionsAPI.update(id, data),
     onMutate:  ({ id }) => setSavingColId(id),
     onSettled: ()       => setSavingColId(null),
-    onSuccess: () => { toast.success('Collection updated'); invalidateCatCol() },
+    onSuccess: () => { toast.success('Collection updated successfully.'); invalidateCatCol() },
     onError: e => toast.error(e.response?.data?.detail || 'Failed to update collection'),
   })
 
@@ -256,7 +258,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
     onMutate:  (id) => setDeletingColId(id),
     onSettled: ()   => setDeletingColId(null),
     onSuccess: () => {
-      toast.success('Collection deleted — products in it were unassigned, not deleted')
+      toast.success('Collection deleted successfully.')
       invalidateCatCol()
     },
     onError: e => toast.error(e.response?.data?.detail || 'Failed to delete collection'),
@@ -293,7 +295,19 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
           <div className="space-y-3">
             <NewItemForm
               placeholder="New category name…"
+              disabled={categories.length >= 5}
               onAdd={(name) => {
+                if (categories.length >= 5) {
+                  toast.error(
+                    <div>
+                      <strong style={{ display: "block", marginBottom: "4px" }}>Maximum Limit Reached</strong>
+                      <div style={{ whiteSpace: "pre-line", fontSize: "12px", lineHeight: "1.4" }}>
+                        You have reached the maximum allowed limit of 5 categories.{"\n"}Please delete an existing category before creating a new one.
+                      </div>
+                    </div>
+                  );
+                  return;
+                }
                 if (isMainCategory(name)) {
                   toast.error('This category is a system-fixed Main Product category and cannot be created.');
                   return;
@@ -329,7 +343,19 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
           <div className="space-y-3">
             <NewItemForm
               placeholder="New collection name…"
+              disabled={collections.length >= 3}
               onAdd={(name) => {
+                if (collections.length >= 3) {
+                  toast.error(
+                    <div>
+                      <strong style={{ display: "block", marginBottom: "4px" }}>Maximum Limit Reached</strong>
+                      <div style={{ whiteSpace: "pre-line", fontSize: "12px", lineHeight: "1.4" }}>
+                        You have reached the maximum allowed limit of 3 collections.{"\n"}Please delete an existing collection before creating a new one.
+                      </div>
+                    </div>
+                  );
+                  return;
+                }
                 if (isMainCollection(name)) {
                   toast.error('This collection is a system-fixed Main Product collection and cannot be created.');
                   return;
@@ -341,7 +367,8 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
                 <select
                   value={newCollectionCategoryId}
                   onChange={e => setNewCollectionCategoryId(e.target.value)}
-                  className="text-xs bg-app border border-app rounded-md px-2 py-1.5 max-w-[130px]"
+                  disabled={collections.length >= 3}
+                  className="text-xs bg-app border border-app rounded-md px-2 py-1.5 max-w-[130px] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="">No category</option>
                   {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}

@@ -55,62 +55,74 @@ function apiError(error, fallback) {
   return detail || fallback;
 }
 
-function FormInput({ label, error, endAdornment, ...props }) {
-  return (
-    <label className="block space-y-1.5">
-      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">
-        {label}
-      </span>
-
-      <div className="relative">
-        <input
-          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 pr-10 text-sm text-zinc-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
-          {...props}
-        />
-
-        {endAdornment && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            {endAdornment}
-          </div>
-        )}
-      </div>
-
-      {error && (
-        <span className="block text-[11px] font-semibold text-red-600">
-          {error.message}
+const FormInput = React.forwardRef(
+  ({ label, error, endAdornment, ...props }, ref) => {
+    return (
+      <label className="block space-y-1.5">
+        <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">
+          {label}
         </span>
-      )}
-    </label>
-  );
-}
 
-function FormTextarea({ label, error, ...props }) {
-  return (
+        <div className="relative">
+          <input
+            ref={ref}
+            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 pr-10 text-sm text-zinc-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+            {...props}
+          />
+
+          {endAdornment && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              {endAdornment}
+            </div>
+          )}
+        </div>
+
+        {error && (
+          <span className="block text-[11px] font-semibold text-red-600">
+            {error.message}
+          </span>
+        )}
+      </label>
+    );
+  }
+);
+
+FormInput.displayName = "FormInput";
+
+const FormTextarea = React.forwardRef(
+  ({ label, error, ...props }, ref) => (
     <label className="block space-y-1.5">
       <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">
         {label}
       </span>
+
       <textarea
+        ref={ref}
         rows={4}
         className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
         {...props}
       />
+
       {error && (
         <span className="block text-[11px] font-semibold text-red-600">
           {error.message}
         </span>
       )}
     </label>
-  );
-}
+  )
+);
 
-function SelectInput({ label, error, options, ...props }) {
-  return (
+FormTextarea.displayName = "FormTextarea";
+
+const SelectInput = React.forwardRef(
+  ({ label, error, options, ...props }, ref) => (
     <label className="block space-y-1.5">
       <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">
         {label}
       </span>
+
       <select
+        ref={ref}
         className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
         {...props}
       >
@@ -120,14 +132,17 @@ function SelectInput({ label, error, options, ...props }) {
           </option>
         ))}
       </select>
+
       {error && (
         <span className="block text-[11px] font-semibold text-red-600">
           {error.message}
         </span>
       )}
     </label>
-  );
-}
+  )
+);
+
+SelectInput.displayName = "SelectInput";
 
 function AlertBox({ children }) {
   return (
@@ -218,6 +233,21 @@ export default function SettingsPage() {
     [twoFactorEnabled],
   );
 
+  const usernameRegister = usernameForm.register("username", {
+    required: "Username is required",
+    minLength: { value: 3, message: "Username must be at least 3 characters" },
+  });
+  const emailRegister = emailForm.register("email", {
+    required: "Email is required",
+    pattern: {
+      value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+      message: "Invalid email address",
+    },
+  });
+  const passwordCurrentRegister = passwordForm.register("current_password", {
+    required: "Current password is required",
+  });
+
   function handleRemoveLogo() {
     setLogoPreview("");
     profileForm.setValue("logo", "", { shouldDirty: true });
@@ -256,7 +286,7 @@ export default function SettingsPage() {
         regionalForm.reset({
           country: store.country || "India",
           currency: store.currency || "INR",
-          timezone: store.timezone || "Asia/ Kolkata",
+          timezone: store.timezone || "Asia/Kolkata",
           weight_unit: store.weight_unit || "kg",
         });
         // Reset the distinct forms with the fresh security values
@@ -296,8 +326,14 @@ export default function SettingsPage() {
 
   // Prevent background scroll while modal open and focus first input
   useEffect(() => {
-    if (activeModal) document.body.style.overflow = "hidden";
-    else document.body.style.overflow = "";
+    if (activeModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
+    }
 
     // focus first input for the opened modal
     const t = setTimeout(() => {
@@ -319,7 +355,16 @@ export default function SettingsPage() {
     setSaving((state) => ({ ...state, profile: true }));
     try {
       const response = await settingsService.updateProfile(data);
-      setSettings(response.data);
+      const updated = response.data;
+      setSettings(updated);
+      profileForm.reset({
+        store_name: updated.store_name || data.store_name,
+        store_url: updated.store_url || data.store_url,
+        support_email: updated.support_email || data.support_email,
+        support_phone: updated.support_phone || data.support_phone,
+        description: updated.description || data.description,
+        logo: updated.logo || data.logo,
+      });
       toast.success("Store profile saved");
     } catch (error) {
       toast.error(apiError(error, "Failed to save store profile"));
@@ -332,7 +377,14 @@ export default function SettingsPage() {
     setSaving((state) => ({ ...state, regional: true }));
     try {
       const response = await settingsService.updateSettings(data);
-      setSettings(response.data);
+      const updated = response.data;
+      setSettings(updated);
+      regionalForm.reset({
+        country: updated.country || data.country,
+        currency: updated.currency || data.currency,
+        timezone: updated.timezone || data.timezone,
+        weight_unit: updated.weight_unit || data.weight_unit,
+      });
       toast.success("Regional settings saved");
     } catch (error) {
       toast.error(apiError(error, "Failed to save regional settings"));
@@ -554,14 +606,21 @@ export default function SettingsPage() {
       await profileForm.handleSubmit(saveProfile)();
     if (regionalForm.formState.isDirty)
       await regionalForm.handleSubmit(saveRegional)();
-    toast.success("All changes saved");
+    const dirty =
+      profileForm.formState.isDirty ||
+      regionalForm.formState.isDirty;
+
+    if (!dirty) {
+      toast("No changes to save");
+      return;
+    }
   }
 
   return (
     <div className="space-y-6">
       {/* ── Header ── */}
       <PageHeader
-        title="Setting"
+        title="Settings"
         description={
           <p className="mt-0.5 whitespace-nowrap text-sm text-zinc-500 dark:text-zinc-400">
             Store profile, contact details, and preferences
@@ -571,7 +630,12 @@ export default function SettingsPage() {
           <Button
             type="button"
             onClick={handleGlobalSave}
-            disabled={saving.global}
+            disabled={
+              saving.profile ||
+              saving.regional ||
+              saving.password ||
+              saving.security
+            }
             variant="save"
             icon={Save}
             className={
@@ -669,6 +733,10 @@ export default function SettingsPage() {
                 error={profileForm.formState.errors.support_email}
                 {...profileForm.register("support_email", {
                   required: "Support email is required",
+                  pattern: {
+                    value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+                    message: "Invalid email address",
+                  },
                 })}
               />
               <FormInput
@@ -924,9 +992,11 @@ export default function SettingsPage() {
                     placeholder="Enter new username"
                     error={usernameForm.formState.errors.username}
                     autoFocus
-                    {...usernameForm.register("username", {
-                      required: "Username is required",
-                    })}
+                    {...usernameRegister}
+                    ref={(node) => {
+                      usernameFirstRef.current = node;
+                      usernameRegister.ref(node);
+                    }}
                   />
                   <FormInput
                     label="Current Password"
@@ -946,7 +1016,10 @@ export default function SettingsPage() {
                         )}
                       </button>
                     }
-                    {...passwordForm.register("current_password")}
+                    error={usernameForm.formState.errors.current_password}
+                    {...usernameForm.register("current_password", {
+                      required: "Current password is required",
+                    })}
                   />
 
                   <div className="flex justify-end gap-2">
@@ -974,9 +1047,11 @@ export default function SettingsPage() {
                     placeholder="Enter new email"
                     autoFocus
                     error={emailForm.formState.errors.email}
-                    {...emailForm.register("email", {
-                      required: "Email is required",
-                    })}
+                    {...emailRegister}
+                    ref={(node) => {
+                      emailFirstRef.current = node;
+                      emailRegister.ref(node);
+                    }}
                   />
                   <FormInput
                     label="Current Password"
@@ -996,7 +1071,10 @@ export default function SettingsPage() {
                         )}
                       </button>
                     }
-                    {...passwordForm.register("current_password")}
+                    error={emailForm.formState.errors.current_password}
+                    {...emailForm.register("current_password", {
+                      required: "Current password is required",
+                    })}
                   />
                   <div className="flex justify-end gap-2">
                     <Button
@@ -1037,7 +1115,12 @@ export default function SettingsPage() {
                         )}
                       </button>
                     }
-                    {...passwordForm.register("current_password")}
+                    error={passwordForm.formState.errors.current_password}
+                    {...passwordCurrentRegister}
+                    ref={(node) => {
+                      passwordFirstRef.current = node;
+                      passwordCurrentRegister.ref(node);
+                    }}
                   />
 
                   <FormInput
@@ -1055,7 +1138,14 @@ export default function SettingsPage() {
                         )}
                       </button>
                     }
-                    {...passwordForm.register("new_password")}
+                    error={passwordForm.formState.errors.new_password}
+                    {...passwordForm.register("new_password", {
+                      required: "New password is required",
+                      minLength: {
+                        value: 6,
+                        message: "Password must be at least 6 characters",
+                      },
+                    })}
                   />
 
                   <FormInput
@@ -1075,7 +1165,13 @@ export default function SettingsPage() {
                         )}
                       </button>
                     }
-                    {...passwordForm.register("confirm_password")}
+                    error={passwordForm.formState.errors.confirm_password}
+                    {...passwordForm.register("confirm_password", {
+                      required: "Confirm password is required",
+                      validate: (value) =>
+                        value === passwordForm.watch("new_password") ||
+                        "Passwords do not match",
+                    })}
                   />
 
                   <div className="flex justify-end gap-2">

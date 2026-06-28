@@ -75,7 +75,7 @@ function BannerFormModal({ initial, onClose, onSaved, isDark }) {
     if (!file) return;
     const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     if (!allowed.includes(file.type)) { toast.error("⚠️ Only JPG, PNG, WebP, GIF allowed"); return; }
-    if (file.size > 5 * 1024 * 1024) { toast.error("⚠️ Max image size is 5 MB"); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("⚠️ Max image size is 10 MB"); return; }
     if (blobRef.current) URL.revokeObjectURL(blobRef.current);
     const url = URL.createObjectURL(file);
     blobRef.current = url;
@@ -106,10 +106,10 @@ function BannerFormModal({ initial, onClose, onSaved, isDark }) {
 
       if (isEdit) {
         await api.patch(`/banners/admin/${initial.id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
-        toast.success("✅ Banner updated!");
+        toast.success("Banner updated successfully.");
       } else {
         await api.post("/banners/admin", fd, { headers: { "Content-Type": "multipart/form-data" } });
-        toast.success("🎉 Banner created!");
+        toast.success("Banner created successfully.");
       }
       onSaved();
       onClose();
@@ -146,7 +146,7 @@ function BannerFormModal({ initial, onClose, onSaved, isDark }) {
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 10 }}>
                 <ImagePlus size={48} color={isDark ? "#374151" : "#9ca3af"} />
                 <span style={{ color: s.textMuted, fontSize: 13, fontWeight: 600 }}>Click to upload banner image</span>
-                <span style={{ color: s.textMuted, fontSize: 11 }}>JPG, PNG, WebP, GIF · Max 5 MB</span>
+                <span style={{ color: s.textMuted, fontSize: 11 }}>JPG, PNG, WebP, GIF · Max 10 MB</span>
               </div>
             )}
           </label>
@@ -357,7 +357,7 @@ export default function BannerPage() {
   const toggleBanner = async (id) => {
     try {
       await api.put(`/banners/admin/${id}/toggle`);
-      toast.success("Banner status updated!");
+      toast.success("Banner status updated successfully.");
       refresh();
     } catch (err) {
       console.error(err);
@@ -368,7 +368,7 @@ export default function BannerPage() {
   const deleteBanner = async (id) => {
     try {
       await api.delete(`/banners/admin/${id}`);
-      toast.success("🗑️ Banner deleted!");
+      toast.success("Banner deleted successfully.");
       setDeleteConfirm(null);
       refresh();
     } catch (err) {
@@ -383,6 +383,21 @@ export default function BannerPage() {
     inactive: banners.filter(b => !b.is_active).length,
   };
 
+  const handleNewBannerClick = () => {
+    if (banners.length >= 5) {
+      toast.error(
+        <div>
+          <strong style={{ display: "block", marginBottom: "4px" }}>Maximum Limit Reached</strong>
+          <div style={{ whiteSpace: "pre-line", fontSize: "12px", lineHeight: "1.4" }}>
+            You have reached the maximum allowed limit of 5 banners.{"\n"}Please delete an existing banner before creating a new one.
+          </div>
+        </div>
+      );
+      return;
+    }
+    setModal({});
+  };
+
   return (
     <div style={{ padding: "24px 28px", background: s.bg, minHeight: "100vh", transition: "background .3s ease" }}>
       <ToastContainer position="top-right" autoClose={2500} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover theme={isDark ? "dark" : "light"} style={{ zIndex: 99999 }} />
@@ -395,7 +410,7 @@ export default function BannerPage() {
             Hero sliders, promotional banners & marketing campaigns
           </p>
         </div>
-        <button onClick={() => setModal({})} style={{ ...btn.base, height: 40, padding: "0 18px", background: "#2563eb", color: "#fff", display: "flex", alignItems: "center", gap: 6 }}>
+        <button onClick={handleNewBannerClick} disabled={banners.length >= 5} title={banners.length >= 5 ? "Maximum limit reached.\nDelete an existing item to continue." : ""} style={{ ...btn.base, height: 40, padding: "0 18px", background: banners.length >= 5 ? "#4b5563" : "#2563eb", color: "#fff", display: "flex", alignItems: "center", gap: 6, opacity: banners.length >= 5 ? 0.6 : 1, cursor: banners.length >= 5 ? "not-allowed" : "pointer" }}>
           <Plus size={16} /> New Banner
         </button>
       </div>
@@ -474,7 +489,7 @@ export default function BannerPage() {
             </p>
           </div>
           {!search && filterPlacement === "all" && filterStatus === "all" && (
-            <button onClick={() => setModal({})} style={{ ...btn.base, height: 40, padding: "0 20px", background: "#2563eb", color: "#fff", display: "flex", alignItems: "center", gap: 6 }}>
+            <button onClick={handleNewBannerClick} disabled={banners.length >= 5} title={banners.length >= 5 ? "Maximum limit reached.\nDelete an existing item to continue." : ""} style={{ ...btn.base, height: 40, padding: "0 20px", background: banners.length >= 5 ? "#4b5563" : "#2563eb", color: "#fff", display: "flex", alignItems: "center", gap: 6, opacity: banners.length >= 5 ? 0.6 : 1, cursor: banners.length >= 5 ? "not-allowed" : "pointer" }}>
               <Plus size={16} /> New Banner
             </button>
           )}

@@ -28,6 +28,8 @@ from typing import Optional
 
 from fastapi import HTTPException, UploadFile, status
 
+from app.core.constants import MAX_IMAGE_SIZE, ALLOWED_IMAGE_EXTENSIONS
+
 # ── Allowlists ────────────────────────────────────────────────────────────────
 
 ALLOWED_IMAGE_MIMES: frozenset = frozenset({
@@ -36,11 +38,11 @@ ALLOWED_IMAGE_MIMES: frozenset = frozenset({
     "image/webp",
 })
 
-ALLOWED_IMAGE_EXTENSIONS: frozenset = frozenset({
-    ".jpg", ".jpeg", ".png", ".webp",
-})
+ALLOWED_IMAGE_EXTS: frozenset = frozenset(
+    f".{ext.lstrip('.')}" for ext in ALLOWED_IMAGE_EXTENSIONS
+)
 
-MAX_IMAGE_BYTES: int = 5 * 1024 * 1024   # 5 MB
+MAX_IMAGE_BYTES: int = MAX_IMAGE_SIZE
 
 # ── Magic byte signatures ─────────────────────────────────────────────────────
 
@@ -85,7 +87,7 @@ def validate_and_read_image(
         HTTPException(413): File exceeds max_bytes.
     """
     mimes = allowed_mimes      or ALLOWED_IMAGE_MIMES
-    exts  = allowed_extensions or ALLOWED_IMAGE_EXTENSIONS
+    exts  = allowed_extensions or ALLOWED_IMAGE_EXTS
 
     # ── 1. MIME type ──────────────────────────────────────────────────────────
     if file.content_type not in mimes:
