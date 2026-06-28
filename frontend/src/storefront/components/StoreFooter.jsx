@@ -36,21 +36,21 @@ export default function StoreFooter() {
             </Link>
 
             <Link
-              to="/products?collection=Summer"
+              to="/products?sub_collection=Summer"
               className="text-muted hover:text-app"
             >
               Summer Collection
             </Link>
 
             <Link
-              to="/products?collection=Activewear"
+              to="/products?sub_collection=Activewear"
               className="text-muted hover:text-app"
             >
               Activewear
             </Link>
 
             <Link
-              to="/products?collection=Essentials"
+              to="/products?sub_collection=Essentials"
               className="text-muted hover:text-app"
             >
               Daily Essentials

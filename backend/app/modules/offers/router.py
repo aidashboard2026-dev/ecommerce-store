@@ -88,7 +88,9 @@ async def _save_offer_image(banner_image: UploadFile) -> str:
 
     _validate_magic_bytes(contents[:16])
 
-    return supabase_storage.upload_banner_image(
+    from fastapi.concurrency import run_in_threadpool
+    return await run_in_threadpool(
+        supabase_storage.upload_banner_image,
         contents=contents,
         original_filename=banner_image.filename or "offer.jpg",
         content_type=banner_image.content_type,
@@ -287,7 +289,8 @@ async def edit_offer(
         new_image_url = await _save_offer_image(banner_image)
         update_fields["banner_image"] = new_image_url
         if old_image:
-            _delete_offer_image(old_image)
+            from fastapi.concurrency import run_in_threadpool
+            await run_in_threadpool(_delete_offer_image, old_image)
 
     # Resolve effective values (new value if provided, else existing offer value)
     effective_status = status_field if status_field is not None else offer.status

@@ -598,10 +598,12 @@ def init_db() -> None:
             db.add(admin)
             logger.info("Default superadmin created")
         else:
-            admin.name          = name
-            admin.password_hash = get_password_hash(password)
-            admin.role          = "superadmin"
-            logger.info("Initial admin account updated")
+            # Only update name and role — never overwrite an existing password.
+            # If an admin changed their password via the UI, a container restart
+            # must not silently revert it to INITIAL_ADMIN_PASSWORD.
+            admin.name = name
+            admin.role = "superadmin"
+            logger.info("Initial admin account verified (password unchanged)")
 
         # ── 1.5 Normalize existing categories ───────────────────────────────────
         _normalize_existing_categories(db)

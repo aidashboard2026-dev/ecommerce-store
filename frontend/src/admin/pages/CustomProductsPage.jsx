@@ -16,14 +16,14 @@ import toast from 'react-hot-toast'
 import clsx from 'clsx'
 import {
   customProductsAPI as customProductsApi,
-  categoriesAPI,
-  collectionsAPI
+  customCategoriesAPI,
+  customCollectionsAPI
 } from '@/shared/services/api'
 import { formatPrice, getImageUrl, useDebounce } from '@/shared/utils/productUtils'
 import CustomProductForm from '@/admin/components/products/CustomProductForm'
 // import ImageUploadModal from '@/admin/components/products/ImageUploadModal'
 // import VariantFormModal from '@/admin/components/products/VariantFormModal'
-import CategoryCollectionModal from '@/admin/components/products/CategoryCollectionModal'
+import CustomCategoryCollectionModel from '@/admin/components/products/CustomCategoryCollectionModel'
 import QuickCategoryEditModal from '@/admin/components/products/QuickCategoryEditModal'
 import Modal from '@/shared/components/common/Modal'
 import PageHeader from '@/shared/components/ui/PageHeader'
@@ -363,13 +363,13 @@ export default function ProductsPage() {
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories', 'admin'],
-    queryFn:  () => categoriesAPI.list().then(r => r.data),
+    queryFn:  () => customCategoriesAPI.list().then(r => r.data),
     staleTime: 5 * 60_000,
   })
 
   const { data: collections = [] } = useQuery({
     queryKey: ['collections', 'admin', categoryId],
-    queryFn:  () => collectionsAPI.list(categoryId ? { category_id: categoryId } : {}).then(r => r.data),
+    queryFn:  () => customCollectionsAPI.list(categoryId ? { category_id: categoryId } : {}).then(r => r.data),
     staleTime: 5 * 60_000,
   })
 

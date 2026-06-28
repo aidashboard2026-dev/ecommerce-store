@@ -74,10 +74,10 @@ function ProductCard({ product }) {
   return (
     <Link
       to={`/products/${product.slug}`}
-      className="group relative flex flex-col w-fit overflow-hidden transition-all duration-300 hover:-translate-y-1"
+      className="group relative flex flex-col sm:w-60 w-full  justify-between bg-gray-600 overflow-hidden transition-all duration-300 hover:-translate-y-1"
     >
       {/* Image */}
-      <div className="relative w-52 h-60 rounded-2xl bg-surface overflow-hidden">
+      <div className="relative w-full h-60 rounded-2xl bg-surface overflow-hidden">
         {product.thumbnail ? (
           <img
             src={getImageUrl(product.thumbnail)}
@@ -124,7 +124,7 @@ function ProductCard({ product }) {
       </div>
 
       {/* Info */}
-      <div className="flex flex-col gap-1 py-3" >
+      <div className="flex flex-col flex-1 h-full justify-between bg-green-500  gap-1 py-3">
         {(product.collection_name || product.collection) && (
           <span className="text-[10px] uppercase tracking-wider text-muted font-semibold">
             {product.collection_name || product.collection}
@@ -132,15 +132,15 @@ function ProductCard({ product }) {
         )}
         <div className="flex flex-row items-center justify-between">
           <h3 className="text-lg font-thin text-app line-clamp-2 leading-snug">
-          {product.title}
-        </h3>
+            {product.title}
+          </h3>
 
-        <div className="flex items-center border rounded-md w-fit gap-1.5 p-1">
-          <span className="text-[13px] text-app">4.5</span>
-          <Star size={13} className="fill-green-600 text-green-600" />
+          <div className="flex items-center border rounded-md w-fit gap-1.5 p-1">
+            <span className="text-[13px] text-app">4.5</span>
+            <Star size={13} className="fill-green-600 text-green-600" />
+          </div>
         </div>
-        </div>
-        
+
         <div className="flex items-center justify-between">
           {minPrice != null ? (
             <>
@@ -157,27 +157,28 @@ function ProductCard({ product }) {
             <span className="text-xs text-muted">Price unavailable</span>
           )}
           {hasDiscount && (
-          <span className="text-red-500 w-fit text-[13px] font-extralight uppercase tracking-wide px-2 py-1 rounded-full">
-            {discountPct}%
-          </span>
-        )}
-        </div>
-        <button
-          onClick={handleQuickAdd}
-          disabled={!inStock}
-          className={clsx(
-            "absolute bottom-0 right-0 p-2.5 w-full uppercase flex flex-row gap-3 items-center bg-zinc-950 text-white justify-center rounded-md shadow-glow-sm duration-300",
-            "translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100",
-            // inStock
-            //   ? "bg-brand-500 hover:bg-brand-600 text-white"
-            //   : "bg-gray-500/65 text-white cursor-not-allowed",
+            <span className="text-red-500 w-fit text-[13px] font-extralight uppercase tracking-wide px-2 py-1 rounded-full">
+              {discountPct}%
+            </span>
           )}
-          aria-label="Quick add to cart"
-        >
-          <ShoppingBag size={16} />
-          Add to Card
-        </button>
+        </div>
       </div>
+
+      <button
+        onClick={handleQuickAdd}
+        disabled={!inStock}
+        className={clsx(
+          "absolute bottom-0 right-0 p-2.5 w-full uppercase flex flex-row gap-3 items-center bg-zinc-950 text-white justify-center rounded-md shadow-glow-sm duration-300",
+          "translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100",
+          // inStock
+          //   ? "bg-brand-500 hover:bg-brand-600 text-white"
+          //   : "bg-gray-500/65 text-white cursor-not-allowed",
+        )}
+        aria-label="Quick add to cart"
+      >
+        <ShoppingBag size={16} />
+        Add to Card
+      </button>
     </Link>
   );
 }

@@ -71,8 +71,8 @@ export default function ProductFilters({
               <input
                 type="radio"
                 name="collection_id"
-                checked={!filters.collection_id}
-                onChange={() => update({ collection_id: '' })}
+                checked={!filters.collection_id && !filters.collection}
+                onChange={() => update({ collection_id: '', collection: '' })}
                 className="accent-brand-500"
               />
               All Collections
@@ -82,8 +82,8 @@ export default function ProductFilters({
                 <input
                   type="radio"
                   name="collection_id"
-                  checked={String(filters.collection_id) === String(c.id)}
-                  onChange={() => update({ collection_id: c.id })}
+                  checked={String(filters.collection_id) === String(c.id) || (filters.collection && filters.collection.toLowerCase() === c.name.toLowerCase())}
+                  onChange={() => update({ collection_id: c.id, collection: c.name })}
                   className="accent-brand-500"
                 />
                 {c.name}
@@ -102,8 +102,8 @@ export default function ProductFilters({
               <input
                 type="radio"
                 name="category_id"
-                checked={!filters.category_id}
-                onChange={() => update({ category_id: '' })}
+                checked={!filters.category_id && !filters.category}
+                onChange={() => update({ category_id: '', category: '' })}
                 className="accent-brand-500"
               />
               All Categories
@@ -113,8 +113,8 @@ export default function ProductFilters({
                 <input
                   type="radio"
                   name="category_id"
-                  checked={String(filters.category_id) === String(c.id)}
-                  onChange={() => update({ category_id: c.id })}
+                  checked={String(filters.category_id) === String(c.id) || (filters.category && filters.category.toLowerCase() === c.name.toLowerCase())}
+                  onChange={() => update({ category_id: c.id, category: c.name })}
                   className="accent-brand-500"
                 />
                 {c.name}

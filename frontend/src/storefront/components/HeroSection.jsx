@@ -23,7 +23,7 @@ const DEFAULT_BANNERS = [
     title: "New Season Collection",
     subtitle: "Discover the latest arrivals.",
     cta_text: "Explore",
-    cta_link: "/products?collection=New Arrivals",
+    cta_link: "/products",
     local: true,
   },
 ];

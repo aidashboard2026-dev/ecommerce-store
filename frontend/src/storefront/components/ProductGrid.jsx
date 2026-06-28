@@ -1,5 +1,5 @@
-import React from 'react'
-import ProductCard from '@/storefront/components/ProductCard'
+import React from "react";
+import ProductCard from "@/storefront/components/ProductCard";
 
 function ProductSkeleton() {
   return (
@@ -12,10 +12,15 @@ function ProductSkeleton() {
         <div className="h-4 w-1/2 bg-surface rounded mt-1" />
       </div>
     </div>
-  )
+  );
 }
 
-export default function ProductGrid({ products, loading, skeletonCount = 8, emptyMessage = 'No products found.' }) {
+export default function ProductGrid({
+  products,
+  loading,
+  skeletonCount = 8,
+  emptyMessage = "No products found.",
+}) {
   if (loading && (!products || products.length === 0)) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
@@ -23,7 +28,7 @@ export default function ProductGrid({ products, loading, skeletonCount = 8, empt
           <ProductSkeleton key={i} />
         ))}
       </div>
-    )
+    );
   }
 
   if (!products || products.length === 0) {
@@ -31,16 +36,22 @@ export default function ProductGrid({ products, loading, skeletonCount = 8, empt
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <p className="text-muted text-sm">{emptyMessage}</p>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="grid  grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 bg-slate-300 gap-2">
-      {products.map((product) => (
-        <ProductCard key={product.id} product={product} />
-      ))}
-      {loading &&
-        Array.from({ length: 4 }).map((_, i) => <ProductSkeleton key={`more-${i}`} />)}
+    <div className="">
+      <div className="grid grid-cols-2 sm:flex sm:flex-row sm:flex-wrap lg:grid-cols-4 gap-4 justify-evenly">
+        {products.slice(0, 8).map((product) => (
+          <ProductCard key={product.id} product={product} />
+        ))}
+
+        {Array.from({
+          length: Math.max(0, 8 - Math.min(products.length, 8)),
+        }).map((_, i) => (
+          <ProductSkeleton key={`empty-${i}`} />
+        ))}
+      </div>
     </div>
-  )
+  );
 }

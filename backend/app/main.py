@@ -3,6 +3,7 @@ import os
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
@@ -17,6 +18,7 @@ logger = logging.getLogger("app")
 
 UPLOADS_ROOT = os.path.abspath(settings.UPLOAD_DIR)
 os.makedirs(os.path.join(UPLOADS_ROOT, "products"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_ROOT, "custom_products"), exist_ok=True)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -120,24 +122,25 @@ async def lifespan(app: FastAPI):
             "Authorization": f"Bearer {settings.SUPABASE_SERVICE_ROLE_KEY}",
             "apikey": settings.SUPABASE_SERVICE_ROLE_KEY,
         }
-        for bucket in (settings.SUPABASE_PRODUCT_BUCKET, settings.SUPABASE_BANNER_BUCKET):
-            _url = f"{settings.SUPABASE_URL.rstrip('/')}/storage/v1/bucket/{bucket}"
-            try:
-                resp = _httpx.get(_url, headers=_headers, timeout=10.0)
-                if resp.status_code == 404:
-                    raise RuntimeError(
-                        f"Supabase bucket '{bucket}' does not exist. "
-                        f"Create it in your Supabase project or update "
-                        f"SUPABASE_PRODUCT_BUCKET / SUPABASE_BANNER_BUCKET in .env."
-                    )
-                if resp.status_code not in (200, 201):
-                    logger.warning(
-                        "Could not verify Supabase bucket '%s' (HTTP %s). "
-                        "Image uploads may fail at runtime.",
-                        bucket, resp.status_code,
-                    )
-            except _httpx.HTTPError as exc:
-                logger.warning("Supabase bucket check failed for '%s': %s", bucket, exc)
+        async with _httpx.AsyncClient(timeout=10.0) as client:
+            for bucket in (settings.SUPABASE_PRODUCT_BUCKET, settings.SUPABASE_CUSTOM_PRODUCT_BUCKET, settings.SUPABASE_BANNER_BUCKET):
+                _url = f"{settings.SUPABASE_URL.rstrip('/')}/storage/v1/bucket/{bucket}"
+                try:
+                    resp = await client.get(_url, headers=_headers)
+                    if resp.status_code == 404:
+                        raise RuntimeError(
+                            f"Supabase bucket '{bucket}' does not exist. "
+                            f"Create it in your Supabase project or update "
+                            f"SUPABASE_PRODUCT_BUCKET / SUPABASE_BANNER_BUCKET in .env."
+                        )
+                    if resp.status_code not in (200, 201):
+                        logger.warning(
+                            "Could not verify Supabase bucket '%s' (HTTP %s). "
+                            "Image uploads may fail at runtime.",
+                            bucket, resp.status_code,
+                        )
+                except _httpx.HTTPError as exc:
+                    logger.warning("Supabase bucket check failed for '%s': %s", bucket, exc)
 
     yield
 
@@ -173,6 +176,8 @@ app.add_middleware(
     # Explicitly enumerate needed headers instead of wildcard "*"
     allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
 )
+
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 # ──────────────────────────────────────────────────────────────────────────────

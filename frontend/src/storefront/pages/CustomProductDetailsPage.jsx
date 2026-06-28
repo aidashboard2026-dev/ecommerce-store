@@ -84,8 +84,11 @@ export default function ProductDetailsPage() {
                     name: p.title,
                     image: p.thumbnail,
 
-                    sellingMinPrice: Number(p.selling_price_min),
-                    originalMaxPrice: Number(p.original_price_max),
+                    sellingMin: Number(p.selling_price_min),
+                    sellingMax: Number(p.selling_price_max),
+
+                    originalMin: Number(p.original_price_min),
+                    originalMax: Number(p.original_price_max),
 
                     category: p.category_name || "General",
                     stock: p.stock_quantity,
@@ -173,25 +176,27 @@ export default function ProductDetailsPage() {
             </p>
 
             {/* Price */}
-            <div className="flex flex-wrap items-center gap-4 mb-8">
+            <div className="flex flex-col gap-2">
 
-                <span className="text-5xl font-bold text-indigo-600">
+                <div className="text-5xl font-bold text-indigo-600">
+
                     ₹{product.sellingMinPrice}
-                </span>
 
-                <span className="line-through text-gray-400 text-2xl">
-                    ₹{product.originalMaxPrice}
-                </span>
-
-                <span className="text-red-500 font-bold text-xl">
-                    {Math.round(
-                        (
-                            (product.originalMaxPrice - product.sellingMinPrice) /
-                            product.originalMaxPrice
-                        ) * 100
+                    {product.sellingMaxPrice !== product.sellingMinPrice && (
+                        <> – ₹{product.sellingMaxPrice}</>
                     )}
-                    % OFF
-                </span>
+
+                </div>
+
+                <div className="text-2xl text-gray-400 line-through">
+
+                    ₹{product.originalMinPrice}
+
+                    {product.originalMaxPrice !== product.originalMinPrice && (
+                        <> – ₹{product.originalMaxPrice}</>
+                    )}
+
+                </div>
 
             </div>
 
@@ -368,9 +373,15 @@ export default function ProductDetailsPage() {
 
         {relatedProducts.map((product) => {
 
-            const discount = Math.round(
-            ((product.oldPrice - product.price) / product.oldPrice) * 100
-            );
+            const discount =
+                product.originalMax > 0
+                    ? Math.round(
+                        (
+                            (product.originalMax - product.sellingMin) /
+                            product.originalMax
+                        ) * 100
+                    )
+                    : 0;
 
             return (
             <Link
@@ -420,7 +431,7 @@ export default function ProductDetailsPage() {
                             productId: product.id,
                             title: product.name,
                             thumbnail: product.image,
-                            minPrice: product.sellingMinPrice,
+                            minPrice: product.sellingMin,
                         })
                         );
 
@@ -482,17 +493,50 @@ export default function ProductDetailsPage() {
                     </span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="mt-2 space-y-1">
 
-                    <span className="text-3xl font-bold text-indigo-600">
-                        ₹{product.sellingMinPrice}
-                    </span>
+                    {/* Selling Price */}
+                    <div
+                        className="
+                            text-[18px]
+                            font-extrabold
+                            text-indigo-600
+                            leading-tight
+                            min-h-[42px]
+                            flex
+                            items-center
+                            whitespace-nowrap
+                        "
+                    >
+                        ₹{product.sellingMin}
 
-                    <span className="line-through text-gray-400">
-                        ₹{product.originalMaxPrice}
-                    </span>
+                        {product.sellingMax !== product.sellingMin && (
+                            <> – ₹{product.sellingMax}</>
+                        )}
+                    </div>
+
+                    {/* Original Price */}
+                    <div
+                        className="
+                            text-lg
+                            text-gray-400
+                            line-through
+                            leading-tight
+                            min-h-[24px]
+                            flex
+                            items-center
+                            whitespace-nowrap
+                        "
+                    >
+                        ₹{product.originalMin}
+
+                        {product.originalMax !== product.originalMin && (
+                            <> – ₹{product.originalMax}</>
+                        )}
+                    </div>
 
                 </div>
+
 
                 </div>
 

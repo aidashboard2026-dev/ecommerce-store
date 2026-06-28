@@ -10,6 +10,7 @@ export default function RegisterForm() {
   const navigate = useNavigate()
   const { loading, error } = useSelector((s) => s.customer)
   const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   const [form, setForm] = useState({
     first_name: '',
@@ -18,6 +19,7 @@ export default function RegisterForm() {
     phone: '',
     dob: '',
     password: '',
+    confirmPassword: '',
   })
 
   const update = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -31,7 +33,12 @@ export default function RegisterForm() {
       return
     }
 
-    const payload = { ...form }
+    if (form.password !== form.confirmPassword) {
+      toast.error('Passwords do not match')
+      return
+    }
+
+    const { confirmPassword, ...payload } = form
     if (!payload.phone) delete payload.phone
 
     const result = await dispatch(customerSignupThunk(payload))
@@ -126,6 +133,26 @@ export default function RegisterForm() {
               className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-app"
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+
+          <div className="relative">
+            <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+            <input
+              type={showConfirm ? 'text' : 'password'}
+              required
+              minLength={8}
+              value={form.confirmPassword}
+              onChange={update('confirmPassword')}
+              placeholder="Confirm password"
+              className="w-full bg-surface border border-app rounded-xl py-3 pl-11 pr-11 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-muted"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirm((s) => !s)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-app"
+            >
+              {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
 

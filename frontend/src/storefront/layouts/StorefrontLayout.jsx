@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 
 import { useTheme } from "@/shared/hooks/useAuth";
-import { customerLogout } from "@/storefront/store/customerSlice";
+import { customerLogout, customerLogoutThunk } from "@/storefront/store/customerSlice";
 
 import StoreHeader from "@/storefront/components/StoreHeader";
 import StoreFooter from "@/storefront/components/StoreFooter";
@@ -20,7 +20,7 @@ export default function StorefrontLayout() {
 
   // Track page scroll to toggle header background glassmorphism
   const handleLogout = () => {
-    dispatch(customerLogout());
+    dispatch(customerLogoutThunk());
     navigate("/");
   };
 

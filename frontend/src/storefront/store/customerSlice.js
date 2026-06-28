@@ -59,6 +59,14 @@ export const updateCustomerProfileThunk = createAsyncThunk(
   }
 )
 
+export const customerLogoutThunk = createAsyncThunk(
+  'customer/logout',
+  async (_, { dispatch }) => {
+    try { await customerAuthAPI.logout() } catch (err) { void err }
+    dispatch(customerLogout())
+  }
+)
+
 const customerSlice = createSlice({
   name: 'customer',
   initialState: {
@@ -66,12 +74,16 @@ const customerSlice = createSlice({
     customer: _persistedCustomer || null,
     loading: false,
     error: null,
+    // Mirrors the admin auth pattern: if no token at boot, nothing to fetch → already initialized.
+    // App.jsx dispatches fetchCustomerMeThunk → initialized flips true when it resolves.
+    initialized: !_persistedToken,
   },
   reducers: {
     customerLogout(state) {
       state.token = null
       state.customer = null
       state.error = null
+      state.initialized = true
       localStorage.removeItem(TOKEN_KEY)
       localStorage.removeItem(CUSTOMER_KEY)
     },
@@ -84,6 +96,7 @@ const customerSlice = createSlice({
       .addCase(customerLoginThunk.pending, (state) => { state.loading = true; state.error = null })
       .addCase(customerLoginThunk.fulfilled, (state, action) => {
         state.loading = false
+        state.initialized = true
         state.token = action.payload.access_token
         state.customer = action.payload.customer
         localStorage.setItem(TOKEN_KEY, action.payload.access_token)
@@ -103,11 +116,13 @@ const customerSlice = createSlice({
 
       .addCase(fetchCustomerMeThunk.fulfilled, (state, action) => {
         state.customer = action.payload
+        state.initialized = true
         localStorage.setItem(CUSTOMER_KEY, JSON.stringify(action.payload))
       })
       .addCase(fetchCustomerMeThunk.rejected, (state) => {
         state.token = null
         state.customer = null
+        state.initialized = true
         localStorage.removeItem(TOKEN_KEY)
         localStorage.removeItem(CUSTOMER_KEY)
       })

@@ -74,8 +74,12 @@ export const authAPI = {
 // Uses storefrontClient (cookie-based, withCredentials: true).
 
 export const customerAuthAPI = {
-  login: (creds) => storefrontClient.post('/auth/customer/login', creds),
-  me:    ()      => storefrontClient.get('/auth/customer/me'),
+  login:         (creds) => storefrontClient.post('/auth/customer/login', creds),
+  me:            ()      => storefrontClient.get('/auth/customer/me'),
+  logout:        ()      => storefrontClient.post('/auth/customer/logout'),
+  forgotPassword:(email) => storefrontClient.post('/auth/forgot-password', { email }),
+  resetPassword: (token, new_password) =>
+    storefrontClient.post('/auth/reset-password', { token, new_password }),
 }
 
 // ─── Categories ───────────────────────────────────────────────────────────────
@@ -100,6 +104,16 @@ export const collectionsAPI = {
   delete: (id)          => api.delete(`/products/admin/collections/${id}`),
   // Public
   listPublic: (params = {}) => storefrontClient.get('/products/collections', { params }),
+}
+
+export const customCategoriesAPI = {
+    list: () =>
+        api.get("/custom-products/categories"),
+}
+
+export const customCollectionsAPI = {
+    list: (params) =>
+        api.get("/custom-products/collections", { params }),
 }
 
 // ─── Products ─────────────────────────────────────────────────────────────────

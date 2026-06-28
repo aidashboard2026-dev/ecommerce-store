@@ -31,8 +31,11 @@ export default function SubProductsPage() {
             id: item.id,
             name: item.title,
             image: item.thumbnail,
-            price: Number(item.selling_price_min),
-            oldPrice: Number(item.original_price_max),
+            sellingMin: Number(item.selling_price_min),
+            sellingMax: Number(item.selling_price_max),
+
+            originalMin: Number(item.original_price_min),
+            originalMax: Number(item.original_price_max),
             category: item.category_name || "General",
             stock: item.stock_quantity,
             rating: 4.5,
@@ -433,9 +436,15 @@ export default function SubProductsPage() {
                 (item) => item.productId === product.id
             );
 
-            const discount = Math.round(
-                ((product.oldPrice - product.price) / product.oldPrice) * 100
-            )
+            const discount =
+                product.originalMax > 0
+                    ? Math.round(
+                        (
+                            (product.originalMax - product.sellingMin) /
+                            product.originalMax
+                        ) * 100
+                    )
+                    : 0;
 
             return (
                 <Link
@@ -554,14 +563,48 @@ export default function SubProductsPage() {
                         </span>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                        <span className="text-3xl font-bold text-brand-500">
-                            ₹{product.price}
-                        </span>
+                       <div className="mt-2 space-y-1">
 
-                        <span className="line-through text-gray-400">
-                            ₹{product.oldPrice}
-                        </span>
+                            {/* Selling Price */}
+                            <div
+                                className="
+                                    text-[18px]
+                                    font-extrabold
+                                    text-brand-500
+                                    leading-none
+                                    min-h-[42px]
+                                    flex
+                                    items-center
+                                    whitespace-nowrap
+                                "
+                            >
+                                ₹{product.sellingMin}
+
+                                {product.sellingMax !== product.sellingMin && (
+                                    <> – ₹{product.sellingMax}</>
+                                )}
+                            </div>
+
+                            {/* Original Price */}
+                            <div
+                                className="
+                                    text-lg
+                                    text-gray-400
+                                    line-through
+                                    leading-none
+                                    min-h-[24px]
+                                    flex
+                                    items-center
+                                    whitespace-nowrap
+                                "
+                            >
+                                ₹{product.originalMin}
+
+                                {product.originalMax !== product.originalMin && (
+                                    <> – ₹{product.originalMax}</>
+                                )}
+                            </div>
+
                         </div>
 
                     </div>

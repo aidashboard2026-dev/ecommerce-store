@@ -1,3 +1,4 @@
+import logging
 import math
 import re
 import uuid
@@ -20,6 +21,9 @@ from app.modules.products.schemas import (
 )
 
 MAX_PER_PAGE = 100
+MAX_PRODUCT_CATEGORIES = 5  # Product categories are capped at 5. Custom products have their own separate categories.
+
+logger = logging.getLogger(__name__)
 
 
 def normalize_category_name(name: str) -> Optional[str]:
@@ -279,6 +283,16 @@ def get_category(db: Session, category_id: int) -> Category:
 
 
 def create_category(db: Session, data: CategoryCreate) -> CategoryResponse:
+    # Enforce the maximum 5 product categories limit
+    existing_count = (
+        db.query(sqla_func.count(Category.id)).scalar() or 0
+    )
+    if existing_count >= MAX_PRODUCT_CATEGORIES:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Maximum of {MAX_PRODUCT_CATEGORIES} product categories allowed. "
+            "Delete an existing category before creating a new one.",
+        )
     norm_name = normalize_category_name(data.name)
     if norm_name:
         raise HTTPException(
@@ -300,6 +314,7 @@ def create_category(db: Session, data: CategoryCreate) -> CategoryResponse:
     except IntegrityError:
         db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, f"Category name '{data.name}' already exists.")
+    logger.info("Product category created: id=%s name=%s", cat.id, cat.name)
     return CategoryResponse.model_validate(cat)
 
 
@@ -1183,18 +1198,22 @@ def get_products_public(
     total_pages = math.ceil(total / per_page) if total else 1
 
     if sort_by in ("price_asc", "price_desc"):
-        min_price_sub = (
-            db.query(sqla_func.min(ProductVariant.selling_price))
-            .filter(ProductVariant.product_id == Product.id)
-            .correlate(Product)
-            .scalar_subquery()
+        price_sub = (
+            db.query(
+                ProductVariant.product_id,
+                sqla_func.min(ProductVariant.selling_price).label("min_price")
+            )
+            .group_by(ProductVariant.product_id)
+            .subquery()
         )
-        order_clause = min_price_sub.asc() if sort_by == "price_asc" else min_price_sub.desc()
+        order_clause = price_sub.c.min_price.asc() if sort_by == "price_asc" else price_sub.c.min_price.desc()
+        query = db.query(Product).outerjoin(price_sub, Product.id == price_sub.c.product_id)
     else:
         order_clause = Product.created_at.desc()
+        query = db.query(Product)
 
     products = (
-        db.query(Product)
+        query
         .options(selectinload(Product.variants))
         .filter(*base_filters)
         .order_by(order_clause)
