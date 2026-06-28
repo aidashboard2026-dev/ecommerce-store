@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from typing import List
 import os
 
 from app.modules.auth.dependencies import get_current_admin
+from app.modules.audit.service import audit
+from app.shared.utils.image import validate_and_read_image
 from app.core.database import get_db
 from app.modules.admins.models import Admin
 from app.modules.settings.schemas import (
@@ -45,10 +47,15 @@ def read_settings(
 @router.put("", response_model=StoreSettingsResponse)
 def update_settings(
     payload: StoreSettingsUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_admin),
 ):
-    return update_store_settings(db, payload)
+    result = update_store_settings(db, payload)
+    audit.log(db=db, admin=current_admin, action="settings.store_updated",
+              resource_type="store_settings", changes=payload.model_dump(exclude_unset=True), request=request)
+    db.commit()
+    return result
 
 
 @router.get("/payments", response_model=List[PaymentMethodResponse])
@@ -99,90 +106,51 @@ def update_profile(
 @router.put("/security", response_model=AdminSecurityResponse)
 def update_security(
     payload: AdminSecurityUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_admin),
 ):
-    return update_admin_security(db, current_admin, payload)
+    result = update_admin_security(db, current_admin, payload)
+    audit.log(db=db, admin=current_admin, action="settings.security_updated",
+              resource_type="admin", resource_id=current_admin.id,
+              changes=payload.model_dump(exclude_unset=True), request=request)
+    db.commit()
+    return result
 
 
 @router.put("/password")
 def update_password(
     payload: PasswordUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_admin),
 ):
-    return update_admin_password(db, current_admin, payload)
+    result = update_admin_password(db, current_admin, payload)
+    audit.log(db=db, admin=current_admin, action="settings.password_changed",
+              resource_type="admin", resource_id=current_admin.id, request=request)
+    db.commit()
+    return result
 
 
-_LOGO_ALLOWED_MIME   = {"image/jpeg", "image/png", "image/webp"}
-_LOGO_ALLOWED_EXT    = {".jpg", ".jpeg", ".png", ".webp"}
-_LOGO_MAX_BYTES      = 5 * 1024 * 1024  # 5 MB
-_LOGO_MAGIC: dict    = {
-    b"\xff\xd8\xff": "image/jpeg",
-    b"\x89PNG":      "image/png",
-    b"RIFF":         "image/webp",
-}
 
 
 @router.post("/logo", response_model=StoreSettingsResponse)
 def upload_logo(
     file: UploadFile = File(...),
+    request: Request = None,
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_admin),
 ):
     import uuid as _uuid
 
-    # MIME type allowlist
-    if file.content_type not in _LOGO_ALLOWED_MIME:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Only JPG, PNG, and WebP images are allowed. Got: {file.content_type}",
-        )
-
-    # Extension allowlist
-    ext = os.path.splitext(file.filename or "")[1].lower()
-    if ext not in _LOGO_ALLOWED_EXT:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Extension '{ext}' not allowed. Use: {', '.join(_LOGO_ALLOWED_EXT)}",
-        )
-
-    contents = file.file.read()
-
-    if not contents:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Uploaded file is empty.",
-        )
-
-    if len(contents) > _LOGO_MAX_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"Logo must be under {_LOGO_MAX_BYTES // (1024 * 1024)} MB.",
-        )
-
-    # Magic-byte validation — reject disguised files
-    header = contents[:16]
-    for magic, mime in _LOGO_MAGIC.items():
-        if header[:len(magic)] == magic:
-            if mime == "image/webp" and header[8:12] != b"WEBP":
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail="File has RIFF header but is not a valid WebP image.",
-                )
-            break
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="File content does not match any supported image format.",
-        )
+    contents = validate_and_read_image(file)  # MIME, extension, size, magic bytes
 
     # Safe filename — never trust the original filename from the client
     uploads_root = os.path.abspath(app_settings.UPLOAD_DIR)
     logos_dir = os.path.join(uploads_root, "logos")
     os.makedirs(logos_dir, exist_ok=True)
 
-    safe_name = f"logo_{_uuid.uuid4().hex}{ext}"
+    safe_name = f"logo_{_uuid.uuid4().hex}{exit}"
     dest_path = os.path.join(logos_dir, safe_name)
 
     # Path-traversal guard
@@ -205,6 +173,16 @@ def upload_logo(
     settings_row.logo = public_url
     db.commit()
     db.refresh(settings_row)
+
+    audit.log(
+        db=db, admin=current_admin,
+        action="settings.logo_uploaded",
+        resource_type="store_settings",
+        resource_id=settings_row.id,
+        changes={"logo": public_url},
+        request=request,
+    )
+    db.commit()
 
     return settings_row
 

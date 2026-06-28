@@ -1,10 +1,22 @@
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+"""
+app/modules/auth/dependencies.py
+
+FastAPI dependency functions for authentication and authorisation.
+
+Uses domain exceptions (AuthenticationError, AuthorizationError) instead
+of HTTPException so the centralized handlers in main.py own the HTTP
+status code and response shape.
+"""
+
+from fastapi import Depends, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
+
 from app.core.database import get_db
 from app.core.security import verify_token
 from app.modules.admins.models import Admin
 from app.modules.customers.models import Customer
+from app.shared.exceptions import AuthenticationError, AuthorizationError
 
 bearer_scheme = HTTPBearer()
 
@@ -13,24 +25,28 @@ def get_current_admin(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> Admin:
-    token = credentials.credentials
+    """
+    Validate a Bearer token and return the authenticated Admin.
 
+    Raises AuthenticationError (→ HTTP 401) when:
+      - The token is invalid, expired, or not an admin token.
+      - The admin account no longer exists in the database.
+    """
+    token    = credentials.credentials
     admin_id = verify_token(token, expected_type="admin")
 
     if not admin_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
+        raise AuthenticationError(
+            "Invalid or expired token.",
+            code="INVALID_TOKEN",
         )
 
     admin = db.query(Admin).filter(Admin.id == int(admin_id)).first()
 
     if admin is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Admin account not found or has been deleted",
-            headers={"WWW-Authenticate": "Bearer"},
+        raise AuthenticationError(
+            "Admin account not found or has been deleted.",
+            code="ADMIN_NOT_FOUND",
         )
 
     return admin
@@ -39,10 +55,15 @@ def get_current_admin(
 def get_current_superadmin(
     current_admin: Admin = Depends(get_current_admin),
 ) -> Admin:
+    """
+    Assert that the authenticated admin holds the 'superadmin' role.
+
+    Raises AuthorizationError (→ HTTP 403) when the admin's role is not 'superadmin'.
+    """
     if current_admin.role != "superadmin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions",
+        raise AuthorizationError(
+            "Insufficient permissions. This action requires the superadmin role.",
+            code="INSUFFICIENT_PERMISSIONS",
         )
     return current_admin
 
@@ -52,33 +73,35 @@ def get_current_customer(
     db: Session = Depends(get_db),
 ) -> Customer:
     """
-    Dependency for customer-authenticated routes.
-    Validates a JWT with type='customer' and returns the Customer ORM object.
-    """
-    token = credentials.credentials
+    Validate a Bearer token and return the authenticated Customer.
 
+    Raises AuthenticationError (→ HTTP 401) when:
+      - The token is invalid, expired, or not a customer token.
+      - The customer account no longer exists.
+    Raises AuthorizationError (→ HTTP 403) when:
+      - The customer account is inactive/suspended.
+    """
+    token       = credentials.credentials
     customer_id = verify_token(token, expected_type="customer")
 
     if not customer_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired customer token",
-            headers={"WWW-Authenticate": "Bearer"},
+        raise AuthenticationError(
+            "Invalid or expired customer token.",
+            code="INVALID_CUSTOMER_TOKEN",
         )
 
     customer = db.query(Customer).filter(Customer.id == int(customer_id)).first()
 
     if customer is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Customer account not found",
-            headers={"WWW-Authenticate": "Bearer"},
+        raise AuthenticationError(
+            "Customer account not found.",
+            code="CUSTOMER_NOT_FOUND",
         )
 
     if not customer.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Customer account is inactive",
+        raise AuthorizationError(
+            "Customer account is inactive.",
+            code="CUSTOMER_INACTIVE",
         )
 
     return customer

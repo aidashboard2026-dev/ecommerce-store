@@ -91,8 +91,8 @@ class Product(Base):
     # Legacy free-text collection field — preserved for backward compat
     collection = Column(String(100), nullable=True)
 
-    tags = Column(JSON, default=list)
-
+    tags = Column(JSON, default=list, nullable=False,)
+    
     # Publishing
     status = Column(
         SAEnum(ProductStatus, name="product_status_enum"),
@@ -102,10 +102,10 @@ class Product(Base):
     )
 
     # Merchandising flags
-    is_featured    = Column(Boolean, default=False, index=True)
-    is_trending    = Column(Boolean, default=False, index=True)
-    is_best_seller = Column(Boolean, default=False, index=True)
-    is_new_arrival = Column(Boolean, default=False, index=True)
+    is_featured = Column(Boolean, default=False, nullable=False, index=True)
+    is_trending = Column(Boolean, default=False, nullable=False, index=True)
+    is_best_seller = Column(Boolean, default=False, nullable=False, index=True)
+    is_new_arrival = Column(Boolean, default=False, nullable=False, index=True)
 
     # Images — thumbnail kept for backward compat
     thumbnail        = Column(String(500), nullable=True)
@@ -124,8 +124,8 @@ class Product(Base):
     sales_count   = Column(Integer, nullable=False, default=0)
 
     # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
 
     # Relationships

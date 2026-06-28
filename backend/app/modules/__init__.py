@@ -1,5 +1,6 @@
 # Import all models so SQLAlchemy registers every table with Base.metadata.
 from app.modules.admins.models import Admin  # noqa: F401
+from app.modules.audit.models import AuditLog  # noqa: F401
 from app.modules.banners.models import Banner  # noqa: F401
 from app.modules.custom_products.models import CustomCategory, CustomProduct  # noqa: F401
 from app.modules.customers.models import Customer  # noqa: F401

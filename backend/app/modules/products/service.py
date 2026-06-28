@@ -5,6 +5,10 @@ import uuid
 from typing import Optional, List
 
 from fastapi import HTTPException, status
+from app.shared.exceptions import (
+    NotFoundError, ConflictError, BusinessRuleError,
+    ValidationError as DomainValidationError,
+)
 from sqlalchemy import or_, func as sqla_func, cast, Text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
@@ -197,20 +201,20 @@ _HEX_RE = re.compile(r"^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$")
 
 def _validate_variant_input(variant_in: VariantCreate) -> None:
     if variant_in.original_price <= 0:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "original_price must be greater than zero.")
+        raise DomainValidationError("original_price must be greater than zero.", field="original_price")
     if variant_in.selling_price <= 0:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "selling_price must be greater than zero.")
+        raise DomainValidationError("selling_price must be greater than zero.", field="selling_price")
     if variant_in.selling_price > variant_in.original_price:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+        raise DomainValidationError(
             f"selling_price ({variant_in.selling_price}) cannot exceed original_price ({variant_in.original_price}).",
+            field="selling_price",
         )
     if variant_in.stock_quantity < 0:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "stock_quantity cannot be negative.")
+        raise DomainValidationError("stock_quantity cannot be negative.", field="stock_quantity")
     if variant_in.color_hex and not _HEX_RE.match(variant_in.color_hex):
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+        raise DomainValidationError(
             f"color_hex must be a valid CSS hex colour (e.g. #FF0000). Got: {variant_in.color_hex}",
+            field="color_hex",
         )
 
 
@@ -278,7 +282,7 @@ def get_categories(db: Session, status_filter: Optional[str] = None) -> List[Cat
 def get_category(db: Session, category_id: int) -> Category:
     cat = db.get(Category, category_id)
     if not cat:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Category {category_id} not found.")
+        raise NotFoundError(f"Category {category_id} not found.", code="CATEGORY_NOT_FOUND")
     return cat
 
 
@@ -288,16 +292,16 @@ def create_category(db: Session, data: CategoryCreate) -> CategoryResponse:
         db.query(sqla_func.count(Category.id)).scalar() or 0
     )
     if existing_count >= MAX_PRODUCT_CATEGORIES:
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
+        raise BusinessRuleError(
             f"Maximum of {MAX_PRODUCT_CATEGORIES} product categories allowed. "
             "Delete an existing category before creating a new one.",
+            code="CATEGORY_LIMIT_EXCEEDED",
         )
     norm_name = normalize_category_name(data.name)
     if norm_name:
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            f"Category creation is disabled for Main Products. '{norm_name}' already exists."
+        raise BusinessRuleError(
+            f"Category creation is disabled for Main Products. '{norm_name}' already exists.",
+            code="CATEGORY_RESERVED",
         )
     slug = _unique_slug(db, Category, _slugify(data.name))
     cat = Category(
@@ -326,9 +330,9 @@ def update_category(db: Session, category_id: int, data: CategoryUpdate) -> Cate
     if cat.name in APPROVED_SET:
         # Only the name field is protected — status, description, sort_order can change
         if "name" in patch and patch["name"] != cat.name:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                "Category renaming is disabled for Main Product categories."
+            raise BusinessRuleError(
+                "Category renaming is disabled for Main Product categories.",
+                code="CATEGORY_RENAME_BLOCKED",
             )
         # Remove name from patch to be safe; allow all other fields
         patch.pop("name", None)
@@ -359,9 +363,9 @@ def delete_category(db: Session, category_id: int) -> None:
     cat = get_category(db, category_id)
     APPROVED_SET = {"T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"}
     if cat.name in APPROVED_SET:
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            "Category deletion is disabled for Main Product categories."
+        raise BusinessRuleError(
+            "Category deletion is disabled for Main Product categories.",
+            code="CATEGORY_DELETE_BLOCKED",
         )
     db.delete(cat)
     db.commit()
@@ -412,16 +416,16 @@ def get_collections(
 def get_collection(db: Session, collection_id: int) -> Collection:
     col = db.get(Collection, collection_id)
     if not col:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Collection {collection_id} not found.")
+        raise NotFoundError(f"Collection {collection_id} not found.", code="COLLECTION_NOT_FOUND")
     return col
 
 
 def create_collection(db: Session, data: CollectionCreate) -> CollectionResponse:
     norm_name = normalize_collection_name(data.name)
     if norm_name:
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            f"Collection creation is disabled for Main Products. '{norm_name}' already exists."
+        raise BusinessRuleError(
+            f"Collection creation is disabled for Main Products. '{norm_name}' already exists.",
+            code="COLLECTION_RESERVED",
         )
 
     if data.category_id:
@@ -462,9 +466,9 @@ def update_collection(db: Session, collection_id: int, data: CollectionUpdate) -
     if col.name in APPROVED_COLLECTIONS:
         # Only the name field is protected — status and description can change
         if "name" in patch and patch["name"] != col.name:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                "Collection renaming is disabled for Main Product collections."
+            raise BusinessRuleError(
+                "Collection renaming is disabled for Main Product collections.",
+                code="COLLECTION_RENAME_BLOCKED",
             )
         # Remove name/slug from patch to be safe; allow all other fields
         patch.pop("name", None)
@@ -507,9 +511,9 @@ def delete_collection(db: Session, collection_id: int) -> None:
     col = get_collection(db, collection_id)
     APPROVED_COLLECTIONS = {"Men", "Women", "Kids"}
     if col.name in APPROVED_COLLECTIONS:
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            "Collection deletion is disabled for Main Product collections."
+        raise BusinessRuleError(
+            "Collection deletion is disabled for Main Product collections.",
+            code="COLLECTION_DELETE_BLOCKED",
         )
     db.delete(col)
     db.commit()
@@ -768,7 +772,7 @@ def get_product(db: Session, product_id: int) -> Product:
         .first()
     )
     if not product:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Product {product_id} not found.")
+        raise NotFoundError(f"Product {product_id} not found.", code="PRODUCT_NOT_FOUND")
     return product
 
 
@@ -1020,7 +1024,7 @@ def delete_variant(db: Session, product_id: int, variant_id: int) -> ProductResp
         ProductVariant.product_id == product_id,
     ).first()
     if not variant:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Variant {variant_id} not found on product {product_id}.")
+        raise NotFoundError(f"Variant {variant_id} not found on product {product_id}.", code="VARIANT_NOT_FOUND")
     db.delete(variant)
     db.commit()
     return get_product_response(db, product_id)
@@ -1034,7 +1038,7 @@ def update_variant(db: Session, product_id: int, variant_id: int, data) -> Produ
         ProductVariant.product_id == product_id,
     ).first()
     if not variant:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Variant {variant_id} not found on product {product_id}.")
+        raise NotFoundError(f"Variant {variant_id} not found on product {product_id}.", code="VARIANT_NOT_FOUND")
 
     patch = data.model_dump(exclude_unset=True)
 
@@ -1198,22 +1202,18 @@ def get_products_public(
     total_pages = math.ceil(total / per_page) if total else 1
 
     if sort_by in ("price_asc", "price_desc"):
-        price_sub = (
-            db.query(
-                ProductVariant.product_id,
-                sqla_func.min(ProductVariant.selling_price).label("min_price")
-            )
-            .group_by(ProductVariant.product_id)
-            .subquery()
+        min_price_sub = (
+            db.query(sqla_func.min(ProductVariant.selling_price))
+            .filter(ProductVariant.product_id == Product.id)
+            .correlate(Product)
+            .scalar_subquery()
         )
-        order_clause = price_sub.c.min_price.asc() if sort_by == "price_asc" else price_sub.c.min_price.desc()
-        query = db.query(Product).outerjoin(price_sub, Product.id == price_sub.c.product_id)
+        order_clause = min_price_sub.asc() if sort_by == "price_asc" else min_price_sub.desc()
     else:
         order_clause = Product.created_at.desc()
-        query = db.query(Product)
 
     products = (
-        query
+        db.query(Product)
         .options(selectinload(Product.variants))
         .filter(*base_filters)
         .order_by(order_clause)
@@ -1254,7 +1254,7 @@ def get_product_by_slug(db: Session, slug: str) -> ProductResponse:
         .first()
     )
     if not product:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Product '{slug}' not found.")
+        raise NotFoundError(f"Product '{slug}' not found.", code="PRODUCT_NOT_FOUND")
 
     # Increment view count via raw UPDATE, then expire the cached attribute
     # on the loaded object so the response reflects the new value.

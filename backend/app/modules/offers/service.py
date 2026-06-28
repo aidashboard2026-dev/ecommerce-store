@@ -12,8 +12,6 @@ def create_offer(
         title=offer.title or "",
         percentage=offer.percentage or "",
         description=offer.description,
-        item_align=offer.item_align,
-        text_align=offer.text_align,
         banner_image=offer.banner_image,
 
         status=offer.status,
@@ -89,4 +87,46 @@ def delete_offer(
         db.delete(offer)
         db.commit()
 
+    return offer
+
+def get_active_offers(db):
+    """
+    Return all published, non-expired offers.
+    Extracted from the router where it was a raw db.query() call.
+    """
+    from datetime import datetime, timezone
+    from sqlalchemy import or_
+    now = datetime.now(timezone.utc)
+    return (
+        db.query(Offer)
+        .filter(
+            Offer.status == "published",
+            or_(Offer.expires_at.is_(None), Offer.expires_at > now),
+        )
+        .all()
+    )
+
+
+def publish_offer(db, offer_id: int):
+    """
+    Set an offer's status to published and compute its expiry.
+    Extracted from the router where it was a raw db.query() + commit.
+    """
+    from datetime import datetime, timezone
+    offer = db.query(Offer).filter(Offer.id == offer_id).first()
+    if not offer:
+        return None
+
+    offer.status       = "published"
+    offer.published_at = datetime.now(timezone.utc)
+
+    if offer.start_date and offer.start_time and offer.end_date and offer.end_time:
+        start_dt = __import__("datetime").datetime.combine(offer.start_date, offer.start_time)
+        end_dt   = __import__("datetime").datetime.combine(offer.end_date,   offer.end_time)
+        duration = end_dt - start_dt
+        if duration.total_seconds() > 0:
+            offer.expires_at = offer.published_at + duration
+
+    db.commit()
+    db.refresh(offer)
     return offer

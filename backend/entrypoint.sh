@@ -2,12 +2,6 @@
 
 set -euo pipefail
 
-# ─────────────────────────────────────────────────────────────
-# PostgreSQL readiness check using psycopg2
-# Avoids requiring postgresql-client + pg_isready package
-# which consumes large memory during Docker build.
-# ─────────────────────────────────────────────────────────────
-
 POSTGRES_HOST="${POSTGRES_SERVER:-db}"
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 POSTGRES_USER="${POSTGRES_USER:-admin}"
@@ -16,7 +10,7 @@ POSTGRES_DB="${POSTGRES_DB:-admindb}"
 
 echo "[entrypoint] Waiting for PostgreSQL..."
 
-python <<EOF
+python <<PYEOF
 import time
 import psycopg2
 import os
@@ -50,21 +44,11 @@ for attempt in range(max_retries):
 
 print("[entrypoint] ERROR: PostgreSQL did not become ready.")
 sys.exit(1)
-EOF
-
-# ─────────────────────────────────────────────────────────────
-# Run migrations
-# ─────────────────────────────────────────────────────────────
+PYEOF
 
 echo "[entrypoint] Running Alembic migrations..."
-# Allow applying all heads when multiple head revisions exist (possible
-# during merge/feature branches). 'heads' applies all current heads.
 alembic upgrade heads
 echo "[entrypoint] Migrations complete."
-
-# ─────────────────────────────────────────────────────────────
-# Run database seed
-# ─────────────────────────────────────────────────────────────
 
 echo "[entrypoint] Running database seed..."
 
@@ -79,14 +63,13 @@ init_db()
 print('[entrypoint] Database seed complete.')
 "
 
-# ─────────────────────────────────────────────────────────────
-# Start FastAPI
-# ─────────────────────────────────────────────────────────────
+echo '[entrypoint] Starting Gunicorn with Uvicorn workers...'
 
-echo '[entrypoint] Starting Uvicorn...'
-
-exec uvicorn app.main:app \
-    --host 0.0.0.0 \
-    --port 8000 \
-    --workers 1
-
+exec gunicorn app.main:app \
+    --workers 4 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:8000 \
+    --timeout 120 \
+    --keep-alive 5 \
+    --access-logfile - \
+    --error-logfile -
