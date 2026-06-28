@@ -47,10 +47,11 @@ export default function StorefrontLayout() {
         token={token}
         customer={customer}
         handleLogout={handleLogout}
+        
       />
 
       {/* Main Page Layout Wrapper */}
-      <main className="flex-1 w-full max-w-[1400px] mt-5 p-2 relative">
+      <main className="flex-1 w-full mt-5 p-2 relative">
         <Outlet />
       </main>
 

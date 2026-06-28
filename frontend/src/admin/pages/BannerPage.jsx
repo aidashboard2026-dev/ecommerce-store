@@ -75,7 +75,7 @@ function BannerFormModal({ initial, onClose, onSaved, isDark }) {
     if (!file) return;
     const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     if (!allowed.includes(file.type)) { toast.error("⚠️ Only JPG, PNG, WebP, GIF allowed"); return; }
-    if (file.size > 10 * 1024 * 1024) { toast.error("⚠️ Max image size is 10 MB"); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("⚠️ Max image size is 5 MB"); return; }
     if (blobRef.current) URL.revokeObjectURL(blobRef.current);
     const url = URL.createObjectURL(file);
     blobRef.current = url;
