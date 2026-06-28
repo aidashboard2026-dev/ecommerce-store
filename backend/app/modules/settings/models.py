@@ -1,5 +1,6 @@
-from sqlalchemy import Boolean, Column, DateTime, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship, backref
 
 from app.core.database import Base
 
@@ -26,11 +27,14 @@ class AdminSecurity(Base):
     __tablename__ = "admin_security"
 
     id = Column(Integer, primary_key=True, index=True)
+    admin_id = Column(Integer, ForeignKey("admins.id", ondelete="CASCADE"), nullable=False, unique=True)
     username = Column(String(100), nullable=False)
     email = Column(String(255), nullable=False, unique=True, index=True)
     two_factor_enabled = Column(Boolean, nullable=False, default=False)
     email_verified = Column(Boolean, nullable=False, default=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    admin = relationship("Admin", backref=backref("security", uselist=False))
 
 
 class PaymentMethod(Base):

@@ -14,6 +14,7 @@ import {
   Smartphone,
   Eye,
   Menu,
+  ShoppingBag,
 } from "lucide-react";
 
 import { dashboardAPI } from "@/shared/services/api";
@@ -32,6 +33,7 @@ import { CustomersIcon } from "@/shared/components/img/icons";
 const activityIcons = {
   user_created: UserPlus,
   product_updated: Package,
+  order_placed: ShoppingBag,
   login: Activity,
   revenue: TrendingUp,
   alert: AlertTriangle,
@@ -40,6 +42,7 @@ const activityIcons = {
 const activityColors = {
   user_created: "text-brand-500 bg-brand-50 dark:bg-brand-950/40",
   product_updated: "text-violet-500 bg-violet-50 dark:bg-violet-950/40",
+  order_placed: "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/40",
   login: "text-emerald-500 bg-emerald-50 dark:bg-emerald-950/40",
   revenue: "text-amber-500 bg-amber-50 dark:bg-amber-950/40",
   alert: "text-red-500 bg-red-50 dark:bg-red-950/40",

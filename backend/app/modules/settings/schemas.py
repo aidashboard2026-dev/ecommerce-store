@@ -17,6 +17,16 @@ class StoreSettingsBase(BaseModel):
     timezone: str = Field(..., min_length=2, max_length=100)
     weight_unit: str = Field(..., min_length=1, max_length=20)
 
+    @field_validator("store_name", "country", "currency", "timezone", "weight_unit", mode="before")
+    @classmethod
+    def strip_and_validate_non_empty(cls, value: str) -> str:
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                raise ValueError("Value cannot be empty or whitespace-only.")
+            return stripped
+        return value
+
     @field_validator("support_phone")
     @classmethod
     def validate_phone(cls, value: Optional[str]) -> Optional[str]:
@@ -40,6 +50,18 @@ class StoreSettingsUpdate(BaseModel):
     timezone: Optional[str] = Field(default=None, min_length=2, max_length=100)
     weight_unit: Optional[str] = Field(default=None, min_length=1, max_length=20)
 
+    @field_validator("store_name", "country", "currency", "timezone", "weight_unit", mode="before")
+    @classmethod
+    def strip_and_validate_non_empty(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                raise ValueError("Value cannot be empty or whitespace-only.")
+            return stripped
+        return value
+
     @field_validator("support_phone")
     @classmethod
     def validate_phone(cls, value: Optional[str]) -> Optional[str]:
@@ -61,6 +83,20 @@ class AdminSecurityUpdate(BaseModel):
     email: Optional[EmailStr] = None
     two_factor_enabled: Optional[bool] = None
 
+    @field_validator("username", mode="before")
+    @classmethod
+    def validate_username(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                raise ValueError("Username cannot be empty or whitespace-only.")
+            if len(stripped) < 2:
+                raise ValueError("Username must be at least 2 characters.")
+            return stripped
+        return value
+
 
 class AdminSecurityResponse(BaseModel):
     id: int
@@ -78,6 +114,13 @@ class PasswordUpdate(BaseModel):
     current_password: str = Field(..., min_length=1)
     new_password: str = Field(..., min_length=8, max_length=128)
     confirm_password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator("current_password", "new_password", "confirm_password", mode="before")
+    @classmethod
+    def validate_passwords(cls, value: str) -> str:
+        if isinstance(value, str) and not value.strip():
+            raise ValueError("Password cannot be empty or whitespace-only.")
+        return value
 
     @model_validator(mode="after")
     def passwords_match(self) -> "PasswordUpdate":

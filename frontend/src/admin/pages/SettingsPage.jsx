@@ -2,22 +2,23 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   AlertTriangle,
-  BadgeCheck,
   Globe2,
   Upload,
   ImagePlus,
-  LockKeyhole,
   Mail,
-  MapPin,
-  ShieldX,
   Eye,
   EyeOff,
   Save,
   ShieldCheck,
   ShoppingBag,
+  BadgeCheck,
   UserRound,
+  LockKeyhole,
+  ShieldX,
+  CreditCard
 } from "lucide-react";
 import toast from "react-hot-toast";
+
 
 import { PageLoader } from "@/shared/components/common/Spinner";
 import NotificationRow from "@/admin/components/settings/NotificationRow";
@@ -50,21 +51,71 @@ const timezones = [
 const weightUnits = ["kg", "g", "lb", "oz"];
 
 function apiError(error, fallback) {
-  const detail = error.response?.data?.detail;
+  if (!navigator.onLine) {
+    return "You are offline. Please check your internet connection.";
+  }
+  if (error.code === "ECONNABORTED" || error.message?.toLowerCase().includes("timeout")) {
+    return "Request timed out. Please try again.";
+  }
+  if (!error.response) {
+    return "Network error. Please check your server connection.";
+  }
+
+  const status = error.response.status;
+  const data = error.response.data;
+
+  if (status === 401) {
+    return "Session expired. Please log in again.";
+  }
+  if (status === 403) {
+    return "Access denied. You do not have permission to perform this action.";
+  }
+  if (status === 404) {
+    return data?.detail || "Requested resource not found.";
+  }
+  if (status === 409) {
+    return data?.detail || "Conflict error occurred. Please refresh and try again.";
+  }
+  if (status === 422) {
+    if (Array.isArray(data?.detail)) {
+      return data.detail.map(err => err.msg).join(", ");
+    }
+    return data?.detail || "Validation error in submitted data.";
+  }
+  if (status === 500) {
+    return "Internal server error. Please contact support.";
+  }
+
+  const detail = data?.detail;
   if (Array.isArray(detail)) return detail[0]?.msg || fallback;
-  return detail || fallback;
+  if (typeof detail === "string") return detail;
+
+  return fallback || "An unexpected error occurred.";
+}
+
+function safeParseStorage(key, fallback = []) {
+  try {
+    const item = localStorage.getItem(key);
+    if (!item) return fallback;
+    return JSON.parse(item);
+  } catch (e) {
+    console.error(`Error parsing localStorage key "${key}":`, e);
+    return fallback;
+  }
 }
 
 const FormInput = React.forwardRef(
-  ({ label, error, endAdornment, ...props }, ref) => {
+  ({ label, error, endAdornment, id, ...props }, ref) => {
+    const inputId = id || React.useId();
     return (
-      <label className="block space-y-1.5">
+      <label htmlFor={inputId} className="block space-y-1.5">
         <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">
           {label}
         </span>
 
         <div className="relative">
           <input
+            id={inputId}
             ref={ref}
             className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 pr-10 text-sm text-zinc-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
             {...props}
@@ -90,56 +141,64 @@ const FormInput = React.forwardRef(
 FormInput.displayName = "FormInput";
 
 const FormTextarea = React.forwardRef(
-  ({ label, error, ...props }, ref) => (
-    <label className="block space-y-1.5">
-      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">
-        {label}
-      </span>
-
-      <textarea
-        ref={ref}
-        rows={4}
-        className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
-        {...props}
-      />
-
-      {error && (
-        <span className="block text-[11px] font-semibold text-red-600">
-          {error.message}
+  ({ label, error, id, ...props }, ref) => {
+    const inputId = id || React.useId();
+    return (
+      <label htmlFor={inputId} className="block space-y-1.5">
+        <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">
+          {label}
         </span>
-      )}
-    </label>
-  )
+
+        <textarea
+          id={inputId}
+          ref={ref}
+          rows={4}
+          className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+          {...props}
+        />
+
+        {error && (
+          <span className="block text-[11px] font-semibold text-red-600">
+            {error.message}
+          </span>
+        )}
+      </label>
+    );
+  }
 );
 
 FormTextarea.displayName = "FormTextarea";
 
 const SelectInput = React.forwardRef(
-  ({ label, error, options, ...props }, ref) => (
-    <label className="block space-y-1.5">
-      <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">
-        {label}
-      </span>
-
-      <select
-        ref={ref}
-        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
-        {...props}
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-
-      {error && (
-        <span className="block text-[11px] font-semibold text-red-600">
-          {error.message}
+  ({ label, error, options, id, ...props }, ref) => {
+    const inputId = id || React.useId();
+    return (
+      <label htmlFor={inputId} className="block space-y-1.5">
+        <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">
+          {label}
         </span>
-      )}
-    </label>
-  )
+
+        <select
+          id={inputId}
+          ref={ref}
+          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+          {...props}
+        >
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+
+        {error && (
+          <span className="block text-[11px] font-semibold text-red-600">
+            {error.message}
+          </span>
+        )}
+      </label>
+    );
+  }
 );
 
 SelectInput.displayName = "SelectInput";
@@ -172,6 +231,8 @@ function SaveButton({ loading, children }) {
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [retryTrigger, setRetryTrigger] = useState(0);
   const [settings, setSettings] = useState(null);
   const [security, setSecurity] = useState(null);
   const [payments, setPayments] = useState([]);
@@ -185,9 +246,30 @@ export default function SettingsPage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // const [showUserNameForm, setShowUserNameForm] = useState(false)
-  // const [showEmailForm, setShowEmailForm] = useState(false)
-  // const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const closeModal = () => {
+    setActiveModal(null);
+    passwordForm.reset({
+      current_password: "",
+      new_password: "",
+      confirm_password: "",
+    });
+    passwordForm.clearErrors();
+    setSaving((s) => ({ ...s, password: false }));
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+
+    usernameForm.reset({
+      username: security?.username || "",
+      current_password: "",
+    });
+    usernameForm.clearErrors();
+    emailForm.reset({
+      email: security?.email || "",
+      current_password: "",
+    });
+    emailForm.clearErrors();
+  };
 
   const profileForm = useForm({
     defaultValues: {
@@ -236,9 +318,12 @@ export default function SettingsPage() {
   const usernameRegister = usernameForm.register("username", {
     required: "Username is required",
     minLength: { value: 3, message: "Username must be at least 3 characters" },
+    maxLength: { value: 100, message: "Username cannot exceed 100 characters" },
+    validate: (val) => val.trim().length >= 3 || "Username cannot be empty or whitespace-only",
   });
   const emailRegister = emailForm.register("email", {
     required: "Email is required",
+    maxLength: { value: 255, message: "Email cannot exceed 255 characters" },
     pattern: {
       value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
       message: "Invalid email address",
@@ -258,6 +343,7 @@ export default function SettingsPage() {
 
     async function loadSettings() {
       try {
+        setError(false);
         const [settingsResponse, paymentsResponse, notificationsResponse] =
           await Promise.all([
             settingsService.getSettings(),
@@ -306,8 +392,9 @@ export default function SettingsPage() {
         securityForm.reset({
           two_factor_enabled: adminSecurity.two_factor_enabled || false,
         });
-      } catch (error) {
-        toast.error(apiError(error, "Failed to load settings"));
+      } catch (err) {
+        if (mounted) setError(true);
+        toast.error(apiError(err, "Failed to load settings"));
       } finally {
         if (mounted) setLoading(false);
       }
@@ -317,7 +404,7 @@ export default function SettingsPage() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [retryTrigger]);
 
   // Refs to focus first input in each modal
   const usernameFirstRef = useRef(null);
@@ -326,8 +413,14 @@ export default function SettingsPage() {
 
   // Prevent background scroll while modal open and focus first input
   useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === "Escape") {
+        closeModal();
+      }
+    }
     if (activeModal) {
       document.body.style.overflow = "hidden";
+      window.addEventListener("keydown", handleKeyDown);
     } else {
       document.body.style.overflow = "";
       setShowCurrentPassword(false);
@@ -348,6 +441,7 @@ export default function SettingsPage() {
     return () => {
       clearTimeout(t);
       document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, [activeModal]);
 
@@ -401,13 +495,8 @@ export default function SettingsPage() {
         current_password: data.current_password,
       });
       setSecurity(response.data);
-      // update username form and clear password
-      usernameForm.reset({
-        username: response.data.username || "",
-        current_password: "",
-      });
       toast.success("Username updated");
-      setActiveModal(null);
+      closeModal();
     } catch (error) {
       toast.error(apiError(error, "Failed to update username"));
     } finally {
@@ -423,12 +512,8 @@ export default function SettingsPage() {
         current_password: data.current_password,
       });
       setSecurity(response.data);
-      emailForm.reset({
-        email: response.data.email || "",
-        current_password: "",
-      });
       toast.success("Email updated");
-      setActiveModal(null);
+      closeModal();
     } catch (error) {
       toast.error(apiError(error, "Failed to update email"));
     } finally {
@@ -440,9 +525,8 @@ export default function SettingsPage() {
     setSaving((state) => ({ ...state, password: true }));
     try {
       await settingsService.updatePassword(data);
-      passwordForm.reset();
       toast.success("Password updated");
-      setActiveModal(null);
+      closeModal();
     } catch (error) {
       toast.error(apiError(error, "Failed to update password"));
     } finally {
@@ -477,16 +561,20 @@ export default function SettingsPage() {
   }
 
   function handleLogoUpload(event) {
+    if (saving.uploadLogo) return;
+
     const file = event.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
       toast.error("Upload an image file");
+      event.target.value = "";
       return;
     }
 
     if (file.size > 2 * 1024 * 1024) {
       toast.error("Logo must be under 2 MB");
+      event.target.value = "";
       return;
     }
 
@@ -501,8 +589,13 @@ export default function SettingsPage() {
         profileForm.setValue("logo", url, { shouldDirty: true });
         toast.success("Logo uploaded");
       })
-      .catch((err) => toast.error(apiError(err, "Logo upload failed")))
-      .finally(() => setSaving((s) => ({ ...s, uploadLogo: false })));
+      .catch((err) => {
+        toast.error(apiError(err, "Logo upload failed"));
+      })
+      .finally(() => {
+        event.target.value = "";
+        setSaving((s) => ({ ...s, uploadLogo: false }));
+      });
   }
 
   async function togglePayment(method, value) {
@@ -521,8 +614,7 @@ export default function SettingsPage() {
           item.id === method.id ? { ...item, ...response.data } : item,
         ),
       );
-      const existing =
-        JSON.parse(localStorage.getItem("paymentActivity")) || [];
+      const existing = safeParseStorage("paymentActivity", []);
 
       if (!value) {
         const updated = [
@@ -565,8 +657,7 @@ export default function SettingsPage() {
         notification.id,
         { [field]: value },
       );
-      const existing =
-        JSON.parse(localStorage.getItem("notificationActivity")) || [];
+      const existing = safeParseStorage("notificationActivity", []);
 
       const key = `${notification.id}-${field}`;
 
@@ -600,6 +691,32 @@ export default function SettingsPage() {
   }
 
   if (loading) return <PageLoader />;
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900 min-h-[400px]">
+        <AlertTriangle className="h-12 w-12 text-red-500 animate-pulse" />
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
+          Failed to load settings
+        </h3>
+        <p className="max-w-md text-sm text-zinc-500 dark:text-zinc-400">
+          We encountered an error while trying to fetch the store settings. Please verify your connection and try again.
+        </p>
+        <Button
+          type="button"
+          onClick={() => {
+            setLoading(true);
+            setError(false);
+            setRetryTrigger((prev) => prev + 1);
+          }}
+          variant="secondary"
+          className="mt-2 border border-zinc-300 dark:border-zinc-700"
+        >
+          Retry
+        </Button>
+      </div>
+    );
+  }
   async function handleGlobalSave() {
     // Save profile, regional and security in sequence if dirty
     if (profileForm.formState.isDirty)
@@ -622,7 +739,7 @@ export default function SettingsPage() {
       <PageHeader
         title="Settings"
         description={
-          <p className="mt-0.5 whitespace-nowrap text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
             Store profile, contact details, and preferences
           </p>
         }
@@ -680,14 +797,19 @@ export default function SettingsPage() {
                 </label>
 
                 <div className="flex items-center gap-2">
-                  <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white p-2 text-sm font-medium text-zinc-800 shadow-sm transition hover:bg-zinc-100 hover:border-gray-300 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900">
-                    <Upload size={14} />
-                    Upload Logo
+                  <label className={`inline-flex w-fit items-center gap-2 rounded-lg border border-gray-200 bg-white p-2 text-sm font-medium text-zinc-800 shadow-sm transition dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 ${saving.uploadLogo ? "opacity-60 cursor-not-allowed pointer-events-none" : "cursor-pointer hover:bg-zinc-100 hover:border-gray-300 dark:hover:bg-zinc-900"}`}>
+                    {saving.uploadLogo ? (
+                      <span className="h-3.5 w-3.5 rounded-full border-2 border-zinc-800 border-t-transparent animate-spin dark:border-zinc-100" />
+                    ) : (
+                      <Upload size={14} />
+                    )}
+                    {saving.uploadLogo ? "Uploading..." : "Upload Logo"}
                     <input
                       type="file"
                       accept="image/*"
                       className="sr-only"
                       onChange={handleLogoUpload}
+                      disabled={saving.uploadLogo}
                     />
                   </label>
 
@@ -713,7 +835,9 @@ export default function SettingsPage() {
                 error={profileForm.formState.errors.store_name}
                 {...profileForm.register("store_name", {
                   required: "Store name is required",
-                  minLength: { value: 2, message: "Store name is too short" },
+                  minLength: { value: 2, message: "Store name must be at least 2 characters" },
+                  maxLength: { value: 150, message: "Store name cannot exceed 150 characters" },
+                  validate: (val) => val.trim().length >= 2 || "Store name cannot be empty or whitespace-only",
                 })}
               />
               <FormInput
@@ -721,10 +845,12 @@ export default function SettingsPage() {
                 error={profileForm.formState.errors.store_url}
                 {...profileForm.register("store_url", {
                   required: "Store URL is required",
+                  maxLength: { value: 500, message: "Store URL cannot exceed 500 characters" },
                   pattern: {
-                    value: /^https?:\/\/.+/i,
-                    message: "Use a full URL with http or https",
+                    value: /^https?:\/\/[^\s/$.?#].[^\s]*$/i,
+                    message: "Enter a valid URL (e.g., https://example.com)",
                   },
+                  validate: (val) => val.trim().length > 0 || "Store URL cannot be whitespace-only",
                 })}
               />
               <FormInput
@@ -733,6 +859,7 @@ export default function SettingsPage() {
                 error={profileForm.formState.errors.support_email}
                 {...profileForm.register("support_email", {
                   required: "Support email is required",
+                  maxLength: { value: 255, message: "Support email cannot exceed 255 characters" },
                   pattern: {
                     value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
                     message: "Invalid email address",
@@ -742,7 +869,15 @@ export default function SettingsPage() {
               <FormInput
                 label="Support Phone"
                 error={profileForm.formState.errors.support_phone}
-                {...profileForm.register("support_phone")}
+                {...profileForm.register("support_phone", {
+                  maxLength: { value: 30, message: "Phone number cannot exceed 30 characters" },
+                  validate: (val) => {
+                    if (!val) return true;
+                    if (!val.trim()) return "Phone number cannot be whitespace-only";
+                    const cleaned = val.replace(/[\s\-\(\)]/g, "");
+                    return /^\+?\d+$/.test(cleaned) || "Phone must contain only digits, spaces, +, -, or ()";
+                  }
+                })}
               />
             </div>
 
@@ -780,6 +915,8 @@ export default function SettingsPage() {
                 error={regionalForm.formState.errors.country}
                 {...regionalForm.register("country", {
                   required: "Country is required",
+                  minLength: { value: 2, message: "Country name is too short" },
+                  maxLength: { value: 100, message: "Country name cannot exceed 100 characters" },
                 })}
               />
               <SelectInput
@@ -788,6 +925,8 @@ export default function SettingsPage() {
                 error={regionalForm.formState.errors.currency}
                 {...regionalForm.register("currency", {
                   required: "Currency is required",
+                  minLength: { value: 2, message: "Currency code is too short" },
+                  maxLength: { value: 10, message: "Currency code cannot exceed 10 characters" },
                 })}
               />
             </div>
@@ -798,6 +937,8 @@ export default function SettingsPage() {
                 error={regionalForm.formState.errors.timezone}
                 {...regionalForm.register("timezone", {
                   required: "Timezone is required",
+                  minLength: { value: 2, message: "Timezone is too short" },
+                  maxLength: { value: 100, message: "Timezone cannot exceed 100 characters" },
                 })}
               />
               <SelectInput
@@ -806,13 +947,13 @@ export default function SettingsPage() {
                 error={regionalForm.formState.errors.weight_unit}
                 {...regionalForm.register("weight_unit", {
                   required: "Weight unit is required",
+                  minLength: { value: 1, message: "Weight unit is too short" },
+                  maxLength: { value: 20, message: "Weight unit cannot exceed 20 characters" },
                 })}
               />
             </div>
 
-            {/* <div className="flex justify-end pt-1">
-              <SaveButton loading={saving.regional}>Save Regional</SaveButton>
-            </div> */}
+
           </form>
         </SettingsCard>
       </div>
@@ -916,11 +1057,11 @@ export default function SettingsPage() {
             </div>
             <div className="flex flex-wrap items-start gap-3 justify-between px-4 py-3 flex-row">
               <div className="flex-1">
-                <h2 className="text-sm whitespace-nowrap font-semibold text-zinc-950 dark:text-zinc-50">
+                <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-50">
                   Authenticator App
                 </h2>
 
-                <p className="text-xs whitespace-nowrap text-zinc-500 dark:text-zinc-400">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
                   Google Authenticator or Authy
                 </p>
               </div>
@@ -958,7 +1099,7 @@ export default function SettingsPage() {
         {activeModal && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-            onClick={() => setActiveModal(null)}
+            onClick={closeModal}
           >
             <div
               className="w-full max-w-md rounded-xl bg-white p-6 dark:bg-zinc-900"
@@ -976,7 +1117,7 @@ export default function SettingsPage() {
                   type="button"
                   aria-label="Close"
                   className="-mr-2 rounded p-1 text-zinc-600 hover:bg-zinc-100"
-                  onClick={() => setActiveModal(null)}
+                  onClick={closeModal}
                 >
                   ✕
                 </button>
@@ -1026,7 +1167,7 @@ export default function SettingsPage() {
                     <Button
                       type="button"
                       variant="secondary"
-                      onClick={() => setActiveModal(null)}
+                      onClick={closeModal}
                     >
                       Cancel
                     </Button>
@@ -1080,7 +1221,7 @@ export default function SettingsPage() {
                     <Button
                       type="button"
                       variant="secondary"
-                      onClick={() => setActiveModal(null)}
+                      onClick={closeModal}
                     >
                       Cancel
                     </Button>
@@ -1142,9 +1283,14 @@ export default function SettingsPage() {
                     {...passwordForm.register("new_password", {
                       required: "New password is required",
                       minLength: {
-                        value: 6,
-                        message: "Password must be at least 6 characters",
+                        value: 8,
+                        message: "Password must be at least 8 characters",
                       },
+                      maxLength: {
+                        value: 128,
+                        message: "Password cannot exceed 128 characters",
+                      },
+                      validate: (val) => val.trim().length >= 8 || "Password cannot be empty or whitespace-only",
                     })}
                   />
 
@@ -1168,9 +1314,18 @@ export default function SettingsPage() {
                     error={passwordForm.formState.errors.confirm_password}
                     {...passwordForm.register("confirm_password", {
                       required: "Confirm password is required",
-                      validate: (value) =>
-                        value === passwordForm.watch("new_password") ||
-                        "Passwords do not match",
+                      maxLength: {
+                        value: 128,
+                        message: "Confirm password cannot exceed 128 characters",
+                      },
+                      validate: {
+                        matches: (value) =>
+                          value === passwordForm.watch("new_password") ||
+                          "Passwords do not match",
+                        nonEmpty: (value) =>
+                          value.trim().length > 0 ||
+                          "Confirm password cannot be empty or whitespace-only",
+                      }
                     })}
                   />
 
@@ -1178,7 +1333,7 @@ export default function SettingsPage() {
                     <Button
                       type="button"
                       variant="secondary"
-                      onClick={() => setActiveModal(null)}
+                      onClick={closeModal}
                     >
                       Cancel
                     </Button>

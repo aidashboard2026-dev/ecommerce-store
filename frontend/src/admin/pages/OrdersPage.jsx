@@ -16,6 +16,7 @@ import {
   updateOrderStatus,
   updateOrder,
 } from "@/admin/services/order_Service";
+import { useDebounce } from "@/shared/utils/productUtils";
 
 export default function OrdersPage() {
   const emptyOrderForm = {
@@ -33,14 +34,20 @@ export default function OrdersPage() {
   const [loading, setLoading]       = useState(true);
   const [orderDrafts, setOrderDrafts] = useState({});
 
-  useEffect(() => {
-    loadOrders(currentPage);
-  }, [currentPage]);
+  const debouncedSearch = useDebounce(search, 400);
 
-  const loadOrders = async (page = 1) => {
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    loadOrders(currentPage, debouncedSearch);
+  }, [currentPage, debouncedSearch]);
+
+  const loadOrders = async (page = 1, searchText = "") => {
     try {
       setLoading(true);
-      const result = await getOrders(page, PAGE_SIZE);
+      const result = await getOrders(page, PAGE_SIZE, { search: searchText });
       setOrders(result.orders);
       setTotalOrders(result.total);
     } catch (err) {

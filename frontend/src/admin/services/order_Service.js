@@ -9,8 +9,6 @@ import api from "@/shared/services/api";
  * @returns {{ orders: Order[], total: number, page: number, page_size: number }}
  */
 export const getOrders = async (page = 1, pageSize = 20, filters = {}) => {
-  const skip = (page - 1) * pageSize;
-
   const cleanFilters = {};
   Object.entries(filters).forEach(([k, v]) => {
     if (v !== "" && v !== null && v !== undefined) {
@@ -20,8 +18,8 @@ export const getOrders = async (page = 1, pageSize = 20, filters = {}) => {
 
   const response = await api.get("/orders/", {
     params: {
-      skip,
-      limit: pageSize,
+      page,
+      per_page: pageSize,
       ...cleanFilters,
     },
   });

@@ -203,11 +203,10 @@ async def edit_offer(
         if value is not None:
             update_fields[field] = value
 
+    old_image: Optional[str] = None
     if banner_image and banner_image.filename:
         old_image = offer.banner_image
         update_fields["banner_image"] = _upload_offer_image(banner_image)
-        if old_image:
-            supabase_storage.delete_banner_image(old_image)
 
     effective_status     = status_field    if status_field is not None else offer.status
     effective_start_date = start_date      if start_date   is not None else offer.start_date
@@ -238,9 +237,6 @@ async def edit_offer(
         if not result:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found.")
 
-        if old_image:
-            supabase_storage.delete_banner_image(old_image)
-
         audit.updated(
             db=db, admin=current_admin,
             resource_type="offer",
@@ -250,6 +246,12 @@ async def edit_offer(
             request=request,
         )
         db.commit()
+
+        if old_image:
+            try:
+                supabase_storage.delete_banner_image(old_image)
+            except Exception:
+                pass
     except Exception as e:
         db.rollback()
         if "banner_image" in update_fields:
