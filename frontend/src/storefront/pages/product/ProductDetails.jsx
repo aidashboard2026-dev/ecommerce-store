@@ -6,7 +6,7 @@ import { Heart, ShoppingBag, Zap, ChevronLeft, ChevronRight, Star, Truck, Shield
 import clsx from 'clsx'
 import { useProductBySlug, useProductsInfinite } from '@/storefront/hooks/product/useProducts'
 import { getImageUrl, formatPrice } from '@/shared/utils/productUtils'
-import { addToCart } from '@/storefront/store/cartSlice'
+import { addToCart, openCartDrawer } from '@/storefront/store/cartSlice'
 import { toggleWishlist, selectIsWishlisted } from '@/storefront/store/wishlistSlice'
 import ProductGrid from '@/storefront/components/product/components/ProductGrid'
 
@@ -136,6 +136,7 @@ export default function ProductDetailsPage() {
       return
     }
     dispatch(addToCart(buildCartItem()))
+    dispatch(openCartDrawer())
     toast.success('Added to cart')
   }
 

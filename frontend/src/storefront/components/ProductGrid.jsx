@@ -41,16 +41,18 @@ export default function ProductGrid({
 
   return (
     <div className="">
-      <div className="grid grid-cols-2 sm:flex sm:flex-row sm:flex-wrap lg:grid-cols-4 gap-4 justify-evenly">
+      <div
+        className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 justify-items-center"
+      >
         {products.slice(0, 8).map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
 
-        {Array.from({
+        {/* {Array.from({
           length: Math.max(0, 8 - Math.min(products.length, 8)),
         }).map((_, i) => (
           <ProductSkeleton key={`empty-${i}`} />
-        ))}
+        ))} */}
       </div>
     </div>
   );
