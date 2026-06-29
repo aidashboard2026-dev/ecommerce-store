@@ -738,11 +738,9 @@ export default function SettingsPage() {
       {/* ── Header ── */}
       <PageHeader
         title="Settings"
-        description={
-          <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
-            Store profile, contact details, and preferences
-          </p>
-        }
+        description="Store profile, contact details, and preferences"
+
+    
         actions={
           <Button
             type="button"

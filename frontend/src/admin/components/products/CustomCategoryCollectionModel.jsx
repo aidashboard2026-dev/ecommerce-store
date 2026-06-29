@@ -195,12 +195,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
     staleTime: 30_000,
   })
 
-  const { data: collections = [], isLoading: colLoading } = useQuery({
-    queryKey: ['collections', 'admin', 'all'],
-    queryFn: () => customCollectionsAPI.list().then(r => r.data),
-    enabled: isOpen,
-    staleTime: 30_000,
-  })
+ 
 
   // Only invalidate categories + collections mid-session.
   // Products are refreshed once on close (below) to avoid freezing the

@@ -26,6 +26,15 @@ export default function LoginPage() {
         password,
       })
     )
+
+    console.log("RESULT =", result)
+
+    
+
+    console.log("BEFORE REDIRECT")
+
+
+    console.log("AFTER REDIRECT")
   }
 
   return (

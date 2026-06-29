@@ -86,13 +86,27 @@ const authSlice = createSlice({
   extraReducers: (builder) => {
     builder
       // ── Login ──────────────────────────────────────────────────────────────
-      .addCase(loginThunk.fulfilled, (state, action) => {
-        state.loading = false
-        state.token = action.payload.access_token
-        state.admin = action.payload.admin
+      .addCase(loginThunk.fulfilled,(state,action)=>{
 
-        localStorage.setItem('token', action.payload.access_token)
-        localStorage.setItem('admin', JSON.stringify(action.payload.admin))
+        console.log(action.payload)
+
+        state.loading=false
+        state.error=null
+        state.initialized=true
+
+        state.token=action.payload.access_token
+        state.admin=action.payload.admin
+
+        localStorage.setItem(
+            "token",
+            action.payload.access_token
+        )
+
+        localStorage.setItem(
+            "admin",
+            JSON.stringify(action.payload.admin)
+        )
+
       })
       .addCase(loginThunk.rejected,  (state, action) => { state.loading = false; state.error = action.payload })
 

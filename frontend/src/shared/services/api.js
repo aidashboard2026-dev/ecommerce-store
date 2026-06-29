@@ -118,10 +118,6 @@ export const customCategoriesAPI = {
         api.get("/custom-products/categories"),
 }
 
-export const customCollectionsAPI = {
-    list: (params) =>
-        api.get("/custom-products/collections", { params }),
-}
 
 // ─── Products ─────────────────────────────────────────────────────────────────
 

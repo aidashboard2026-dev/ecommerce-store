@@ -95,19 +95,19 @@ def create_custom_category_endpoint(
     return result
 
 
-@router.patch("/admin/categories/{category_id}", response_model=CustomCategoryResponse)
+@router.patch("/admin/categories/{custom_category_id}", response_model=CustomCategoryResponse)
 def update_custom_category_endpoint(
-    category_id:   int,
+   custom_category_id:   int,
     data:          CustomCategoryUpdate,
     request:       Request,
     db:            Session = Depends(get_db),
     current_admin: Admin   = Depends(get_current_admin),
 ):
-    result = update_custom_category(db, category_id, data)
+    result = update_custom_category(db, custom_category_id, data)
     audit.updated(
         db=db, admin=current_admin,
         resource_type="custom_category",
-        resource_id=category_id,
+        resource_id=custom_category_id,
         resource_label=result.name,
         after=data.model_dump(exclude_unset=True),
         request=request,
@@ -116,20 +116,20 @@ def update_custom_category_endpoint(
     return result
 
 
-@router.delete("/admin/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/admin/categories/{custom_category_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_custom_category_endpoint(
-    category_id:   int,
+    custom_category_id:   int,
     request:       Request,
     db:            Session = Depends(get_db),
     current_admin: Admin   = Depends(get_current_admin),
 ):
-    cat      = get_custom_category(db, category_id)
-    cat_name = cat.name if hasattr(cat, "name") else str(category_id)
-    delete_custom_category(db, category_id)
+    cat      = get_custom_category(db, custom_category_id)
+    cat_name = cat.name if hasattr(cat, "name") else str(custom_category_id)
+    delete_custom_category(db, custom_category_id)
     audit.deleted(
         db=db, admin=current_admin,
         resource_type="custom_category",
-        resource_id=category_id,
+        resource_id=custom_category_id,
         resource_label=cat_name,
         request=request,
     )
@@ -422,6 +422,21 @@ def list_public_custom_products(
         db=db, page=page, per_page=per_page,
         search=search, custom_category_id=custom_category_id,
     )
+
+@router.get("/collections", response_model=list[str])
+def list_custom_collections(
+    db: Session = Depends(get_db),
+):
+    from app.modules.custom_products.models import CustomCategory
+
+    rows = (
+        db.query(CustomCategory.name)
+        .filter(CustomCategory.status == "active")
+        .order_by(CustomCategory.sort_order)
+        .all()
+    )
+
+    return [r[0] for r in rows]
 
 
 @router.get("/{product_id}", response_model=CustomProductResponse)

@@ -17,7 +17,7 @@ import clsx from 'clsx'
 import {
   customProductsAPI as customProductsApi,
   customCategoriesAPI,
-  customCollectionsAPI
+  // customCollectionsAPI
 } from '@/shared/services/api'
 import { formatPrice, getImageUrl, useDebounce } from '@/shared/utils/productUtils'
 import CustomProductForm from '@/admin/components/products/CustomProductForm'
@@ -318,7 +318,7 @@ export default function ProductsPage() {
   const [search, setSearch]             = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [categoryId, setCategoryId]     = useState('')
-  const [collectionId, setCollectionId] = useState('')
+  // const [collectionId, setCollectionId] = useState('')
   const [stockStatus, setStockStatus]   = useState('')
   const [flagFilters, setFlagFilters]   = useState({})
   const [page, setPage]                 = useState(1)
@@ -334,16 +334,24 @@ export default function ProductsPage() {
   const [quickEditModal, setQuickEditModal] = useState({ open: false, product: null })
 
   // Reset page on any filter change
-  React.useEffect(() => { setPage(1); setSelectedIds(new Set()) },
-    [debouncedSearch, statusFilter, categoryId, collectionId, stockStatus, JSON.stringify(flagFilters)])
+  React.useEffect(() => {
+    setPage(1)
+    setSelectedIds(new Set())
+  }, [
+    debouncedSearch,
+    statusFilter,
+    categoryId,
+    stockStatus,
+    JSON.stringify(flagFilters),
+  ])
 
   // ── Data queries ─────────────────────────────────────────────────────────────
 
   const queryParams = {
     search: debouncedSearch,
     status_filter: statusFilter,
-    category_id: categoryId || undefined,
-    collection_id: collectionId || undefined,
+    custom_category_id: categoryId || undefined,
+    // collection_id: collectionId || undefined,
     stock_status: stockStatus || undefined,
     is_featured: flagFilters.is_featured || undefined,
     is_trending: flagFilters.is_trending || undefined,
@@ -362,16 +370,12 @@ export default function ProductsPage() {
   })
 
   const { data: categories = [] } = useQuery({
-    queryKey: ['categories', 'admin'],
+    queryKey: ['custom-categories', 'admin'],
     queryFn:  () => customCategoriesAPI.list().then(r => r.data),
     staleTime: 5 * 60_000,
   })
 
-  const { data: collections = [] } = useQuery({
-    queryKey: ['collections', 'admin', categoryId],
-    queryFn:  () => customCollectionsAPI.list(categoryId ? { category_id: categoryId } : {}).then(r => r.data),
-    staleTime: 5 * 60_000,
-  })
+ 
 
   // ── Mutations ────────────────────────────────────────────────────────────────
 
@@ -450,7 +454,13 @@ export default function ProductsPage() {
     bulkMutation.mutate({ product_ids: [...selectedIds], action, ...extra })
   }
 
-  const hasFilters = !!(statusFilter || categoryId || collectionId || stockStatus || Object.keys(flagFilters).some(k => flagFilters[k]))
+  const hasFilters =
+  !!(
+  statusFilter ||
+  categoryId ||
+  stockStatus ||
+  Object.keys(flagFilters).some(k => flagFilters[k])
+  )
 
   const emptyState = useMemo(() => (
     <div className="py-20 text-center">
@@ -515,7 +525,7 @@ export default function ProductsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             onClear={() => setSearch('')}
-            placeholder="Search products, SKU, category, collection…"
+            placeholder="Search products, SKU, category…"
             className="max-w-md w-full"
           />
           <div className="flex gap-1 self-start sm:self-auto overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
@@ -537,22 +547,21 @@ export default function ProductsPage() {
         <div className="flex flex-wrap gap-2 items-center">
 
           {/* Category filter */}
-          {categories.length > 0 && (
-            <select value={categoryId} onChange={e => { setCategoryId(e.target.value); setCollectionId('') }}
-              className="input-field py-1.5 text-xs max-w-[160px]">
-              <option value="">All Categories</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          )}
+          <select
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="input-field py-1.5 text-xs max-w-[180px]"
+          >
+            <option value="">All Categories</option>
 
-          {/* Collection filter (scoped to selected category) */}
-          {collections.length > 0 && (
-            <select value={collectionId} onChange={e => setCollectionId(e.target.value)}
-              className="input-field py-1.5 text-xs max-w-[160px]">
-              <option value="">All Collections</option>
-              {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          )}
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+
+        
 
           {/* Stock status filter pills */}
           {STOCK_OPTIONS.map(opt => (
@@ -579,8 +588,10 @@ export default function ProductsPage() {
           {/* Clear all filters */}
           {hasFilters && (
             <button onClick={() => {
-              setStatusFilter(''); setCategoryId(''); setCollectionId('')
-              setStockStatus(''); setFlagFilters({})
+              setStatusFilter('')
+              setCategoryId('')
+              setStockStatus('')
+              setFlagFilters({})
             }} className="text-xs text-muted hover:text-app underline flex items-center gap-1">
               <X size={10} /> Clear filters
             </button>
@@ -589,11 +600,11 @@ export default function ProductsPage() {
 
         {/* Row 3: Bulk actions bar (only visible when rows are selected) */}
         <BulkActionsBar
-          selectedIds={selectedIds}
-          onAction={handleBulkAction}
-          categories={categories}
-          collections={collections}
-          onClear={() => setSelectedIds(new Set())}
+            selectedIds={selectedIds}
+            onAction={handleBulkAction}
+            categories={categories}
+            collections={[]}
+            onClear={() => setSelectedIds(new Set())}
         />
       </div>
 
@@ -721,7 +732,7 @@ export default function ProductsPage() {
                     </TableCell>
                     <TableCell>
                       <span className="text-[10px] text-muted">
-                        {product.category_name || '—'}
+                        {product.custom_category_name || '—'}
                       </span>
                     </TableCell>
                     <TableCell>

@@ -102,6 +102,16 @@ def login(
         samesite="lax",     # CSRF: blocks cross-site POSTs, allows same-site nav
         path="/",
     )
+    print("EMAIL =", login_data.email)
+    print("PASSWORD =", login_data.password)
+
+    # result = login_admin(
+    #     db,
+    #     login_data.email,
+    #     login_data.password
+    # )
+
+    print("LOGIN RESULT =", result)
     return result
 
 
