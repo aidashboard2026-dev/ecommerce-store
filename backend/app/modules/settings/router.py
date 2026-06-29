@@ -541,3 +541,22 @@ def toggle_two_factor(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred."
         )
+
+
+@router.get("/business-limits")
+def read_business_limits():
+    """Retrieve read-only business limits defined in app/core/constants.py."""
+    from app.core import constants
+    return {
+        "max_categories": constants.MAX_CATEGORIES,
+        "max_collections": constants.MAX_COLLECTIONS,
+        "max_sub_collections": constants.MAX_SUB_COLLECTIONS,
+        "max_banners": constants.MAX_BANNERS,
+        "max_offers": constants.MAX_OFFERS,
+        "max_product_images": constants.MAX_PRODUCT_IMAGES,
+        "max_product_variants": constants.MAX_PRODUCT_VARIANTS,
+        "max_sizes": constants.MAX_SIZES,
+        "max_colors": constants.MAX_COLORS,
+        "max_image_size": constants.MAX_IMAGE_SIZE,
+    }
+

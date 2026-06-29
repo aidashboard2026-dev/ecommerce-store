@@ -141,6 +141,7 @@ class CollectionResponse(CollectionBase):
     category_name: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
+    sub_collections: List[str] = []
 
     class Config:
         from_attributes = True

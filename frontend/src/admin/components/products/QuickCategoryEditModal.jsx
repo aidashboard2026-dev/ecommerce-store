@@ -136,9 +136,19 @@ export default function QuickCategoryEditModal({ isOpen, onClose, product }) {
 
         <div className="space-y-1.5">
           <label className="text-[11px] font-medium text-muted">Sub-Collection</label>
-          <input type="text" value={subCollection} onChange={e => setSubCollection(e.target.value)}
+          <input
+            list="quick-sub-collections-list"
+            type="text"
+            value={subCollection}
+            onChange={e => setSubCollection(e.target.value)}
             className="w-full text-xs bg-app border border-app rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-            placeholder="e.g. Essentials, Casual" />
+            placeholder="e.g. Essentials, Casual"
+          />
+          <datalist id="quick-sub-collections-list">
+            {(filteredCollections.find(c => String(c.id) === String(collectionId))?.sub_collections || []).map(sub => (
+              <option key={sub} value={sub} />
+            ))}
+          </datalist>
         </div>
 
         <div className="flex gap-3 pt-2">

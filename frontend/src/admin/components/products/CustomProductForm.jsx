@@ -9,6 +9,8 @@ import { productsAPI as productsApi, categoriesAPI, collectionsAPI } from '@/sha
 import {
   formatPrice, getImageUrl, revokeObjectURLs, genLocalId, isDuplicateFile,
 } from '@/shared/utils/productUtils'
+import useBusinessLimits from '@/shared/hooks/useBusinessLimits'
+
 import Select from '@/shared/components/ui/Select'
 import Badge from '@/shared/components/ui/Badge'
 import Button from '@/shared/components/ui/Button'
@@ -128,7 +130,9 @@ function SaveProgressOverlay({ steps, onClose }) {
 
 export default function CustomProductForm({ product, onClose, onOpenVariant, onOpenImage }) {
   const qc     = useQueryClient()
+  const { limits, isLoading: limitsLoading, error: limitsError, refetch: refetchLimits } = useBusinessLimits()
   const isEdit = !!product
+
 
   // ─── Blank form ref ──────────────────────────────────────────────────────────
   const blankForm = useRef({
@@ -528,16 +532,17 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
   // ─── Local image handlers (new product only) ──────────────────────────────────
 
   const pickLocalImage = useCallback((f) => {
-    if (!f) return
+    if (!f || !limits) return
     if (!ALLOWED_TYPES.includes(f.type))  { toast.error('Only JPG, PNG, WebP allowed'); return }
-    if (f.size > MAX_FILE_SIZE)           { toast.error('File must be under 5 MB');      return }
+    if (f.size > limits.max_image_size)   { toast.error(`File must be under ${limits.max_image_size / (1024 * 1024)} MB`); return }
     setLocalImages(prev => {
-      if (prev.length >= MAX_IMAGES)     { toast.error(`Maximum ${MAX_IMAGES} images`); return prev }
-      if (isDuplicateFile(f, prev))      { toast.error('This image is already added');  return prev }
+      if (prev.length >= limits.max_product_images) { toast.error(`Maximum ${limits.max_product_images} images`); return prev }
+      if (isDuplicateFile(f, prev))                 { toast.error('This image is already added');  return prev }
       return [...prev, { id: genLocalId(), file: f, previewUrl: URL.createObjectURL(f) }]
     })
     if (localFileRef.current) localFileRef.current.value = ''
-  }, [])
+  }, [limits])
+
 
   const removeLocalImage = useCallback((id) => {
     setLocalImages(prev => {
@@ -584,6 +589,22 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
               <X size={16} />
             </Button>
           </div>
+
+          {limitsError && (
+            <div className="mx-6 mt-4 flex items-center justify-between bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg p-3 text-xs">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={16} />
+                <span>Unable to load store configuration. Please try again.</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => refetchLimits()}
+                className="px-3 py-1 rounded bg-red-500 text-white font-bold text-[11px]"
+              >
+                Retry
+              </button>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-8 p-4 sm:p-6">
 
@@ -641,8 +662,8 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
                       ))}
                     </div>
                   )}
-                  <Button type="button" onClick={() => localFileRef.current?.click()} variant="secondary" icon={Plus} className="w-full">
-                    {localImages.length > 0 ? 'Add More' : 'Add Image'}
+                  <Button type="button" onClick={() => localFileRef.current?.click()} variant="secondary" icon={Plus} className="w-full" disabled={limitsLoading || !!limitsError || (limits && localImages.length >= limits.max_product_images)}>
+                    {limitsLoading ? 'Loading limits...' : (localImages.length > 0 ? 'Add More' : 'Add Image')}
                   </Button>
                   {localImages.length > 0 && (
                     <Button type="button" onClick={() => removeLocalImage(localImages[0].id)}

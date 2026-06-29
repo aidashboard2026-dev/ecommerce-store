@@ -9,6 +9,8 @@ import { productsAPI as productsApi, categoriesAPI, collectionsAPI } from '@/sha
 import {
   formatPrice, getImageUrl, revokeObjectURLs, genLocalId, isDuplicateFile,
 } from '@/shared/utils/productUtils'
+import useBusinessLimits from '@/shared/hooks/useBusinessLimits'
+
 import Select from '@/shared/components/ui/Select'
 import Badge from '@/shared/components/ui/Badge'
 import Button from '@/shared/components/ui/Button'
@@ -124,10 +126,11 @@ function SaveProgressOverlay({ steps, onClose }) {
 
 // ─── Local Variant Form (new product only) ────────────────────────────────────
 
-function LocalVariantForm({ onAdd, existingVariants = [] }) {
+function LocalVariantForm({ onAdd, existingVariants = [], limits }) {
   const [form, setForm] = useState(BLANK_VARIANT_FORM)
   const [open, setOpen] = useState(false)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
 
   useEffect(() => {
     const orig = parseFloat(form.original_price)
@@ -144,6 +147,10 @@ function LocalVariantForm({ onAdd, existingVariants = [] }) {
   const priceErr = !isNaN(sellNum) && !isNaN(origNum) && sellNum > origNum && form.selling_price !== ''
 
   const handleAdd = () => {
+    if (!limits) {
+      toast.error('Store limits not loaded yet. Please wait.');
+      return;
+    }
     if (!form.original_price || !form.selling_price) { toast.error('Price fields required'); return }
     if (priceErr) { toast.error('Selling price cannot exceed original price'); return }
     const stockQty = parseInt(form.stock_quantity || 0, 10)
@@ -160,16 +167,16 @@ function LocalVariantForm({ onAdd, existingVariants = [] }) {
     const newSizeNormalized = form.size ? form.size.trim().toUpperCase() : ""
     const uniqueSizesNormalized = new Set(existingVariants.map(v => v.size ? v.size.trim().toUpperCase() : "").filter(Boolean))
 
-    if (existingVariants.length >= 30) {
-      toast.error("Maximum of 30 variants allowed for a product. Please delete an existing variant before adding another.")
+    if (existingVariants.length >= limits.max_product_variants) {
+      toast.error(`Maximum of ${limits.max_product_variants} variants allowed for a product. Please delete an existing variant before adding another.`)
       return
     }
-    if (newSizeNormalized && !uniqueSizesNormalized.has(newSizeNormalized) && uniqueSizesNormalized.size >= 5) {
-      toast.error("Maximum of 5 sizes allowed for a product. Please delete an existing size before adding another.")
+    if (newSizeNormalized && !uniqueSizesNormalized.has(newSizeNormalized) && uniqueSizesNormalized.size >= limits.max_sizes) {
+      toast.error(`Maximum of ${limits.max_sizes} sizes allowed for a product. Please delete an existing size before adding another.`)
       return
     }
-    if (newColorNormalized && !uniqueColorsNormalized.has(newColorNormalized) && uniqueColorsNormalized.size >= 6) {
-      toast.error("Maximum of 6 colors allowed for a product. Please delete an existing color before adding another.")
+    if (newColorNormalized && !uniqueColorsNormalized.has(newColorNormalized) && uniqueColorsNormalized.size >= limits.max_colors) {
+      toast.error(`Maximum of ${limits.max_colors} colors allowed for a product. Please delete an existing color before adding another.`)
       return
     }
     onAdd({
@@ -298,7 +305,9 @@ function getNormalizedCollectionName(name) {
 
 export default function InlineProductForm({ product, onClose, onOpenVariant, onOpenImage }) {
   const qc     = useQueryClient()
+  const { limits, isLoading: limitsLoading, error: limitsError, refetch: refetchLimits } = useBusinessLimits()
   const isEdit = !!product
+
 
   // ─── Blank form ref ──────────────────────────────────────────────────────────
   const blankForm = useRef({
@@ -610,16 +619,17 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
   // ─── Local image handlers (new product only) ──────────────────────────────────
 
   const pickLocalImage = useCallback((f) => {
-    if (!f) return
+    if (!f || !limits) return
     if (!ALLOWED_TYPES.includes(f.type))  { toast.error('Only JPG, PNG, WebP allowed'); return }
-    if (f.size > MAX_FILE_SIZE)           { toast.error('File must be under 5 MB');      return }
+    if (f.size > limits.max_image_size)   { toast.error(`File must be under ${limits.max_image_size / (1024 * 1024)} MB`); return }
     setLocalImages(prev => {
-      if (prev.length >= MAX_IMAGES)     { toast.error(`Maximum ${MAX_IMAGES} images`); return prev }
-      if (isDuplicateFile(f, prev))      { toast.error('This image is already added');  return prev }
+      if (prev.length >= limits.max_product_images) { toast.error(`Maximum ${limits.max_product_images} images`); return prev }
+      if (isDuplicateFile(f, prev))                 { toast.error('This image is already added');  return prev }
       return [...prev, { id: genLocalId(), file: f, previewUrl: URL.createObjectURL(f) }]
     })
     if (localFileRef.current) localFileRef.current.value = ''
-  }, [])
+  }, [limits])
+
 
   const removeLocalImage = useCallback((id) => {
     setLocalImages(prev => {
@@ -668,6 +678,22 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
               <X size={16} />
             </Button>
           </div>
+
+          {limitsError && (
+            <div className="mx-6 mt-4 flex items-center justify-between bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg p-3 text-xs">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={16} />
+                <span>Unable to load store configuration. Please try again.</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => refetchLimits()}
+                className="px-3 py-1 rounded bg-red-500 text-white font-bold text-[11px]"
+              >
+                Retry
+              </button>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-8 p-4 sm:p-6">
 
@@ -725,8 +751,8 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                       ))}
                     </div>
                   )}
-                  <Button type="button" onClick={() => localFileRef.current?.click()} variant="secondary" icon={Plus} className="w-full">
-                    {localImages.length > 0 ? 'Add More' : 'Add Image'}
+                  <Button type="button" onClick={() => localFileRef.current?.click()} variant="secondary" icon={Plus} className="w-full" disabled={limitsLoading || !!limitsError || (limits && localImages.length >= limits.max_product_images)}>
+                    {limitsLoading ? 'Loading limits...' : (localImages.length > 0 ? 'Add More' : 'Add Image')}
                   </Button>
                   {localImages.length > 0 && (
                     <Button type="button" onClick={() => removeLocalImage(localImages[0].id)}
@@ -787,10 +813,18 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
               {/* Sub-Collection */}
               <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
                 <label className="text-xs font-bold text-muted">Sub-Collection</label>
-                <input className="input-field py-2.5 text-xs"
+                <input
+                  list="sub-collections-list"
+                  className="input-field py-2.5 text-xs"
                   value={form.sub_collection}
                   onChange={e => set('sub_collection', e.target.value)}
-                  placeholder="e.g. Essentials, Casual" />
+                  placeholder="e.g. Essentials, Casual"
+                />
+                <datalist id="sub-collections-list">
+                  {(filteredCollections.find(c => String(c.id) === String(form.collection_id))?.sub_collections || []).map(sub => (
+                    <option key={sub} value={sub} />
+                  ))}
+                </datalist>
               </div>
 
               {/* Status + Tags */}
@@ -913,7 +947,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                 Add Variant
               </Button>
             ) : (
-              <LocalVariantForm onAdd={addLocalVariant} existingVariants={localVariants} />
+              <LocalVariantForm onAdd={addLocalVariant} existingVariants={localVariants} limits={limits} />
             )}
           </div>
 

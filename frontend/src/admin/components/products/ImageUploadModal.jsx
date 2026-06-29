@@ -17,6 +17,7 @@ import toast from 'react-hot-toast'
 import Modal from '@/shared/components/ui/Modal'
 import { productsAPI as productsApi } from '@/shared/services/api'
 import { getImageUrl } from '@/shared/utils/productUtils'
+import useBusinessLimits from '@/shared/hooks/useBusinessLimits'
 
 const MAX_FILE_SIZE    = 10 * 1024 * 1024
 const ALLOWED_TYPES    = ['image/jpeg', 'image/png', 'image/webp']
@@ -29,7 +30,7 @@ const IMAGE_TABS = [
   { key: 'front',       label: 'Front',        field: 'image_front',      description: 'Front view of the product.' },
   { key: 'back',        label: 'Back',         field: 'image_back',       description: 'Back view of the product.' },
   { key: 'size_chart',  label: 'Size Chart',   field: 'image_size_chart', description: 'Size guide image shown on the product detail page.' },
-  { key: 'gallery',     label: 'Gallery',      field: 'gallery_images',   description: 'Additional product images (max 8). Shown in image carousel.' },
+  { key: 'gallery',     label: 'Gallery',      field: 'gallery_images',   description: 'Additional product images. Shown in image carousel.' },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -109,7 +110,7 @@ function GalleryGrid({ images = [], onDelete, deletingIndex }) {
   return (
     <div>
       <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
-        Gallery ({images.length}/8)
+        Gallery ({images.length})
       </p>
       <div className="grid grid-cols-4 gap-2">
         {images.map((url, idx) => (
@@ -169,6 +170,7 @@ function DropZone({ preview, onFile, fileRef, label, disabled }) {
 export default function ImageUploadModal({ isOpen, onClose, product }) {
   const qc = useQueryClient()
   const fileRef = useRef(null)
+  const { limits, isLoading: limitsLoading, error: limitsError, refetch: refetchLimits } = useBusinessLimits()
 
   const [activeTab, setActiveTab] = useState('thumbnail')
   const [file, setFile]           = useState(null)
@@ -198,13 +200,23 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
 
   const pickFile = useCallback((f) => {
     if (!f) return
-    const err = validateFile(f)
-    if (err) { toast.error(err); return }
+    if (!limits) {
+      toast.error('Store limits not loaded yet. Please wait.')
+      return
+    }
+    if (!ALLOWED_TYPES.includes(f.type)) {
+      toast.error('Only JPG, PNG, WebP allowed.')
+      return
+    }
+    if (f.size > limits.max_image_size) {
+      toast.error(`File must be under ${limits.max_image_size / (1024 * 1024)} MB.`)
+      return
+    }
     clearPreview()
     setFile(f)
     setPreview(URL.createObjectURL(f))
     if (fileRef.current) fileRef.current.value = ''
-  }, [])
+  }, [limits])
 
   const clearSelection = () => {
     clearPreview()
@@ -270,16 +282,20 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
                        (product?.gallery_images || []).length;
 
   const willIncrease = activeTab === 'gallery' ? true : (currentTab?.field ? !product?.[currentTab.field] : false);
-  const isLimitReached = currentCount >= 7 && willIncrease;
+  const isLimitReached = limits ? currentCount >= limits.max_product_images && willIncrease : true;
 
   const handleUploadClick = () => {
     if (!file) return
+    if (!limits) {
+      toast.error('Store limits not loaded yet. Please wait.')
+      return
+    }
     if (isLimitReached) {
       toast.error(
         <div>
           <strong style={{ display: "block", marginBottom: "4px" }}>Maximum Limit Reached</strong>
           <div style={{ whiteSpace: "pre-line", fontSize: "12px", lineHeight: "1.4" }}>
-            You have reached the maximum allowed limit of 7 images for this product.{"\n"}Please delete an existing image before uploading another.
+            You have reached the maximum allowed limit of {limits.max_product_images} images for this product.{"\n"}Please delete an existing image before uploading another.
           </div>
         </div>
       );
@@ -295,6 +311,27 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Product Images" size="lg">
       <div className="space-y-4">
+        {limitsLoading && (
+          <div className="flex items-center gap-2 justify-center py-2 text-xs text-muted">
+            <Loader2 size={14} className="animate-spin" />
+            <span>Loading store limits...</span>
+          </div>
+        )}
+        {limitsError && (
+          <div className="flex items-center justify-between bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg p-2.5 text-xs">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={14} />
+              <span>Unable to load store limits.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => refetchLimits()}
+              className="px-2 py-0.5 rounded bg-red-500 text-white font-bold text-[10px]"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         {/* ── Tab bar ── */}
         <div className="flex gap-1 overflow-x-auto pb-1 border-b border-app">
@@ -341,11 +378,11 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
         )}
 
         {/* ── Upload zone ── */}
-        {(!isGallery || galleryImages.length < 8) && (
+        {(!isLimitReached || !willIncrease) && (
           <div>
             <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
               {isGallery
-                ? `Add Gallery Image (${galleryImages.length}/8)`
+                ? `Add Gallery Image (${galleryImages.length})`
                 : currentImageUrl ? `Replace ${currentTab?.label}` : `Upload ${currentTab?.label}`
               }
             </p>

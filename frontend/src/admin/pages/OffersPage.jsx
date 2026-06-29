@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
+import useBusinessLimits from "@/shared/hooks/useBusinessLimits";
+
 import {
   Search,
   Plus,
@@ -12,6 +14,7 @@ import {
   X,
   Image as ImageIcon,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import api from "@/shared/services/api";
 import clsx from "clsx";
@@ -23,7 +26,9 @@ import Badge from "@/shared/components/ui/Badge";
 import Button from "@/shared/components/ui/Button";
 
 export default function OffersPage() {
+  const { limits, isLoading: limitsLoading, error: limitsError, refetch: refetchLimits } = useBusinessLimits();
   const [search, setSearch] = useState("");
+
   const [showAddOffer, setShowAddOffer] = useState(false);
 
   // Form states
@@ -282,12 +287,16 @@ export default function OffersPage() {
   };
 
   const handleCreateCampaignClick = () => {
-    if (offers.length >= 5) {
+    if (!limits) {
+      toast.error("⚠️ Store limits are not loaded yet. Please wait.");
+      return;
+    }
+    if (offers.length >= limits.max_offers) {
       toast.error(
         <div>
           <strong style={{ display: "block", marginBottom: "4px" }}>Maximum Limit Reached</strong>
           <div style={{ whiteSpace: "pre-line", fontSize: "12px", lineHeight: "1.4" }}>
-            You have reached the maximum allowed limit of 5 offers.{"\n"}Please delete an existing offer before creating a new one.
+            You have reached the maximum allowed limit of {limits.max_offers} offers.{"\n"}Please delete an existing offer before creating a new one.
           </div>
         </div>
       );
@@ -298,12 +307,16 @@ export default function OffersPage() {
   };
 
   const handleAddFirstOfferClick = () => {
-    if (offers.length >= 5) {
+    if (!limits) {
+      toast.error("⚠️ Store limits are not loaded yet. Please wait.");
+      return;
+    }
+    if (offers.length >= limits.max_offers) {
       toast.error(
         <div>
           <strong style={{ display: "block", marginBottom: "4px" }}>Maximum Limit Reached</strong>
           <div style={{ whiteSpace: "pre-line", fontSize: "12px", lineHeight: "1.4" }}>
-            You have reached the maximum allowed limit of 5 offers.{"\n"}Please delete an existing offer before creating a new one.
+            You have reached the maximum allowed limit of {limits.max_offers} offers.{"\n"}Please delete an existing offer before creating a new one.
           </div>
         </div>
       );
@@ -314,6 +327,21 @@ export default function OffersPage() {
 
   return (
     <div className="space-y-6 ">
+      {limitsError && (
+        <div className="flex items-center justify-between bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg p-3 text-xs">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={16} />
+            <span>Unable to load store configuration. Please refresh the page or try again.</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => refetchLimits()}
+            className="px-3 py-1 rounded bg-red-500 text-white font-bold text-[11px]"
+          >
+            Retry
+          </button>
+        </div>
+      )}
       {/* Header Panel */}
       <PageHeader
         title="Offers & Promos"
@@ -329,13 +357,13 @@ export default function OffersPage() {
             />
             <Button
               onClick={handleCreateCampaignClick}
-              disabled={offers.length >= 5}
-              icon={Plus}
-              variant={offers.length >= 5 ? "secondary" : "primary"}
-              title={offers.length >= 5 ? "Maximum limit reached.\nDelete an existing item to continue." : ""}
-              className={clsx("flex flex-row w-fit whitespace-nowrap", offers.length >= 5 && "opacity-50 cursor-not-allowed")}
+              disabled={limitsLoading || !!limitsError || (limits && offers.length >= limits.max_offers)}
+              icon={limitsLoading ? Loader2 : Plus}
+              variant={(limits && offers.length >= limits.max_offers) ? "secondary" : "primary"}
+              title={limitsLoading ? "Loading store configuration..." : limitsError ? "Unable to load configuration" : (limits && offers.length >= limits.max_offers) ? "Maximum limit reached.\nDelete an existing item to continue." : ""}
+              className={clsx("flex flex-row w-fit whitespace-nowrap", (limitsLoading || !!limitsError || (limits && offers.length >= limits.max_offers)) && "opacity-50 cursor-not-allowed")}
             >
-              <span>Create Campaign</span>
+              <span>{limitsLoading ? "Loading..." : "Create Campaign"}</span>
             </Button>
           </>
         }
@@ -365,11 +393,11 @@ export default function OffersPage() {
           </div>
           <Button
             onClick={handleAddFirstOfferClick}
-            disabled={offers.length >= 5}
+            disabled={limitsLoading || !!limitsError || (limits && offers.length >= limits.max_offers)}
             icon={Plus}
             variant="addvariant"
-            title={offers.length >= 5 ? "Maximum limit reached.\nDelete an existing item to continue." : ""}
-            className={clsx("flex items-center gap-2 py-2 text-xs font-semibold whitespace-nowrap", offers.length >= 5 ? "bg-gray-500 cursor-not-allowed opacity-50" : "bg-sky-500")}
+            title={limitsLoading ? "Loading store configuration..." : limitsError ? "Unable to load configuration" : (limits && offers.length >= limits.max_offers) ? "Maximum limit reached.\nDelete an existing item to continue." : ""}
+            className={clsx("flex items-center gap-2 py-2 text-xs font-semibold whitespace-nowrap", (limitsLoading || !!limitsError || (limits && offers.length >= limits.max_offers)) ? "bg-gray-500 cursor-not-allowed opacity-50" : "bg-sky-500")}
           >
             Add First Offer
           </Button>

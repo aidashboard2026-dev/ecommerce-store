@@ -11,6 +11,8 @@ export const settingsService = {
   getNotifications: () => api.get('/settings/notifications'),
   updateNotification: (id, data) => api.put(`/settings/notifications/${id}`, data),
   uploadLogo: (formData) => api.post('/settings/logo', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  getBusinessLimits: () => api.get('/settings/business-limits'),
 }
 
 export default settingsService
+

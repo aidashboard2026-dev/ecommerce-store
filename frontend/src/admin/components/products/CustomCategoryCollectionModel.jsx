@@ -4,7 +4,8 @@ import { Plus, Edit2, Trash2, Check, X, Loader2, AlertTriangle, Tag, Layers } fr
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
 import Modal from '@/shared/components/ui/Modal'
-import { categoriesAPI, collectionsAPI } from '@/shared/services/api'
+import { categoriesAPI, collectionsAPI, customCategoriesAPI, customCollectionsAPI } from '@/shared/services/api'
+import useBusinessLimits from '@/shared/hooks/useBusinessLimits'
 
 const isMainCategory = (name) => {
   if (!name) return false;
@@ -135,7 +136,7 @@ function EditableRow({ item, onSave, onDelete, isSaving, isDeleting, extra, disa
 
 // ─── New item form ─────────────────────────────────────────────────────────────
 
-function NewItemForm({ placeholder, onAdd, isAdding, extra }) {
+function NewItemForm({ placeholder, onAdd, isAdding, extra, disabled }) {
   const [name, setName] = useState('')
 
   const submit = () => {
@@ -150,14 +151,15 @@ function NewItemForm({ placeholder, onAdd, isAdding, extra }) {
       <input
         value={name}
         onChange={e => setName(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') submit() }}
+        onKeyDown={e => { if (e.key === 'Enter' && !disabled) submit() }}
         placeholder={placeholder}
-        className="flex-1 min-w-0 text-xs bg-app border border-app rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+        disabled={disabled}
+        className="flex-1 min-w-0 text-xs bg-app border border-app rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50"
       />
       {extra}
       <button
         onClick={submit}
-        disabled={isAdding || !name.trim()}
+        disabled={isAdding || !name.trim() || disabled}
         className="btn-primary py-1.5 px-3 text-xs flex items-center gap-1 disabled:opacity-40 whitespace-nowrap"
       >
         {isAdding ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
@@ -171,6 +173,7 @@ function NewItemForm({ placeholder, onAdd, isAdding, extra }) {
 
 export default function CategoryCollectionModal({ isOpen, onClose }) {
   const qc = useQueryClient()
+  const { limits, isLoading: limitsLoading, error: limitsError, refetch: refetchLimits } = useBusinessLimits()
   const [tab, setTab] = useState('categories')
   const [newCollectionCategoryId, setNewCollectionCategoryId] = useState('')
 
@@ -286,6 +289,27 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Manage Categories & Collections" size="lg">
       <div className="space-y-4">
+        {limitsLoading && (
+          <div className="flex items-center gap-2 justify-center py-2 text-xs text-muted">
+            <Loader2 size={14} className="animate-spin" />
+            <span>Loading store limits...</span>
+          </div>
+        )}
+        {limitsError && (
+          <div className="flex items-center justify-between bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg p-2.5 text-xs">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={14} />
+              <span>Unable to load store limits.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => refetchLimits()}
+              className="px-2 py-0.5 rounded bg-red-500 text-white font-bold text-[10px]"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-1 border-b border-app -mt-1">
@@ -315,6 +339,11 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
             <NewItemForm
               placeholder="New category name…"
               onAdd={(name) => {
+                if (!limits) return;
+                if (categories.length >= limits.max_categories) {
+                  toast.error(`You have reached the maximum allowed limit of ${limits.max_categories} categories. Please delete an existing category before creating a new one.`);
+                  return;
+                }
                 if (isMainCategory(name)) {
                   toast.error('This category is a system-fixed Main Product category and cannot be created.');
                   return;
@@ -322,6 +351,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
                 createCategory.mutate(name);
               }}
               isAdding={createCategory.isPending}
+              disabled={limitsLoading || !!limitsError || (limits && categories.length >= limits.max_categories)}
             />
             <div className="space-y-1.5 max-h-72 overflow-y-auto overscroll-contain pr-1">
               {catLoading ? (
@@ -351,6 +381,11 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
             <NewItemForm
               placeholder="New collection name…"
               onAdd={(name) => {
+                if (!limits) return;
+                if (collections.length >= limits.max_collections) {
+                  toast.error(`You have reached the maximum allowed limit of ${limits.max_collections} collections. Please delete an existing collection before creating a new one.`);
+                  return;
+                }
                 if (isMainCollection(name)) {
                   toast.error('This collection is a system-fixed Main Product collection and cannot be created.');
                   return;
@@ -358,6 +393,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
                 createCollection.mutate(name);
               }}
               isAdding={createCollection.isPending}
+              disabled={limitsLoading || !!limitsError || (limits && collections.length >= limits.max_collections)}
               extra={
                 <select
                   value={newCollectionCategoryId}

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import api from "@/shared/services/api";
-import { ImagePlus, Plus, Search, X, Pencil, Eye, EyeOff } from "lucide-react";
+import useBusinessLimits from "@/shared/hooks/useBusinessLimits";
+
+import { ImagePlus, Plus, Search, X, Pencil, Eye, EyeOff, AlertTriangle, Loader2 } from "lucide-react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useTheme } from "@/shared/hooks/useAuth";
@@ -325,7 +327,9 @@ function BannerCard({ banner, onEdit, onDelete, onToggle, onPreview, isDark }) {
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function BannerPage() {
   const { isDark } = useTheme();
+  const { limits, isLoading: limitsLoading, error: limitsError, refetch: refetchLimits } = useBusinessLimits();
   const s = getStyles(isDark);
+
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -384,12 +388,16 @@ export default function BannerPage() {
   };
 
   const handleNewBannerClick = () => {
-    if (banners.length >= 5) {
+    if (!limits) {
+      toast.error("⚠️ Store limits are not loaded yet. Please wait.");
+      return;
+    }
+    if (banners.length >= limits.max_banners) {
       toast.error(
         <div>
           <strong style={{ display: "block", marginBottom: "4px" }}>Maximum Limit Reached</strong>
           <div style={{ whiteSpace: "pre-line", fontSize: "12px", lineHeight: "1.4" }}>
-            You have reached the maximum allowed limit of 5 banners.{"\n"}Please delete an existing banner before creating a new one.
+            You have reached the maximum allowed limit of {limits.max_banners} banners.{"\n"}Please delete an existing banner before creating a new one.
           </div>
         </div>
       );
@@ -402,6 +410,31 @@ export default function BannerPage() {
     <div style={{ padding: "24px 28px", background: s.bg, minHeight: "100vh", transition: "background .3s ease" }}>
       <ToastContainer position="top-right" autoClose={2500} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover theme={isDark ? "dark" : "light"} style={{ zIndex: 99999 }} />
 
+      {limitsError && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          background: isDark ? "rgba(239, 68, 68, 0.1)" : "#fee2e2",
+          border: `1px solid ${isDark ? "rgba(239, 68, 68, 0.2)" : "#fca5a5"}`,
+          borderRadius: 8, padding: "12px 16px", marginBottom: 20,
+          color: isDark ? "#ef4444" : "#b91c1c", fontSize: 13
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <AlertTriangle size={16} />
+            <span>Unable to load store configuration. Please refresh the page or try again.</span>
+          </div>
+          <button
+            onClick={() => refetchLimits()}
+            style={{
+              background: "#ef4444",
+              color: "#fff", border: "none", borderRadius: 4,
+              padding: "4px 12px", cursor: "pointer", fontSize: 11, fontWeight: 700
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* ── Page header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24, flexWrap: "wrap", gap: 16 }}>
         <div>
@@ -410,8 +443,17 @@ export default function BannerPage() {
             Hero sliders, promotional banners & marketing campaigns
           </p>
         </div>
-        <button onClick={handleNewBannerClick} disabled={banners.length >= 5} title={banners.length >= 5 ? "Maximum limit reached.\nDelete an existing item to continue." : ""} style={{ ...btn.base, height: 40, padding: "0 18px", background: banners.length >= 5 ? "#4b5563" : "#2563eb", color: "#fff", display: "flex", alignItems: "center", gap: 6, opacity: banners.length >= 5 ? 0.6 : 1, cursor: banners.length >= 5 ? "not-allowed" : "pointer" }}>
-          <Plus size={16} /> New Banner
+        <button 
+          onClick={handleNewBannerClick} 
+          disabled={limitsLoading || !!limitsError || (limits && banners.length >= limits.max_banners)} 
+          title={limitsLoading ? "Loading store configuration..." : limitsError ? "Unable to load configuration" : (limits && banners.length >= limits.max_banners) ? "Maximum limit reached.\nDelete an existing item to continue." : ""} 
+          style={{ ...btn.base, height: 40, padding: "0 18px", background: (limits && banners.length >= limits.max_banners) ? "#4b5563" : "#2563eb", color: "#fff", display: "flex", alignItems: "center", gap: 6, opacity: (limitsLoading || !!limitsError || (limits && banners.length >= limits.max_banners)) ? 0.6 : 1, cursor: (limitsLoading || !!limitsError || (limits && banners.length >= limits.max_banners)) ? "not-allowed" : "pointer" }}>
+          {limitsLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin text-white" />
+          ) : (
+            <Plus size={16} />
+          )}
+          New Banner
         </button>
       </div>
 
@@ -489,7 +531,23 @@ export default function BannerPage() {
             </p>
           </div>
           {!search && filterPlacement === "all" && filterStatus === "all" && (
-            <button onClick={handleNewBannerClick} disabled={banners.length >= 5} title={banners.length >= 5 ? "Maximum limit reached.\nDelete an existing item to continue." : ""} style={{ ...btn.base, height: 40, padding: "0 20px", background: banners.length >= 5 ? "#4b5563" : "#2563eb", color: "#fff", display: "flex", alignItems: "center", gap: 6, opacity: banners.length >= 5 ? 0.6 : 1, cursor: banners.length >= 5 ? "not-allowed" : "pointer" }}>
+            <button
+              onClick={handleNewBannerClick}
+              disabled={!limits || banners.length >= limits.max_banners}
+              title={!limits ? "Loading store configuration..." : banners.length >= limits.max_banners ? "Maximum limit reached.\nDelete an existing item to continue." : ""}
+              style={{
+                ...btn.base,
+                height: 40,
+                padding: "0 20px",
+                background: (!limits || banners.length >= limits.max_banners) ? "#4b5563" : "#2563eb",
+                color: "#fff",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                opacity: (!limits || banners.length >= limits.max_banners) ? 0.6 : 1,
+                cursor: (!limits || banners.length >= limits.max_banners) ? "not-allowed" : "pointer"
+              }}
+            >
               <Plus size={16} /> New Banner
             </button>
           )}

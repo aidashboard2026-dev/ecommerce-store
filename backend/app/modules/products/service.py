@@ -390,6 +390,13 @@ def delete_category(db: Session, category_id: int) -> None:
             "Category deletion is disabled for Main Product categories.",
             code="CATEGORY_DELETE_BLOCKED",
         )
+    # Check if category is assigned to products
+    assigned_products = db.query(Product).filter(Product.category_id == category_id, Product.deleted_at.is_(None)).first()
+    if assigned_products:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This category is currently assigned to products. Remove or reassign those products before deleting the category."
+        )
     db.delete(cat)
     try:
         db.commit()
@@ -401,6 +408,166 @@ def delete_category(db: Session, category_id: int) -> None:
 # ─────────────────────────────────────────────────────────────
 # COLLECTION CRUD
 # ─────────────────────────────────────────────────────────────
+
+import json
+
+def _parse_collection_description(description: Optional[str]) -> tuple[Optional[str], list[str]]:
+    if not description:
+        return None, []
+    try:
+        data = json.loads(description)
+        if isinstance(data, dict):
+            desc = data.get("description")
+            sub_cols = data.get("sub_collections", [])
+            if isinstance(sub_cols, list):
+                return desc, [str(s) for s in sub_cols]
+    except Exception:
+        pass
+    return description, []
+
+def _serialize_collection_description(description: Optional[str], sub_collections: list[str]) -> str:
+    return json.dumps({
+        "description": description,
+        "sub_collections": sub_collections
+    })
+
+def get_sub_collections_for_collection(db: Session, collection_id: int) -> list[str]:
+    col = db.get(Collection, collection_id)
+    if not col:
+        return []
+    
+    _, predefined = _parse_collection_description(col.description)
+    
+    query = db.query(Product.collection).filter(
+        Product.collection_id == collection_id,
+        Product.collection.isnot(None),
+        Product.collection != "",
+        Product.deleted_at.is_(None),
+    )
+    dynamic = [row[0].strip() for row in query.distinct().all() if row[0]]
+    
+    seen = set()
+    combined = []
+    for item in predefined:
+        item_clean = item.strip()
+        if item_clean and item_clean.lower() not in seen:
+            seen.add(item_clean.lower())
+            combined.append(item_clean)
+    for item in dynamic:
+        item_clean = item.strip()
+        if item_clean and item_clean.lower() not in seen:
+            seen.add(item_clean.lower())
+            combined.append(item_clean)
+            
+    return combined
+
+def create_sub_collection(db: Session, collection_id: int, name: str) -> list[str]:
+    col = get_collection(db, collection_id)
+    name_clean = name.strip()
+    
+    from app.core.constants import MIN_SUB_COLLECTION_NAME_LENGTH, MAX_SUB_COLLECTION_NAME_LENGTH
+    if len(name_clean) < MIN_SUB_COLLECTION_NAME_LENGTH or len(name_clean) > MAX_SUB_COLLECTION_NAME_LENGTH:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Sub Collection name must be between {MIN_SUB_COLLECTION_NAME_LENGTH} and {MAX_SUB_COLLECTION_NAME_LENGTH} characters"
+        )
+        
+    current = get_sub_collections_for_collection(db, collection_id)
+    if name_clean.lower() in {c.lower() for c in current}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Sub-collection '{name_clean}' already exists."
+        )
+        
+    if len(current) >= MAX_SUB_COLLECTIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"You have reached the maximum allowed limit of {MAX_SUB_COLLECTIONS} sub collections for this collection. Please delete an existing sub collection before creating a new one."
+        )
+        
+    desc_text, predefined = _parse_collection_description(col.description)
+    predefined.append(name_clean)
+    col.description = _serialize_collection_description(desc_text, predefined)
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
+        
+    return get_sub_collections_for_collection(db, collection_id)
+
+def update_sub_collection(db: Session, collection_id: int, old_name: str, new_name: str) -> list[str]:
+    col = get_collection(db, collection_id)
+    old_clean = old_name.strip()
+    new_clean = new_name.strip()
+    
+    from app.core.constants import MIN_SUB_COLLECTION_NAME_LENGTH, MAX_SUB_COLLECTION_NAME_LENGTH
+    if len(new_clean) < MIN_SUB_COLLECTION_NAME_LENGTH or len(new_clean) > MAX_SUB_COLLECTION_NAME_LENGTH:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Sub Collection name must be between {MIN_SUB_COLLECTION_NAME_LENGTH} and {MAX_SUB_COLLECTION_NAME_LENGTH} characters"
+        )
+        
+    current = get_sub_collections_for_collection(db, collection_id)
+    if old_clean.lower() not in {c.lower() for c in current}:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Sub-collection '{old_clean}' not found."
+        )
+        
+    if old_clean.lower() != new_clean.lower() and new_clean.lower() in {c.lower() for c in current}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Sub-collection '{new_clean}' already exists."
+        )
+        
+    desc_text, predefined = _parse_collection_description(col.description)
+    predefined = [new_clean if s.strip().lower() == old_clean.lower() else s for s in predefined]
+    col.description = _serialize_collection_description(desc_text, predefined)
+    
+    products = db.query(Product).filter(
+        Product.collection_id == collection_id,
+        Product.collection == old_clean,
+        Product.deleted_at.is_(None)
+    ).all()
+    for p in products:
+        p.collection = new_clean
+        
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
+        
+    return get_sub_collections_for_collection(db, collection_id)
+
+def delete_sub_collection(db: Session, collection_id: int, name: str) -> list[str]:
+    col = get_collection(db, collection_id)
+    name_clean = name.strip()
+    
+    assigned_products = db.query(Product).filter(
+        Product.collection_id == collection_id,
+        Product.collection == name_clean,
+        Product.deleted_at.is_(None)
+    ).first()
+    if assigned_products:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This sub-collection is currently assigned to products. Remove or reassign those products before deleting the sub-collection."
+        )
+        
+    desc_text, predefined = _parse_collection_description(col.description)
+    predefined = [s for s in predefined if s.strip().lower() != name_clean.lower()]
+    col.description = _serialize_collection_description(desc_text, predefined)
+    
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
+        
+    return get_sub_collections_for_collection(db, collection_id)
+
 
 def get_collections(
     db: Session,
@@ -429,12 +596,13 @@ def get_collections(
             id=r.id,
             name=r.name,
             slug=r.slug,
-            description=r.description,
+            description=_parse_collection_description(r.description)[0],
             status=r.status,
             category_id=r.category_id,
             category_name=cat_map.get(r.category_id),
             created_at=r.created_at,
             updated_at=r.updated_at,
+            sub_collections=get_sub_collections_for_collection(db, r.id),
         )
         for r in rows
     ]
@@ -482,10 +650,11 @@ def create_collection(db: Session, data: CollectionCreate) -> CollectionResponse
     if data.category_id:
         get_category(db, data.category_id)
     slug = _unique_slug(db, Collection, _slugify(data.name))
+    desc_wrapped = _serialize_collection_description(data.description, [])
     col = Collection(
         name=data.name,
         slug=slug,
-        description=data.description,
+        description=desc_wrapped,
         status=data.status,
         category_id=data.category_id,
     )
@@ -503,9 +672,11 @@ def create_collection(db: Session, data: CollectionCreate) -> CollectionResponse
         cat_name = cat.name if cat else None
 
     return CollectionResponse(
-        id=col.id, name=col.name, slug=col.slug, description=col.description,
+        id=col.id, name=col.name, slug=col.slug,
+        description=_parse_collection_description(col.description)[0],
         status=col.status, category_id=col.category_id,
         category_name=cat_name, created_at=col.created_at, updated_at=col.updated_at,
+        sub_collections=get_sub_collections_for_collection(db, col.id),
     )
 
 
@@ -515,13 +686,11 @@ def update_collection(db: Session, collection_id: int, data: CollectionUpdate) -
     patch = data.model_dump(exclude_unset=True)
 
     if col.name in APPROVED_COLLECTIONS:
-        # Only the name field is protected — status and description can change
         if "name" in patch and patch["name"] != col.name:
             raise BusinessRuleError(
                 "Collection renaming is disabled for Main Product collections.",
                 code="COLLECTION_RENAME_BLOCKED",
             )
-        # Remove name/slug from patch to be safe; allow all other fields
         patch.pop("name", None)
         patch.pop("slug", None)
 
@@ -538,6 +707,11 @@ def update_collection(db: Session, collection_id: int, data: CollectionUpdate) -
             check_duplicate_collection(db, patch["name"], exclude_id=collection_id)
             patch["slug"] = _unique_slug(db, Collection, _slugify(patch["name"]), exclude_id=collection_id)
 
+    _, current_sub_cols = _parse_collection_description(col.description)
+    if "description" in patch:
+        new_desc = patch["description"]
+        patch["description"] = _serialize_collection_description(new_desc, current_sub_cols)
+
     for k, v in patch.items():
         setattr(col, k, v)
     try:
@@ -553,9 +727,11 @@ def update_collection(db: Session, collection_id: int, data: CollectionUpdate) -
         cat_name = cat.name if cat else None
 
     return CollectionResponse(
-        id=col.id, name=col.name, slug=col.slug, description=col.description,
+        id=col.id, name=col.name, slug=col.slug,
+        description=_parse_collection_description(col.description)[0],
         status=col.status, category_id=col.category_id,
         category_name=cat_name, created_at=col.created_at, updated_at=col.updated_at,
+        sub_collections=get_sub_collections_for_collection(db, col.id),
     )
 
 
@@ -566,6 +742,13 @@ def delete_collection(db: Session, collection_id: int) -> None:
         raise BusinessRuleError(
             "Collection deletion is disabled for Main Product collections.",
             code="COLLECTION_DELETE_BLOCKED",
+        )
+    # Check if collection is assigned to products
+    assigned_products = db.query(Product).filter(Product.collection_id == collection_id, Product.deleted_at.is_(None)).first()
+    if assigned_products:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This collection is currently assigned to products. Remove or reassign those products before deleting the collection."
         )
     db.delete(col)
     try:

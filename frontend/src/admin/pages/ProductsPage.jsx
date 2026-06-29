@@ -338,6 +338,7 @@ export default function ProductsPage() {
   const [variantModal,   setVariantModal]   = useState({ open: false, productId: null })
   const [imageModal,     setImageModal]     = useState({ open: false, product: null })
   const [quickEditModal, setQuickEditModal] = useState({ open: false, product: null })
+  const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false)
 
   // Stable key derived from flagFilters — avoids JSON.stringify inside deps array
   // which produces a new string reference every render even when flags haven't changed.
@@ -520,9 +521,14 @@ export default function ProductsPage() {
           </span>
         }
         actions={
-          <Button onClick={() => setFormModal({ open: true, product: null })} icon={Plus}>
-            Add Product
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setIsCatalogModalOpen(true)} variant="secondary" icon={Settings2}>
+              Manage Catalog
+            </Button>
+            <Button onClick={() => setFormModal({ open: true, product: null })} icon={Plus}>
+              Add Product
+            </Button>
+          </div>
         }
       />
 
@@ -821,6 +827,12 @@ export default function ProductsPage() {
           isOpen={quickEditModal.open}
           onClose={() => setQuickEditModal({ open: false, product: null })}
           product={data?.items?.find(p => p.id === quickEditModal.product?.id) || quickEditModal.product}
+        />
+      </ProductErrorBoundary>
+      <ProductErrorBoundary title="Manage Catalog error">
+        <CategoryCollectionModal
+          isOpen={isCatalogModalOpen}
+          onClose={() => setIsCatalogModalOpen(false)}
         />
       </ProductErrorBoundary>
 

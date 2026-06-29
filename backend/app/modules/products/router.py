@@ -216,6 +216,85 @@ def delete_collection_endpoint(
 
 
 # ─────────────────────────────────────────────────────────────
+# SUB-COLLECTION endpoints
+# ─────────────────────────────────────────────────────────────
+
+from pydantic import BaseModel, field_validator
+
+class SubCollectionCreate(BaseModel):
+    name: str
+
+    @field_validator("name")
+    @classmethod
+    def name_valid(cls, v):
+        if v is None:
+            raise ValueError("Sub-collection name is required")
+        v = v.strip()
+        if not v:
+            raise ValueError("Sub-collection name cannot be empty or whitespace only")
+        from app.core.constants import MIN_SUB_COLLECTION_NAME_LENGTH, MAX_SUB_COLLECTION_NAME_LENGTH
+        if len(v) < MIN_SUB_COLLECTION_NAME_LENGTH or len(v) > MAX_SUB_COLLECTION_NAME_LENGTH:
+            raise ValueError(f"Sub Collection name must be between {MIN_SUB_COLLECTION_NAME_LENGTH} and {MAX_SUB_COLLECTION_NAME_LENGTH} characters")
+        return v
+
+class SubCollectionUpdate(BaseModel):
+    old_name: str
+    new_name: str
+
+    @field_validator("new_name")
+    @classmethod
+    def new_name_valid(cls, v):
+        if v is None:
+            raise ValueError("New sub-collection name is required")
+        v = v.strip()
+        if not v:
+            raise ValueError("New sub-collection name cannot be empty or whitespace only")
+        from app.core.constants import MIN_SUB_COLLECTION_NAME_LENGTH, MAX_SUB_COLLECTION_NAME_LENGTH
+        if len(v) < MIN_SUB_COLLECTION_NAME_LENGTH or len(v) > MAX_SUB_COLLECTION_NAME_LENGTH:
+            raise ValueError(f"Sub Collection name must be between {MIN_SUB_COLLECTION_NAME_LENGTH} and {MAX_SUB_COLLECTION_NAME_LENGTH} characters")
+        return v
+
+@router.get("/admin/collections/{collection_id}/sub-collections", response_model=List[str])
+def list_sub_collections(
+    collection_id: int,
+    db: Session = Depends(get_db),
+    _: Admin = Depends(get_current_admin),
+):
+    from app.modules.products.service import get_sub_collections_for_collection
+    return get_sub_collections_for_collection(db, collection_id)
+
+@router.post("/admin/collections/{collection_id}/sub-collections", response_model=List[str])
+def create_sub_collection_endpoint(
+    collection_id: int,
+    data: SubCollectionCreate,
+    db: Session = Depends(get_db),
+    _: Admin = Depends(get_current_admin),
+):
+    from app.modules.products.service import create_sub_collection
+    return create_sub_collection(db, collection_id, data.name)
+
+@router.patch("/admin/collections/{collection_id}/sub-collections", response_model=List[str])
+def update_sub_collection_endpoint(
+    collection_id: int,
+    data: SubCollectionUpdate,
+    db: Session = Depends(get_db),
+    _: Admin = Depends(get_current_admin),
+):
+    from app.modules.products.service import update_sub_collection
+    return update_sub_collection(db, collection_id, data.old_name, data.new_name)
+
+@router.delete("/admin/collections/{collection_id}/sub-collections", response_model=List[str])
+def delete_sub_collection_endpoint(
+    collection_id: int,
+    name: str = Query(...),
+    db: Session = Depends(get_db),
+    _: Admin = Depends(get_current_admin),
+):
+    from app.modules.products.service import delete_sub_collection
+    return delete_sub_collection(db, collection_id, name)
+
+
+# ─────────────────────────────────────────────────────────────
 # Image delete — registered before /{product_id} to avoid routing conflict
 # ─────────────────────────────────────────────────────────────
 

@@ -106,6 +106,13 @@ export const collectionsAPI = {
   listPublic: (params = {}) => storefrontClient.get('/products/collections', { params }),
 }
 
+export const subCollectionsAPI = {
+  list:   (collectionId) => api.get(`/products/admin/collections/${collectionId}/sub-collections`),
+  create: (collectionId, name) => api.post(`/products/admin/collections/${collectionId}/sub-collections`, { name }),
+  update: (collectionId, oldName, newName) => api.patch(`/products/admin/collections/${collectionId}/sub-collections`, { old_name: oldName, new_name: newName }),
+  delete: (collectionId, name) => api.delete(`/products/admin/collections/${collectionId}/sub-collections`, { params: { name } }),
+}
+
 export const customCategoriesAPI = {
     list: () =>
         api.get("/custom-products/categories"),
