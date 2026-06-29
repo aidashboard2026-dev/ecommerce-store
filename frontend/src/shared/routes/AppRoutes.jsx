@@ -8,6 +8,8 @@ import MainLayout from '@/admin/layouts/MainLayout'
 
 // Storefront Layout
 import StorefrontLayout from '@/storefront/layouts/StorefrontLayout'
+import ProductDetails from "@/storefront/components/ProductDetails";
+import ReturnsPolicy from "@/storefront/pages/ReturnsPolicy";
 
 // Lazy loaded pages/components to optimize bundle sizes
 const AdminLoginPage = lazy(() => import('@/admin/pages/LoginPage'))
@@ -87,6 +89,7 @@ function CustomerPublicRoute({ children }) {
     ? <Navigate to="/profile" replace />
     : children
 }
+
 // Helper component to redirect legacy category URLs to storefront catalog search
 function CategoryRedirect() {
   const { slug } = useParams()
@@ -180,6 +183,10 @@ export default function AppRoutes() {
           <Route path="products" element={<ProductsPage />} />
           <Route path="products/:slug" element={<ProductsPage />} />
 
+            <Route
+    path="returns-policy"
+    element={<ReturnsPolicy />}
+  />
 
           <Route path="sub-products" element={<Navigate to="/products" replace />} />
           <Route path="category/:slug" element={<CategoryRedirect />} />

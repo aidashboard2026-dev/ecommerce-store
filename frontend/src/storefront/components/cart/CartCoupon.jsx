@@ -21,7 +21,7 @@ function validateCoupon(code) {
   return { valid: false }
 }
 
-export default function CouponSection() {
+export default function CartCoupon() {
   const dispatch = useDispatch()
   const { couponCode, couponDiscount, couponError } = useSelector((s) => s.cart)
   const [input, setInput] = useState('')
@@ -48,9 +48,14 @@ export default function CouponSection() {
       <div className="flex items-center justify-between bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3">
         <div className="flex items-center gap-2 text-sm font-semibold text-green-600">
           <Tag size={14} />
-          {couponCode} applied — {couponDiscount}% off
+          {couponCode} applied - {couponDiscount}% off
         </div>
-        <button onClick={handleRemove} className="text-green-600 hover:text-red-500">
+        <button
+          type="button"
+          onClick={handleRemove}
+          className="text-green-600 hover:text-red-500 transition-colors"
+          aria-label="Remove coupon"
+        >
           <X size={16} />
         </button>
       </div>
@@ -65,11 +70,11 @@ export default function CouponSection() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Enter coupon code"
-          className="flex-1 bg-surface border border-app rounded-xl px-4 py-2.5 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-muted uppercase"
+          className="min-w-0 flex-1 bg-surface border border-app rounded-xl px-4 py-2.5 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-muted uppercase"
         />
         <button
           type="submit"
-          className="px-5 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors"
+          className="shrink-0 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-colors"
         >
           Apply
         </button>

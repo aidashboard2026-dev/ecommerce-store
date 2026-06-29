@@ -3,10 +3,11 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 
 import { useTheme } from "@/shared/hooks/useAuth";
-import { customerLogout, customerLogoutThunk } from "@/storefront/store/customerSlice";
+import { customerLogoutThunk } from "@/storefront/store/customerSlice";
 
 import StoreHeader from "@/storefront/components/StoreHeader";
 import StoreFooter from "@/storefront/components/StoreFooter";
+import { CartDrawer } from "@/storefront/components/cart";
 
 export default function StorefrontLayout() {
   const navigate = useNavigate();
@@ -47,13 +48,14 @@ export default function StorefrontLayout() {
         token={token}
         customer={customer}
         handleLogout={handleLogout}
-        
       />
 
       {/* Main Page Layout Wrapper */}
       <main className="flex-1 w-full mt-5 p-2 relative">
         <Outlet />
       </main>
+
+      <CartDrawer />
 
       <StoreFooter />
     </div>
