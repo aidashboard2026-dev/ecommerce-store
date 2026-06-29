@@ -212,19 +212,24 @@ function AlertBox({ children }) {
   );
 }
 
-function SaveButton({ loading, children }) {
+function SaveButton({ loading, disabled, children }) {
   return (
     <button
       type="submit"
-      disabled={loading}
+      disabled={disabled || loading}
       className="inline-flex items-center justify-center gap-2 rounded-lg border border-indigo-600 bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {loading ? (
-        <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+        <>
+          <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+          Saving...
+        </>
       ) : (
-        <Save size={16} />
+        <>
+          <Save size={16} />
+          {children}
+        </>
       )}
-      {children}
     </button>
   );
 }
@@ -245,6 +250,12 @@ export default function SettingsPage() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Dynamic regional options list loaded from the backend
+  const [countriesList, setCountriesList] = useState([]);
+  const [currenciesList, setCurrenciesList] = useState([]);
+  const [timezonesList, setTimezonesList] = useState([]);
+  const [weightUnitsList, setWeightUnitsList] = useState([]);
 
   const closeModal = () => {
     setActiveModal(null);
@@ -305,6 +316,17 @@ export default function SettingsPage() {
     },
   });
 
+  const newPasswordValue = passwordForm.watch("new_password") || "";
+  const passwordStrength = useMemo(() => {
+    if (!newPasswordValue) return 0;
+    let score = 0;
+    if (newPasswordValue.length >= 8) score++;
+    if (/[a-z]/.test(newPasswordValue) && /[A-Z]/.test(newPasswordValue)) score++;
+    if (/\d/.test(newPasswordValue)) score++;
+    if (/[^a-zA-Z0-9]/.test(newPasswordValue)) score++;
+    return score;
+  }, [newPasswordValue]);
+
   // Small security-only form for two-factor toggle (keeps it separate)
   const securityForm = useForm({
     defaultValues: { two_factor_enabled: false },
@@ -344,11 +366,12 @@ export default function SettingsPage() {
     async function loadSettings() {
       try {
         setError(false);
-        const [settingsResponse, paymentsResponse, notificationsResponse] =
+        const [settingsResponse, paymentsResponse, notificationsResponse, regionalOptionsResponse] =
           await Promise.all([
             settingsService.getSettings(),
             settingsService.getPayments(),
             settingsService.getNotifications(),
+            settingsService.getRegionalOptions().catch(() => ({ data: {} })),
           ]);
 
         if (!mounted) return;
@@ -361,6 +384,13 @@ export default function SettingsPage() {
         setPayments(paymentsResponse.data);
         setNotifications(notificationsResponse.data);
         setLogoPreview(store.logo || "");
+
+        const regionalData = regionalOptionsResponse.data || {};
+        setCountriesList(regionalData.countries || []);
+        setCurrenciesList(regionalData.currencies || []);
+        setTimezonesList(regionalData.timezones || []);
+        setWeightUnitsList(regionalData.weight_units || []);
+
         profileForm.reset({
           store_name: store.store_name || "",
           store_url: store.store_url || "",
@@ -406,6 +436,7 @@ export default function SettingsPage() {
     };
   }, [retryTrigger]);
 
+
   // Refs to focus first input in each modal
   const usernameFirstRef = useRef(null);
   const emailFirstRef = useRef(null);
@@ -446,54 +477,91 @@ export default function SettingsPage() {
   }, [activeModal]);
 
   async function saveProfile(data) {
+    const cleanData = {
+      store_name: data.store_name?.trim() || "",
+      store_url: data.store_url?.trim() || "",
+      support_email: data.support_email?.trim() || "",
+      support_phone: data.support_phone?.trim() || "",
+      description: data.description?.trim() || "",
+      logo: data.logo || "",
+    };
     setSaving((state) => ({ ...state, profile: true }));
     try {
-      const response = await settingsService.updateProfile(data);
+      const response = await settingsService.updateProfile(cleanData);
       const updated = response.data;
       setSettings(updated);
       profileForm.reset({
-        store_name: updated.store_name || data.store_name,
-        store_url: updated.store_url || data.store_url,
-        support_email: updated.support_email || data.support_email,
-        support_phone: updated.support_phone || data.support_phone,
-        description: updated.description || data.description,
-        logo: updated.logo || data.logo,
+        store_name: updated.store_name || cleanData.store_name,
+        store_url: updated.store_url || cleanData.store_url,
+        support_email: updated.support_email || cleanData.support_email,
+        support_phone: updated.support_phone || cleanData.support_phone,
+        description: updated.description || cleanData.description,
+        logo: updated.logo || cleanData.logo,
       });
+      setLogoPreview(updated.logo || "");
       toast.success("Store profile saved");
     } catch (error) {
       toast.error(apiError(error, "Failed to save store profile"));
+      // Restore previous state values on failure
+      if (settings) {
+        profileForm.reset({
+          store_name: settings.store_name || "",
+          store_url: settings.store_url || "",
+          support_email: settings.support_email || "",
+          support_phone: settings.support_phone || "",
+          description: settings.description || "",
+          logo: settings.logo || "",
+        });
+        setLogoPreview(settings.logo || "");
+      }
     } finally {
       setSaving((state) => ({ ...state, profile: false }));
     }
   }
 
   async function saveRegional(data) {
+    const cleanData = {
+      country: data.country?.trim() || "India",
+      currency: data.currency?.trim() || "INR",
+      timezone: data.timezone?.trim() || "Asia/Kolkata",
+      weight_unit: data.weight_unit?.trim() || "kg",
+    };
     setSaving((state) => ({ ...state, regional: true }));
     try {
-      const response = await settingsService.updateSettings(data);
+      const response = await settingsService.updateSettings(cleanData);
       const updated = response.data;
       setSettings(updated);
       regionalForm.reset({
-        country: updated.country || data.country,
-        currency: updated.currency || data.currency,
-        timezone: updated.timezone || data.timezone,
-        weight_unit: updated.weight_unit || data.weight_unit,
+        country: updated.country || cleanData.country,
+        currency: updated.currency || cleanData.currency,
+        timezone: updated.timezone || cleanData.timezone,
+        weight_unit: updated.weight_unit || cleanData.weight_unit,
       });
       toast.success("Regional settings saved");
     } catch (error) {
       toast.error(apiError(error, "Failed to save regional settings"));
+      // Restore previous state values on failure
+      if (settings) {
+        regionalForm.reset({
+          country: settings.country || "India",
+          currency: settings.currency || "INR",
+          timezone: settings.timezone || "Asia/Kolkata",
+          weight_unit: settings.weight_unit || "kg",
+        });
+      }
     } finally {
       setSaving((state) => ({ ...state, regional: false }));
     }
   }
 
   async function saveUsername(data) {
+    const cleanData = {
+      username: data.username?.trim(),
+      current_password: data.current_password,
+    };
     setSaving((state) => ({ ...state, security: true }));
     try {
-      const response = await settingsService.updateSecurity({
-        username: data.username,
-        current_password: data.current_password,
-      });
+      const response = await settingsService.updateSecurity(cleanData);
       setSecurity(response.data);
       toast.success("Username updated");
       closeModal();
@@ -505,12 +573,13 @@ export default function SettingsPage() {
   }
 
   async function saveEmail(data) {
+    const cleanData = {
+      email: data.email?.trim(),
+      current_password: data.current_password,
+    };
     setSaving((state) => ({ ...state, security: true }));
     try {
-      const response = await settingsService.updateSecurity({
-        email: data.email,
-        current_password: data.current_password,
-      });
+      const response = await settingsService.updateSecurity(cleanData);
       setSecurity(response.data);
       toast.success("Email updated");
       closeModal();
@@ -535,6 +604,14 @@ export default function SettingsPage() {
   }
 
   async function toggleTwoFactor(value) {
+    const action = value ? "enable" : "disable";
+    const confirmed = window.confirm(`Are you sure you want to ${action} Two-Factor Authentication?`);
+    if (!confirmed) {
+      // rollback UI switch immediately
+      securityForm.setValue("two_factor_enabled", !value);
+      return;
+    }
+
     securityForm.setValue("two_factor_enabled", value);
     setSaving((state) => ({ ...state, twoFactor: true }));
     try {
@@ -598,41 +675,48 @@ export default function SettingsPage() {
       });
   }
 
-  async function togglePayment(method, value) {
+  async function updatePaymentMethod(method, fields) {
+    const previous = payments;
+    setPayments((items) =>
+      items.map((item) =>
+        item.id === method.id ? { ...item, ...fields } : item
+      )
+    );
     setPaymentLoading((state) => ({
       ...state,
       [method.id]: true,
     }));
 
     try {
-      const response = await settingsService.updatePayment(method.id, {
-        is_active: value,
-      });
-
+      const response = await settingsService.updatePayment(method.id, fields);
       setPayments((items) =>
         items.map((item) =>
-          item.id === method.id ? { ...item, ...response.data } : item,
-        ),
+          item.id === method.id ? { ...item, ...response.data } : item
+        )
       );
-      const existing = safeParseStorage("paymentActivity", []);
 
-      if (!value) {
-        const updated = [
-          ...existing.filter((item) => item.id !== method.id),
-          {
-            id: method.id,
-            message: `${method.name} disabled`,
-          },
-        ];
-
-        localStorage.setItem("paymentActivity", JSON.stringify(updated));
-      } else {
-        const updated = existing.filter((item) => item.id !== method.id);
-
-        localStorage.setItem("paymentActivity", JSON.stringify(updated));
+      // Local storage logs for toggles
+      if (fields.is_active !== undefined) {
+        const value = fields.is_active;
+        const existing = safeParseStorage("paymentActivity", []);
+        if (!value) {
+          const updated = [
+            ...existing.filter((item) => item.id !== method.id),
+            {
+              id: method.id,
+              message: `${method.name} disabled`,
+            },
+          ];
+          localStorage.setItem("paymentActivity", JSON.stringify(updated));
+        } else {
+          const updated = existing.filter((item) => item.id !== method.id);
+          localStorage.setItem("paymentActivity", JSON.stringify(updated));
+        }
       }
-      toast.success(`${method.name} ${value ? "enabled" : "disabled"}`);
+
+      toast.success(`${method.name} updated successfully.`);
     } catch (error) {
+      setPayments(previous);
       toast.error(apiError(error, "Failed to update payment method"));
     } finally {
       setPaymentLoading((state) => ({
@@ -640,6 +724,10 @@ export default function SettingsPage() {
         [method.id]: false,
       }));
     }
+  }
+
+  function togglePayment(method, value) {
+    updatePaymentMethod(method, { is_active: value });
   }
 
   async function toggleNotification(notification, field, value) {
@@ -690,6 +778,7 @@ export default function SettingsPage() {
     }
   }
 
+
   if (loading) return <PageLoader />;
 
   if (error) {
@@ -718,20 +807,29 @@ export default function SettingsPage() {
     );
   }
   async function handleGlobalSave() {
-    // Save profile, regional and security in sequence if dirty
-    if (profileForm.formState.isDirty)
-      await profileForm.handleSubmit(saveProfile)();
-    if (regionalForm.formState.isDirty)
-      await regionalForm.handleSubmit(saveRegional)();
-    const dirty =
-      profileForm.formState.isDirty ||
-      regionalForm.formState.isDirty;
+    const isProfileDirty = profileForm.formState.isDirty;
+    const isRegionalDirty = regionalForm.formState.isDirty;
 
-    if (!dirty) {
+    if (!isProfileDirty && !isRegionalDirty) {
       toast("No changes to save");
       return;
     }
+
+    if (isProfileDirty) {
+      let success = false;
+      await profileForm.handleSubmit(async (data) => {
+        await saveProfile(data);
+        success = true;
+      })();
+      if (!success) return;
+    }
+
+    if (isRegionalDirty) {
+      await regionalForm.handleSubmit(saveRegional)();
+    }
   }
+
+  const isAnyFormDirty = profileForm.formState.isDirty || regionalForm.formState.isDirty;
 
   return (
     <div className="space-y-6">
@@ -746,6 +844,7 @@ export default function SettingsPage() {
             type="button"
             onClick={handleGlobalSave}
             disabled={
+              !isAnyFormDirty ||
               saving.profile ||
               saving.regional ||
               saving.password ||
@@ -891,7 +990,7 @@ export default function SettingsPage() {
             />
 
             <div className="flex justify-end">
-              <SaveButton loading={saving.profile}>Save Profile</SaveButton>
+              <SaveButton loading={saving.profile} disabled={saving.profile || !profileForm.formState.isDirty}>Save Profile</SaveButton>
             </div>
           </form>
         </SettingsCard>
@@ -904,54 +1003,58 @@ export default function SettingsPage() {
         >
           <form
             onSubmit={regionalForm.handleSubmit(saveRegional)}
-            className="flex flex-col sm:flex-row w-full gap-2 pb-5"
+            className="flex flex-col w-full gap-5 pb-5"
           >
-            <div className="w-full flex flex-col gap-3">
-              <SelectInput
-                label="Country"
-                options={countries}
-                error={regionalForm.formState.errors.country}
-                {...regionalForm.register("country", {
-                  required: "Country is required",
-                  minLength: { value: 2, message: "Country name is too short" },
-                  maxLength: { value: 100, message: "Country name cannot exceed 100 characters" },
-                })}
-              />
-              <SelectInput
-                label="Currency"
-                options={currencies}
-                error={regionalForm.formState.errors.currency}
-                {...regionalForm.register("currency", {
-                  required: "Currency is required",
-                  minLength: { value: 2, message: "Currency code is too short" },
-                  maxLength: { value: 10, message: "Currency code cannot exceed 10 characters" },
-                })}
-              />
-            </div>
-            <div className="w-full flex flex-col gap-3">
-              <SelectInput
-                label="Timezone"
-                options={timezones}
-                error={regionalForm.formState.errors.timezone}
-                {...regionalForm.register("timezone", {
-                  required: "Timezone is required",
-                  minLength: { value: 2, message: "Timezone is too short" },
-                  maxLength: { value: 100, message: "Timezone cannot exceed 100 characters" },
-                })}
-              />
-              <SelectInput
-                label="Weight Unit"
-                options={weightUnits}
-                error={regionalForm.formState.errors.weight_unit}
-                {...regionalForm.register("weight_unit", {
-                  required: "Weight unit is required",
-                  minLength: { value: 1, message: "Weight unit is too short" },
-                  maxLength: { value: 20, message: "Weight unit cannot exceed 20 characters" },
-                })}
-              />
+            <div className="flex flex-col sm:flex-row w-full gap-4">
+              <div className="w-full flex flex-col gap-3">
+                <SelectInput
+                  label="Country"
+                  options={countriesList.length > 0 ? countriesList : countries}
+                  error={regionalForm.formState.errors.country}
+                  {...regionalForm.register("country", {
+                    required: "Country is required",
+                    minLength: { value: 2, message: "Country name is too short" },
+                    maxLength: { value: 100, message: "Country name cannot exceed 100 characters" },
+                  })}
+                />
+                <SelectInput
+                  label="Currency"
+                  options={currenciesList.length > 0 ? currenciesList : currencies}
+                  error={regionalForm.formState.errors.currency}
+                  {...regionalForm.register("currency", {
+                    required: "Currency is required",
+                    minLength: { value: 2, message: "Currency code is too short" },
+                    maxLength: { value: 10, message: "Currency code cannot exceed 10 characters" },
+                  })}
+                />
+              </div>
+              <div className="w-full flex flex-col gap-3">
+                <SelectInput
+                  label="Timezone"
+                  options={timezonesList.length > 0 ? timezonesList : timezones}
+                  error={regionalForm.formState.errors.timezone}
+                  {...regionalForm.register("timezone", {
+                    required: "Timezone is required",
+                    minLength: { value: 2, message: "Timezone is too short" },
+                    maxLength: { value: 100, message: "Timezone cannot exceed 100 characters" },
+                  })}
+                />
+                <SelectInput
+                  label="Weight Unit"
+                  options={weightUnitsList.length > 0 ? weightUnitsList : weightUnits}
+                  error={regionalForm.formState.errors.weight_unit}
+                  {...regionalForm.register("weight_unit", {
+                    required: "Weight unit is required",
+                    minLength: { value: 1, message: "Weight unit is too short" },
+                    maxLength: { value: 20, message: "Weight unit cannot exceed 20 characters" },
+                  })}
+                />
+              </div>
             </div>
 
-
+            <div className="flex justify-end">
+              <SaveButton loading={saving.regional} disabled={saving.regional || !regionalForm.formState.isDirty}>Save Regional</SaveButton>
+            </div>
           </form>
         </SettingsCard>
       </div>
@@ -1288,9 +1391,45 @@ export default function SettingsPage() {
                         value: 128,
                         message: "Password cannot exceed 128 characters",
                       },
-                      validate: (val) => val.trim().length >= 8 || "Password cannot be empty or whitespace-only",
+                      validate: {
+                        nonEmpty: (val) => val.trim().length >= 8 || "Password cannot be empty or whitespace-only",
+                        uppercase: (val) => /[A-Z]/.test(val) || "Password must contain at least one uppercase letter",
+                        lowercase: (val) => /[a-z]/.test(val) || "Password must contain at least one lowercase letter",
+                        number: (val) => /\d/.test(val) || "Password must contain at least one number",
+                        specialChar: (val) => /[^A-Za-z0-9]/.test(val) || "Password must contain at least one special character",
+                        notSame: (val) => val !== passwordForm.watch("current_password") || "New password must be different from current password"
+                      }
                     })}
                   />
+
+                  {newPasswordValue && (
+                    <div className="space-y-1.5 px-1">
+                      <div className="flex justify-between text-[11px] font-bold text-zinc-500">
+                        <span>Password Strength:</span>
+                        <span className={
+                          passwordStrength <= 1 ? "text-red-500" :
+                          passwordStrength === 2 ? "text-amber-500" :
+                          passwordStrength === 3 ? "text-sky-500" :
+                          "text-green-500"
+                        }>
+                          {passwordStrength <= 1 ? "Weak" :
+                           passwordStrength === 2 ? "Fair" :
+                           passwordStrength === 3 ? "Good" :
+                           "Strong"}
+                        </span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-gray-100 dark:bg-zinc-800">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            passwordStrength <= 1 ? "w-1/4 bg-red-500" :
+                            passwordStrength === 2 ? "w-2/4 bg-amber-500" :
+                            passwordStrength === 3 ? "w-3/4 bg-sky-500" :
+                            "w-full bg-green-500"
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <FormInput
                     label="Confirm Password"
@@ -1327,6 +1466,7 @@ export default function SettingsPage() {
                     })}
                   />
 
+
                   <div className="flex justify-end gap-2">
                     <Button
                       type="button"
@@ -1360,6 +1500,7 @@ export default function SettingsPage() {
               method={method}
               loading={paymentLoading[method.id]}
               onToggle={togglePayment}
+              onUpdate={updatePaymentMethod}
             />
           ))}
         </div>

@@ -7,6 +7,36 @@ ALLOWED_IMAGE_EXTENSIONS = {
     "webp",
 }
 
+# ── Standard Product Domain ────────────────────────────────────────────────────
+
+DEFAULT_PRODUCT_CATEGORIES = [
+    "T-Shirt",
+    "Shirt",
+    "Track Pant",
+    "Jersey",
+    "Trouser",
+]
+
+DEFAULT_COLLECTIONS = [
+    "Men",
+    "Women",
+    "Kids",
+]
+
+PROTECTED_PRODUCT_CATEGORIES = [
+    "T-Shirt",
+    "Shirt",
+    "Track Pant",
+    "Jersey",
+    "Trouser",
+]
+
+PROTECTED_COLLECTIONS = [
+    "Men",
+    "Women",
+    "Kids",
+]
+
 # Category
 MAX_CATEGORIES = 5
 
@@ -15,6 +45,13 @@ MAX_COLLECTIONS = 3
 
 # Sub Collections
 MAX_SUB_COLLECTIONS = 10
+
+# ── Custom Printing Domain ─────────────────────────────────────────────────────
+
+# Custom Categories (Custom Printing has its own independent limit)
+MAX_CUSTOM_CATEGORIES = 15
+
+# ── Operational Limits (shared behaviour: delete one to add another) ───────────
 
 # Banner
 MAX_BANNERS = 5

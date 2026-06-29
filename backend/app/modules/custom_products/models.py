@@ -204,6 +204,17 @@ class CustomProduct(Base):
     )
 
     # -------------------------------------------------
+    # WhatsApp Lead Generation
+    # Custom Products use WhatsApp for quotation (no cart/checkout).
+    # This message is pre-filled in the WhatsApp link on the storefront.
+    # -------------------------------------------------
+
+    whatsapp_message = Column(
+        Text,
+        nullable=True,
+    )
+
+    # -------------------------------------------------
     # Status
     # -------------------------------------------------
 

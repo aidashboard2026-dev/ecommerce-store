@@ -113,9 +113,18 @@ export const subCollectionsAPI = {
   delete: (collectionId, name) => api.delete(`/products/admin/collections/${collectionId}/sub-collections`, { params: { name } }),
 }
 
+// ─── Custom Categories (Custom Printing domain — separate from products.categories) ──
+// These endpoints ONLY manage the custom_categories table.
+// Never use categoriesAPI here — that belongs to Standard Products.
+
 export const customCategoriesAPI = {
-    list: () =>
-        api.get("/custom-products/categories"),
+  // Public endpoint — active custom categories for storefront
+  list: () => api.get('/custom-products/categories'),
+  // Admin endpoint — all custom categories (all statuses)
+  listAdmin: (params = {}) => api.get('/custom-products/admin/categories', { params }),
+  create: (data) => api.post('/custom-products/admin/categories', data),
+  update: (id, data) => api.patch(`/custom-products/admin/categories/${id}`, data),
+  delete: (id) => api.delete(`/custom-products/admin/categories/${id}`),
 }
 
 
@@ -233,60 +242,37 @@ export const storefrontAPI = {
 export const customProductsAPI = {
   adminList: (params = {}) => {
     const cleaned = {}
-
     Object.entries(params).forEach(([k, v]) => {
-      if (
-        v !== '' &&
-        v !== null &&
-        v !== undefined
-      ) {
-        cleaned[k] = v
-      }
+      if (v !== '' && v !== null && v !== undefined) cleaned[k] = v
     })
-
-    return api.get(
-      '/custom-products/admin/all',
-      { params: cleaned }
-    )
+    return api.get('/custom-products/admin/all', { params: cleaned })
   },
 
-  get: (id) =>
-    api.get(`/custom-products/admin/${id}`),
+  get:    (id)       => api.get(`/custom-products/admin/${id}`),
+  create: (data)     => api.post('/custom-products/admin', data),
+  update: (id, data) => api.patch(`/custom-products/admin/${id}`, data),
+  delete: (id)       => api.delete(`/custom-products/admin/${id}`),
 
-  create: (data) =>
-    api.post('/custom-products/admin', data),
+  // Bulk actions — mirrors productsAPI.bulkAction shape
+  bulkAction: (payload) => api.post('/custom-products/admin/bulk-action', payload),
+  // payload: { product_ids: [...], action: 'publish'|'unpublish'|'archive'|'delete'|'move_category',
+  //            custom_category_id? }
 
-  update: (id, data) =>
-    api.put(`/custom-products/admin/${id}`, data),
-
-  delete: (id) =>
-    api.delete(`/custom-products/admin/${id}`),
-
-  uploadImage: (
-    productId,
-    file,
-    imageType = 'thumbnail',
-    setAsPrimary = false
-  ) => {
+  uploadImage: (productId, file, imageType = 'thumbnail', setAsPrimary = false) => {
     const formData = new FormData()
-
     formData.append('file', file)
     formData.append('image_type', imageType)
-    formData.append(
-      'set_as_primary',
-      String(setAsPrimary)
-    )
-
-    return api.post(
-      `/custom-products/admin/${productId}/images`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      }
-    )
+    formData.append('set_as_primary', String(setAsPrimary))
+    return api.post(`/custom-products/admin/${productId}/images`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
   },
+
+  deleteImage: (productId, imageType) =>
+    api.delete(`/custom-products/admin/${productId}/images/${imageType}`),
+
+  deleteGalleryImage: (productId, index) =>
+    api.delete(`/custom-products/admin/${productId}/images/gallery/${index}`),
 }
 // ─── Orders ───────────────────────────────────────────────────────────────────
 

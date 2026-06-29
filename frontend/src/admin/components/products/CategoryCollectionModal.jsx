@@ -6,18 +6,28 @@ import clsx from 'clsx'
 import Modal from '@/shared/components/common/Modal'
 import { categoriesAPI, collectionsAPI, subCollectionsAPI } from '@/shared/services/api'
 import useBusinessLimits from '@/shared/hooks/useBusinessLimits'
+import useDefaultCatalog from '@/shared/hooks/useDefaultCatalog'
+import { getStructuralLimitMessage } from '@/shared/utils/limitMessages'
 
 
-const isMainCategory = (name) => {
+const isMainCategory = (name, defaults) => {
   if (!name) return false;
   const norm = name.trim().toLowerCase().replace(/[\s_-]+/g, '');
-  return ['tshirt', 'tshirts', 'trackpant', 'trackpants', 'jersey', 'jerseys', 'shirt', 'shirts', 'trouser', 'trousers'].includes(norm);
+  const defaultList = defaults || ['tshirt', 'tshirts', 'trackpant', 'trackpants', 'jersey', 'jerseys', 'shirt', 'shirts', 'trouser', 'trousers'];
+  return defaultList.some(d => {
+    const normD = d.trim().toLowerCase().replace(/[\s_-]+/g, '');
+    return norm === normD || norm === normD + 's' || (normD === 'tshirt' && (norm === 'tee' || norm === 'tees'));
+  });
 }
 
-const isMainCollection = (name) => {
+const isMainCollection = (name, defaults) => {
   if (!name) return false;
   const norm = name.trim().toLowerCase().replace(/[\s_\-\'\"]+/g, '');
-  return ['men', 'women', 'kids'].includes(norm);
+  const defaultList = defaults || ['men', 'women', 'kids'];
+  return defaultList.some(d => {
+    const normD = d.trim().toLowerCase().replace(/[\s_\-\'\"]+/g, '');
+    return norm === normD || normD.includes(norm) || norm.includes(normD);
+  });
 }
 
 // ─── Editable row ─────────────────────────────────────────────────────────────
@@ -104,9 +114,14 @@ function EditableRow({ item, onSave, onDelete, isSaving, isDeleting, extra, disa
             </>
           )}
           {disabled && (
-            <span className="text-[10px] text-muted italic bg-surface px-1.5 py-0.5 rounded border border-app whitespace-nowrap">
-              System Fixed
-            </span>
+            <button
+              disabled
+              title="Built-in item. This cannot be modified."
+              className="p-1 rounded-md text-muted opacity-30 cursor-not-allowed"
+              aria-label="Cannot delete built-in item"
+            >
+              <Trash2 size={12} />
+            </button>
           )}
         </>
       )}
@@ -125,7 +140,7 @@ function NewItemForm({ placeholder, onAdd, isAdding, extra, disabled, value, onC
   }
 
   return (
-    <div className="flex items-center gap-2 w-full" title={disabled ? "Maximum limit reached.\nDelete an existing item to continue." : ""}>
+    <div className="flex items-center gap-2 w-full" title={disabled ? "Your current store configuration has reached the maximum allowed limit. Please contact the system administrator if you need additional categories or collections." : ""}>
       <input
         value={value}
         onChange={e => onChange(e.target.value)}
@@ -152,6 +167,7 @@ function NewItemForm({ placeholder, onAdd, isAdding, extra, disabled, value, onC
 export default function CategoryCollectionModal({ isOpen, onClose }) {
   const qc = useQueryClient()
   const { limits, isLoading: limitsLoading, error: limitsError, refetch: refetchLimits } = useBusinessLimits()
+  const { catalog, isLoading: catalogLoading, error: catalogError, refetch: refetchCatalog } = useDefaultCatalog()
   const [tab, setTab] = useState('categories')
 
   const [newCollectionCategoryId, setNewCollectionCategoryId] = useState('')
@@ -343,21 +359,21 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
   return (
     <Modal isOpen={isOpen} onClose={handleCloseAttempt} title="Manage Catalog" size="lg">
       <div className="space-y-4">
-        {limitsLoading && (
+        {(limitsLoading || catalogLoading) && (
           <div className="flex items-center gap-2 justify-center py-2 text-xs text-muted">
             <Loader2 size={14} className="animate-spin" />
-            <span>Loading store limits...</span>
+            <span>Loading store configuration...</span>
           </div>
         )}
-        {limitsError && (
+        {(limitsError || catalogError) && (
           <div className="flex items-center justify-between bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg p-2.5 text-xs">
             <div className="flex items-center gap-2">
               <AlertTriangle size={14} />
-              <span>Unable to load store limits.</span>
+              <span>Unable to load store limits or catalog definitions.</span>
             </div>
             <button
               type="button"
-              onClick={() => refetchLimits()}
+              onClick={() => { refetchLimits(); refetchCatalog(); }}
               className="px-2 py-0.5 rounded bg-red-500 text-white font-bold text-[10px]"
             >
               Retry
@@ -395,23 +411,16 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
               value={catDraft}
               onChange={setCatDraft}
               placeholder="New category name…"
-              disabled={limitsLoading || !!limitsError || (limits && categories.length >= limits.max_categories)}
+              disabled={limitsLoading || catalogLoading || !!limitsError || !!catalogError || (limits && categories.length >= limits.max_categories)}
               onAdd={(name) => {
                 if (!limits) return;
                 if (categories.length >= limits.max_categories) {
-                  toast.error(
-                    <div>
-                      <strong style={{ display: "block", marginBottom: "4px" }}>Maximum Limit Reached</strong>
-                      <div style={{ whiteSpace: "pre-line", fontSize: "12px", lineHeight: "1.4" }}>
-                        You have reached the maximum allowed limit of {limits.max_categories} categories.{"\n"}Please delete an existing category before creating a new one.
-                      </div>
-                    </div>
-                  );
+                  toast.error(getStructuralLimitMessage('category', limits.max_categories), { duration: 6000 });
                   return;
                 }
 
-                if (isMainCategory(name)) {
-                  toast.error('This category is a system-fixed Main Product category and cannot be created.');
+                if (isMainCategory(name, catalog?.default_product_categories)) {
+                  toast.error('This category name is reserved. Please choose a different name.');
                   return;
                 }
                 createCategory.mutate(name, {
@@ -430,7 +439,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
                   <EditableRow
                     key={c.id}
                     item={c}
-                    disabled={isMainCategory(c.name)}
+                    disabled={isMainCategory(c.name, catalog?.protected_product_categories)}
                     isSaving={savingCatId === c.id && updateCategory.isPending}
                     isDeleting={deletingCatId === c.id && deleteCategory.isPending}
                     onSave={(id, data) => updateCategory.mutate({ id, data })}
@@ -449,23 +458,16 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
               value={colDraft}
               onChange={setColDraft}
               placeholder="New collection name…"
-              disabled={limitsLoading || !!limitsError || (limits && collections.length >= limits.max_collections)}
+              disabled={limitsLoading || catalogLoading || !!limitsError || !!catalogError || (limits && collections.length >= limits.max_collections)}
               onAdd={(name) => {
                 if (!limits) return;
                 if (collections.length >= limits.max_collections) {
-                  toast.error(
-                    <div>
-                      <strong style={{ display: "block", marginBottom: "4px" }}>Maximum Limit Reached</strong>
-                      <div style={{ whiteSpace: "pre-line", fontSize: "12px", lineHeight: "1.4" }}>
-                        You have reached the maximum allowed limit of {limits.max_collections} collections.{"\n"}Please delete an existing collection before creating a new one.
-                      </div>
-                    </div>
-                  );
+                  toast.error(getStructuralLimitMessage('collection', limits.max_collections), { duration: 6000 });
                   return;
                 }
 
-                if (isMainCollection(name)) {
-                  toast.error('This collection is a system-fixed Main Product collection and cannot be created.');
+                if (isMainCollection(name, catalog?.default_collections)) {
+                  toast.error('This collection name is reserved. Please choose a different name.');
                   return;
                 }
                 createCollection.mutate(name, {
@@ -477,7 +479,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
                 <select
                   value={newCollectionCategoryId}
                   onChange={e => setNewCollectionCategoryId(e.target.value)}
-                  disabled={limitsLoading || !!limitsError || (limits && collections.length >= limits.max_collections)}
+                  disabled={limitsLoading || catalogLoading || !!limitsError || !!catalogError || (limits && collections.length >= limits.max_collections)}
                   className="text-xs bg-app border border-app rounded-md px-2 py-1.5 max-w-[130px] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="">No category</option>
@@ -495,7 +497,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
                   <EditableRow
                     key={c.id}
                     item={c}
-                    disabled={isMainCollection(c.name)}
+                    disabled={isMainCollection(c.name, catalog?.protected_collections)}
                     isSaving={savingColId === c.id && updateCollection.isPending}
                     isDeleting={deletingColId === c.id && deleteCollection.isPending}
                     onSave={(id, data) => updateCollection.mutate({ id, data })}
@@ -537,14 +539,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
                   onAdd={(name) => {
                     if (!limits) return;
                     if (subCollections.length >= limits.max_sub_collections) {
-                      toast.error(
-                        <div>
-                          <strong style={{ display: "block", marginBottom: "4px" }}>Maximum Limit Reached</strong>
-                          <div style={{ whiteSpace: "pre-line", fontSize: "12px", lineHeight: "1.4" }}>
-                            You have reached the maximum allowed limit of {limits.max_sub_collections} sub collections.{"\n"}Please delete an existing sub collection before creating a new one.
-                          </div>
-                        </div>
-                      );
+                      toast.error(getStructuralLimitMessage('sub_collection', limits.max_sub_collections), { duration: 6000 });
                       return;
                     }
                     createSubCollection.mutate({ collectionId: selectedCollectionId, name }, {

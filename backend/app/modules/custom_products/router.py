@@ -150,11 +150,19 @@ def list_admin_custom_products(
     db: Session = Depends(get_db),
     _:  Admin   = Depends(get_current_admin),
 ):
-    return get_custom_products(
-        db=db, page=page, per_page=per_page,
-        search=search, custom_category_id=custom_category_id,
-        status_filter=status_filter,
-    )
+    try:
+        return get_custom_products(
+            db=db, page=page, per_page=per_page,
+            search=search, custom_category_id=custom_category_id,
+            status_filter=status_filter,
+        )
+    except Exception as e:
+        logger.exception("Unexpected error in GET /custom-products/admin/all: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal database or server error: {str(e)}",
+        )
+
 
 
 @router.get("/admin/{product_id}", response_model=CustomProductResponse)

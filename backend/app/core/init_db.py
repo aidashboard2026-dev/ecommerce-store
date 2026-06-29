@@ -22,6 +22,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.constants import DEFAULT_PRODUCT_CATEGORIES, DEFAULT_COLLECTIONS
 from app.core.security import get_password_hash
 from app.core.database import SessionLocal
 from app.modules.custom_products.models import CustomProduct
@@ -53,21 +54,15 @@ def normalize_category_name(name: str) -> str | None:
     # Strip and convert to lowercase, remove space, hyphen, underscore
     val = name.strip().lower()
     val = re.sub(r'[\s_-]+', '', val)
-    if val in {"tshirt", "tshirts", "tee", "tees"}:
-        return "T-Shirt"
-    if val in {"trackpant", "trackpants"}:
-        return "Track Pant"
-    if val in {"jersey", "jerseys"}:
-        return "Jersey"
-    if val in {"shirt", "shirts"}:
-        return "Shirt"
-    if val in {"trouser", "trousers"}:
-        return "Trouser"
+    for allowed in DEFAULT_PRODUCT_CATEGORIES:
+        allowed_stripped = re.sub(r'[\s_-]+', '', allowed.lower())
+        if val == allowed_stripped or val == allowed_stripped + "s" or (allowed_stripped == "tshirt" and val in {"tee", "tees"}):
+            return allowed
     return None
 
 
 def _normalize_existing_categories(db: Session) -> None:
-    APPROVED_SET = {"T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"}
+    APPROVED_SET = set(DEFAULT_PRODUCT_CATEGORIES)
     categories = db.query(Category).all()
     
     cat_by_normalized = {}
@@ -129,50 +124,34 @@ def _validate_initial_admin_settings() -> tuple[str, str, str]:
 # TASK 5 — Master category seeding
 # ─────────────────────────────────────────────────────────────
 
-# Production master categories.
-# Add / rename here; existing rows are never touched once created.
-MASTER_CATEGORIES = [
-    # sort_order controls homepage CategorySection tile order.
-    # Product type is the top level; gender lives as collections underneath.
-    {"name": "Track Pant",      "sort_order": 1},
-    {"name": "Jersey",          "sort_order": 2},
-    {"name": "T-Shirt",         "sort_order": 3},
-    {"name": "Shirt",           "sort_order": 4},
-    {"name": "Trouser",         "sort_order": 5},
-    {"name": "Custom Printing", "sort_order": 6},
-]
-
 def _seed_categories(db: Session) -> dict[str, int]:
     """
-    Insert master categories that do not already exist.
-    Returns a mapping of category name → id for use by the collection seeder
-    and the migration step.
-    Idempotent — safe to call on every restart.
+    Insert master categories only if the categories table is empty.
+    Returns a mapping of category name → id.
     """
-    existing = {c.name: c.id for c in db.query(Category.name, Category.id).all()}
-    created = 0
+    count = db.query(Category.id).count()
+    if count > 0:
+        logger.info("Categories already exist, skipping seeding")
+        return {c.name: c.id for c in db.query(Category.name, Category.id).all()}
 
-    for cat_def in MASTER_CATEGORIES:
-        if cat_def["name"] not in existing:
-            slug = _make_slug(cat_def["name"])
-            # Make slug unique if collision exists (shouldn't happen for master data)
-            if db.query(Category.id).filter(Category.slug == slug).first():
-                slug = f"{slug}-1"
-            cat = Category(
-                name=cat_def["name"],
-                slug=slug,
-                status="active",
-                sort_order=cat_def["sort_order"],
-            )
-            db.add(cat)
-            db.flush()          # get id without committing
-            existing[cat.name] = cat.id
-            created += 1
+    created = 0
+    existing = {}
+
+    for i, name in enumerate(DEFAULT_PRODUCT_CATEGORIES):
+        slug = _make_slug(name)
+        cat = Category(
+            name=name,
+            slug=slug,
+            status="active",
+            sort_order=i + 1,
+        )
+        db.add(cat)
+        db.flush()          # get id without committing
+        existing[cat.name] = cat.id
+        created += 1
 
     if created:
         logger.info(f"Seeded {created} new categories")
-    else:
-        logger.info("Categories already up to date, skipping")
 
     return existing   # name → id
 
@@ -181,51 +160,34 @@ def _seed_categories(db: Session) -> dict[str, int]:
 # TASK 5 — Master collection seeding
 # ─────────────────────────────────────────────────────────────
 
-# Each collection can optionally be linked to a category by name.
-# category_name=None means the collection has no parent category FK (nullable).
-MASTER_COLLECTIONS = [
-    # ── Core Gender Collections for Apparel (Main Products) ──
-    {"name": "Men",   "category_name": None},
-    {"name": "Women", "category_name": None},
-    {"name": "Kids",  "category_name": None},
-
-    # ── Custom Printing ────────────────────────────────────────
-    {"name": "Magic Cup",        "category_name": "Custom Printing"},
-    {"name": "White Cup",        "category_name": "Custom Printing"},
-    {"name": "Keychain",         "category_name": "Custom Printing"},
-    {"name": "Embroidery Design","category_name": "Custom Printing"},
-]
-
 def _seed_collections(db: Session, category_map: dict[str, int]) -> dict[str, int]:
     """
-    Insert master collections that do not already exist.
-    Returns name → id mapping for the migration step.
-    Idempotent — safe to call on every restart.
+    Insert master collections only if the collections table is empty.
+    Returns name → id mapping.
     """
-    existing = {c.name: c.id for c in db.query(Collection.name, Collection.id).all()}
-    created = 0
+    count = db.query(Collection.id).count()
+    if count > 0:
+        logger.info("Collections already exist, skipping seeding")
+        return {c.name: c.id for c in db.query(Collection.name, Collection.id).all()}
 
-    for col_def in MASTER_COLLECTIONS:
-        if col_def["name"] not in existing:
-            slug = _make_slug(col_def["name"])
-            if db.query(Collection.id).filter(Collection.slug == slug).first():
-                slug = f"{slug}-1"
-            cat_id = category_map.get(col_def.get("category_name", ""))
-            col = Collection(
-                name=col_def["name"],
-                slug=slug,
-                status="active",
-                category_id=cat_id,
-            )
-            db.add(col)
-            db.flush()
-            existing[col.name] = col.id
-            created += 1
+    created = 0
+    existing = {}
+
+    for name in DEFAULT_COLLECTIONS:
+        slug = _make_slug(name)
+        col = Collection(
+            name=name,
+            slug=slug,
+            status="active",
+            category_id=None,
+        )
+        db.add(col)
+        db.flush()
+        existing[col.name] = col.id
+        created += 1
 
     if created:
         logger.info(f"Seeded {created} new collections")
-    else:
-        logger.info("Collections already up to date, skipping")
 
     return existing   # name → id
 
@@ -240,7 +202,7 @@ def _normalize_existing_collections(db: Session) -> None:
     re-links existing products, and cleans up redundant collection rows.
     """
     # 1. Fetch the core collections
-    core_names = {"Men", "Women", "Kids"}
+    core_names = set(DEFAULT_COLLECTIONS)
     core_map = {}
     for name in core_names:
         col = db.query(Collection).filter(Collection.name == name).first()
@@ -380,7 +342,7 @@ def _migrate_legacy_collections(db: Session, collection_map: dict[str, int], cat
             is_main = False
             if cat_id:
                 cat = db.get(Category, cat_id)
-                if cat and cat.name in {"T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"}:
+                if cat and cat.name in set(DEFAULT_PRODUCT_CATEGORIES):
                     is_main = True
             
             if is_main:
@@ -605,30 +567,19 @@ def init_db() -> None:
             admin.role = "superadmin"
             logger.info("Initial admin account verified (password unchanged)")
 
-        # ── 1.5 Normalize existing categories ───────────────────────────────────
-        _normalize_existing_categories(db)
-
         # ── 2. Master categories ────────────────────────────────────────────────
         category_map = _seed_categories(db)
 
         # ── 3. Master collections ───────────────────────────────────────────────
         collection_map = _seed_collections(db, category_map)
 
-        # ── 3.5 Normalize existing collections ──────────────────────────────────
-        _normalize_existing_collections(db)
-        collection_map = {c.name: c.id for c in db.query(Collection.name, Collection.id).all()}
-
         # ── 4. Delivery zones ───────────────────────────────────────────────────
         _seed_delivery_zones(db)
 
-        # ── 5. Legacy migration ─────────────────────────────────────────────────
-        # Must run AFTER collections are seeded so the FK targets exist.
-        _migrate_legacy_collections(db, collection_map, category_map)
-
-        # ── 6. Demo products (only if table is empty) ───────────────────────────
+        # ── 5. Demo products (only if table is empty) ───────────────────────────
         _seed_demo_products(db, collection_map, category_map)
 
-        # ── 7. Demo order ───────────────────────────────────────────────────────
+        # ── 6. Demo order ───────────────────────────────────────────────────────
         now      = datetime.now(timezone.utc)
         week_start = now - timedelta(days=now.weekday())
         demo_orders = [

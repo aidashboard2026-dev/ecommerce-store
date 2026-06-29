@@ -1,57 +1,34 @@
+/**
+ * CustomCategoryCollectionModel.jsx
+ *
+ * Manages ONLY Custom Printing categories (custom_categories table).
+ *
+ * DOMAIN BOUNDARY — NON-NEGOTIABLE:
+ * - This modal MUST NOT import categoriesAPI, collectionsAPI, or subCollectionsAPI.
+ * - It MUST NOT show collections or sub-collections — Custom Printing has none.
+ * - It uses customCategoriesAPI exclusively (custom_categories table).
+ * - Limit messaging follows the business-growth pattern (not "delete one to add").
+ */
+
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Edit2, Trash2, Check, X, Loader2, AlertTriangle, Tag, Layers } from 'lucide-react'
+import { Plus, Edit2, Trash2, Check, X, Loader2, AlertTriangle, Tag, Info } from 'lucide-react'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
 import Modal from '@/shared/components/ui/Modal'
-import { categoriesAPI, collectionsAPI, customCategoriesAPI, customCollectionsAPI } from '@/shared/services/api'
+import { customCategoriesAPI } from '@/shared/services/api'
 import useBusinessLimits from '@/shared/hooks/useBusinessLimits'
+import { getStructuralLimitMessage } from '@/shared/utils/limitMessages'
 
-const isMainCategory = (name) => {
-  if (!name) return false;
+// ─── Editable row ──────────────────────────────────────────────────────────────
 
-  const norm = name
-    .trim()
-    .toLowerCase()
-    .replace(/[\s&_-]+/g, "");
-
-  return [
-    "oversizedtshirt",
-    "graphicprintedtshirt",
-    "backprinttshirt",
-    "embroiderydesigntshirt",
-    "jersey",
-    "giftsprinting",
-    "magicmugprint",
-    "photoframes",
-    "metalframes",
-    "mousepads",
-    "personalgifts",
-    "whitemug",
-    "sublimationproducts",
-    "waterbottles",
-    "skinnytumblers",
-    "glassware",
-    "hatscaps",
-    "weddinggreetingcards",
-    "pillows",
-  ].includes(norm);
-};
-
-const isMainCollection = () => false;
-
-// ─── Editable row ─────────────────────────────────────────────────────────────
-
-function EditableRow({ item, onSave, onDelete, isSaving, isDeleting, extra, disabled }) {
-  const [editing, setEditing] = useState(false)
-  const [name, setName]       = useState(item.name)
+function EditableRow({ item, onSave, onDelete, isSaving, isDeleting }) {
+  const [editing, setEditing]       = useState(false)
+  const [name, setName]             = useState(item.name)
   const [confirming, setConfirming] = useState(false)
   const timerRef = useRef(null)
 
-  // Keep local name in sync if the item is updated from outside
   useEffect(() => { if (!editing) setName(item.name) }, [item.name, editing])
-
-  // Clear the auto-reset timer on unmount
   useEffect(() => () => clearTimeout(timerRef.current), [])
 
   const startEdit  = () => { setName(item.name); setEditing(true) }
@@ -97,70 +74,66 @@ function EditableRow({ item, onSave, onDelete, isSaving, isDeleting, extra, disa
       ) : (
         <>
           <span className="flex-1 min-w-0 text-xs font-medium text-app truncate">{item.name}</span>
-          {extra}
-          {!disabled && (
-            <>
-              <button
-                onClick={startEdit}
-                className="p-1 rounded-md text-muted opacity-0 group-hover:opacity-100 hover:text-app hover:bg-surface transition-all"
-                aria-label="Rename"
-              >
-                <Edit2 size={12} />
-              </button>
-              <button
-                onClick={handleDeleteClick}
-                disabled={isDeleting}
-                className={clsx(
-                  'p-1 rounded-md transition-all',
-                  confirming
-                    ? 'text-white bg-red-500 opacity-100'
-                    : 'text-muted opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-500/10'
-                )}
-                title={confirming ? 'Click again to confirm delete' : 'Delete'}
-                aria-label="Delete"
-              >
-                {isDeleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-              </button>
-            </>
-          )}
-          {disabled && (
-            <span className="text-[10px] text-muted italic bg-surface px-1.5 py-0.5 rounded border border-app whitespace-nowrap">
-              System Fixed
+          {item.status === 'inactive' && (
+            <span className="text-[9px] text-muted bg-surface px-1.5 py-0.5 rounded border border-app whitespace-nowrap">
+              Inactive
             </span>
           )}
+          <button
+            onClick={startEdit}
+            className="p-1 rounded-md text-muted opacity-0 group-hover:opacity-100 hover:text-app hover:bg-surface transition-all"
+            aria-label="Rename"
+          >
+            <Edit2 size={12} />
+          </button>
+          <button
+            onClick={handleDeleteClick}
+            disabled={isDeleting}
+            className={clsx(
+              'p-1 rounded-md transition-all',
+              confirming
+                ? 'text-white bg-red-500 opacity-100'
+                : 'text-muted opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-500/10'
+            )}
+            title={confirming ? 'Click again to confirm delete' : 'Delete this category'}
+            aria-label="Delete"
+          >
+            {isDeleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+          </button>
         </>
       )}
     </div>
   )
 }
 
-// ─── New item form ─────────────────────────────────────────────────────────────
+// ─── Add form ──────────────────────────────────────────────────────────────────
 
-function NewItemForm({ placeholder, onAdd, isAdding, extra, disabled }) {
-  const [name, setName] = useState('')
+function AddCategoryForm({ onAdd, isAdding, disabled, disabledReason }) {
+  const [draft, setDraft] = useState('')
 
   const submit = () => {
-    const trimmed = name.trim()
+    const trimmed = draft.trim()
     if (!trimmed) return
-    onAdd(trimmed)
-    setName('')
+    onAdd(trimmed, () => setDraft(''))
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div
+      className="flex items-center gap-2 w-full"
+      title={disabled ? disabledReason : ''}
+    >
       <input
-        value={name}
-        onChange={e => setName(e.target.value)}
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter' && !disabled) submit() }}
-        placeholder={placeholder}
+        placeholder={disabled ? 'Category limit reached' : 'New category name…'}
         disabled={disabled}
-        className="flex-1 min-w-0 text-xs bg-app border border-app rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50"
+        className="flex-1 min-w-0 text-xs bg-app border border-app rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
       />
-      {extra}
       <button
         onClick={submit}
-        disabled={isAdding || !name.trim() || disabled}
-        className="btn-primary py-1.5 px-3 text-xs flex items-center gap-1 disabled:opacity-40 whitespace-nowrap"
+        disabled={isAdding || disabled || !draft.trim()}
+        className="btn-primary py-1.5 px-3 text-xs flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
       >
         {isAdding ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
         Add
@@ -169,125 +142,95 @@ function NewItemForm({ placeholder, onAdd, isAdding, extra, disabled }) {
   )
 }
 
+// ─── Business-growth limit banner ─────────────────────────────────────────────
+
+function LimitReachedBanner({ max }) {
+  return (
+    <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-xs text-amber-600 dark:text-amber-400">
+      <Info size={13} className="flex-shrink-0 mt-0.5" />
+      <div>
+        <p className="font-semibold mb-0.5">Maximum Categories Reached ({max}/{max})</p>
+        <p className="leading-relaxed">{getStructuralLimitMessage('custom_category', max)}</p>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main modal ────────────────────────────────────────────────────────────────
 
-export default function CategoryCollectionModal({ isOpen, onClose }) {
+export default function CustomCategoryCollectionModel({ isOpen, onClose }) {
   const qc = useQueryClient()
   const { limits, isLoading: limitsLoading, error: limitsError, refetch: refetchLimits } = useBusinessLimits()
-  const [tab, setTab] = useState('categories')
-  const [newCollectionCategoryId, setNewCollectionCategoryId] = useState('')
 
-  // Track whether any mutation happened so we can batch-invalidate products on close
   const dirtyRef = useRef(false)
 
-  // Reset tab + dirty flag each time modal is opened
   useEffect(() => {
-    if (isOpen) {
-      setTab('categories')
-      dirtyRef.current = false
-    }
+    if (isOpen) dirtyRef.current = false
   }, [isOpen])
 
   const { data: categories = [], isLoading: catLoading } = useQuery({
-    queryKey: ['categories', 'admin'],
-    queryFn: () => customCategoriesAPI.list().then(r => r.data),
-    enabled: isOpen,
+    queryKey: ['custom-categories', 'admin'],
+    queryFn:  () => customCategoriesAPI.listAdmin().then(r => r.data),
+    enabled:  isOpen,
     staleTime: 30_000,
   })
 
- 
-
-  // Only invalidate categories + collections mid-session.
-  // Products are refreshed once on close (below) to avoid freezing the
-  // list while the modal is still visible.
-  const invalidateCatCol = useCallback(() => {
+  const invalidate = useCallback(() => {
     dirtyRef.current = true
-    qc.invalidateQueries({ queryKey: ['categories'] })
-    qc.invalidateQueries({ queryKey: ['collections'] })
+    qc.invalidateQueries({ queryKey: ['custom-categories'] })
   }, [qc])
 
   const handleClose = useCallback(() => {
-    // Batch-refresh products only if something actually changed
     if (dirtyRef.current) {
-      qc.invalidateQueries({ queryKey: ['products'] })
+      qc.invalidateQueries({ queryKey: ['custom-products'] })
     }
     onClose()
   }, [onClose, qc])
 
-  // ── Category mutations ──────────────────────────────────────────────────────
+  // ── Mutations ─────────────────────────────────────────────────────────────
 
-  const [savingCatId,   setSavingCatId]   = useState(null)
-  const [deletingCatId, setDeletingCatId] = useState(null)
+  const [savingId,   setSavingId]   = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
 
   const createCategory = useMutation({
-    mutationFn: (name) => categoriesAPI.create({ name }),
-    onSuccess: () => { toast.success('Category created successfully.'); invalidateCatCol() },
+    mutationFn: (name) => customCategoriesAPI.create({ name, status: 'active' }),
+    onSuccess: () => { toast.success('Category created successfully.'); invalidate() },
     onError: e => toast.error(e.response?.data?.detail || 'Failed to create category'),
   })
 
   const updateCategory = useMutation({
-    mutationFn: ({ id, data }) => categoriesAPI.update(id, data),
-    onMutate:  ({ id }) => setSavingCatId(id),
-    onSettled: ()       => setSavingCatId(null),
-    onSuccess: () => { toast.success('Category updated successfully.'); invalidateCatCol() },
+    mutationFn: ({ id, data }) => customCategoriesAPI.update(id, data),
+    onMutate:  ({ id }) => setSavingId(id),
+    onSettled: ()       => setSavingId(null),
+    onSuccess: () => { toast.success('Category updated.'); invalidate() },
     onError: e => toast.error(e.response?.data?.detail || 'Failed to update category'),
   })
 
   const deleteCategory = useMutation({
-    mutationFn: (id) => categoriesAPI.delete(id),
-    onMutate:  (id) => setDeletingCatId(id),
-    onSettled: ()   => setDeletingCatId(null),
-    onSuccess: () => {
-      toast.success('Category deleted successfully.')
-      invalidateCatCol()
-    },
+    mutationFn: (id) => customCategoriesAPI.delete(id),
+    onMutate:  (id) => setDeletingId(id),
+    onSettled: ()   => setDeletingId(null),
+    onSuccess: () => { toast.success('Category deleted.'); invalidate() },
     onError: e => toast.error(e.response?.data?.detail || 'Failed to delete category'),
   })
 
-  // ── Collection mutations ────────────────────────────────────────────────────
+  // ── Derived state ─────────────────────────────────────────────────────────
 
-  const [savingColId,   setSavingColId]   = useState(null)
-  const [deletingColId, setDeletingColId] = useState(null)
+  const maxCustomCategories = limits?.max_custom_categories ?? null
+  const atLimit = maxCustomCategories !== null && categories.length >= maxCustomCategories
+  const addDisabled = limitsLoading || !!limitsError || atLimit
 
-  const createCollection = useMutation({
-    mutationFn: (name) => collectionsAPI.create({
-      name,
-      category_id: newCollectionCategoryId ? Number(newCollectionCategoryId) : null,
-    }),
-    onSuccess: () => {
-      toast.success('Collection created successfully.')
-      setNewCollectionCategoryId('')
-      invalidateCatCol()
-    },
-    onError: e => toast.error(e.response?.data?.detail || 'Failed to create collection'),
-  })
-
-  const updateCollection = useMutation({
-    mutationFn: ({ id, data }) => collectionsAPI.update(id, data),
-    onMutate:  ({ id }) => setSavingColId(id),
-    onSettled: ()       => setSavingColId(null),
-    onSuccess: () => { toast.success('Collection updated successfully.'); invalidateCatCol() },
-    onError: e => toast.error(e.response?.data?.detail || 'Failed to update collection'),
-  })
-
-  const deleteCollection = useMutation({
-    mutationFn: (id) => collectionsAPI.delete(id),
-    onMutate:  (id) => setDeletingColId(id),
-    onSettled: ()   => setDeletingColId(null),
-    onSuccess: () => {
-      toast.success('Collection deleted successfully.')
-      invalidateCatCol()
-    },
-    onError: e => toast.error(e.response?.data?.detail || 'Failed to delete collection'),
-  })
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Manage Categories & Collections" size="lg">
+    <Modal isOpen={isOpen} onClose={handleClose} title="Manage Custom Categories" size="lg">
       <div className="space-y-4">
+
+        {/* Limits loading / error states */}
         {limitsLoading && (
           <div className="flex items-center gap-2 justify-center py-2 text-xs text-muted">
             <Loader2 size={14} className="animate-spin" />
-            <span>Loading store limits...</span>
+            <span>Loading store limits…</span>
           </div>
         )}
         {limitsError && (
@@ -306,131 +249,69 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
           </div>
         )}
 
-        {/* Tabs */}
+        {/* Tab header (single tab — Custom Printing has no collections) */}
         <div className="flex gap-1 border-b border-app -mt-1">
-          {[
-            { key: 'categories',  label: 'Categories',  icon: <Tag size={13} /> },
-            { key: 'collections', label: 'Collections', icon: <Layers size={13} /> },
-          ].map(t => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={clsx(
-                'flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 -mb-px transition-colors',
-                tab === t.key ? 'border-brand-500 text-brand-500' : 'border-transparent text-muted hover:text-app'
-              )}
-            >
-              {t.icon}{t.label}
-              <span className="text-[10px] opacity-60">
-                ({t.key === 'categories' ? categories.length : collections.length})
-              </span>
-            </button>
-          ))}
+          <div className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 border-brand-500 text-brand-500 -mb-px">
+            <Tag size={13} />
+            Categories
+            <span className="text-[10px] opacity-60 ml-1">
+              ({categories.length}{maxCustomCategories !== null ? `/${maxCustomCategories}` : ''})
+            </span>
+          </div>
         </div>
 
-        {/* Categories tab */}
-        {tab === 'categories' && (
-          <div className="space-y-3">
-            <NewItemForm
-              placeholder="New category name…"
-              onAdd={(name) => {
-                if (!limits) return;
-                if (categories.length >= limits.max_categories) {
-                  toast.error(`You have reached the maximum allowed limit of ${limits.max_categories} categories. Please delete an existing category before creating a new one.`);
-                  return;
-                }
-                if (isMainCategory(name)) {
-                  toast.error('This category is a system-fixed Main Product category and cannot be created.');
-                  return;
-                }
-                createCategory.mutate(name);
-              }}
-              isAdding={createCategory.isPending}
-              disabled={limitsLoading || !!limitsError || (limits && categories.length >= limits.max_categories)}
-            />
-            <div className="space-y-1.5 max-h-72 overflow-y-auto overscroll-contain pr-1">
-              {catLoading ? (
-                <div className="py-8 flex justify-center"><Loader2 size={18} className="animate-spin text-muted" /></div>
-              ) : categories.length === 0 ? (
-                <p className="text-xs text-muted text-center py-6">No categories yet.</p>
-              ) : (
-                categories.map(c => (
-                  <EditableRow
-                    key={c.id}
-                    item={c}
-                    disabled={isMainCategory(c.name)}
-                    isSaving={savingCatId === c.id && updateCategory.isPending}
-                    isDeleting={deletingCatId === c.id && deleteCategory.isPending}
-                    onSave={(id, data) => updateCategory.mutate({ id, data })}
-                    onDelete={(id) => deleteCategory.mutate(id)}
-                  />
-                ))
-              )}
-            </div>
-          </div>
+        {/* Limit reached banner — business-growth message, not delete-to-add */}
+        {atLimit && maxCustomCategories !== null && (
+          <LimitReachedBanner max={maxCustomCategories} />
         )}
 
-        {/* Collections tab */}
-        {tab === 'collections' && (
-          <div className="space-y-3">
-            <NewItemForm
-              placeholder="New collection name…"
-              onAdd={(name) => {
-                if (!limits) return;
-                if (collections.length >= limits.max_collections) {
-                  toast.error(`You have reached the maximum allowed limit of ${limits.max_collections} collections. Please delete an existing collection before creating a new one.`);
-                  return;
-                }
-                if (isMainCollection(name)) {
-                  toast.error('This collection is a system-fixed Main Product collection and cannot be created.');
-                  return;
-                }
-                createCollection.mutate(name);
-              }}
-              isAdding={createCollection.isPending}
-              disabled={limitsLoading || !!limitsError || (limits && collections.length >= limits.max_collections)}
-              extra={
-                <select
-                  value={newCollectionCategoryId}
-                  onChange={e => setNewCollectionCategoryId(e.target.value)}
-                  className="text-xs bg-app border border-app rounded-md px-2 py-1.5 max-w-[130px]"
-                >
-                  <option value="">No category</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              }
-            />
-            <div className="space-y-1.5 max-h-72 overflow-y-auto overscroll-contain pr-1">
-              {colLoading ? (
-                <div className="py-8 flex justify-center"><Loader2 size={18} className="animate-spin text-muted" /></div>
-              ) : collections.length === 0 ? (
-                <p className="text-xs text-muted text-center py-6">No collections yet.</p>
-              ) : (
-                collections.map(c => (
-                  <EditableRow
-                    key={c.id}
-                    item={c}
-                    disabled={isMainCollection(c.name)}
-                    isSaving={savingColId === c.id && updateCollection.isPending}
-                    isDeleting={deletingColId === c.id && deleteCollection.isPending}
-                    onSave={(id, data) => updateCollection.mutate({ id, data })}
-                    onDelete={(id) => deleteCollection.mutate(id)}
-                    extra={c.category_name && (
-                      <span className="text-[9px] text-muted bg-surface px-1.5 py-0.5 rounded border border-app whitespace-nowrap">
-                        {c.category_name}
-                      </span>
-                    )}
-                  />
-                ))
-              )}
-            </div>
-          </div>
-        )}
+        {/* Add form */}
+        <AddCategoryForm
+          onAdd={(name, onSuccess) => createCategory.mutate(name, { onSuccess })}
+          isAdding={createCategory.isPending}
+          disabled={addDisabled}
+          disabledReason={
+            atLimit
+              ? "Your current store configuration has reached the maximum allowed limit. Please contact the system administrator if you need additional categories or collections."
+              : ''
+          }
+        />
 
-        <p className="text-[10px] text-muted flex items-start gap-1.5 pt-1 border-t border-app">
-          <AlertTriangle size={11} className="flex-shrink-0 mt-0.5" />
-          Deleting a category or collection does not delete its products — they're simply unassigned from it.
-        </p>
+        {/* Category list */}
+        <div className="space-y-1.5 max-h-72 overflow-y-auto overscroll-contain pr-1">
+          {catLoading ? (
+            <div className="py-8 flex justify-center">
+              <Loader2 size={18} className="animate-spin text-muted" />
+            </div>
+          ) : categories.length === 0 ? (
+            <p className="text-xs text-muted text-center py-8 bg-app/20 rounded-lg border border-dashed border-app">
+              No custom categories yet. Add one above to get started.
+            </p>
+          ) : (
+            categories.map(c => (
+              <EditableRow
+                key={c.id}
+                item={c}
+                isSaving={savingId === c.id && updateCategory.isPending}
+                isDeleting={deletingId === c.id && deleteCategory.isPending}
+                onSave={(id, data) => updateCategory.mutate({ id, data })}
+                onDelete={(id) => deleteCategory.mutate(id)}
+              />
+            ))
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-app">
+          <p className="text-[10px] text-muted flex items-start gap-1.5 max-w-md">
+            <AlertTriangle size={11} className="flex-shrink-0 mt-0.5" />
+            Deleting a category unassigns all custom products from it — products are not deleted.
+          </p>
+          <button onClick={handleClose} className="btn-secondary text-xs py-2 px-4 self-end sm:self-auto">
+            Done
+          </button>
+        </div>
+
       </div>
     </Modal>
   )

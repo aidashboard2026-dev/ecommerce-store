@@ -31,6 +31,10 @@ from app.core.constants import (
     MAX_SIZES,
     MAX_COLORS,
     MAX_PRODUCT_VARIANTS,
+    DEFAULT_PRODUCT_CATEGORIES,
+    DEFAULT_COLLECTIONS,
+    PROTECTED_PRODUCT_CATEGORIES,
+    PROTECTED_COLLECTIONS,
 )
 
 MAX_PER_PAGE = 100
@@ -42,16 +46,10 @@ def normalize_category_name(name: str) -> Optional[str]:
     # Strip and convert to lowercase, remove space, hyphen, underscore
     val = name.strip().lower()
     val = re.sub(r'[\s_-]+', '', val)
-    if val in {"tshirt", "tshirts", "tee", "tees"}:
-        return "T-Shirt"
-    if val in {"trackpant", "trackpants"}:
-        return "Track Pant"
-    if val in {"jersey", "jerseys"}:
-        return "Jersey"
-    if val in {"shirt", "shirts"}:
-        return "Shirt"
-    if val in {"trouser", "trousers"}:
-        return "Trouser"
+    for allowed in DEFAULT_PRODUCT_CATEGORIES:
+        allowed_stripped = re.sub(r'[\s_-]+', '', allowed.lower())
+        if val == allowed_stripped or val == allowed_stripped + "s" or (allowed_stripped == "tshirt" and val in {"tee", "tees"}):
+            return allowed
     return None
 
 
@@ -59,36 +57,36 @@ def validate_main_product_category(db: Session, category_id: Optional[int]) -> N
     if category_id is None:
         return
     cat = db.get(Category, category_id)
+    allowed_list_str = ", ".join(DEFAULT_PRODUCT_CATEGORIES)
     if not cat:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "Invalid category. Allowed categories are T-Shirt, Track Pant, Jersey, Shirt, Trouser."
+            f"Invalid category. Allowed categories are {allowed_list_str}."
         )
-    APPROVED_SET = {"T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"}
+    APPROVED_SET = set(DEFAULT_PRODUCT_CATEGORIES)
     if cat.name not in APPROVED_SET:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "Invalid category. Allowed categories are T-Shirt, Track Pant, Jersey, Shirt, Trouser."
+            f"Invalid category. Allowed categories are {allowed_list_str}."
         )
 
 
 def normalize_collection_name(name: str) -> Optional[str]:
     val = name.strip().lower()
     val = re.sub(r'[\s_\-\'\"]+', '', val)
-    if "women" in val or "female" in val or "girl" in val or "lady" in val or "ladies" in val:
-        return "Women"
-    if "men" in val or "male" in val or "boy" in val:
-        return "Men"
-    if "kid" in val or "child" in val:
-        return "Kids"
+    for allowed in DEFAULT_COLLECTIONS:
+        allowed_stripped = re.sub(r'[\s_\-\'\"]+', '', allowed.lower())
+        if allowed_stripped in val or val in allowed_stripped:
+            return allowed
     return None
 
 
 def validate_main_product_collection(db: Session, collection_id: Optional[int], category_id: Optional[int] = None) -> None:
     is_main_product = False
+    APPROVED_SET = set(DEFAULT_PRODUCT_CATEGORIES)
     if category_id is not None:
         cat = db.get(Category, category_id)
-        if cat and cat.name in {"T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"}:
+        if cat and cat.name in APPROVED_SET:
             is_main_product = True
     else:
         is_main_product = True
@@ -102,16 +100,18 @@ def validate_main_product_collection(db: Session, collection_id: Optional[int], 
             "Collection is required for Main Products."
         )
     coll = db.get(Collection, collection_id)
+    allowed_list_str = ", ".join(DEFAULT_COLLECTIONS)
     if not coll:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "Invalid collection. Allowed collections are Men, Women, Kids."
+            f"Invalid collection. Allowed collections are {allowed_list_str}."
         )
     norm = normalize_collection_name(coll.name)
-    if norm not in {"Men", "Women", "Kids"}:
+    APPROVED_COLLECTIONS = set(DEFAULT_COLLECTIONS)
+    if norm not in APPROVED_COLLECTIONS:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
-            f"Invalid collection '{coll.name}'. Allowed collections are Men, Women, Kids."
+            f"Invalid collection '{coll.name}'. Allowed collections are {allowed_list_str}."
         )
 
 
@@ -311,10 +311,10 @@ def check_duplicate_category(db: Session, name: str, exclude_id: int = None):
 def create_category(db: Session, data: CategoryCreate) -> CategoryResponse:
     existing_count = db.query(sqla_func.count(Category.id)).scalar() or 0
     if existing_count >= MAX_CATEGORIES:
-        logger.warning("Attempted to create 6th category")
+        logger.warning("Attempted to create category beyond limit")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"You have reached the maximum allowed limit of {MAX_CATEGORIES} categories. Please delete an existing category before creating a new one."
+            detail="Your current store configuration has reached the maximum allowed limit. Please contact the system administrator if you need additional categories or collections."
         )
 
     check_duplicate_category(db, data.name)
@@ -346,10 +346,10 @@ def create_category(db: Session, data: CategoryCreate) -> CategoryResponse:
 
 def update_category(db: Session, category_id: int, data: CategoryUpdate) -> CategoryResponse:
     cat = get_category(db, category_id)
-    APPROVED_SET = {"T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"}
+    PROTECTED_SET = set(PROTECTED_PRODUCT_CATEGORIES)
     patch = data.model_dump(exclude_unset=True)
 
-    if cat.name in APPROVED_SET:
+    if cat.name in PROTECTED_SET:
         # Only the name field is protected — status, description, sort_order can change
         if "name" in patch and patch["name"] != cat.name:
             raise BusinessRuleError(
@@ -384,8 +384,8 @@ def update_category(db: Session, category_id: int, data: CategoryUpdate) -> Cate
 
 def delete_category(db: Session, category_id: int) -> None:
     cat = get_category(db, category_id)
-    APPROVED_SET = {"T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"}
-    if cat.name in APPROVED_SET:
+    PROTECTED_SET = set(PROTECTED_PRODUCT_CATEGORIES)
+    if cat.name in PROTECTED_SET:
         raise BusinessRuleError(
             "Category deletion is disabled for Main Product categories.",
             code="CATEGORY_DELETE_BLOCKED",
@@ -482,7 +482,7 @@ def create_sub_collection(db: Session, collection_id: int, name: str) -> list[st
     if len(current) >= MAX_SUB_COLLECTIONS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"You have reached the maximum allowed limit of {MAX_SUB_COLLECTIONS} sub collections for this collection. Please delete an existing sub collection before creating a new one."
+            detail="Your current store configuration has reached the maximum allowed limit. Please contact the system administrator if you need additional categories or collections."
         )
         
     desc_text, predefined = _parse_collection_description(col.description)
@@ -577,7 +577,7 @@ def get_collections(
     q = db.query(Collection)
     if category_id:
         cat = db.get(Category, category_id)
-        if cat and cat.name in {"T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"}:
+        if cat and cat.name in set(DEFAULT_PRODUCT_CATEGORIES):
             q = q.filter(or_(Collection.category_id == category_id, Collection.category_id.is_(None)))
         else:
             q = q.filter(Collection.category_id == category_id)
@@ -632,10 +632,10 @@ def check_duplicate_collection(db: Session, name: str, exclude_id: int = None):
 def create_collection(db: Session, data: CollectionCreate) -> CollectionResponse:
     existing_count = db.query(sqla_func.count(Collection.id)).scalar() or 0
     if existing_count >= MAX_COLLECTIONS:
-        logger.warning("Attempted to create 11th collection")
+        logger.warning("Attempted to create collection beyond limit")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"You have reached the maximum allowed limit of {MAX_COLLECTIONS} collections. Please delete an existing collection before creating a new one."
+            detail="Your current store configuration has reached the maximum allowed limit. Please contact the system administrator if you need additional categories or collections."
         )
 
     check_duplicate_collection(db, data.name)
@@ -682,10 +682,10 @@ def create_collection(db: Session, data: CollectionCreate) -> CollectionResponse
 
 def update_collection(db: Session, collection_id: int, data: CollectionUpdate) -> CollectionResponse:
     col = get_collection(db, collection_id)
-    APPROVED_COLLECTIONS = {"Men", "Women", "Kids"}
+    PROTECTED_SET = set(PROTECTED_COLLECTIONS)
     patch = data.model_dump(exclude_unset=True)
 
-    if col.name in APPROVED_COLLECTIONS:
+    if col.name in PROTECTED_SET:
         if "name" in patch and patch["name"] != col.name:
             raise BusinessRuleError(
                 "Collection renaming is disabled for Main Product collections.",
@@ -737,8 +737,8 @@ def update_collection(db: Session, collection_id: int, data: CollectionUpdate) -
 
 def delete_collection(db: Session, collection_id: int) -> None:
     col = get_collection(db, collection_id)
-    APPROVED_COLLECTIONS = {"Men", "Women", "Kids"}
-    if col.name in APPROVED_COLLECTIONS:
+    PROTECTED_SET = set(PROTECTED_COLLECTIONS)
+    if col.name in PROTECTED_SET:
         raise BusinessRuleError(
             "Collection deletion is disabled for Main Product collections.",
             code="COLLECTION_DELETE_BLOCKED",
@@ -988,7 +988,7 @@ def create_product(db: Session, product_in: ProductCreate) -> ProductResponse:
     is_main_product = False
     if cat_id:
         cat = db.get(Category, cat_id)
-        if cat and cat.name in {"T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"}:
+        if cat and cat.name in set(DEFAULT_PRODUCT_CATEGORIES):
             is_main_product = True
 
     if is_main_product:
@@ -1069,7 +1069,7 @@ def update_product(db: Session, product_id: int, product_in: ProductUpdate) -> P
     is_main_product = False
     if cat_id:
         cat = db.get(Category, cat_id)
-        if cat and cat.name in {"T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"}:
+        if cat and cat.name in set(DEFAULT_PRODUCT_CATEGORIES):
             is_main_product = True
 
     if is_main_product:

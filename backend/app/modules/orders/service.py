@@ -129,6 +129,25 @@ def _check_and_decrement_stock(
 
     repo.decrement_stock(variant, qty)
 
+    # Check if stock dropped below low_stock_threshold
+    if variant.stock_quantity <= variant.low_stock_threshold:
+        try:
+            from app.modules.settings.service import get_or_create_store_settings
+            settings_row = get_or_create_store_settings(repo.db)
+            to_email = settings_row.support_email or "admin@example.com"
+            from app.shared.notifications.service import send_notification_sync
+            send_notification_sync(
+                db=repo.db,
+                event_name="Low Stock Alert",
+                to_email=to_email,
+                context={"product_name": order_in.product_name, "stock": variant.stock_quantity},
+                subject=f"Low Stock Alert: {order_in.product_name}",
+                text_body=f"Product {order_in.product_name} (Size: {variant.size}) is low on stock. Current stock: {variant.stock_quantity}.",
+                html_body=f"<p>Product <strong>{order_in.product_name}</strong> (Size: {variant.size}) is low on stock. Current stock: <strong>{variant.stock_quantity}</strong>.</p>",
+            )
+        except Exception as e:
+            logger.error(f"Failed to send low stock alert: {e}", exc_info=True)
+
 
 def _restore_inventory(repo: OrderRepository, order: Order) -> None:
     """
@@ -245,6 +264,42 @@ def get_order_by_number(db: Session, order_number: str) -> OrderTrackingResponse
     return OrderTrackingResponse.model_validate(order)
 
 
+def _handle_status_transition_notifications(
+    db: Session,
+    order: Order,
+    old_status: Optional[str],
+    new_status: str,
+) -> None:
+    old_status_upper = (old_status or "").upper()
+    new_status_upper = new_status.upper()
+
+    if old_status_upper == new_status_upper:
+        return
+
+    from app.shared.notifications.service import send_notification_sync
+
+    if new_status_upper == "SHIPPED":
+        send_notification_sync(
+            db=db,
+            event_name="Order Shipped",
+            to_email=order.customer_email,
+            context={"order_number": order.order_number},
+            subject=f"Your order #{order.order_number} has been shipped!",
+            text_body=f"Great news! Your order #{order.order_number} has been shipped. It will arrive soon.",
+            html_body=f"<p>Great news! Your order #{order.order_number} has been shipped. It will arrive soon.</p>",
+        )
+    elif new_status_upper == "CANCELLED":
+        send_notification_sync(
+            db=db,
+            event_name="Order Cancelled",
+            to_email=order.customer_email,
+            context={"order_number": order.order_number},
+            subject=f"Your order #{order.order_number} has been cancelled",
+            text_body=f"Your order #{order.order_number} has been cancelled successfully.",
+            html_body=f"<p>Your order #{order.order_number} has been cancelled successfully.</p>",
+        )
+
+
 def create_order_admin(db: Session, order_in: OrderCreate) -> OrderResponse:
     """
     Create an order through the admin panel.
@@ -264,6 +319,22 @@ def create_order_admin(db: Session, order_in: OrderCreate) -> OrderResponse:
     db.commit()
     db.refresh(order)
     logger.info("Admin order created: order_number=%s", order.order_number)
+
+    # Trigger New Order Placed notification
+    try:
+        from app.shared.notifications.service import send_notification_sync
+        send_notification_sync(
+            db=db,
+            event_name="New Order Placed",
+            to_email=order.customer_email,
+            context={"order_number": order.order_number, "total_amount": float(order.total_amount)},
+            subject=f"Order Placed successfully! - #{order.order_number}",
+            text_body=f"Your order #{order.order_number} has been placed successfully. Thank you for shopping with us!",
+            html_body=f"<p>Your order #{order.order_number} has been placed successfully. Thank you for shopping with us!</p>",
+        )
+    except Exception as e:
+        logger.error(f"Failed to send order placed notification: {e}", exc_info=True)
+
     return OrderResponse.model_validate(order)
 
 
@@ -286,6 +357,22 @@ def create_order_customer(
         "Customer order created: order_number=%s customer_email=%s",
         order.order_number, customer.email,
     )
+
+    # Trigger New Order Placed notification
+    try:
+        from app.shared.notifications.service import send_notification_sync
+        send_notification_sync(
+            db=db,
+            event_name="New Order Placed",
+            to_email=order.customer_email,
+            context={"order_number": order.order_number, "total_amount": float(order.total_amount)},
+            subject=f"Order Placed successfully! - #{order.order_number}",
+            text_body=f"Your order #{order.order_number} has been placed successfully. Thank you for shopping with us!",
+            html_body=f"<p>Your order #{order.order_number} has been placed successfully. Thank you for shopping with us!</p>",
+        )
+    except Exception as e:
+        logger.error(f"Failed to send order placed notification: {e}", exc_info=True)
+
     return OrderResponse.model_validate(order)
 
 
@@ -296,6 +383,8 @@ def update_order(db: Session, order_id: int, payload: OrderUpdate) -> OrderRespo
     """
     repo   = OrderRepository(db)
     order  = repo.get_order_or_raise(order_id)
+    old_tracking_status = order.tracking_status
+    old_payment_status = order.payment_status
     update = payload.model_dump(exclude_unset=True)
 
     new_status = update.get("tracking_status")
@@ -305,6 +394,31 @@ def update_order(db: Session, order_id: int, payload: OrderUpdate) -> OrderRespo
     repo.update_order_fields(order, update)
     db.commit()
     db.refresh(order)
+
+    # Trigger tracking status transition notification
+    if new_status is not None:
+        try:
+            _handle_status_transition_notifications(db, order, old_tracking_status, new_status)
+        except Exception as e:
+            logger.error(f"Failed to send status transition notification: {e}", exc_info=True)
+
+    # Trigger Refund Processed notification
+    new_payment_status = update.get("payment_status")
+    if new_payment_status is not None and new_payment_status.upper() == "REFUNDED" and (old_payment_status or "").upper() != "REFUNDED":
+        try:
+            from app.shared.notifications.service import send_notification_sync
+            send_notification_sync(
+                db=db,
+                event_name="Refund Processed",
+                to_email=order.customer_email,
+                context={"order_number": order.order_number, "total_amount": float(order.total_amount)},
+                subject=f"Refund Processed for Order #{order.order_number}",
+                text_body=f"We have processed a refund of {order.total_amount} for your order #{order.order_number}.",
+                html_body=f"<p>We have processed a refund of <strong>{order.total_amount}</strong> for your order #{order.order_number}.</p>",
+            )
+        except Exception as e:
+            logger.error(f"Failed to send refund notification: {e}", exc_info=True)
+
     return OrderResponse.model_validate(order)
 
 
@@ -315,6 +429,7 @@ def cancel_order_admin(db: Session, order_id: int) -> OrderResponse:
     """
     repo  = OrderRepository(db)
     order = repo.get_order_or_raise(order_id)
+    old_tracking_status = order.tracking_status
 
     if order.tracking_status != TrackingStatus.CANCELLED:
         _restore_inventory(repo, order)
@@ -323,6 +438,12 @@ def cancel_order_admin(db: Session, order_id: int) -> OrderResponse:
     db.commit()
     db.refresh(order)
     logger.info("Admin cancelled order: order_id=%s", order_id)
+
+    try:
+        _handle_status_transition_notifications(db, order, old_tracking_status, TrackingStatus.CANCELLED)
+    except Exception as e:
+        logger.error(f"Failed to send cancellation notification: {e}", exc_info=True)
+
     return OrderResponse.model_validate(order)
 
 
@@ -338,6 +459,7 @@ def cancel_order_customer(
     """
     repo  = OrderRepository(db)
     order = repo.get_customer_order_or_raise(order_id, customer.email)
+    old_tracking_status = order.tracking_status
 
     if order.tracking_status in TrackingStatus.NON_CANCELLABLE:
         raise BusinessRuleError(
@@ -356,6 +478,12 @@ def cancel_order_customer(
         "Customer cancelled order: order_id=%s customer_email=%s",
         order_id, customer.email,
     )
+
+    try:
+        _handle_status_transition_notifications(db, order, old_tracking_status, TrackingStatus.CANCELLED)
+    except Exception as e:
+        logger.error(f"Failed to send cancellation notification: {e}", exc_info=True)
+
     return OrderResponse.model_validate(order)
 
 
@@ -366,13 +494,21 @@ def update_tracking(db: Session, order_id: int, tracking_status: str) -> OrderRe
     """
     repo  = OrderRepository(db)
     order = repo.get_order_or_raise(order_id)
+    old_tracking_status = order.tracking_status
 
     _handle_cancellation_transition(repo, order, tracking_status)
 
     repo.update_order_fields(order, {"tracking_status": tracking_status})
     db.commit()
     db.refresh(order)
+
+    try:
+        _handle_status_transition_notifications(db, order, old_tracking_status, tracking_status)
+    except Exception as e:
+        logger.error(f"Failed to send tracking transition notification: {e}", exc_info=True)
+
     return OrderResponse.model_validate(order)
+
 
 
 def list_customer_orders(

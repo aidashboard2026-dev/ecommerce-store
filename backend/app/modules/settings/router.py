@@ -545,12 +545,26 @@ def toggle_two_factor(
 
 @router.get("/business-limits")
 def read_business_limits():
-    """Retrieve read-only business limits defined in app/core/constants.py."""
+    """Retrieve read-only business limits defined in app/core/constants.py.
+
+    This endpoint is the single source of truth for all frontend limit checks.
+    Frontend must NEVER hardcode any of these values — always read from here.
+
+    Limits are grouped by domain:
+    - Standard Product domain: max_categories, max_collections, max_sub_collections
+    - Custom Printing domain:  max_custom_categories
+    - Operational (delete-to-add semantics): max_banners, max_offers, max_product_images,
+      max_product_variants, max_sizes, max_colors
+    """
     from app.core import constants
     return {
+        # ── Standard Product Domain ──────────────────────────────────────────
         "max_categories": constants.MAX_CATEGORIES,
         "max_collections": constants.MAX_COLLECTIONS,
         "max_sub_collections": constants.MAX_SUB_COLLECTIONS,
+        # ── Custom Printing Domain ───────────────────────────────────────────
+        "max_custom_categories": constants.MAX_CUSTOM_CATEGORIES,
+        # ── Operational Limits ───────────────────────────────────────────────
         "max_banners": constants.MAX_BANNERS,
         "max_offers": constants.MAX_OFFERS,
         "max_product_images": constants.MAX_PRODUCT_IMAGES,
@@ -558,5 +572,64 @@ def read_business_limits():
         "max_sizes": constants.MAX_SIZES,
         "max_colors": constants.MAX_COLORS,
         "max_image_size": constants.MAX_IMAGE_SIZE,
+    }
+
+
+@router.get("/default-catalog")
+def read_default_catalog():
+    """Retrieve default/built-in catalog definitions and protected items.
+
+    This endpoint isolates built-in/seeded categories and collections
+    from the business limits endpoint, as required.
+    """
+    from app.core import constants
+    return {
+        "default_product_categories": constants.DEFAULT_PRODUCT_CATEGORIES,
+        "default_collections": constants.DEFAULT_COLLECTIONS,
+        "protected_product_categories": constants.PROTECTED_PRODUCT_CATEGORIES,
+        "protected_collections": constants.PROTECTED_COLLECTIONS,
+    }
+
+
+@router.get("/public-payments", response_model=List[PaymentMethodResponse])
+def read_public_payment_methods(db: Session = Depends(get_db)):
+    """Retrieve payment methods for storefront checkout without authentication."""
+    try:
+        result = ensure_payment_methods(db)
+        db.commit()
+        return [method for method in result if method.is_active]
+    except Exception as e:
+        db.rollback()
+        logger.exception("Unexpected error in read_public_payment_methods")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred."
+        )
+
+
+@router.get("/regional-options")
+def read_regional_options():
+    """Retrieve lists of valid regional options (countries, currencies, timezones, weight units)."""
+    return {
+        "countries": [
+            "India",
+            "United States",
+            "United Kingdom",
+            "Canada",
+            "Australia",
+            "Singapore",
+            "United Arab Emirates",
+        ],
+        "currencies": ["INR", "USD", "GBP", "CAD", "AUD", "SGD", "AED"],
+        "timezones": [
+            "Asia/Kolkata",
+            "UTC",
+            "America/New_York",
+            "America/Los_Angeles",
+            "Europe/London",
+            "Asia/Singapore",
+            "Asia/Dubai",
+        ],
+        "weight_units": ["kg", "g", "lb", "oz"],
     }
 

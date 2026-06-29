@@ -266,7 +266,7 @@ function BulkActionsBar({ selectedIds, onAction, categories, collections, onClea
             <select value={targetCategoryId} onChange={e => setTargetCategoryId(e.target.value)}
               className="input-field py-1 text-xs">
               <option value="">Select category…</option>
-              {categories.filter(c => ["T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"].includes(c.name)).map(c => (
+              {categories.map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
@@ -387,7 +387,8 @@ export default function ProductsPage() {
   const filteredCollections = useMemo(() => {
     if (!categoryId) return collections
     const selectedCat = categories.find(c => String(c.id) === String(categoryId))
-    const isMainProduct = selectedCat && ["T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"].includes(selectedCat.name)
+    // Variant section is always available — backend enforces per-category rules
+    const isMainProduct = true
     if (isMainProduct) {
       return collections.filter(c => {
         const norm = c.name.trim().toLowerCase()

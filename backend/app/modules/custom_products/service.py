@@ -123,7 +123,15 @@ def create_custom_category(
     db: Session,
     data: CustomCategoryCreate,
 ) -> CustomCategoryResponse:
-    """Create a new custom category. No limit on the number of custom categories."""
+    """Create a new custom category, enforcing the MAX_CUSTOM_CATEGORIES limit."""
+    from app.core.constants import MAX_CUSTOM_CATEGORIES
+
+    current_count = db.query(sqla_func.count(CustomCategory.id)).scalar() or 0
+    if current_count >= MAX_CUSTOM_CATEGORIES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your current store configuration has reached the maximum allowed limit. Please contact the system administrator if you need additional categories or collections."
+        )
     slug = _unique_category_slug(db, _slugify(data.name))
     cat = CustomCategory(
         name=data.name.strip(),
@@ -222,6 +230,7 @@ def _build_product_response(
         view_count=p.view_count or 0,
         orders_count=p.orders_count or 0,
         sales_count=p.sales_count or 0,
+        whatsapp_message=p.whatsapp_message,
         created_at=p.created_at,
         updated_at=p.updated_at,
     )
@@ -403,6 +412,7 @@ def create_custom_product(
         image_back=data.image_back,
         image_size_chart=data.image_size_chart,
         gallery_images=data.gallery_images or [],
+        whatsapp_message=data.whatsapp_message,
     )
 
     db.add(product)

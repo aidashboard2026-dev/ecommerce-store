@@ -24,7 +24,7 @@ import CustomProductForm from '@/admin/components/products/CustomProductForm'
 // import ImageUploadModal from '@/admin/components/products/ImageUploadModal'
 // import VariantFormModal from '@/admin/components/products/VariantFormModal'
 import CustomCategoryCollectionModel from '@/admin/components/products/CustomCategoryCollectionModel'
-import QuickCategoryEditModal from '@/admin/components/products/QuickCategoryEditModal'
+import QuickCustomCategoryEditModal from '@/admin/components/products/QuickCustomCategoryEditModal'
 import Modal from '@/shared/components/common/Modal'
 import PageHeader from '@/shared/components/ui/PageHeader'
 import SearchBar from '@/shared/components/ui/SearchBar'
@@ -35,11 +35,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STATUS_OPTIONS  = ['draft', 'published', 'archived']
-const STOCK_OPTIONS   = [
-  { value: 'in_stock',     label: 'In Stock' },
-  { value: 'low_stock',    label: 'Low Stock' },
-  { value: 'out_of_stock', label: 'Out of Stock' },
-]
+// STOCK_OPTIONS removed — Custom Printing domain has no inventory
 const FLAG_OPTIONS = [
   { key: 'is_featured',    label: 'Featured',    icon: <Star size={11} /> },
   { key: 'is_trending',    label: 'Trending',    icon: <TrendingUp size={11} /> },
@@ -95,11 +91,7 @@ const ImageStrip = React.memo(function ImageStrip({ thumbnail }) {
   )
 })
 
-function StockBadge({ stock }) {
-  if (stock === 0) return <Badge label="Out" variant="danger" dot />
-  if (stock <= 5)  return <Badge label={`${stock} Low`} variant="warning" dot />
-  return <Badge label={`${stock} stock`} variant="success" />
-}
+// StockBadge removed — Custom Printing domain has no stock
 
 function DeleteButton({ onConfirm, loading }) {
   const [confirming, setConfirming] = useState(false)
@@ -148,10 +140,8 @@ const MobileActions = React.memo(function MobileActions({
         <div className="absolute right-0 top-full mt-1 w-44 rounded-xl border border-app bg-app shadow-xl z-50 overflow-hidden">
           {item('Edit', <Edit size={14} />, onEdit)}
           {item('Edit Category', <Tag size={14} />, onCategoryEdit)}
-          {item('Manage Images', <ImageIcon size={14} />, onImage)}
           {item(product.status === 'published' ? 'Unpublish' : 'Publish',
             product.status === 'published' ? <EyeOff size={14} /> : <Eye size={14} />, onToggleStatus)}
-         
           {item('Delete', <Trash2 size={14} />, onDelete, true)}
         </div>
       )}
@@ -333,17 +323,15 @@ export default function ProductsPage() {
   const [manageModal,    setManageModal]    = useState(false)
   const [quickEditModal, setQuickEditModal] = useState({ open: false, product: null })
 
+  // Stable flag key — avoids JSON.stringify producing new string refs every render
+  const flagKey = Object.keys(flagFilters).filter(k => flagFilters[k]).sort().join(',')
+
   // Reset page on any filter change
   React.useEffect(() => {
     setPage(1)
     setSelectedIds(new Set())
-  }, [
-    debouncedSearch,
-    statusFilter,
-    categoryId,
-    stockStatus,
-    JSON.stringify(flagFilters),
-  ])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, statusFilter, categoryId, stockStatus, flagKey])
 
   // ── Data queries ─────────────────────────────────────────────────────────────
 
@@ -379,23 +367,24 @@ export default function ProductsPage() {
 
   // ── Mutations ────────────────────────────────────────────────────────────────
 
+  // Prefix-only invalidation — avoids stale closure issues when queryParams change
   const invalidate = useCallback(
-    () => qc.invalidateQueries({ queryKey: ['custom-products', queryParams] }),
-    [qc, queryParams]
+    () => qc.invalidateQueries({ queryKey: ['custom-products'] }),
+    [qc]
   )
 
   const toggleStatus = useMutation({
     mutationFn: ({ id, status }) => customProductsApi.update(id, { status }),
     onMutate: async ({ id, status }) => {
-      await qc.cancelQueries({ queryKey: ['custom-products', queryParams], exact: true })
-      const prev = qc.getQueryData(['custom-products', queryParams])
-      qc.setQueryData(['custom-products', queryParams], old =>
-        old ? { ...old, items: old.items.map(p => p.id === id ? { ...p, status } : p) } : old
+      await qc.cancelQueries({ queryKey: ['custom-products'] })
+      const snapshots = qc.getQueriesData({ queryKey: ['custom-products'] })
+      qc.setQueriesData({ queryKey: ['custom-products'] }, (old) =>
+        old ? { ...old, items: (old.items || []).map(p => p.id === id ? { ...p, status } : p) } : old
       )
-      return { prev }
+      return { snapshots }
     },
     onError: (_, __, ctx) => {
-      if (ctx?.prev) qc.setQueryData(['custom-products', queryParams], ctx.prev)
+      ctx?.snapshots?.forEach(([key, data]) => qc.setQueryData(key, data))
       toast.error('Failed to update status')
     },
     onSettled: invalidate,
@@ -454,12 +443,10 @@ export default function ProductsPage() {
     bulkMutation.mutate({ product_ids: [...selectedIds], action, ...extra })
   }
 
-  const hasFilters =
-  !!(
-  statusFilter ||
-  categoryId ||
-  stockStatus ||
-  Object.keys(flagFilters).some(k => flagFilters[k])
+  const hasFilters = !!(
+    statusFilter ||
+    categoryId ||
+    Object.keys(flagFilters).some(k => flagFilters[k])
   )
 
   const emptyState = useMemo(() => (
@@ -563,18 +550,7 @@ export default function ProductsPage() {
 
         
 
-          {/* Stock status filter pills */}
-          {STOCK_OPTIONS.map(opt => (
-            <FilterPill
-              key={opt.value}
-              active={stockStatus === opt.value}
-              label={opt.label}
-              onClick={() => setStockStatus(stockStatus === opt.value ? '' : opt.value)}
-              onClear={() => setStockStatus('')}
-            />
-          ))}
-
-          {/* Merchandising flag filters */}
+          {/* Merchandising flag filters — stock filters removed (Custom Printing has no inventory) */}
           {FLAG_OPTIONS.map(f => (
             <FilterPill
               key={f.key}
@@ -590,7 +566,6 @@ export default function ProductsPage() {
             <button onClick={() => {
               setStatusFilter('')
               setCategoryId('')
-              setStockStatus('')
               setFlagFilters({})
             }} className="text-xs text-muted hover:text-app underline flex items-center gap-1">
               <X size={10} /> Clear filters
@@ -752,8 +727,8 @@ export default function ProductsPage() {
                         : formatPrice(product.selling_price_min)}
                     </TableCell>
                     <TableCell className="font-medium text-amber-600">{discPct}</TableCell>
-                    <TableCell><StockBadge stock={product.stock_quantity} /></TableCell>
-                    <TableCell className="text-muted">{product.size || '—'}</TableCell>
+                    <TableCell><span className="text-[10px] text-muted">—</span></TableCell>
+                    <TableCell className="text-muted">—</TableCell>
                     <TableCell>
                       <Badge label={product.status} variant={statusMap[product.status] || 'default'} />
                     </TableCell>
@@ -811,34 +786,21 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* ── Other modals ── */}
-      {/* <ProductErrorBoundary title="Variant form error">
-        <VariantFormModal
-          isOpen={variantModal.open}
-          onClose={() => setVariantModal({ open: false, productId: null })}
-          productId={variantModal.productId}
-        />
-      </ProductErrorBoundary>
-      <ProductErrorBoundary title="Image manager error">
-        <ImageUploadModal
-          isOpen={imageModal.open}
-          onClose={() => setImageModal({ open: false, product: null })}
-          product={imageModal.product}
-        />
-      </ProductErrorBoundary>
+      {/* ── Manage Categories & Quick Edit Modals ── */}
       <ProductErrorBoundary title="Category manager error">
-        <CategoryCollectionModal
+        <CustomCategoryCollectionModel
           isOpen={manageModal}
           onClose={() => setManageModal(false)}
         />
       </ProductErrorBoundary>
       <ProductErrorBoundary title="Quick edit error">
-        <QuickCategoryEditModal
+        <QuickCustomCategoryEditModal
           isOpen={quickEditModal.open}
           onClose={() => setQuickEditModal({ open: false, product: null })}
           product={quickEditModal.product}
         />
-      </ProductErrorBoundary> */}
+      </ProductErrorBoundary>
+
 
     </div>
   )

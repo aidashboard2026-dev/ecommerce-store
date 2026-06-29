@@ -113,6 +113,8 @@ class CustomProductBase(BaseModel):
     image_back:       Optional[str] = None
     image_size_chart: Optional[str] = None
     gallery_images:   List[str] = Field(default_factory=list)
+    # WhatsApp lead generation message — pre-filled in the WhatsApp quotation link
+    whatsapp_message: Optional[str] = None
 
 
 class CustomProductCreate(CustomProductBase):
@@ -173,6 +175,7 @@ class CustomProductUpdate(BaseModel):
     original_price_max: Optional[Decimal] = None
     selling_price_min:  Optional[Decimal] = None
     selling_price_max:  Optional[Decimal] = None
+    whatsapp_message:   Optional[str] = None
 
     @field_validator("title")
     @classmethod
@@ -235,6 +238,7 @@ class CustomProductResponse(BaseModel):
     image_back:        Optional[str] = None
     image_size_chart:  Optional[str] = None
     gallery_images:    List[Any] = Field(default_factory=list)
+    whatsapp_message:  Optional[str] = None
     view_count:        int = 0
     orders_count:      int = 0
     sales_count:       int = 0
