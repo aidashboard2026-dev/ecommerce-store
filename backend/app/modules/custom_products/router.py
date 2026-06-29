@@ -45,61 +45,13 @@ logger = logging.getLogger(__name__)
 router  = APIRouter()
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Image validation helpers — own implementation, not shared with products
+# Image validation helpers — using centralized utility
 # ─────────────────────────────────────────────────────────────────────────────
 
-_ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
-_ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
-_MAX_IMAGE_SIZE     = 5 * 1024 * 1024   # 5 MB
-
-_MAGIC_BYTES: dict = {
-    b"\xff\xd8\xff": "image/jpeg",
-    b"\x89PNG":      "image/png",
-    b"RIFF":         "image/webp",
-}
-
-
-def _validate_image_magic_bytes(header: bytes) -> None:
-    if len(header) < 4:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "File is too small to be a valid image.")
-    detected_mime = None
-    for magic, mime in _MAGIC_BYTES.items():
-        if header[: len(magic)] == magic:
-            detected_mime = mime
-            break
-    if not detected_mime:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
-                            "File content does not match any supported image format (JPEG, PNG, WebP).")
-    if detected_mime == "image/webp" and header[8:12] != b"WEBP":
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
-                            "File has RIFF header but is not a valid WebP image.")
-
+from app.shared.utils.image import validate_and_read_image
 
 def _read_and_validate_upload(file: UploadFile) -> bytes:
-    if file.content_type not in _ALLOWED_MIME_TYPES:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
-                            f"Only JPG, PNG, and WebP are allowed. Got: {file.content_type}")
-    ext = os.path.splitext(file.filename or "image.jpg")[1].lower()
-    if ext not in _ALLOWED_EXTENSIONS:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
-                            f"Extension '{ext}' not allowed. Use: {', '.join(_ALLOWED_EXTENSIONS)}")
-    _CHUNK = 65_536
-    chunks: list = []
-    total_bytes = 0
-    while True:
-        chunk = file.file.read(_CHUNK)
-        if not chunk:
-            break
-        total_bytes += len(chunk)
-        if total_bytes > _MAX_IMAGE_SIZE:
-            raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                                f"Image must be under {_MAX_IMAGE_SIZE // (1024 * 1024)} MB.")
-        chunks.append(chunk)
-    contents = b"".join(chunks)
-    if not contents:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Uploaded file is empty.")
-    _validate_image_magic_bytes(contents[:16])
-    return contents
+    return validate_and_read_image(file)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

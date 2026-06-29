@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { formatPrice } from '@/shared/utils/productUtils'
 import { selectCartTotals, selectCartCount, SHIPPING_THRESHOLD } from '@/storefront/store/cartSlice'
-import CouponSection from '@/storefront/components/cart/components/CouponSection'
+import CartCoupon from './CartCoupon'
 
 export default function CartSummary({ showCheckoutButton = true }) {
   const navigate = useNavigate()
@@ -15,7 +15,7 @@ export default function CartSummary({ showCheckoutButton = true }) {
     <div className="bg-app border border-app rounded-2xl p-5 sm:p-6 flex flex-col gap-5 sticky top-24">
       <h3 className="font-display font-bold text-lg text-app">Order Summary</h3>
 
-      <CouponSection />
+      <CartCoupon />
 
       <div className="flex flex-col gap-2.5 text-sm">
         <div className="flex justify-between text-muted">
@@ -56,6 +56,7 @@ export default function CartSummary({ showCheckoutButton = true }) {
 
       {showCheckoutButton && (
         <button
+          type="button"
           onClick={() => navigate('/checkout')}
           disabled={count === 0}
           className="w-full bg-brand-500 hover:bg-brand-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold text-sm py-3 rounded-full shadow-glow-sm transition-colors"

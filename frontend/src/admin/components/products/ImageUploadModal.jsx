@@ -18,7 +18,7 @@ import Modal from '@/shared/components/ui/Modal'
 import { productsAPI as productsApi } from '@/shared/services/api'
 import { getImageUrl } from '@/shared/utils/productUtils'
 
-const MAX_FILE_SIZE    = 5 * 1024 * 1024
+const MAX_FILE_SIZE    = 10 * 1024 * 1024
 const ALLOWED_TYPES    = ['image/jpeg', 'image/png', 'image/webp']
 const ALLOWED_ACCEPT   = 'image/jpeg,image/png,image/webp'
 
@@ -136,17 +136,18 @@ function GalleryGrid({ images = [], onDelete, deletingIndex }) {
 
 // ─── Drop zone (shared) ───────────────────────────────────────────────────────
 
-function DropZone({ preview, onFile, fileRef, label }) {
+function DropZone({ preview, onFile, fileRef, label, disabled }) {
   const [dragging, setDragging] = useState(false)
 
   return (
     <div
-      onClick={() => fileRef.current?.click()}
-      onDragOver={e => { e.preventDefault(); setDragging(true) }}
+      onClick={() => { if (disabled) return; fileRef.current?.click() }}
+      onDragOver={e => { e.preventDefault(); if (disabled) return; setDragging(true) }}
       onDragLeave={() => setDragging(false)}
-      onDrop={e => { e.preventDefault(); setDragging(false); onFile(e.dataTransfer.files[0]) }}
+      onDrop={e => { e.preventDefault(); setDragging(false); if (disabled) return; onFile(e.dataTransfer.files[0]) }}
+      title={disabled ? "Maximum limit reached.\nDelete an existing item to continue." : ""}
       className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all
-        ${dragging ? 'border-brand-500 bg-brand-500/5' : 'border-app hover:border-brand-400 hover:bg-surface/50'}`}
+        ${disabled ? 'opacity-50 cursor-not-allowed border-gray-400 bg-gray-100/10' : dragging ? 'border-brand-500 bg-brand-500/5' : 'border-app hover:border-brand-400 hover:bg-surface/50'}`}
     >
       {preview ? (
         <img src={preview} alt="preview" className="mx-auto max-h-32 rounded-lg object-contain" />
@@ -154,11 +155,11 @@ function DropZone({ preview, onFile, fileRef, label }) {
         <>
           <Upload size={24} className="mx-auto mb-2 text-muted" />
           <p className="text-sm text-muted">Drop {label} image here or <span className="text-brand-500">browse</span></p>
-          <p className="text-xs text-muted mt-1">JPG, PNG, WebP · max 5 MB</p>
+          <p className="text-xs text-muted mt-1">JPG, PNG, WebP · max 10 MB</p>
         </>
       )}
-      <input ref={fileRef} type="file" accept={ALLOWED_ACCEPT} className="hidden"
-        onChange={e => onFile(e.target.files[0])} />
+      <input ref={fileRef} type="file" accept={ALLOWED_ACCEPT} className="hidden" disabled={disabled}
+        onChange={e => { if (disabled) return; onFile(e.target.files[0]) }} />
     </div>
   )
 }
@@ -216,7 +217,7 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
   const uploadMutation = useMutation({
     mutationFn: () => productsApi.uploadImage(product.id, file, activeTab),
     onSuccess: () => {
-      toast.success(`${IMAGE_TABS.find(t => t.key === activeTab)?.label || 'Image'} uploaded`)
+      toast.success(`${IMAGE_TABS.find(t => t.key === activeTab)?.label || 'Image'} uploaded successfully.`)
       qc.invalidateQueries({ queryKey: ['products'] })
       qc.invalidateQueries({ queryKey: ['products', product.id] })
       clearSelection()
@@ -232,7 +233,7 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
   const deleteMutation = useMutation({
     mutationFn: () => productsApi.deleteImage(product.id, activeTab),
     onSuccess: () => {
-      toast.success('Image removed')
+      toast.success('Image removed successfully.')
       qc.invalidateQueries({ queryKey: ['products'] })
       qc.invalidateQueries({ queryKey: ['products', product.id] })
     },
@@ -246,7 +247,7 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
     onMutate:  (index) => setDeletingIndex(index),
     onSettled: ()      => setDeletingIndex(null),
     onSuccess: () => {
-      toast.success('Gallery image removed')
+      toast.success('Gallery image removed successfully.')
       qc.invalidateQueries({ queryKey: ['products'] })
       qc.invalidateQueries({ queryKey: ['products', product.id] })
     },
@@ -261,6 +262,31 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
 
   const isGallery  = activeTab === 'gallery'
   const isThumbnail = activeTab === 'thumbnail'
+
+  const currentCount = (product?.thumbnail ? 1 : 0) + 
+                       (product?.image_front ? 1 : 0) + 
+                       (product?.image_back ? 1 : 0) + 
+                       (product?.image_size_chart ? 1 : 0) + 
+                       (product?.gallery_images || []).length;
+
+  const willIncrease = activeTab === 'gallery' ? true : (currentTab?.field ? !product?.[currentTab.field] : false);
+  const isLimitReached = currentCount >= 7 && willIncrease;
+
+  const handleUploadClick = () => {
+    if (!file) return
+    if (isLimitReached) {
+      toast.error(
+        <div>
+          <strong style={{ display: "block", marginBottom: "4px" }}>Maximum Limit Reached</strong>
+          <div style={{ whiteSpace: "pre-line", fontSize: "12px", lineHeight: "1.4" }}>
+            You have reached the maximum allowed limit of 7 images for this product.{"\n"}Please delete an existing image before uploading another.
+          </div>
+        </div>
+      );
+      return
+    }
+    uploadMutation.mutate()
+  }
 
   const uploadLabel = currentTab
     ? (currentImageUrl && !isGallery ? `Replace ${currentTab.label}` : `Upload ${currentTab.label}`)
@@ -328,6 +354,7 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
               onFile={pickFile}
               fileRef={fileRef}
               label={currentTab?.label?.toLowerCase() || ''}
+              disabled={isLimitReached}
             />
           </div>
         )}
@@ -343,8 +370,9 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
         <div className="flex flex-col-reverse sm:flex-row gap-3">
           <button onClick={onClose} className="btn-secondary sm:px-6">Done</button>
           <button
-            onClick={() => uploadMutation.mutate()}
-            disabled={!file || uploadMutation.isPending}
+            onClick={handleUploadClick}
+            disabled={!file || uploadMutation.isPending || isLimitReached}
+            title={isLimitReached ? "Maximum limit reached.\nDelete an existing item to continue." : ""}
             className="flex-1 btn-primary flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {uploadMutation.isPending

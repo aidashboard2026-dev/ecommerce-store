@@ -7,7 +7,10 @@ adds audit logging to every admin write operation.
 """
 
 import os
+import logging
 from typing import List, Optional
+
+logger = logging.getLogger(__name__)
 
 from fastapi import (
     APIRouter, Depends, File, Form, HTTPException,
@@ -41,66 +44,12 @@ from app.shared.storage import supabase_storage
 
 router = APIRouter()
 
-# ─────────────────────────────────────────────────────────────
-# Image validation helpers (unchanged from original)
-# ─────────────────────────────────────────────────────────────
+# ── Image validation helpers (using centralized utility) ─────────────────────
 
-ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
-ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
-MAX_IMAGE_SIZE     = 5 * 1024 * 1024  # 5 MB
-
-MAGIC_BYTES: dict = {
-    b"\xff\xd8\xff": "image/jpeg",
-    b"\x89PNG":      "image/png",
-    b"RIFF":         "image/webp",
-}
-
-
-def _validate_image_magic_bytes(header: bytes, declared_mime: str) -> None:
-    if len(header) < 4:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "File is too small to be a valid image.")
-    detected_mime = None
-    for magic, mime in MAGIC_BYTES.items():
-        if header[: len(magic)] == magic:
-            detected_mime = mime
-            break
-    if not detected_mime:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "File content does not match any supported image format.")
-    if detected_mime == "image/webp" and header[8:12] != b"WEBP":
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "File has RIFF header but is not a valid WebP image.")
-
+from app.shared.utils.image import validate_and_read_image
 
 def _read_and_validate_upload(file: UploadFile) -> bytes:
-    if file.content_type not in ALLOWED_MIME_TYPES:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            f"Only JPG, PNG, and WebP are allowed. Got: {file.content_type}",
-        )
-    ext = os.path.splitext(file.filename or "image.jpg")[1].lower()
-    if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            f"Extension '{ext}' not allowed. Use: {', '.join(ALLOWED_EXTENSIONS)}",
-        )
-    _CHUNK = 65_536
-    chunks: list = []
-    total_bytes = 0
-    while True:
-        chunk = file.file.read(_CHUNK)
-        if not chunk:
-            break
-        total_bytes += len(chunk)
-        if total_bytes > MAX_IMAGE_SIZE:
-            raise HTTPException(
-                status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                f"Image must be under {MAX_IMAGE_SIZE // (1024 * 1024)} MB.",
-            )
-        chunks.append(chunk)
-    contents = b"".join(chunks)
-    if not contents:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Uploaded file is empty.")
-    _validate_image_magic_bytes(contents[:16], file.content_type)
-    return contents
+    return validate_and_read_image(file)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -564,6 +513,24 @@ def upload_product_image(
     product   = get_product(db, product_id)
     contents  = _read_and_validate_upload(file)
 
+    # Validate image limit
+    from app.core.constants import MAX_PRODUCT_IMAGES
+    current_images = sum(1 for attr in ["thumbnail", "image_front", "image_back", "image_size_chart"] if getattr(product, attr)) + len(product.gallery_images or [])
+    will_increase = False
+    if image_type == "gallery":
+        will_increase = True
+    elif image_type in ["thumbnail", "front", "back", "size_chart"]:
+        field_name = IMAGE_TYPE_FIELDS.get(image_type)
+        if field_name and not getattr(product, field_name):
+            will_increase = True
+
+    if will_increase and current_images >= MAX_PRODUCT_IMAGES:
+        logger.warning(f"Attempted to upload {current_images + 1}th product image")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"You have reached the maximum allowed limit of {MAX_PRODUCT_IMAGES} images for this product. Please delete an existing image before uploading another."
+        )
+
     image_url = supabase_storage.upload_product_image(
         contents=contents,
         original_filename=file.filename or "image.jpg",
@@ -579,14 +546,14 @@ def upload_product_image(
         product.gallery_images = new_gallery
         try:
             db.commit()
-        except Exception:
+            db.refresh(product)
+            audit.log(db=db, admin=current_admin, action="product.gallery_image_added",
+                      resource_type="product", resource_id=product_id, request=request)
+            db.commit()
+        except Exception as e:
             db.rollback()
             supabase_storage.delete_product_image(image_url)
-            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to update gallery.")
-        db.refresh(product)
-        audit.log(db=db, admin=current_admin, action="product.gallery_image_added",
-                  resource_type="product", resource_id=product_id, request=request)
-        db.commit()
+            raise e
         return {"id": product.id, "url": image_url, "image_type": "gallery",
                 "gallery_images": product.gallery_images, "message": "Gallery image added."}
 
@@ -597,17 +564,17 @@ def upload_product_image(
             product.thumbnail = image_url
         try:
             db.commit()
-        except Exception:
+            if old_url and old_url != image_url:
+                supabase_storage.delete_product_image(old_url)
+            db.refresh(product)
+            audit.log(db=db, admin=current_admin, action="product.image_uploaded",
+                      resource_type="product", resource_id=product_id,
+                      changes={"image_type": image_type}, request=request)
+            db.commit()
+        except Exception as e:
             db.rollback()
             supabase_storage.delete_product_image(image_url)
-            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to update product image.")
-        if old_url and old_url != image_url:
-            supabase_storage.delete_product_image(old_url)
-        db.refresh(product)
-        audit.log(db=db, admin=current_admin, action="product.image_uploaded",
-                  resource_type="product", resource_id=product_id,
-                  changes={"image_type": image_type}, request=request)
-        db.commit()
+            raise e
         return {"id": product.id, "url": image_url, "image_type": image_type,
                 "message": f"{image_type.replace('_', ' ').title()} image uploaded."}
     else:

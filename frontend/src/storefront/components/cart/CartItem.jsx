@@ -48,7 +48,7 @@ export default function CartItem({ item }) {
         <Link to={`/products/${item.slug}`} className="text-sm font-semibold text-app line-clamp-2 hover:text-brand-500">
           {item.title}
         </Link>
-        <div className="flex items-center gap-2 text-xs text-muted">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
           {item.size && <span>Size: {item.size}</span>}
           {item.color && (
             <span className="flex items-center gap-1">
@@ -71,16 +71,16 @@ export default function CartItem({ item }) {
 
         <div className="flex items-center justify-between mt-2">
           <div className="flex items-center border border-app rounded-lg overflow-hidden">
-            <button onClick={() => handleQty(-1)} className="p-1.5 text-app hover:bg-surface" aria-label="Decrease quantity">
+            <button type="button" onClick={() => handleQty(-1)} className="p-1.5 text-app hover:bg-surface" aria-label="Decrease quantity">
               <Minus size={12} />
             </button>
-            <span className="px-3 text-xs font-semibold text-app">{item.quantity}</span>
-            <button onClick={() => handleQty(1)} className="p-1.5 text-app hover:bg-surface" aria-label="Increase quantity">
+            <span className="min-w-[2rem] px-2 text-center text-xs font-semibold text-app">{item.quantity}</span>
+            <button type="button" onClick={() => handleQty(1)} className="p-1.5 text-app hover:bg-surface" aria-label="Increase quantity">
               <Plus size={12} />
             </button>
           </div>
 
-          <button onClick={handleRemove} className="p-1.5 text-muted hover:text-red-500" aria-label="Remove item">
+          <button type="button" onClick={handleRemove} className="p-1.5 text-muted hover:text-red-500" aria-label="Remove item">
             <Trash2 size={16} />
           </button>
         </div>

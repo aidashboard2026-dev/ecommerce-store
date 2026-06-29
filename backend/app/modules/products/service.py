@@ -23,9 +23,17 @@ from app.modules.products.schemas import (
     ProductCreate, ProductListResponse, ProductResponse, ProductUpdate,
     VariantCreate, CategoryResponse, CollectionResponse,
 )
+from app.core.constants import (
+    MAX_CATEGORIES,
+    MAX_COLLECTIONS,
+    MAX_SUB_COLLECTIONS,
+    MAX_PRODUCT_IMAGES,
+    MAX_SIZES,
+    MAX_COLORS,
+    MAX_PRODUCT_VARIANTS,
+)
 
 MAX_PER_PAGE = 100
-MAX_PRODUCT_CATEGORIES = 5  # Product categories are capped at 5. Custom products have their own separate categories.
 
 logger = logging.getLogger(__name__)
 
@@ -286,17 +294,31 @@ def get_category(db: Session, category_id: int) -> Category:
     return cat
 
 
+def check_duplicate_category(db: Session, name: str, exclude_id: int = None):
+    norm_new = " ".join(name.strip().split()).lower()
+    query = db.query(Category)
+    if exclude_id is not None:
+        query = query.filter(Category.id != exclude_id)
+    for cat in query.all():
+        norm_cat = " ".join(cat.name.strip().split()).lower()
+        if norm_cat == norm_new:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Category with name '{name}' already exists (matches '{cat.name}')."
+            )
+
+
 def create_category(db: Session, data: CategoryCreate) -> CategoryResponse:
-    # Enforce the maximum 5 product categories limit
-    existing_count = (
-        db.query(sqla_func.count(Category.id)).scalar() or 0
-    )
-    if existing_count >= MAX_PRODUCT_CATEGORIES:
-        raise BusinessRuleError(
-            f"Maximum of {MAX_PRODUCT_CATEGORIES} product categories allowed. "
-            "Delete an existing category before creating a new one.",
-            code="CATEGORY_LIMIT_EXCEEDED",
+    existing_count = db.query(sqla_func.count(Category.id)).scalar() or 0
+    if existing_count >= MAX_CATEGORIES:
+        logger.warning("Attempted to create 6th category")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"You have reached the maximum allowed limit of {MAX_CATEGORIES} categories. Please delete an existing category before creating a new one."
         )
+
+    check_duplicate_category(db, data.name)
+
     norm_name = normalize_category_name(data.name)
     if norm_name:
         raise BusinessRuleError(
@@ -315,9 +337,9 @@ def create_category(db: Session, data: CategoryCreate) -> CategoryResponse:
     try:
         db.commit()
         db.refresh(cat)
-    except IntegrityError:
+    except Exception as e:
         db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT, f"Category name '{data.name}' already exists.")
+        raise e
     logger.info("Product category created: id=%s name=%s", cat.id, cat.name)
     return CategoryResponse.model_validate(cat)
 
@@ -346,6 +368,7 @@ def update_category(db: Session, category_id: int, data: CategoryUpdate) -> Cate
                     status.HTTP_400_BAD_REQUEST,
                     f"Cannot rename category to '{norm_name}' as it is a reserved Main Product category."
                 )
+            check_duplicate_category(db, patch["name"], exclude_id=category_id)
             patch["slug"] = _unique_slug(db, Category, _slugify(patch["name"]), exclude_id=category_id)
 
     for k, v in patch.items():
@@ -353,9 +376,9 @@ def update_category(db: Session, category_id: int, data: CategoryUpdate) -> Cate
     try:
         db.commit()
         db.refresh(cat)
-    except IntegrityError:
+    except Exception as e:
         db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT, "Category name already exists.")
+        raise e
     return CategoryResponse.model_validate(cat)
 
 
@@ -368,7 +391,11 @@ def delete_category(db: Session, category_id: int) -> None:
             code="CATEGORY_DELETE_BLOCKED",
         )
     db.delete(cat)
-    db.commit()
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
 
 
 # ─────────────────────────────────────────────────────────────
@@ -420,7 +447,31 @@ def get_collection(db: Session, collection_id: int) -> Collection:
     return col
 
 
+def check_duplicate_collection(db: Session, name: str, exclude_id: int = None):
+    norm_new = name.strip().lower()
+    query = db.query(Collection)
+    if exclude_id is not None:
+        query = query.filter(Collection.id != exclude_id)
+    for col in query.all():
+        norm_col = col.name.strip().lower()
+        if norm_col == norm_new:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Collection with name '{name}' already exists (matches '{col.name}')."
+            )
+
+
 def create_collection(db: Session, data: CollectionCreate) -> CollectionResponse:
+    existing_count = db.query(sqla_func.count(Collection.id)).scalar() or 0
+    if existing_count >= MAX_COLLECTIONS:
+        logger.warning("Attempted to create 11th collection")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"You have reached the maximum allowed limit of {MAX_COLLECTIONS} collections. Please delete an existing collection before creating a new one."
+        )
+
+    check_duplicate_collection(db, data.name)
+
     norm_name = normalize_collection_name(data.name)
     if norm_name:
         raise BusinessRuleError(
@@ -442,9 +493,9 @@ def create_collection(db: Session, data: CollectionCreate) -> CollectionResponse
     try:
         db.commit()
         db.refresh(col)
-    except IntegrityError:
+    except Exception as e:
         db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT, "Collection slug already exists.")
+        raise e
 
     cat_name = None
     if col.category_id:
@@ -484,6 +535,7 @@ def update_collection(db: Session, collection_id: int, data: CollectionUpdate) -
                     status.HTTP_400_BAD_REQUEST,
                     f"Cannot rename collection to '{norm_name}' as it is a reserved Main Product collection."
                 )
+            check_duplicate_collection(db, patch["name"], exclude_id=collection_id)
             patch["slug"] = _unique_slug(db, Collection, _slugify(patch["name"]), exclude_id=collection_id)
 
     for k, v in patch.items():
@@ -491,9 +543,9 @@ def update_collection(db: Session, collection_id: int, data: CollectionUpdate) -
     try:
         db.commit()
         db.refresh(col)
-    except IntegrityError:
+    except Exception as e:
         db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT, "Collection name/slug already exists.")
+        raise e
 
     cat_name = None
     if col.category_id:
@@ -516,7 +568,11 @@ def delete_collection(db: Session, collection_id: int) -> None:
             code="COLLECTION_DELETE_BLOCKED",
         )
     db.delete(col)
-    db.commit()
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
 
 
 # ─────────────────────────────────────────────────────────────
@@ -714,6 +770,35 @@ def get_products_paginated(
 # PRODUCT CRUD
 # ─────────────────────────────────────────────────────────────
 
+def validate_sub_collection_limit(db: Session, collection_id: Optional[int], new_sub_col: Optional[str], exclude_product_ids: List[int] = None) -> None:
+    if not collection_id or not new_sub_col:
+        return
+    
+    new_sub_col_clean = new_sub_col.strip()
+    if not new_sub_col_clean:
+        return
+        
+    # Get all unique sub-collection strings for this collection_id
+    query = db.query(Product.collection).filter(
+        Product.collection_id == collection_id,
+        Product.collection.isnot(None),
+        Product.collection != "",
+        Product.deleted_at.is_(None),
+    )
+    if exclude_product_ids:
+        query = query.filter(Product.id.notin_(exclude_product_ids))
+        
+    existing_sub_cols = {row[0].strip().lower() for row in query.distinct().all() if row[0]}
+    
+    # If the new one is not already in the existing set
+    if new_sub_col_clean.lower() not in existing_sub_cols:
+        if len(existing_sub_cols) >= MAX_SUB_COLLECTIONS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"You have reached the maximum allowed limit of {MAX_SUB_COLLECTIONS} sub collections for this collection. Please delete an existing sub collection before creating a new one."
+            )
+
+
 def create_product(db: Session, product_in: ProductCreate) -> ProductResponse:
     # Determine if it's a main product
     cat_id = product_in.category_id
@@ -727,10 +812,11 @@ def create_product(db: Session, product_in: ProductCreate) -> ProductResponse:
         validate_main_product_category(db, cat_id)
         validate_main_product_collection(db, product_in.collection_id, cat_id)
 
+    db_collection = product_in.sub_collection if product_in.sub_collection is not None else product_in.collection
+    validate_sub_collection_limit(db, product_in.collection_id, db_collection)
+
     base_slug = _slugify(product_in.title)
     slug = _ensure_unique_slug(db, base_slug)
-
-    db_collection = product_in.sub_collection if product_in.sub_collection is not None else product_in.collection
 
     product = Product(
         title=product_in.title,
@@ -821,6 +907,10 @@ def update_product(db: Session, product_id: int, product_in: ProductUpdate) -> P
         patch["collection"] = patch["sub_collection"]
         del patch["sub_collection"]
 
+    target_col_id = patch.get("collection_id", product.collection_id)
+    target_sub_col = patch.get("collection", product.collection)
+    validate_sub_collection_limit(db, target_col_id, target_sub_col, exclude_product_ids=[product.id])
+
     for k, v in patch.items():
         setattr(product, k, v)
 
@@ -892,8 +982,17 @@ def bulk_action(db: Session, payload: BulkActionPayload) -> dict:
             validate_main_product_collection(db, payload.collection_id, p.category_id)
             p.collection_id = payload.collection_id
     elif action == "move_sub_collection":
+        new_sub = payload.sub_collection.strip() if (payload.sub_collection and payload.sub_collection.strip()) else None
+        if new_sub:
+            # Group products by collection_id to validate each collection
+            collection_to_product_ids = {}
+            for p in products:
+                if p.collection_id:
+                    collection_to_product_ids.setdefault(p.collection_id, []).append(p.id)
+            for col_id, p_ids in collection_to_product_ids.items():
+                validate_sub_collection_limit(db, col_id, new_sub, exclude_product_ids=p_ids)
         for p in products:
-            p.collection = payload.sub_collection.strip() if (payload.sub_collection and payload.sub_collection.strip()) else None
+            p.collection = new_sub
     else:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Unknown action: {action}")
 
@@ -905,20 +1004,93 @@ def bulk_action(db: Session, payload: BulkActionPayload) -> dict:
 # VARIANT CRUD
 # ─────────────────────────────────────────────────────────────
 
+def validate_product_variant_limits(
+    product: Product,
+    new_variants: List[VariantCreate],
+    updating_variant_id: Optional[int] = None,
+    patch: Optional[dict] = None,
+) -> None:
+    current_variants = [v for v in product.variants if v.id != updating_variant_id]
+    
+    # 1. Variant Count Check
+    total_variants = len(current_variants) + (1 if updating_variant_id else len(new_variants))
+    if total_variants > MAX_PRODUCT_VARIANTS:
+        logger.warning(f"Attempted to add variant exceeding limit for product {product.id}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"You have reached the maximum allowed limit of {MAX_PRODUCT_VARIANTS} variants for this product. Please delete an existing variant before adding a new one."
+        )
+
+    # 2. Sizes Check
+    sizes = {v.size.strip().upper() for v in current_variants if v.size}
+    if updating_variant_id:
+        old_var = next(v for v in product.variants if v.id == updating_variant_id)
+        updating_size = patch.get("size") if patch else None
+        final_size = (updating_size or old_var.size).strip().upper()
+        sizes.add(final_size)
+    else:
+        for nv in new_variants:
+            sizes.add(nv.size.strip().upper())
+            
+    if len(sizes) > MAX_SIZES:
+        logger.warning(f"Attempted to add size exceeding limit for product {product.id}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"You have reached the maximum allowed limit of {MAX_SIZES} sizes for this product. Please delete an existing size before adding a new one."
+        )
+
+    # 3. Colors Check
+    colors = {v.color.strip().lower() for v in current_variants if v.color}
+    if updating_variant_id:
+        old_var = next(v for v in product.variants if v.id == updating_variant_id)
+        if patch and "color" in patch:
+            final_color = patch["color"]
+        else:
+            final_color = old_var.color
+        if final_color and final_color.strip():
+            colors.add(final_color.strip().lower())
+    else:
+        for nv in new_variants:
+            if nv.color and nv.color.strip():
+                colors.add(nv.color.strip().lower())
+                
+    if len(colors) > MAX_COLORS:
+        logger.warning(f"Attempted to add color exceeding limit for product {product.id}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"You have reached the maximum allowed limit of {MAX_COLORS} colors for this product. Please delete an existing color before adding a new one."
+        )
+
+
 def add_variant(db: Session, product_id: int, variant_in: VariantCreate) -> ProductResponse:
     product = get_product(db, product_id)
     _validate_variant_input(variant_in)
+    validate_product_variant_limits(product, [variant_in])
 
-    existing = db.query(ProductVariant).filter(
-        ProductVariant.product_id == product_id,
-        ProductVariant.size == variant_in.size,
-        ProductVariant.color == variant_in.color,
-    ).first()
-    if existing:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            f"Variant with size='{variant_in.size}' and color='{variant_in.color}' already exists.",
-        )
+    # Trim and case-insensitive check SKU
+    if variant_in.sku:
+        norm_sku = variant_in.sku.strip().lower()
+        existing_sku = db.query(ProductVariant).filter(
+            sqla_func.lower(ProductVariant.sku) == norm_sku
+        ).first()
+        if existing_sku:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"SKU '{variant_in.sku}' is already in use."
+            )
+
+    norm_size = variant_in.size.strip().upper()
+    norm_color = variant_in.color.strip().lower() if variant_in.color else ""
+
+    existing_variants = db.query(ProductVariant).filter(ProductVariant.product_id == product_id).all()
+    for ev in existing_variants:
+        ev_size = ev.size.strip().upper()
+        ev_color = ev.color.strip().lower() if ev.color else ""
+        if ev_size == norm_size and ev_color == norm_color:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Variant with size='{variant_in.size}' and color='{variant_in.color or ''}' already exists.",
+            )
 
     sku = variant_in.sku or generate_sku(product.title, variant_in.size, variant_in.color)
     for _attempt in range(5):
@@ -942,27 +1114,16 @@ def add_variant(db: Session, product_id: int, variant_in: VariantCreate) -> Prod
     db.add(variant)
     try:
         db.commit()
-    except IntegrityError as exc:
+    except Exception as e:
         db.rollback()
-        if "uq_variant_product_size_color" in str(exc):
-            raise HTTPException(status.HTTP_409_CONFLICT, "Duplicate size + color combination.")
-        if "sku" in str(exc).lower():
-            raise HTTPException(status.HTTP_409_CONFLICT, f"SKU '{sku}' is already in use.")
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to create variant.")
+        raise e
 
     return get_product_response(db, product_id)
 
 
 def add_variants_bulk(db: Session, product_id: int, variants_in: list) -> ProductResponse:
-    """
-    Insert multiple variants in a single transaction.
-
-    Each variant is validated and flushed individually so that duplicate
-    size+color errors can be collected without aborting the whole batch.
-    A flush-level IntegrityError forces a SAVEPOINT rollback for just that
-    row; the outer transaction is kept alive for the remaining variants.
-    """
     product = get_product(db, product_id)
+    validate_product_variant_limits(product, variants_in)
     succeeded = 0
     errors: list[str] = []
 
@@ -973,13 +1134,28 @@ def add_variants_bulk(db: Session, product_id: int, variants_in: list) -> Produc
             errors.append(str(e.detail))
             continue
 
-        existing_combo = db.query(ProductVariant).filter(
-            ProductVariant.product_id == product_id,
-            ProductVariant.size == v.size,
-            ProductVariant.color == v.color,
-        ).first()
+        # Trim and case-insensitive check SKU
+        if v.sku:
+            norm_sku = v.sku.strip().lower()
+            existing_sku = db.query(ProductVariant).filter(
+                sqla_func.lower(ProductVariant.sku) == norm_sku
+            ).first()
+            if existing_sku:
+                errors.append(f"SKU conflict: '{v.sku}' is already in use.")
+                continue
+
+        norm_size = v.size.strip().upper()
+        norm_color = v.color.strip().lower() if v.color else ""
+
+        existing_combo = False
+        for ev in db.query(ProductVariant).filter(ProductVariant.product_id == product_id).all():
+            ev_size = ev.size.strip().upper()
+            ev_color = ev.color.strip().lower() if ev.color else ""
+            if ev_size == norm_size and ev_color == norm_color:
+                existing_combo = True
+                break
         if existing_combo:
-            errors.append(f"Duplicate size+color: {v.size}/{v.color}")
+            errors.append(f"Duplicate size+color: {v.size}/{v.color or ''}")
             continue
 
         sku = v.sku or generate_sku(product.title, v.size, v.color)
@@ -1003,9 +1179,9 @@ def add_variants_bulk(db: Session, product_id: int, variants_in: list) -> Produc
         except IntegrityError as exc:
             db.expire_all()
             if "uq_variant_product_size_color" in str(exc):
-                errors.append(f"Duplicate size+color: {v.size}/{v.color}")
+                errors.append(f"Duplicate size+color: {v.size}/{v.color or ''}")
             elif "sku" in str(exc).lower():
-                errors.append(f"SKU conflict for {v.size}/{v.color}")
+                errors.append(f"SKU conflict for {v.size}/{v.color or ''}")
             else:
                 errors.append(f"Integrity error on size={v.size}, color={v.color}")
 
@@ -1013,7 +1189,11 @@ def add_variants_bulk(db: Session, product_id: int, variants_in: list) -> Produc
         db.rollback()
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail={"errors": errors})
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
     return get_product_response(db, product_id)
 
 
@@ -1026,13 +1206,17 @@ def delete_variant(db: Session, product_id: int, variant_id: int) -> ProductResp
     if not variant:
         raise NotFoundError(f"Variant {variant_id} not found on product {product_id}.", code="VARIANT_NOT_FOUND")
     db.delete(variant)
-    db.commit()
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
     return get_product_response(db, product_id)
 
 
 def update_variant(db: Session, product_id: int, variant_id: int, data) -> ProductResponse:
     """Partially update an existing variant. Only provided fields are changed."""
-    get_product(db, product_id)
+    product = get_product(db, product_id)
     variant = db.query(ProductVariant).filter(
         ProductVariant.id == variant_id,
         ProductVariant.product_id == product_id,
@@ -1041,6 +1225,12 @@ def update_variant(db: Session, product_id: int, variant_id: int, data) -> Produ
         raise NotFoundError(f"Variant {variant_id} not found on product {product_id}.", code="VARIANT_NOT_FOUND")
 
     patch = data.model_dump(exclude_unset=True)
+    validate_product_variant_limits(
+        product=product,
+        new_variants=[],
+        updating_variant_id=variant_id,
+        patch=patch
+    )
 
     # Price cross-validation using effective values (new or existing)
     eff_orig = patch.get("original_price", variant.original_price)
@@ -1062,10 +1252,31 @@ def update_variant(db: Session, product_id: int, variant_id: int, data) -> Produ
             f"color_hex must be a valid CSS hex colour (e.g. #FF0000). Got: {patch['color_hex']}"
         )
 
+    # Size + Color duplicate validation on update
+    eff_size = patch.get("size", variant.size)
+    eff_color = patch.get("color", variant.color)
+    if eff_size is not None or eff_color is not None:
+        norm_size = (eff_size or "").strip().upper()
+        norm_color = (eff_color or "").strip().lower()
+
+        other_variants = db.query(ProductVariant).filter(
+            ProductVariant.product_id == product_id,
+            ProductVariant.id != variant_id
+        ).all()
+        for ov in other_variants:
+            ov_size = ov.size.strip().upper()
+            ov_color = ov.color.strip().lower() if ov.color else ""
+            if ov_size == norm_size and ov_color == norm_color:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Variant with size='{eff_size}' and color='{eff_color or ''}' already exists.",
+                )
+
     # If SKU is being changed, ensure uniqueness
     if "sku" in patch and patch["sku"] and patch["sku"] != variant.sku:
+        norm_sku = patch["sku"].strip().lower()
         existing_sku = db.query(ProductVariant).filter(
-            ProductVariant.sku == patch["sku"],
+            sqla_func.lower(ProductVariant.sku) == norm_sku,
             ProductVariant.id != variant_id,
         ).first()
         if existing_sku:
@@ -1076,13 +1287,9 @@ def update_variant(db: Session, product_id: int, variant_id: int, data) -> Produ
 
     try:
         db.commit()
-    except IntegrityError as exc:
+    except Exception as e:
         db.rollback()
-        if "uq_variant_product_size_color" in str(exc):
-            raise HTTPException(status.HTTP_409_CONFLICT, "Duplicate size + color combination.")
-        if "sku" in str(exc).lower():
-            raise HTTPException(status.HTTP_409_CONFLICT, "SKU already in use.")
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to update variant.")
+        raise e
 
     return get_product_response(db, product_id)
 

@@ -434,7 +434,7 @@ export default function ProductsPage() {
     onMutate:  id  => setDeletingIds(prev => new Set([...prev, id])),
     onSettled: (_, __, id) => setDeletingIds(prev => { const s = new Set(prev); s.delete(id); return s }),
     onSuccess: () => {
-      toast.success('Product deleted')
+      toast.success('Product deleted successfully.')
       const isLastOnPage = (data?.items?.length ?? 0) === 1
       if (isLastOnPage && page > 1) setPage(p => p - 1)
       else invalidate()
@@ -445,7 +445,7 @@ export default function ProductsPage() {
   const bulkMutation = useMutation({
     mutationFn: (payload) => productsApi.bulkAction(payload),
     onSuccess: (res) => {
-      toast.success(`${res.data?.updated ?? 0} products updated`)
+      toast.success(`${res.data?.updated ?? 0} products updated successfully.`)
       setSelectedIds(new Set())
       invalidate()
     },
@@ -456,7 +456,7 @@ export default function ProductsPage() {
 
   const openEdit      = useCallback(p => setFormModal({ open: true, product: p }), [])
   const openImage     = useCallback(p => setImageModal({ open: true, product: p }), [])
-  const openVariant   = useCallback(p => setVariantModal({ open: true, productId: p.id }), [])
+  const openVariant   = useCallback(p => setVariantModal({ open: true, productId: p.id, product: p }), [])
   const openQuickEdit = useCallback(p => setQuickEditModal({ open: true, product: p }), [])
   const doToggle      = useCallback(p => toggleStatus.mutate({ id: p.id, status: p.status === 'published' ? 'draft' : 'published' }), [toggleStatus])
   const doDelete      = useCallback(p => deleteProduct.mutate(p.id), [deleteProduct])
@@ -791,7 +791,7 @@ export default function ProductsPage() {
                 <InlineProductForm
                   product={formModal.product}
                   onClose={() => setFormModal({ open: false, product: null })}
-                  onOpenVariant={p => setVariantModal({ open: true, productId: p.id })}
+                  onOpenVariant={p => setVariantModal({ open: true, productId: p.id, product: p })}
                   onOpenImage={p => setImageModal({ open: true, product: p })}
                 />
               </ProductErrorBoundary>
@@ -804,8 +804,9 @@ export default function ProductsPage() {
       <ProductErrorBoundary title="Variant form error">
         <VariantFormModal
           isOpen={variantModal.open}
-          onClose={() => setVariantModal({ open: false, productId: null })}
+          onClose={() => setVariantModal({ open: false, productId: null, product: null })}
           productId={variantModal.productId}
+          product={data?.items?.find(p => p.id === variantModal.productId) || variantModal.product}
         />
       </ProductErrorBoundary>
       <ProductErrorBoundary title="Image manager error">

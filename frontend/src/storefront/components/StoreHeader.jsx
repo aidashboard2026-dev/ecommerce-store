@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import clsx from "clsx";
 import {
   Zap,
@@ -14,6 +15,9 @@ import {
   LogOut,
   ClipboardList,
 } from "lucide-react";
+import { CartBadge } from "@/storefront/components/cart";
+import { openCartDrawer } from "@/storefront/store/cartSlice";
+
 export default function StoreHeader({
   toggleTheme,
   isDark,
@@ -23,6 +27,7 @@ export default function StoreHeader({
   customer,
   handleLogout,
 }) {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const searchRef = useRef(null);
@@ -163,18 +168,15 @@ export default function StoreHeader({
             </Link>
 
             {/* Cart */}
-            <Link
-              to="/cart"
+            <button
+              type="button"
+              onClick={() => dispatch(openCartDrawer())}
               className="p-2 rounded-full hover:bg-surface text-app transition-colors duration-200 relative"
               aria-label="Cart"
             >
               <ShoppingCart size={18} />
-              {cartCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-brand-500 text-white text-[9px] font-bold h-4 w-4 rounded-full flex items-center justify-center">
-                  {cartCount}
-                </span>
-              )}
-            </Link>
+              <CartBadge count={cartCount} />
+            </button>
 
             {/* Account / Login */}
             {token && customer ? (

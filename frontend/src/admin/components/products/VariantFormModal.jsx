@@ -16,7 +16,7 @@ const BLANK_VARIANT_FORM = {
   stock_quantity: 0, low_stock_threshold: 5,
 }
 
-export default function VariantFormModal({ isOpen, onClose, productId }) {
+export default function VariantFormModal({ isOpen, onClose, productId, product }) {
   const qc = useQueryClient()
   const [form, setForm] = useState(BLANK_VARIANT_FORM)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -33,15 +33,62 @@ export default function VariantFormModal({ isOpen, onClose, productId }) {
 
   const mutation = useMutation({
     mutationFn: data => productsApi.createVariant(productId, data),
-    onSuccess: () => { toast.success('Variant added'); qc.invalidateQueries({ queryKey: ['products'] }); onClose() },
+    onSuccess: () => { toast.success('Variant added successfully.'); qc.invalidateQueries({ queryKey: ['products'] }); onClose() },
     onError: e => toast.error(e.response?.data?.detail || 'SKU may already exist'),
   })
+
+  const existingVariants = product?.variants || []
+  const newColorNormalized = form.color ? form.color.trim().toLowerCase() : ""
+  const uniqueColorsNormalized = new Set(existingVariants.map(v => v.color ? v.color.trim().toLowerCase() : "").filter(Boolean))
+  const newSizeNormalized = form.size ? form.size.trim().toUpperCase() : ""
+  const uniqueSizesNormalized = new Set(existingVariants.map(v => v.size ? v.size.trim().toUpperCase() : "").filter(Boolean))
+
+  const isVariantsLimitReached = existingVariants.length >= 30
+  const isSizesLimitReached = newSizeNormalized && !uniqueSizesNormalized.has(newSizeNormalized) && uniqueSizesNormalized.size >= 5
+  const isColorsLimitReached = newColorNormalized && !uniqueColorsNormalized.has(newColorNormalized) && uniqueColorsNormalized.size >= 6
+  const anyLimitReached = isVariantsLimitReached || isSizesLimitReached || isColorsLimitReached
+  const disabledTitle = anyLimitReached ? "Maximum limit reached.\nDelete an existing item to continue." : ""
 
   const handleSubmit = e => {
     e.preventDefault()
     const orig = parseFloat(form.original_price)
     const sell = parseFloat(form.selling_price)
     if (sell > orig) { toast.error('Selling price cannot exceed original price'); return }
+
+    if (isVariantsLimitReached) {
+      toast.error(
+        <div>
+          <strong style={{ display: "block", marginBottom: "4px" }}>Maximum Limit Reached</strong>
+          <div style={{ whiteSpace: "pre-line", fontSize: "12px", lineHeight: "1.4" }}>
+            You have reached the maximum allowed limit of 30 variants for this product.{"\n"}Please delete an existing variant before adding a new one.
+          </div>
+        </div>
+      );
+      return
+    }
+    if (isSizesLimitReached) {
+      toast.error(
+        <div>
+          <strong style={{ display: "block", marginBottom: "4px" }}>Maximum Limit Reached</strong>
+          <div style={{ whiteSpace: "pre-line", fontSize: "12px", lineHeight: "1.4" }}>
+            You have reached the maximum allowed limit of 5 sizes for this product.{"\n"}Please delete an existing size before adding a new one.
+          </div>
+        </div>
+      );
+      return
+    }
+    if (isColorsLimitReached) {
+      toast.error(
+        <div>
+          <strong style={{ display: "block", marginBottom: "4px" }}>Maximum Limit Reached</strong>
+          <div style={{ whiteSpace: "pre-line", fontSize: "12px", lineHeight: "1.4" }}>
+            You have reached the maximum allowed limit of 6 colors for this product.{"\n"}Please delete an existing color before adding a new one.
+          </div>
+        </div>
+      );
+      return
+    }
+
     mutation.mutate({
       size: form.size,
       color: form.color || undefined,
@@ -68,12 +115,14 @@ export default function VariantFormModal({ isOpen, onClose, productId }) {
             value={form.size}
             onChange={e => set('size', e.target.value)}
             options={SIZE_OPTIONS.map(s => ({ value: s, label: s }))}
+            disabled={isVariantsLimitReached}
           />
           <Input
             label="Color"
             value={form.color}
             onChange={e => set('color', e.target.value)}
             placeholder="Black"
+            disabled={isVariantsLimitReached}
           />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -82,6 +131,7 @@ export default function VariantFormModal({ isOpen, onClose, productId }) {
             value={form.color_hex}
             onChange={e => set('color_hex', e.target.value)}
             placeholder="#1A1A1A"
+            disabled={isVariantsLimitReached}
             rightSlot={
               /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(form.color_hex) ? (
                 <span className="w-4 h-4 rounded-full border border-app" style={{ backgroundColor: form.color_hex }} />
@@ -94,6 +144,7 @@ export default function VariantFormModal({ isOpen, onClose, productId }) {
             value={form.sku}
             onChange={e => set('sku', e.target.value)}
             placeholder="auto: CBT-BLK-M-001"
+            disabled={isVariantsLimitReached}
           />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -106,6 +157,7 @@ export default function VariantFormModal({ isOpen, onClose, productId }) {
             onChange={e => set('original_price', e.target.value)}
             required
             placeholder="999"
+            disabled={isVariantsLimitReached}
             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
           <Input
@@ -117,6 +169,7 @@ export default function VariantFormModal({ isOpen, onClose, productId }) {
             onChange={e => set('selling_price', e.target.value)}
             required
             placeholder="799"
+            disabled={isVariantsLimitReached}
             error={priceError ? 'Price exceeds original' : undefined}
             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
@@ -146,6 +199,7 @@ export default function VariantFormModal({ isOpen, onClose, productId }) {
             value={form.stock_quantity}
             onChange={e => set('stock_quantity', e.target.value)}
             placeholder='0'
+            disabled={isVariantsLimitReached}
             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
           <Input
@@ -154,11 +208,18 @@ export default function VariantFormModal({ isOpen, onClose, productId }) {
             min="0"
             value={form.low_stock_threshold}
             onChange={e => set('low_stock_threshold', e.target.value)} placeholder='0'
+            disabled={isVariantsLimitReached}
             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
         </div>
         <div className="flex flex-col sm:flex-row gap-3 pt-4">
-          <Button type="submit" variant="addvariant" disabled={mutation.isPending || priceError} className="flex">
+          <Button
+            type="submit"
+            variant="addvariant"
+            disabled={mutation.isPending || priceError || anyLimitReached}
+            title={disabledTitle}
+            className="flex"
+          >
             {mutation.isPending && (
               <Loader2 size={14} className="animate-spin" />
             )}

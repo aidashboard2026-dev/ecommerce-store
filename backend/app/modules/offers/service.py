@@ -1,13 +1,24 @@
+import logging
 from sqlalchemy.orm import Session
-
+from fastapi import HTTPException, status
+from app.core.constants import MAX_OFFERS
 from app.modules.offers.models import Offer
 from app.modules.offers.schemas import OfferCreate
+
+logger = logging.getLogger(__name__)
 
 
 def create_offer(
     db: Session,
     offer: OfferCreate
 ):
+    existing_count = db.query(Offer).count()
+    if existing_count >= MAX_OFFERS:
+        logger.warning(f"Attempted to create {existing_count + 1}th offer")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"You have reached the maximum allowed limit of {MAX_OFFERS} offers. Please delete an existing offer before creating a new one."
+        )
     db_offer = Offer(
         title=offer.title or "",
         percentage=offer.percentage or "",
@@ -28,9 +39,12 @@ def create_offer(
 
     db.add(db_offer)
 
-    db.commit()
-
-    db.refresh(db_offer)
+    try:
+        db.commit()
+        db.refresh(db_offer)
+    except Exception as e:
+        db.rollback()
+        raise e
 
     return db_offer
 
@@ -52,8 +66,12 @@ def update_offer(
     for field, value in update_data.items():
         setattr(offer, field, value)
 
-    db.commit()
-    db.refresh(offer)
+    try:
+        db.commit()
+        db.refresh(offer)
+    except Exception as e:
+        db.rollback()
+        raise e
 
     return offer
 
@@ -85,7 +103,11 @@ def delete_offer(
 
     if offer:
         db.delete(offer)
-        db.commit()
+        try:
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            raise e
 
     return offer
 

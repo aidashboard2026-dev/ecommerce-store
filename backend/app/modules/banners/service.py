@@ -1,13 +1,33 @@
+import logging
 from sqlalchemy.orm import Session
-
+from fastapi import HTTPException, status
+from app.core.constants import MAX_BANNERS
 from app.modules.banners.models import Banner
 from app.modules.banners.schemas import BannerCreate
+
+logger = logging.getLogger(__name__)
 
 
 def create_banner(
     db: Session,
     banner: BannerCreate
 ):
+    existing_count = db.query(Banner).count()
+    if existing_count >= MAX_BANNERS:
+        logger.warning(f"Attempted to upload {existing_count + 1}th banner")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"You have reached the maximum allowed limit of {MAX_BANNERS} banners. Please delete an existing banner before creating a new one."
+        )
+
+    # Check duplicate sort_order
+    existing_sort = db.query(Banner).filter(Banner.sort_order == banner.sort_order).first()
+    if existing_sort:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Banner sort order {banner.sort_order} is already in use."
+        )
+
     db_banner = Banner(
         title=banner.title,
         subtitle=banner.subtitle,
@@ -23,9 +43,12 @@ def create_banner(
 
     db.add(db_banner)
 
-    db.commit()
-
-    db.refresh(db_banner)
+    try:
+        db.commit()
+        db.refresh(db_banner)
+    except Exception as e:
+        db.rollback()
+        raise e
 
     return db_banner
 
@@ -44,11 +67,24 @@ def update_banner(
     if not banner:
         return None
 
+    if "sort_order" in update_data:
+        so = update_data["sort_order"]
+        existing_sort = db.query(Banner).filter(Banner.sort_order == so, Banner.id != banner_id).first()
+        if existing_sort:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Banner sort order {so} is already in use."
+            )
+
     for field, value in update_data.items():
         setattr(banner, field, value)
 
-    db.commit()
-    db.refresh(banner)
+    try:
+        db.commit()
+        db.refresh(banner)
+    except Exception as e:
+        db.rollback()
+        raise e
 
     return banner
 
@@ -84,7 +120,11 @@ def delete_banner(
 
     if banner:
         db.delete(banner)
-        db.commit()
+        try:
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            raise e
 
     return banner
 

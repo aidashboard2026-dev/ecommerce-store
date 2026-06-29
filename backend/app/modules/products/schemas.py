@@ -2,6 +2,24 @@ from pydantic import BaseModel, field_validator, model_validator
 from typing import Optional, List, Any
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
+from app.core.constants import (
+    MIN_PRODUCT_NAME_LENGTH,
+    MAX_PRODUCT_NAME_LENGTH,
+    MIN_CATEGORY_NAME_LENGTH,
+    MAX_CATEGORY_NAME_LENGTH,
+    MIN_COLLECTION_NAME_LENGTH,
+    MAX_COLLECTION_NAME_LENGTH,
+    MIN_SUB_COLLECTION_NAME_LENGTH,
+    MAX_SUB_COLLECTION_NAME_LENGTH,
+    MAX_PRODUCT_DESCRIPTION_LENGTH,
+    MAX_SKU_LENGTH,
+    MIN_PRODUCT_PRICE,
+    MAX_PRODUCT_PRICE,
+    MIN_DISCOUNT_PERCENT,
+    MAX_DISCOUNT_PERCENT,
+    MIN_STOCK,
+    MAX_STOCK,
+)
 
 
 # ── Category Schemas ─────────────────────────────────────────────────────────
@@ -17,11 +35,13 @@ class CategoryCreate(CategoryBase):
     @field_validator("name")
     @classmethod
     def name_not_empty(cls, v):
+        if v is None:
+            raise ValueError("Category name is required")
         v = v.strip()
         if not v:
-            raise ValueError("Category name is required")
-        if len(v) > 100:
-            raise ValueError("Category name must be 100 characters or fewer")
+            raise ValueError("Category name cannot be empty or whitespace only")
+        if len(v) < MIN_CATEGORY_NAME_LENGTH or len(v) > MAX_CATEGORY_NAME_LENGTH:
+            raise ValueError(f"Category name must be between {MIN_CATEGORY_NAME_LENGTH} and {MAX_CATEGORY_NAME_LENGTH} characters")
         return v
 
     @field_validator("status")
@@ -44,9 +64,9 @@ class CategoryUpdate(BaseModel):
         if v is not None:
             v = v.strip()
             if not v:
-                raise ValueError("Category name is required")
-            if len(v) > 100:
-                raise ValueError("Category name must be 100 characters or fewer")
+                raise ValueError("Category name cannot be empty or whitespace only")
+            if len(v) < MIN_CATEGORY_NAME_LENGTH or len(v) > MAX_CATEGORY_NAME_LENGTH:
+                raise ValueError(f"Category name must be between {MIN_CATEGORY_NAME_LENGTH} and {MAX_CATEGORY_NAME_LENGTH} characters")
         return v
 
     @field_validator("status")
@@ -80,11 +100,13 @@ class CollectionCreate(CollectionBase):
     @field_validator("name")
     @classmethod
     def name_not_empty(cls, v):
+        if v is None:
+            raise ValueError("Collection name is required")
         v = v.strip()
         if not v:
-            raise ValueError("Collection name is required")
-        if len(v) > 100:
-            raise ValueError("Collection name must be 100 characters or fewer")
+            raise ValueError("Collection name cannot be empty or whitespace only")
+        if len(v) < MIN_COLLECTION_NAME_LENGTH or len(v) > MAX_COLLECTION_NAME_LENGTH:
+            raise ValueError(f"Collection name must be between {MIN_COLLECTION_NAME_LENGTH} and {MAX_COLLECTION_NAME_LENGTH} characters")
         return v
 
     @field_validator("status")
@@ -107,9 +129,9 @@ class CollectionUpdate(BaseModel):
         if v is not None:
             v = v.strip()
             if not v:
-                raise ValueError("Collection name is required")
-            if len(v) > 100:
-                raise ValueError("Collection name must be 100 characters or fewer")
+                raise ValueError("Collection name cannot be empty or whitespace only")
+            if len(v) < MIN_COLLECTION_NAME_LENGTH or len(v) > MAX_COLLECTION_NAME_LENGTH:
+                raise ValueError(f"Collection name must be between {MIN_COLLECTION_NAME_LENGTH} and {MAX_COLLECTION_NAME_LENGTH} characters")
         return v
 
 
@@ -150,6 +172,64 @@ class VariantCreate(VariantBase):
     def coerce_discount(cls, v):
         return Decimal(str(v)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
+    @field_validator("original_price")
+    @classmethod
+    def validate_original_price(cls, v):
+        if not (MIN_PRODUCT_PRICE <= v <= MAX_PRODUCT_PRICE):
+            raise ValueError(f"original_price must be between {MIN_PRODUCT_PRICE} and {MAX_PRODUCT_PRICE}")
+        return v
+
+    @field_validator("selling_price")
+    @classmethod
+    def validate_selling_price(cls, v):
+        if not (MIN_PRODUCT_PRICE <= v <= MAX_PRODUCT_PRICE):
+            raise ValueError(f"selling_price must be between {MIN_PRODUCT_PRICE} and {MAX_PRODUCT_PRICE}")
+        return v
+
+    @field_validator("discount_percentage")
+    @classmethod
+    def validate_discount(cls, v):
+        if not (MIN_DISCOUNT_PERCENT <= v <= MAX_DISCOUNT_PERCENT):
+            raise ValueError(f"discount_percentage must be between {MIN_DISCOUNT_PERCENT} and {MAX_DISCOUNT_PERCENT}")
+        return v
+
+    @field_validator("stock_quantity")
+    @classmethod
+    def validate_stock(cls, v):
+        if not (MIN_STOCK <= v <= MAX_STOCK):
+            raise ValueError(f"stock_quantity must be between {MIN_STOCK} and {MAX_STOCK}")
+        return v
+
+    @field_validator("sku")
+    @classmethod
+    def validate_sku(cls, v):
+        if v is not None:
+            v = v.strip()
+            if len(v) > MAX_SKU_LENGTH:
+                raise ValueError(f"SKU must be {MAX_SKU_LENGTH} characters or fewer")
+            return v if v else None
+        return v
+
+    @field_validator("color_hex")
+    @classmethod
+    def validate_color_hex(cls, v):
+        if v is not None and v.strip():
+            v = v.strip()
+            import re
+            if not re.match(r"^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$", v):
+                raise ValueError("color_hex must be a valid hex color starting with #")
+            return v
+        return None
+
+    @model_validator(mode="after")
+    def selling_lte_original(self):
+        if self.selling_price > self.original_price:
+            raise ValueError(
+                f"selling_price ({self.selling_price}) cannot exceed "
+                f"original_price ({self.original_price})"
+            )
+        return self
+
 
 class VariantUpdate(BaseModel):
     """All fields optional — send only the ones you want to change."""
@@ -180,30 +260,42 @@ class VariantUpdate(BaseModel):
     @field_validator("original_price")
     @classmethod
     def original_price_positive(cls, v):
-        if v <= 0:
-            raise ValueError("original_price must be greater than zero")
+        if v is not None:
+            if not (MIN_PRODUCT_PRICE <= v <= MAX_PRODUCT_PRICE):
+                raise ValueError(f"original_price must be between {MIN_PRODUCT_PRICE} and {MAX_PRODUCT_PRICE}")
         return v
 
     @field_validator("selling_price")
     @classmethod
     def selling_price_positive(cls, v):
-        if v <= 0:
-            raise ValueError("selling_price must be greater than zero")
+        if v is not None:
+            if not (MIN_PRODUCT_PRICE <= v <= MAX_PRODUCT_PRICE):
+                raise ValueError(f"selling_price must be between {MIN_PRODUCT_PRICE} and {MAX_PRODUCT_PRICE}")
+        return v
+
+    @field_validator("discount_percentage")
+    @classmethod
+    def validate_discount(cls, v):
+        if v is not None:
+            if not (MIN_DISCOUNT_PERCENT <= v <= MAX_DISCOUNT_PERCENT):
+                raise ValueError(f"discount_percentage must be between {MIN_DISCOUNT_PERCENT} and {MAX_DISCOUNT_PERCENT}")
         return v
 
     @field_validator("stock_quantity")
     @classmethod
     def stock_nonnegative(cls, v):
-        if v < 0:
-            raise ValueError("stock_quantity cannot be negative")
+        if v is not None:
+            if not (MIN_STOCK <= v <= MAX_STOCK):
+                raise ValueError(f"stock_quantity must be between {MIN_STOCK} and {MAX_STOCK}")
         return v
 
     @field_validator("size")
     @classmethod
     def size_not_empty(cls, v):
-        v = v.strip()
-        if not v:
-            raise ValueError("size is required")
+        if v is not None:
+            v = v.strip()
+            if not v:
+                raise ValueError("size is required")
         return v
 
     @field_validator("sku")
@@ -211,16 +303,30 @@ class VariantUpdate(BaseModel):
     def sku_strip(cls, v):
         if v is not None:
             v = v.strip()
+            if len(v) > MAX_SKU_LENGTH:
+                raise ValueError(f"SKU must be {MAX_SKU_LENGTH} characters or fewer")
             return v if v else None
         return v
 
+    @field_validator("color_hex")
+    @classmethod
+    def validate_color_hex(cls, v):
+        if v is not None and v.strip():
+            v = v.strip()
+            import re
+            if not re.match(r"^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$", v):
+                raise ValueError("color_hex must be a valid hex color starting with #")
+            return v
+        return None
+
     @model_validator(mode="after")
     def selling_lte_original(self):
-        if self.selling_price > self.original_price:
-            raise ValueError(
-                f"selling_price ({self.selling_price}) cannot exceed "
-                f"original_price ({self.original_price})"
-            )
+        if self.selling_price is not None and self.original_price is not None:
+            if self.selling_price > self.original_price:
+                raise ValueError(
+                    f"selling_price ({self.selling_price}) cannot exceed "
+                    f"original_price ({self.original_price})"
+                )
         return self
 
 
@@ -273,11 +379,33 @@ class ProductCreate(ProductBase):
     @field_validator("title")
     @classmethod
     def title_valid(cls, v):
+        if v is None:
+            raise ValueError("Product title is required")
         v = v.strip()
-        if len(v) < 2:
-            raise ValueError("Product title must be at least 2 characters")
-        if len(v) > 200:
-            raise ValueError("Product title must be 200 characters or fewer")
+        if not v:
+            raise ValueError("Product title cannot be empty or whitespace only")
+        if len(v) < MIN_PRODUCT_NAME_LENGTH or len(v) > MAX_PRODUCT_NAME_LENGTH:
+            raise ValueError(f"Product title must be between {MIN_PRODUCT_NAME_LENGTH} and {MAX_PRODUCT_NAME_LENGTH} characters")
+        return v
+
+    @field_validator("collection", "sub_collection")
+    @classmethod
+    def sub_collection_valid(cls, v):
+        if v is not None:
+            v = v.strip()
+            if not v:
+                return None
+            if len(v) < MIN_SUB_COLLECTION_NAME_LENGTH or len(v) > MAX_SUB_COLLECTION_NAME_LENGTH:
+                raise ValueError(f"Sub Collection name must be between {MIN_SUB_COLLECTION_NAME_LENGTH} and {MAX_SUB_COLLECTION_NAME_LENGTH} characters")
+            return v
+        return v
+
+    @field_validator("description")
+    @classmethod
+    def description_valid(cls, v):
+        if v is not None:
+            if len(v) > MAX_PRODUCT_DESCRIPTION_LENGTH:
+                raise ValueError(f"Product description must be {MAX_PRODUCT_DESCRIPTION_LENGTH} characters or fewer")
         return v
 
     @field_validator("tags")
@@ -322,10 +450,30 @@ class ProductUpdate(BaseModel):
     def title_valid(cls, v):
         if v is not None:
             v = v.strip()
-            if len(v) < 2:
-                raise ValueError("Product title must be at least 2 characters")
-            if len(v) > 200:
-                raise ValueError("Product title must be 200 characters or fewer")
+            if not v:
+                raise ValueError("Product title cannot be empty or whitespace only")
+            if len(v) < MIN_PRODUCT_NAME_LENGTH or len(v) > MAX_PRODUCT_NAME_LENGTH:
+                raise ValueError(f"Product title must be between {MIN_PRODUCT_NAME_LENGTH} and {MAX_PRODUCT_NAME_LENGTH} characters")
+        return v
+
+    @field_validator("collection", "sub_collection")
+    @classmethod
+    def sub_collection_valid(cls, v):
+        if v is not None:
+            v = v.strip()
+            if not v:
+                return None
+            if len(v) < MIN_SUB_COLLECTION_NAME_LENGTH or len(v) > MAX_SUB_COLLECTION_NAME_LENGTH:
+                raise ValueError(f"Sub Collection name must be between {MIN_SUB_COLLECTION_NAME_LENGTH} and {MAX_SUB_COLLECTION_NAME_LENGTH} characters")
+            return v
+        return v
+
+    @field_validator("description")
+    @classmethod
+    def description_valid(cls, v):
+        if v is not None:
+            if len(v) > MAX_PRODUCT_DESCRIPTION_LENGTH:
+                raise ValueError(f"Product description must be {MAX_PRODUCT_DESCRIPTION_LENGTH} characters or fewer")
         return v
 
     @field_validator("tags")

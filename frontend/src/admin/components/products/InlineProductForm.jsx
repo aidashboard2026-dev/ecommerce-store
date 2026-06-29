@@ -18,8 +18,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STATUS_OPTIONS = ['draft', 'published', 'archived']
-const MAX_IMAGES     = 10                          // HEAD: 10 (branch had 5)
-const MAX_FILE_SIZE  = 5 * 1024 * 1024
+const MAX_IMAGES     = 7
+const MAX_FILE_SIZE  = 10 * 1024 * 1024
 const ALLOWED_TYPES  = ['image/jpeg', 'image/png', 'image/webp']
 const SIZE_OPTIONS   = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 // COLLECTION_OPTIONS kept from branch — used as fallback display labels only;
@@ -153,6 +153,23 @@ function LocalVariantForm({ onAdd, existingVariants = [] }) {
     )
     if (dupExists) {
       toast.error(`Variant with size "${form.size}" and color "${form.color || 'none'}" already exists`)
+      return
+    }
+    const newColorNormalized = form.color ? form.color.trim().toLowerCase() : ""
+    const uniqueColorsNormalized = new Set(existingVariants.map(v => v.color ? v.color.trim().toLowerCase() : "").filter(Boolean))
+    const newSizeNormalized = form.size ? form.size.trim().toUpperCase() : ""
+    const uniqueSizesNormalized = new Set(existingVariants.map(v => v.size ? v.size.trim().toUpperCase() : "").filter(Boolean))
+
+    if (existingVariants.length >= 30) {
+      toast.error("Maximum of 30 variants allowed for a product. Please delete an existing variant before adding another.")
+      return
+    }
+    if (newSizeNormalized && !uniqueSizesNormalized.has(newSizeNormalized) && uniqueSizesNormalized.size >= 5) {
+      toast.error("Maximum of 5 sizes allowed for a product. Please delete an existing size before adding another.")
+      return
+    }
+    if (newColorNormalized && !uniqueColorsNormalized.has(newColorNormalized) && uniqueColorsNormalized.size >= 6) {
+      toast.error("Maximum of 6 colors allowed for a product. Please delete an existing color before adding another.")
       return
     }
     onAdd({
@@ -426,13 +443,13 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
 
   const editMutation = useMutation({
     mutationFn: data => productsApi.update(product.id, data),
-    onSuccess: () => { toast.success('Product updated'); qc.invalidateQueries({ queryKey: ['products'] }); onClose() },
+    onSuccess: () => { toast.success('Product updated successfully.'); qc.invalidateQueries({ queryKey: ['products'] }); onClose() },
     onError: e => toast.error(e.response?.data?.detail || 'Something went wrong'),
   })
 
   const editPubMutation = useMutation({
     mutationFn: data => productsApi.update(product.id, { ...data, status: 'published' }),
-    onSuccess: () => { toast.success('Published!'); qc.invalidateQueries({ queryKey: ['products'] }); onClose() },
+    onSuccess: () => { toast.success('Product published successfully.'); qc.invalidateQueries({ queryKey: ['products'] }); onClose() },
     onError: e => toast.error(e.response?.data?.detail || 'Something went wrong'),
   })
 
@@ -444,7 +461,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
     onSettled: (_, __, variantId) => setDeletingVariantIds(prev => {
       const s = new Set(prev); s.delete(variantId); return s
     }),
-    onSuccess: () => { toast.success('Variant deleted'); qc.invalidateQueries({ queryKey: ['products'] }) },
+    onSuccess: () => { toast.success('Variant deleted successfully.'); qc.invalidateQueries({ queryKey: ['products'] }) },
     onError: e => toast.error(e.response?.data?.detail || 'Failed to delete variant'),
   })
 
@@ -571,7 +588,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
     await new Promise(r => setTimeout(r, hadPartialFailure ? 1500 : 800))
 
     if (!hadPartialFailure) {
-      toast.success(overrideStatus === 'published' ? 'Product published!' : 'Product created!')
+      toast.success(overrideStatus === 'published' ? 'Product published successfully.' : 'Product created successfully.')
       qc.invalidateQueries({ queryKey: ['products'] })
       setSaveSteps(null)
       isSavingRef.current = false

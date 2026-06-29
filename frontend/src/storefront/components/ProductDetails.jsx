@@ -22,7 +22,7 @@ import {
   useRelatedProducts,
 } from "@/storefront/hooks/useProducts";
 import { getImageUrl, formatPrice } from "@/shared/utils/productUtils";
-import { addToCart } from "@/storefront/store/cartSlice";
+import { addToCart, openCartDrawer } from "@/storefront/store/cartSlice";
 import {
   toggleWishlist,
   selectIsWishlisted,
@@ -168,6 +168,8 @@ export default function ProductDetails() {
       return;
     }
     dispatch(addToCart(buildCartItem()));
+    dispatch(openCartDrawer());
+
     toast.success("Added to cart");
   };
 
@@ -353,14 +355,14 @@ export default function ProductDetails() {
             {product.title}
           </h1>
 
-          {product.description && (
+          {/* {product.description && (
             <p className="text-base font-thin text-app leading-relaxed">
               {product.description}
             </p>
-          )}
+          )} */}
 
           {activeVariant && (
-            <div className="flex items-baseline border-b pb-3 gap-3">
+            <div className="flex flex-wrap items-baseline border-b pb-3 gap-3">
               <span className="text-4xl font-bold text-app">
                 {formatPrice(activeVariant.selling_price)}
               </span>
@@ -504,7 +506,7 @@ export default function ProductDetails() {
           </div>
 
           <section className="border-t border-app pt-2">
-            <h2 className="text-3xl font-semibold text-app">
+            <h2 className="text-2xl lg:text-3xl  font-semibold text-app">
               Product Information
             </h2>
 
@@ -531,7 +533,7 @@ export default function ProductDetails() {
                 <div className="pb-6 pl-10 text-muted">
                   <div>
                     <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                      <li> Material & Care</li>
+                      <li>Material & Care</li>
                       <li>Cotton Machine-wash</li>
                       <li>100% Original Products</li>
                       <li>Pay on delivery might be available</li>
@@ -567,7 +569,7 @@ export default function ProductDetails() {
               )}
             </div>
 
-            {/* Ratings */}
+            {/* Shipping & Returns */}
             <div className="border-b border-app">
               <button
                 onClick={() => toggle("shipping")}

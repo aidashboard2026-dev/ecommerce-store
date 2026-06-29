@@ -10,6 +10,7 @@ Phase 5 changes:
   - import buried inside function removed
 """
 
+import logging
 import os
 from datetime import date, datetime, time, timezone
 from typing import List, Optional
@@ -18,6 +19,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.constants import MAX_OFFERS
 from app.modules.admins.models import Admin
 from app.modules.audit.service import audit
 from app.modules.auth.dependencies import get_current_admin
@@ -32,6 +34,7 @@ from app.shared.storage import supabase_storage
 from app.shared.utils.image import validate_and_read_image
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 COOKIE_SECURE = os.getenv("AUTH_COOKIE_SECURE", "true").lower() != "false"
 
@@ -81,6 +84,14 @@ async def create_new_offer(
     db:           Session                = Depends(get_db),
     current_admin:Admin                  = Depends(get_current_admin),
 ):
+    existing_count = db.query(Offer).count()
+    if existing_count >= MAX_OFFERS:
+        logger.warning(f"Attempted to create {existing_count + 1}th offer")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"You have reached the maximum allowed limit of {MAX_OFFERS} offers. Please delete an existing offer before creating a new one."
+        )
+
     image_path:   Optional[str]      = None
     published_at: Optional[datetime] = None
     expires_at:   Optional[datetime] = None
@@ -101,17 +112,23 @@ async def create_new_offer(
         start_time=start_time, end_time=end_time,
         published_at=published_at, expires_at=expires_at,
     )
-    result = create_offer(db, offer_data)
 
-    audit.created(
-        db=db, admin=current_admin,
-        resource_type="offer",
-        resource_id=result.id,
-        resource_label=result.title or f"Offer #{result.id}",
-        payload={"status": result.status},
-        request=request,
-    )
-    db.commit()
+    try:
+        result = create_offer(db, offer_data)
+        audit.created(
+            db=db, admin=current_admin,
+            resource_type="offer",
+            resource_id=result.id,
+            resource_label=result.title or f"Offer #{result.id}",
+            payload={"status": result.status},
+            request=request,
+        )
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        if image_path:
+            supabase_storage.delete_banner_image(image_path)
+        raise e
     return result
 
 
@@ -186,11 +203,10 @@ async def edit_offer(
         if value is not None:
             update_fields[field] = value
 
+    old_image: Optional[str] = None
     if banner_image and banner_image.filename:
         old_image = offer.banner_image
         update_fields["banner_image"] = _upload_offer_image(banner_image)
-        if old_image:
-            supabase_storage.delete_banner_image(old_image)
 
     effective_status     = status_field    if status_field is not None else offer.status
     effective_start_date = start_date      if start_date   is not None else offer.start_date
@@ -216,19 +232,31 @@ async def edit_offer(
     if not update_fields:
         return offer
 
-    result = update_offer(db, offer_id, update_fields)
-    if not result:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found.")
+    try:
+        result = update_offer(db, offer_id, update_fields)
+        if not result:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found.")
 
-    audit.updated(
-        db=db, admin=current_admin,
-        resource_type="offer",
-        resource_id=offer_id,
-        resource_label=result.title or f"Offer #{offer_id}",
-        after={k: str(v) for k, v in update_fields.items()},
-        request=request,
-    )
-    db.commit()
+        audit.updated(
+            db=db, admin=current_admin,
+            resource_type="offer",
+            resource_id=offer_id,
+            resource_label=result.title or f"Offer #{offer_id}",
+            after={k: str(v) for k, v in update_fields.items()},
+            request=request,
+        )
+        db.commit()
+
+        if old_image:
+            try:
+                supabase_storage.delete_banner_image(old_image)
+            except Exception:
+                pass
+    except Exception as e:
+        db.rollback()
+        if "banner_image" in update_fields:
+            supabase_storage.delete_banner_image(update_fields["banner_image"])
+        raise e
     return result
 
 
@@ -242,15 +270,25 @@ def remove_offer(
     current_admin:Admin   = Depends(get_current_admin),
 ):
     offer = get_offer(db, offer_id)
-    label = (offer.title if offer else None) or f"Offer #{offer_id}"
-    delete_offer(db, offer_id)
+    if not offer:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Offer not found.")
 
-    audit.deleted(
-        db=db, admin=current_admin,
-        resource_type="offer",
-        resource_id=offer_id,
-        resource_label=label,
-        request=request,
-    )
-    db.commit()
+    try:
+        label = offer.title or f"Offer #{offer_id}"
+        banner_img = offer.banner_image
+        delete_offer(db, offer_id)
+        if banner_img:
+            supabase_storage.delete_banner_image(banner_img)
+
+        audit.deleted(
+            db=db, admin=current_admin,
+            resource_type="offer",
+            resource_id=offer_id,
+            resource_label=label,
+            request=request,
+        )
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
     return {"message": "Offer deleted successfully."}

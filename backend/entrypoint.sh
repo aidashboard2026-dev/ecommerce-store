@@ -19,7 +19,10 @@ import sys
 host = os.getenv("POSTGRES_SERVER", "db")
 port = os.getenv("POSTGRES_PORT", "5432")
 user = os.getenv("POSTGRES_USER", "postgres")
-password = os.getenv("POSTGRES_PASSWORD", "T-Shirt-DB123")
+password = os.getenv("POSTGRES_PASSWORD")
+
+if not password:
+    raise RuntimeError("POSTGRES_PASSWORD is not set")
 dbname = os.getenv("POSTGRES_DB", "postgres")
 
 max_retries = 30
@@ -66,7 +69,7 @@ print('[entrypoint] Database seed complete.')
 echo '[entrypoint] Starting Gunicorn with Uvicorn workers...'
 
 exec gunicorn app.main:app \
-    --workers 4 \
+    --workers 2 \
     --worker-class uvicorn.workers.UvicornWorker \
     --bind 0.0.0.0:8000 \
     --timeout 120 \

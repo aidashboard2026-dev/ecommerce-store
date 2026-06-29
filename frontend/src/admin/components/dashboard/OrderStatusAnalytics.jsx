@@ -84,6 +84,7 @@ const renderCalloutLabel = ({ cx, cy, midAngle, outerRadius, name, percent, fill
 export default function OrderStatusAnalytics({ isDark }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [chartType, setChartType] = useState('donut')
 
   const toggleChartType = () => {
@@ -93,23 +94,40 @@ export default function OrderStatusAnalytics({ isDark }) {
   useEffect(() => {
     let active = true
 
-    async function loadOrders() {
+   async function loadOrders() {
       try {
-        // Analytics widget only needs status distribution — fetch a single
-        // page of up to 500 recent orders rather than all 10,000.
-        // For accurate full-corpus analytics, wire to a dedicated
-        // GET /orders/status-summary endpoint post-launch.
-        const response = await ordersAPI.list({ skip: 0, limit: 500 })
-        if (active) setOrders(response.data?.orders ?? response.data ?? [])
-      } catch (error) {
-        console.error(error)
+        setError(null);
+
+        const response = await ordersAPI.list({
+          skip: 0,
+          limit: 500,
+        });
+
+        const orderList = Array.isArray(response.data?.items)
+          ? response.data.items
+          : [];
+
+        if (active) {
+          setOrders(orderList);
+        }
+      } catch (err) {
+        console.error("Failed to load orders:", err);
+
+        if (active) {
+          setOrders([]);
+          setError("Unable to load orders.");
+        }
       } finally {
-        if (active) setLoading(false)
+        if (active) {
+          setLoading(false);
+        }
       }
     }
 
     loadOrders()
-    const refreshTimer = window.setInterval(loadOrders, 15000)
+    const REFRESH_INTERVAL = 15000;
+    const refreshTimer = window.setInterval(loadOrders, REFRESH_INTERVAL);
+
     window.addEventListener('focus', loadOrders)
 
     return () => {
@@ -120,7 +138,9 @@ export default function OrderStatusAnalytics({ isDark }) {
   }, [])
 
   const chartData = useMemo(() => {
-    const counts = orders.reduce(
+    const orderList = Array.isArray(orders) ? orders : [];
+
+    const counts = orderList.reduce(
       (acc, order) => {
         const status = normalizeStatus(order.tracking_status)
 
@@ -180,6 +200,12 @@ export default function OrderStatusAnalytics({ isDark }) {
           )}
         </button>
       </div>
+
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-600">
+          {error}
+        </div>
+      )}
 
       <div className="relative h-[260px]">
         <ResponsiveContainer width="100%" height="100%">

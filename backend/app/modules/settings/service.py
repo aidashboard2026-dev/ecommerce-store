@@ -59,24 +59,30 @@ def get_or_create_store_settings(db: Session) -> StoreSettings:
 
     settings = StoreSettings()
     db.add(settings)
-    db.commit()
+    db.flush()
     db.refresh(settings)
     return settings
 
 
 def get_or_create_admin_security(db: Session, admin: Admin) -> AdminSecurity:
-    security_row = db.query(AdminSecurity).order_by(AdminSecurity.id.asc()).first()
+    security_row = db.query(AdminSecurity).filter(AdminSecurity.admin_id == admin.id).first()
     if security_row:
+        # Sync email/username if it changed
+        if security_row.email != admin.email or security_row.username != admin.name:
+            security_row.email = admin.email
+            security_row.username = admin.name
+            db.flush()
         return security_row
 
     security_row = AdminSecurity(
+        admin_id=admin.id,
         username=admin.name,
         email=admin.email,
         two_factor_enabled=False,
         email_verified=True,
     )
     db.add(security_row)
-    db.commit()
+    db.flush()
     db.refresh(security_row)
     return security_row
 
@@ -93,7 +99,7 @@ def update_store_settings(db: Session, payload: StoreSettingsUpdate) -> StoreSet
     update_data = payload.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(settings, field, str(value) if field == "store_url" and value is not None else value)
-    db.commit()
+    db.flush()
     db.refresh(settings)
     return settings
 
@@ -119,7 +125,7 @@ def update_admin_security(db: Session, admin: Admin, payload: AdminSecurityUpdat
     if "two_factor_enabled" in update_data:
         security_row.two_factor_enabled = update_data["two_factor_enabled"]
 
-    db.commit()
+    db.flush()
     db.refresh(security_row)
     db.refresh(admin)
     return security_row
@@ -130,7 +136,7 @@ def update_admin_password(db: Session, admin: Admin, payload: PasswordUpdate) ->
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect.")
 
     admin.password_hash = get_password_hash(payload.new_password)
-    db.commit()
+    db.flush()
     return {"message": "Password updated successfully."}
 
 
@@ -144,7 +150,7 @@ def ensure_payment_methods(db: Session) -> List[PaymentMethod]:
             changed = True
 
     if changed:
-        db.commit()
+        db.flush()
 
     return db.query(PaymentMethod).order_by(PaymentMethod.id.asc()).all()
 
@@ -158,7 +164,7 @@ def update_payment_method(db: Session, payment_id: int, payload: PaymentMethodUp
     for field, value in update_data.items():
         setattr(payment, field, value)
 
-    db.commit()
+    db.flush()
     db.refresh(payment)
     return payment
 
@@ -173,7 +179,7 @@ def ensure_notification_settings(db: Session) -> List[NotificationSetting]:
             changed = True
 
     if changed:
-        db.commit()
+        db.flush()
 
     return db.query(NotificationSetting).order_by(NotificationSetting.id.asc()).all()
 
@@ -191,6 +197,6 @@ def update_notification_setting(
     for field, value in update_data.items():
         setattr(notification, field, value)
 
-    db.commit()
+    db.flush()
     db.refresh(notification)
     return notification
