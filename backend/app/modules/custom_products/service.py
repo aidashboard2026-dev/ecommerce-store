@@ -108,13 +108,13 @@ def get_custom_categories(
     return [CustomCategoryResponse.model_validate(r) for r in rows]
 
 
-def get_custom_category(db: Session, category_id: int) -> CustomCategory:
+def get_custom_category(db: Session, custom_category_id: int) -> CustomCategory:
     """Fetch a single custom category by ID, raise 404 if not found."""
-    cat = db.get(CustomCategory, category_id)
+    cat = db.get(CustomCategory,custom_category_id)
     if not cat:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            f"Custom category {category_id} not found.",
+            f"Custom category {custom_category_id} not found.",
         )
     return cat
 
@@ -148,16 +148,16 @@ def create_custom_category(
 
 def update_custom_category(
     db: Session,
-    category_id: int,
+    custom_category_id: int,
     data: CustomCategoryUpdate,
 ) -> CustomCategoryResponse:
     """Partially update a custom category."""
-    cat = get_custom_category(db, category_id)
+    cat = get_custom_category(db, custom_category_id)
     patch = data.model_dump(exclude_unset=True)
 
     if "name" in patch and patch["name"]:
         patch["slug"] = _unique_category_slug(
-            db, _slugify(patch["name"]), exclude_id=category_id
+            db, _slugify(patch["name"]), exclude_id=custom_category_id
         )
 
     for k, v in patch.items():
@@ -176,12 +176,12 @@ def update_custom_category(
     return CustomCategoryResponse.model_validate(cat)
 
 
-def delete_custom_category(db: Session, category_id: int) -> None:
+def delete_custom_category(db: Session, custom_category_id: int) -> None:
     """Delete a custom category. Products in this category will have category set to NULL."""
-    cat = get_custom_category(db, category_id)
+    cat = get_custom_category(db, custom_category_id)
     db.delete(cat)
     db.commit()
-    logger.info("Custom category deleted: id=%s name=%s", category_id, cat.name)
+    logger.info("Custom category deleted: id=%s name=%s", custom_category_id, cat.name)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -411,20 +411,14 @@ def create_custom_product(
         db.refresh(product)
     except IntegrityError as exc:
         db.rollback()
-        if "slug" in str(exc).lower():
-            raise HTTPException(
-                status.HTTP_409_CONFLICT,
-                "A custom product with this slug already exists.",
-            )
-        if "sku" in str(exc).lower():
-            raise HTTPException(
-                status.HTTP_409_CONFLICT,
-                "A custom product with this SKU already exists.",
-            )
-        raise HTTPException(
-            status.HTTP_500_INTERNAL_SERVER_ERROR,
-            "Failed to create custom product.",
-        )
+
+        logger.exception("CREATE CUSTOM PRODUCT FAILED")
+        print("=" * 80)
+        print(exc)
+        print(exc.orig)
+        print("=" * 80)
+
+        raise
 
     logger.info("Custom product created: id=%s title=%s", product.id, product.title)
     category_map = _build_category_map(db, [product])
@@ -554,3 +548,5 @@ def increment_custom_product_view_count(db: Session, product_id: int) -> None:
     except Exception as exc:
         db.rollback()
         logger.warning("Failed to increment view count for custom product %s: %s", product_id, exc)
+
+

@@ -69,9 +69,9 @@ export default function SubProductsPage() {
   
   const categories = [
     // "Round Neck T-Shirt",
-    "Oversized T-Shirt",
+    // "Oversized T-Shirt",
     "Graphic Printed T-Shirt",
-    "Back Print T-Shirt",
+
     "Embroidery Design T-Shirt",
     "Jersey",
     "Gifts & Printing",

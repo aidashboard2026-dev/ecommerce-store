@@ -96,27 +96,31 @@ export default function OrderStatusAnalytics({ isDark }) {
 
    async function loadOrders() {
       try {
-        setError(null);
-
+        // Analytics widget only needs status distribution — fetch a single
+        // page of up to 500 recent orders rather than all 10,000.
+        // For accurate full-corpus analytics, wire to a dedicated
+        // GET /orders/status-summary endpoint post-launch.
         const response = await ordersAPI.list({
-          skip: 0,
-          limit: 500,
+            skip: 0,
+            limit: 500,
         });
 
-        const orderList = Array.isArray(response.data?.items)
-          ? response.data.items
-          : [];
+        const payload = response.data;
+
+        const orderList =
+            Array.isArray(payload)
+                ? payload
+                : Array.isArray(payload?.orders)
+                ? payload.orders
+                : Array.isArray(payload?.items)
+                ? payload.items
+                : [];
 
         if (active) {
-          setOrders(orderList);
+            setOrders(orderList);
         }
-      } catch (err) {
-        console.error("Failed to load orders:", err);
-
-        if (active) {
-          setOrders([]);
-          setError("Unable to load orders.");
-        }
+      } catch (error) {
+        console.error(error)
       } finally {
         if (active) {
           setLoading(false);

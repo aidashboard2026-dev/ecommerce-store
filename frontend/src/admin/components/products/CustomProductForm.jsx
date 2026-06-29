@@ -5,7 +5,10 @@ import {
   AlertTriangle, CheckCircle, Loader2,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { productsAPI as productsApi, categoriesAPI, collectionsAPI } from '@/shared/services/api'
+import {
+  customProductsAPI,
+  customCategoriesAPI,
+} from "@/shared/services/api"
 import {
   formatPrice, getImageUrl, revokeObjectURLs, genLocalId, isDuplicateFile,
 } from '@/shared/utils/productUtils'
@@ -136,7 +139,7 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
     description: '',
     short_description: '',
 
-    category_id: '',
+    custom_category_id: '',
     collection_id: '',
 
     status: 'draft',
@@ -167,19 +170,21 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
 
   // ─── BUG-1 FIX: useQuery calls moved here, after `form` is declared ──────────
   const { data: categories = [] } = useQuery({
-    queryKey: ['categories', 'admin'],
+    queryKey: ['custom-categories', 'admin'],
     queryFn: () => customCategoriesAPI.list().then(r => r.data),
     staleTime: 5 * 60_000,
   })
 
-  const { data: collections = [] } = useQuery({
-    // queryKey includes form.category_id so it refetches when category changes
-    queryKey: ['collections', 'admin', form.category_id],
-    queryFn: () =>
-      customCollectionsAPI.list(form.category_id ? { category_id: form.category_id } : {})
-        .then(r => r.data),
-    staleTime: 5 * 60_000,
-  })
+  console.log("Categories =", categories)
+
+  // const { data: collections = [] } = useQuery({
+  //   // queryKey includes form.category_id so it refetches when category changes
+  //   queryKey: ['collections', 'admin', form.category_id],
+  //   queryFn: () =>
+  //     customCollectionsAPI.list(form.category_id ? { category_id: form.category_id } : {})
+  //       .then(r => r.data),
+  //   staleTime: 5 * 60_000,
+  // })
 
   // ─── Other state ─────────────────────────────────────────────────────────────
   const [localImages, setLocalImages]     = useState([])
@@ -212,7 +217,7 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
             description: p.description || "",
             short_description: p.short_description || "",
 
-            category_id: p.category_id || "",
+            custom_category_id: p.custom_category_id || "",
             collection_id: p.collection_id || "",
 
             status: p.status || "draft",
@@ -295,15 +300,15 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
 
     title: form.title.trim(),
 
-    category_id:
-      form.category_id
-        ? Number(form.category_id)
-        : null,
+    custom_category_id:
+        form.custom_category_id
+            ? Number(form.custom_category_id)
+            : null,
 
-    collection_id:
-      form.collection_id
-        ? Number(form.collection_id)
-        : null,
+    // collection_id:
+    //   form.collection_id
+    //     ? Number(form.collection_id)
+    //     : null,
 
     original_price_min:
       Number(form.original_price_min),
@@ -330,7 +335,7 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
   // ─── Edit mutations ───────────────────────────────────────────────────────────
 
   const editMutation = useMutation({
-    mutationFn: data => customProductsApi.update(product.id, data),
+    mutationFn: data => customProductsAPI.update(product.id, data),
     onSuccess: () => { toast.success('Product updated successfully.'); qc.invalidateQueries({queryKey: ['custom-products']}); onClose() },
     onError: e => toast.error(
       e?.response?.data?.detail ||
@@ -340,7 +345,7 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
   })
 
   const editPubMutation = useMutation({
-    mutationFn: data => customProductsApi.update(product.id, { ...data, status: 'published' }),
+    mutationFn: data => customProductsAPI.update(product.id, { ...data, status: 'published' }),
     onSuccess: () => { toast.success('Product published successfully.'); qc.invalidateQueries({queryKey: ['custom-products']}); onClose() },
     onError: e => toast.error(
       e?.response?.data?.detail ||
@@ -401,35 +406,63 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
     // ── Step 1: Create product ──────────────────────────────────────────────────
     try {
       updateStep('create-product', { status: 'loading' })
-      const res =await customProductsApi.create(data)
+      const res =await customProductsAPI.create(data)
       createdProduct = res.data
       updateStep('create-product', { status: 'done' })
-    } catch (e) {
+    // } catch (e) {
 
-        isCriticalFailureRef.current = true
+    //     isCriticalFailureRef.current = true
+
+    //     const errorMessage =
+    //       Array.isArray(e?.response?.data?.detail)
+    //         ? e.response.data.detail
+    //             .map(err => err.msg)
+    //             .join(', ')
+    //         : String(
+    //             e?.response?.data?.detail ||
+    //             'Failed to create product'
+    //           )
+
+    //     updateStep('create-product', {
+    //       status: 'error',
+    //       details: errorMessage
+    //     })
+
+    //     toast.error(errorMessage)
+
+    //     isSavingRef.current = false
+
+    //     return
+    //   }
+    }catch (e) {
+        console.log("========== CREATE PRODUCT ERROR ==========");
+        console.log(e);
+        console.log("Status:", e?.response?.status);
+        console.log("Response:", e?.response?.data);
+        console.log("Request Payload:", data);
 
         const errorMessage =
-          Array.isArray(e?.response?.data?.detail)
-            ? e.response.data.detail
-                .map(err => err.msg)
-                .join(', ')
-            : String(
-                e?.response?.data?.detail ||
-                'Failed to create product'
-              )
+          e?.response?.data?.detail ||
+          e?.response?.data?.message ||
+          e?.message ||
+          "Failed to create product";
 
-        updateStep('create-product', {
-          status: 'error',
-          details: errorMessage
-        })
+        updateStep("create-product", {
+          status: "error",
+          details: JSON.stringify(errorMessage),
+        });
 
-        toast.error(errorMessage)
+        toast.error(
+          typeof errorMessage === "string"
+            ? errorMessage
+            : JSON.stringify(errorMessage)
+        );
 
-        isSavingRef.current = false
+        isCriticalFailureRef.current = true;
+        isSavingRef.current = false;
 
-        return
+        return;
       }
-
     // ── Step 2: Upload images ───────────────────────────────────────────────────
     if (imgCount > 0) {
       updateStep('upload-images', { status: 'loading' })
@@ -441,7 +474,7 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
         const imageType = i === 0 ? 'thumbnail' : 'gallery'
         try {
           // BUG-2 FIX: pass img.file (raw File) — api.js builds FormData internally
-          await customProductsApi.uploadImage(createdProduct.id, img.file, imageType, i === 0)
+          await customProductsAPI.uploadImage(createdProduct.id, img.file, imageType, i === 0)
           imgSucceeded++
         } catch (_) {
           imgFailed++
@@ -679,24 +712,14 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
               <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
                 <label className="text-xs font-bold text-muted">Category</label>
                 <select className="input-field py-2.5 text-xs"
-                  value={form.category_id}
-                  onChange={e => { set('category_id', e.target.value); set('collection_id', '') }}>
+                  value={form.custom_category_id}
+                  onChange={e => { set('custom_category_id', e.target.value); set('collection_id', '') }}>
                   <option value="">— None —</option>
                   {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
 
-              {/* Collection — HEAD: FK-based select driven by API (correct); branch had
-                  hardcoded COLLECTION_OPTIONS string dropdown which ignores the DB. */}
-              <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
-                <label className="text-xs font-bold text-muted">Collection</label>
-                <select className="input-field py-2.5 text-xs"
-                  value={form.collection_id}
-                  onChange={e => set('collection_id', e.target.value)}>
-                  <option value="">— None —</option>
-                  {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
+             
 
               {/* Price Range */}
 

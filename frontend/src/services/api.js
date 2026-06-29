@@ -2,6 +2,8 @@ import axios from 'axios'
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
 
+
+console.log("BASE URL =", BASE_URL);
 const api = axios.create({
   baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' },
@@ -28,11 +30,22 @@ api.interceptors.response.use(
 )
 
 export const authAPI = {
-  login: (email, password) => api.post('/auth/login', { email, password }),
-  getMe: () => api.get('/auth/me'),
-  logout: () => api.post('/auth/logout'),
-}
+  login: ({ email, password }) => {
+    console.log("LOGIN REQUEST =", {
+      email,
+      password,
+    });
 
+    return api.post("/auth/login", {
+      email,
+      password,
+    });
+  },
+
+  getMe: () => api.get("/auth/me"),
+
+  logout: () => api.post("/auth/logout"),
+}
 // ─── Admins ───────────────────────────────────────────────────────────────────
 export const adminsAPI = {
   list:   (skip = 0, limit = 100) => api.get(`/admins/?skip=${skip}&limit=${limit}`),
