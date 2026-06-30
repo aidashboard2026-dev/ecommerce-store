@@ -35,7 +35,7 @@ const CustomPage = lazy(() => import('@/storefront/pages/CustomPage'))
 const NotFoundPage = lazy(() => import('@/storefront/pages/NotFoundPage'))
 
 // Storefront components used directly as route elements
-const CheckoutPage = lazy(() => import('@/storefront/components/CheckoutPage'))
+const CheckoutPage = lazy(() => import('@/storefront/components/checkout/CheckoutPage'))
 const WishlistGrid = lazy(() => import('@/storefront/components/WishlistGrid'))
 const ProductDetailsPage = lazy(() => import('@/storefront/pages/CustomProductDetailsPage'))
 
@@ -260,9 +260,8 @@ export default function AppRoutes() {
           <Route
             path="checkout"
             element={
-              <CustomerProtectedRoute>
                 <CheckoutPage />
-              </CustomerProtectedRoute>
+              
             }
           />
 

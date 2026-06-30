@@ -1,1 +1,1 @@
-export { default } from '@/storefront/pages/order/CheckoutPage'
+export { default } from "@/storefront/components/checkout/CheckoutPage";
