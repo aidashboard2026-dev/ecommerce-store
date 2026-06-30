@@ -6,7 +6,7 @@ import { User, Phone, Mail, ClipboardList, Lock, Save, MapPin, Heart, Settings }
 import clsx from 'clsx'
 import { updateCustomerProfileThunk } from '@/storefront/store/customerSlice'
 import OrdersList from '@/storefront/components/OrdersList'
-import CheckoutForm from '@/storefront/components/CheckoutForm'
+import CheckoutForm from '@/storefront/components/order/components/CheckoutForm'
 import WishlistGrid from '@/storefront/components/WishlistGrid'
 
 // ─── Profile tab — account details form (unchanged from original) ──────────

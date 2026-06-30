@@ -42,7 +42,7 @@ export default function ProductDetails() {
   const [quantity, setQuantity] = useState(1);
   const [zoomed, setZoomed] = useState(false);
 
-  const [open, setOpen] = useState("details");
+  const [open, setOpen] = useState("");
 
   const toggle = (section) => {
     setOpen((prev) => (prev === section ? "" : section));
