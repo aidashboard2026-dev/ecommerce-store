@@ -2,12 +2,30 @@ import axios from 'axios'
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
 
+const paramsSerializer = (params) => {
+  const q = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value === null || value === undefined) continue
+    if (Array.isArray(value)) {
+      value.forEach(v => {
+        if (v !== null && v !== undefined && v !== '') {
+          q.append(key, v)
+        }
+      })
+    } else if (value !== '') {
+      q.append(key, value)
+    }
+  }
+  return q.toString()
+}
+
 const api = axios.create({
   baseURL: BASE_URL,
   // withCredentials: admin uses Bearer token stored in localStorage.
   // Set to true so the httponly cookie set by the backend on login is also
   // sent — keeps both auth mechanisms in sync and future-proofs cookie-based refresh.
   withCredentials: true,
+  paramsSerializer,
 })
 
 // ── Attach JWT token to every request ────────────────────────────────────────
@@ -41,6 +59,7 @@ export default api
 const storefrontClient = axios.create({
   baseURL: BASE_URL,
   withCredentials: true,
+  paramsSerializer,
 })
 
 storefrontClient.interceptors.request.use((config) => {
@@ -106,12 +125,7 @@ export const collectionsAPI = {
   listPublic: (params = {}) => storefrontClient.get('/products/collections', { params }),
 }
 
-export const subCollectionsAPI = {
-  list:   (collectionId) => api.get(`/products/admin/collections/${collectionId}/sub-collections`),
-  create: (collectionId, name) => api.post(`/products/admin/collections/${collectionId}/sub-collections`, { name }),
-  update: (collectionId, oldName, newName) => api.patch(`/products/admin/collections/${collectionId}/sub-collections`, { old_name: oldName, new_name: newName }),
-  delete: (collectionId, name) => api.delete(`/products/admin/collections/${collectionId}/sub-collections`, { params: { name } }),
-}
+
 
 // ─── Custom Categories (Custom Printing domain — separate from products.categories) ──
 // These endpoints ONLY manage the custom_categories table.
@@ -227,6 +241,8 @@ export const storefrontAPI = {
 
   getCustomProduct: (id) =>
       storefrontClient.get(`/custom-products/${id}`),
+
+  getPublicSettings: () => storefrontClient.get('/settings/public'),
 
   // ── Customer profile ──────────────────────────────────────────────────────
   updateProfile:    (data)        => storefrontClient.put('/customers/profile/update', data),

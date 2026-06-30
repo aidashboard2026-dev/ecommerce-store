@@ -238,21 +238,6 @@ export default function ProductDetails() {
           </>
         )}
 
-        {product.collection && (
-          <>
-            <ChevronRight size={14} className="text-muted-foreground/60" />
-            <Link
-              to={`/products?collection=${encodeURIComponent(
-                product.collection_name || "",
-              )}&category=${encodeURIComponent(
-                product.category_name || "",
-              )}&sub_collection=${encodeURIComponent(product.collection)}`}
-              className="transition-colors hover:text-app"
-            >
-              {product.collection}
-            </Link>
-          </>
-        )}
 
         <ChevronRight size={14} className="text-muted-foreground/60" />
 
@@ -533,8 +518,14 @@ export default function ProductDetails() {
                 <div className="pb-6 pl-10 text-muted">
                   <div>
                     <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                      <li>Material & Care</li>
-                      <li>Cotton Machine-wash</li>
+                      {product.material ? (
+                        <li>Material: {product.material}</li>
+                      ) : (
+                        <>
+                          <li>Material & Care</li>
+                          <li>Cotton Machine-wash</li>
+                        </>
+                      )}
                       <li>100% Original Products</li>
                       <li>Pay on delivery might be available</li>
                       <li>Easy 14 days returns and exchanges</li>
@@ -565,7 +556,20 @@ export default function ProductDetails() {
               </button>
 
               {open === "specs" && (
-                <div className="pb-6 pl-10">Specifications Here...</div>
+                <div className="pb-6 pl-10 text-sm text-muted-foreground">
+                  <div className="grid grid-cols-2 max-w-xs gap-y-2">
+                    <span className="font-semibold text-app">Material</span>
+                    <span>{product.material || "Not Specified"}</span>
+                    <span className="font-semibold text-app">Category</span>
+                    <span>{product.category_name || "General"}</span>
+                    {product.collection_name && (
+                      <>
+                        <span className="font-semibold text-app">Collection</span>
+                        <span>{product.collection_name}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
 

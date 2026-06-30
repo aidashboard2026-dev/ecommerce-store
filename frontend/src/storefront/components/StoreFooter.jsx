@@ -1,26 +1,47 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Zap } from "lucide-react";
+import useStoreSettings from "@/shared/hooks/useStoreSettings";
 
 export default function StoreFooter() {
+  const { settings } = useStoreSettings()
+  const logoUrl = settings?.logo
+  const storeName = settings?.store_name || 'AuraStore'
+  const supportEmail = settings?.support_email || 'support@aurastore.com'
+  const supportPhone = settings?.support_phone || '+91 44 2817 9000'
+  const description = settings?.description || 'Curating premium, hand-crafted designer streetwear, high-performance athletic apparel, and timeless accessories.'
+
   return (
     <footer className="bg-surface border-t border-app py-16 transition-colors duration-300">
       <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-10">
         {/* Logo & Description */}
         <div className="space-y-4">
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-indigo-600 text-white">
-              <Zap size={14} strokeWidth={2.5} />
-            </div>
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={storeName}
+                className="h-8 w-8 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-indigo-600 text-white">
+                <Zap size={14} strokeWidth={2.5} />
+              </div>
+            )}
 
             <span className="font-display font-bold text-base text-app">
-              Aura<span className="text-brand-500">Store</span>
+              {logoUrl || settings?.store_name ? (
+                <span>{storeName}</span>
+              ) : (
+                <>
+                  Aura<span className="text-brand-500">Store</span>
+                </>
+              )}
             </span>
           </Link>
 
           <p className="text-xs text-muted leading-relaxed">
-            Curating premium, hand-crafted designer streetwear,
-            high-performance athletic apparel, and timeless accessories.
+            {description}
           </p>
         </div>
 
@@ -36,21 +57,21 @@ export default function StoreFooter() {
             </Link>
 
             <Link
-              to="/products?sub_collection=Summer"
+              to="/products?collection=Summer"
               className="text-muted hover:text-app"
             >
               Summer Collection
             </Link>
 
             <Link
-              to="/products?sub_collection=Activewear"
+              to="/products?collection=Activewear"
               className="text-muted hover:text-app"
             >
               Activewear
             </Link>
 
             <Link
-              to="/products?sub_collection=Essentials"
+              to="/products?collection=Essentials"
               className="text-muted hover:text-app"
             >
               Daily Essentials
@@ -74,13 +95,13 @@ export default function StoreFooter() {
             </Link>
 
             <a
-              href="mailto:support@aurastore.com"
+              href={`mailto:${supportEmail}`}
               className="text-muted hover:text-app"
             >
               Contact Support
             </a>
 
-            <span className="text-muted">Phone: +91 44 2817 9000</span>
+            <span className="text-muted">Phone: {supportPhone}</span>
           </div>
         </div>
 
@@ -112,7 +133,7 @@ export default function StoreFooter() {
       {/* Bottom Footer */}
       <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t border-app flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] text-muted">
         <p>
-          © {new Date().getFullYear()} AuraStore Inc. All rights reserved.
+          © {new Date().getFullYear()} {storeName} Inc. All rights reserved.
           Made for premium commerce.
         </p>
 

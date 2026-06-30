@@ -221,77 +221,7 @@ def delete_collection_endpoint(
 
 from pydantic import BaseModel, field_validator
 
-class SubCollectionCreate(BaseModel):
-    name: str
 
-    @field_validator("name")
-    @classmethod
-    def name_valid(cls, v):
-        if v is None:
-            raise ValueError("Sub-collection name is required")
-        v = v.strip()
-        if not v:
-            raise ValueError("Sub-collection name cannot be empty or whitespace only")
-        from app.core.constants import MIN_SUB_COLLECTION_NAME_LENGTH, MAX_SUB_COLLECTION_NAME_LENGTH
-        if len(v) < MIN_SUB_COLLECTION_NAME_LENGTH or len(v) > MAX_SUB_COLLECTION_NAME_LENGTH:
-            raise ValueError(f"Sub Collection name must be between {MIN_SUB_COLLECTION_NAME_LENGTH} and {MAX_SUB_COLLECTION_NAME_LENGTH} characters")
-        return v
-
-class SubCollectionUpdate(BaseModel):
-    old_name: str
-    new_name: str
-
-    @field_validator("new_name")
-    @classmethod
-    def new_name_valid(cls, v):
-        if v is None:
-            raise ValueError("New sub-collection name is required")
-        v = v.strip()
-        if not v:
-            raise ValueError("New sub-collection name cannot be empty or whitespace only")
-        from app.core.constants import MIN_SUB_COLLECTION_NAME_LENGTH, MAX_SUB_COLLECTION_NAME_LENGTH
-        if len(v) < MIN_SUB_COLLECTION_NAME_LENGTH or len(v) > MAX_SUB_COLLECTION_NAME_LENGTH:
-            raise ValueError(f"Sub Collection name must be between {MIN_SUB_COLLECTION_NAME_LENGTH} and {MAX_SUB_COLLECTION_NAME_LENGTH} characters")
-        return v
-
-@router.get("/admin/collections/{collection_id}/sub-collections", response_model=List[str])
-def list_sub_collections(
-    collection_id: int,
-    db: Session = Depends(get_db),
-    _: Admin = Depends(get_current_admin),
-):
-    from app.modules.products.service import get_sub_collections_for_collection
-    return get_sub_collections_for_collection(db, collection_id)
-
-@router.post("/admin/collections/{collection_id}/sub-collections", response_model=List[str])
-def create_sub_collection_endpoint(
-    collection_id: int,
-    data: SubCollectionCreate,
-    db: Session = Depends(get_db),
-    _: Admin = Depends(get_current_admin),
-):
-    from app.modules.products.service import create_sub_collection
-    return create_sub_collection(db, collection_id, data.name)
-
-@router.patch("/admin/collections/{collection_id}/sub-collections", response_model=List[str])
-def update_sub_collection_endpoint(
-    collection_id: int,
-    data: SubCollectionUpdate,
-    db: Session = Depends(get_db),
-    _: Admin = Depends(get_current_admin),
-):
-    from app.modules.products.service import update_sub_collection
-    return update_sub_collection(db, collection_id, data.old_name, data.new_name)
-
-@router.delete("/admin/collections/{collection_id}/sub-collections", response_model=List[str])
-def delete_sub_collection_endpoint(
-    collection_id: int,
-    name: str = Query(...),
-    db: Session = Depends(get_db),
-    _: Admin = Depends(get_current_admin),
-):
-    from app.modules.products.service import delete_sub_collection
-    return delete_sub_collection(db, collection_id, name)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -324,8 +254,18 @@ def delete_product_image_by_type(
     if not old_url:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Product has no {image_type} image.")
     setattr(product, field, None)
-    db.commit()
-    supabase_storage.delete_product_image(old_url)
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, f"Database transaction failed: {str(e)}")
+
+    try:
+        supabase_storage.delete_product_image(old_url)
+    except Exception as exc:
+        logger.warning(f"Could not delete image from storage: {exc}")
+
+    db.refresh(product)
     audit.log(
         db=db, admin=current_admin,
         action="product.image_deleted",
@@ -349,7 +289,7 @@ def list_products_admin(
     status_filter:  Optional[ProductStatus]= None,
     category_id:    Optional[int]          = None,
     collection_id:  Optional[int]          = None,
-    sub_collection: Optional[str]          = None,
+    genders:        Optional[List[str]]    = Query(None),
     stock_status:   Optional[str]          = None,
     is_featured:    Optional[bool]         = None,
     is_trending:    Optional[bool]         = None,
@@ -363,7 +303,7 @@ def list_products_admin(
     return get_products_paginated(
         db, search=search, status_filter=status_filter,
         category_id=category_id, collection_id=collection_id,
-        sub_collection=sub_collection, stock_status=stock_status,
+        genders=genders, stock_status=stock_status,
         is_featured=is_featured, is_trending=is_trending,
         is_best_seller=is_best_seller, is_new_arrival=is_new_arrival,
         page=page, per_page=per_page,
@@ -407,13 +347,32 @@ def update_product_by_id(
     db:            Session = Depends(get_db),
     current_admin: Admin   = Depends(get_current_admin),
 ):
+    # Fetch existing genders for audit diff
+    product = get_product(db, product_id)
+    old_genders = [g.gender for g in product.genders_rel]
+
     result = update_product(db, product_id, product_in)
+    
+    # Construct audit changes
+    before = {}
+    after = product_in.model_dump(exclude_unset=True)
+    if "genders" in after:
+        before["genders"] = old_genders
+        new_genders = after["genders"]
+        added = sorted(list(set(new_genders) - set(old_genders)))
+        removed = sorted(list(set(old_genders) - set(new_genders)))
+        if added:
+            after["genders_added"] = added
+        if removed:
+            after["genders_removed"] = removed
+
     audit.updated(
         db=db, admin=current_admin,
         resource_type="product",
         resource_id=product_id,
         resource_label=result.title,
-        after=product_in.model_dump(exclude_unset=True),
+        before=before,
+        after=after,
         request=request,
     )
     db.commit()
@@ -610,12 +569,39 @@ def upload_product_image(
             detail=f"You have reached the maximum allowed limit of {MAX_PRODUCT_IMAGES} images for this product. Please delete an existing image before uploading another."
         )
 
-    image_url = supabase_storage.upload_product_image(
-        contents=contents,
-        original_filename=file.filename or "image.jpg",
-        content_type=file.content_type,
-        product_id=product_id,
-    )
+    # Retrieve and validate category/product slugs
+    category_slug = None
+    if product.category:
+        category_slug = product.category.slug
+    if not category_slug:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Product does not have a category or category slug assigned. Please assign a category before uploading images."
+        )
+
+    product_slug = product.slug
+    if not product_slug:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Product does not have a slug generated. Please save the product with a valid slug before uploading images."
+        )
+
+    try:
+        image_url = supabase_storage.upload_product_image(
+            contents=contents,
+            original_filename=file.filename or "image.jpg",
+            content_type=file.content_type,
+            product_id=product_id,
+            category_slug=category_slug,
+            product_slug=product_slug,
+            image_type=image_type,
+        )
+    except Exception as exc:
+        logger.error(f"Storage upload failed: {exc}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Storage upload failed: {str(exc)}"
+        )
 
     field_name = IMAGE_TYPE_FIELDS.get(image_type)
 
@@ -631,10 +617,17 @@ def upload_product_image(
             db.commit()
         except Exception as e:
             db.rollback()
-            supabase_storage.delete_product_image(image_url)
-            raise e
-        return {"id": product.id, "url": image_url, "image_type": "gallery",
-                "gallery_images": product.gallery_images, "message": "Gallery image added."}
+            try:
+                supabase_storage.delete_product_image(image_url)
+            except Exception:
+                pass
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Database update failed. Image was discarded: {str(e)}"
+            )
+        resolved_url = supabase_storage.get_product_image_url(image_url)
+        return {"id": product.id, "url": resolved_url, "image_type": "gallery",
+                "gallery_images": [supabase_storage.get_product_image_url(img) for img in product.gallery_images], "message": "Gallery image added."}
 
     elif field_name:
         old_url = getattr(product, field_name)
@@ -644,7 +637,10 @@ def upload_product_image(
         try:
             db.commit()
             if old_url and old_url != image_url:
-                supabase_storage.delete_product_image(old_url)
+                try:
+                    supabase_storage.delete_product_image(old_url)
+                except Exception:
+                    pass
             db.refresh(product)
             audit.log(db=db, admin=current_admin, action="product.image_uploaded",
                       resource_type="product", resource_id=product_id,
@@ -652,16 +648,29 @@ def upload_product_image(
             db.commit()
         except Exception as e:
             db.rollback()
-            supabase_storage.delete_product_image(image_url)
-            raise e
-        return {"id": product.id, "url": image_url, "image_type": image_type,
+            try:
+                supabase_storage.delete_product_image(image_url)
+            except Exception:
+                pass
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Database update failed. Image was discarded: {str(e)}"
+            )
+        resolved_url = supabase_storage.get_product_image_url(image_url)
+        return {"id": product.id, "url": resolved_url, "image_type": image_type,
                 "message": f"{image_type.replace('_', ' ').title()} image uploaded."}
     else:
-        supabase_storage.delete_product_image(image_url)
+        try:
+            supabase_storage.delete_product_image(image_url)
+        except Exception:
+            pass
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             f"Unknown image_type '{image_type}'. Use: thumbnail, front, back, size_chart, gallery.",
         )
+
+
+
 
 
 @router.delete("/admin/{product_id}/images/gallery/{index}", status_code=status.HTTP_200_OK)
@@ -684,7 +693,7 @@ def delete_gallery_image(
               resource_type="product", resource_id=product_id,
               changes={"index": index}, request=request)
     db.commit()
-    return {"message": "Gallery image removed.", "gallery_images": product.gallery_images}
+    return {"message": "Gallery image removed.", "gallery_images": [supabase_storage.get_product_image_url(img) for img in product.gallery_images]}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -695,7 +704,7 @@ def delete_gallery_image(
 def list_products_public(
     search:         str            = "",
     collection:     Optional[str]  = None,
-    sub_collection: Optional[str]  = None,
+    genders:        Optional[List[str]] = Query(None),
     collection_id:  Optional[int]  = None,
     category:       Optional[str]  = None,
     category_id:    Optional[int]  = None,
@@ -711,7 +720,7 @@ def list_products_public(
     db: Session = Depends(get_db),
 ):
     return get_products_public(
-        db, search=search, collection=collection, sub_collection=sub_collection,
+        db, search=search, collection=collection, genders=genders,
         collection_id=collection_id, category=category, category_id=category_id,
         is_featured=is_featured, is_trending=is_trending,
         is_best_seller=is_best_seller, is_new_arrival=is_new_arrival,

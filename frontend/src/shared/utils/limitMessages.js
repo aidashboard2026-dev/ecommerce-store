@@ -41,7 +41,7 @@ export function getOperationalLimitMessage(type, max) {
 
 // ─── Convenience: check and return the right message by domain ─────────────────
 
-const STRUCTURAL_TYPES = new Set(['category', 'collection', 'sub_collection', 'custom_category'])
+const STRUCTURAL_TYPES = new Set(['category', 'collection', 'custom_category'])
 const OPERATIONAL_TYPES = new Set(['banner', 'offer', 'image', 'variant'])
 
 export function getLimitMessage(type, max) {

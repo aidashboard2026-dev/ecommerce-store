@@ -3,8 +3,8 @@ import math
 import re
 import uuid
 from typing import Optional, List
-
 from fastapi import HTTPException, status
+from app.shared.utils.normalization import normalize_name, check_duplicate_catalog_item, get_search_terms
 from app.shared.exceptions import (
     NotFoundError, ConflictError, BusinessRuleError,
     ValidationError as DomainValidationError,
@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.modules.products.models import (
-    Category, Collection, Product, ProductVariant, ProductStatus
+    Category, Collection, Product, ProductVariant, ProductStatus, ProductGender
 )
 from app.modules.products.schemas import (
     BulkActionPayload,
@@ -26,15 +26,9 @@ from app.modules.products.schemas import (
 from app.core.constants import (
     MAX_CATEGORIES,
     MAX_COLLECTIONS,
-    MAX_SUB_COLLECTIONS,
     MAX_PRODUCT_IMAGES,
-    MAX_SIZES,
-    MAX_COLORS,
     MAX_PRODUCT_VARIANTS,
-    DEFAULT_PRODUCT_CATEGORIES,
-    DEFAULT_COLLECTIONS,
-    PROTECTED_PRODUCT_CATEGORIES,
-    PROTECTED_COLLECTIONS,
+    MAX_PRODUCTS,
 )
 
 MAX_PER_PAGE = 100
@@ -42,77 +36,7 @@ MAX_PER_PAGE = 100
 logger = logging.getLogger(__name__)
 
 
-def normalize_category_name(name: str) -> Optional[str]:
-    # Strip and convert to lowercase, remove space, hyphen, underscore
-    val = name.strip().lower()
-    val = re.sub(r'[\s_-]+', '', val)
-    for allowed in DEFAULT_PRODUCT_CATEGORIES:
-        allowed_stripped = re.sub(r'[\s_-]+', '', allowed.lower())
-        if val == allowed_stripped or val == allowed_stripped + "s" or (allowed_stripped == "tshirt" and val in {"tee", "tees"}):
-            return allowed
-    return None
 
-
-def validate_main_product_category(db: Session, category_id: Optional[int]) -> None:
-    if category_id is None:
-        return
-    cat = db.get(Category, category_id)
-    allowed_list_str = ", ".join(DEFAULT_PRODUCT_CATEGORIES)
-    if not cat:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            f"Invalid category. Allowed categories are {allowed_list_str}."
-        )
-    APPROVED_SET = set(DEFAULT_PRODUCT_CATEGORIES)
-    if cat.name not in APPROVED_SET:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            f"Invalid category. Allowed categories are {allowed_list_str}."
-        )
-
-
-def normalize_collection_name(name: str) -> Optional[str]:
-    val = name.strip().lower()
-    val = re.sub(r'[\s_\-\'\"]+', '', val)
-    for allowed in DEFAULT_COLLECTIONS:
-        allowed_stripped = re.sub(r'[\s_\-\'\"]+', '', allowed.lower())
-        if allowed_stripped in val or val in allowed_stripped:
-            return allowed
-    return None
-
-
-def validate_main_product_collection(db: Session, collection_id: Optional[int], category_id: Optional[int] = None) -> None:
-    is_main_product = False
-    APPROVED_SET = set(DEFAULT_PRODUCT_CATEGORIES)
-    if category_id is not None:
-        cat = db.get(Category, category_id)
-        if cat and cat.name in APPROVED_SET:
-            is_main_product = True
-    else:
-        is_main_product = True
-
-    if not is_main_product:
-        return
-
-    if collection_id is None:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "Collection is required for Main Products."
-        )
-    coll = db.get(Collection, collection_id)
-    allowed_list_str = ", ".join(DEFAULT_COLLECTIONS)
-    if not coll:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            f"Invalid collection. Allowed collections are {allowed_list_str}."
-        )
-    norm = normalize_collection_name(coll.name)
-    APPROVED_COLLECTIONS = set(DEFAULT_COLLECTIONS)
-    if norm not in APPROVED_COLLECTIONS:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            f"Invalid collection '{coll.name}'. Allowed collections are {allowed_list_str}."
-        )
 
 
 # ─────────────────────────────────────────────────────────────
@@ -244,10 +168,10 @@ def _build_product_response(
         slug=p.slug,
         description=p.description,
         short_description=p.short_description,
-        collection=p.collection,
-        sub_collection=p.collection,
         category_id=p.category_id,
         collection_id=p.collection_id,
+        genders=[g.gender for g in p.genders_rel],
+        material=p.material,
         tags=p.tags or [],
         status=p.status.value if hasattr(p.status, "value") else p.status,
         is_featured=p.is_featured,
@@ -295,17 +219,14 @@ def get_category(db: Session, category_id: int) -> Category:
 
 
 def check_duplicate_category(db: Session, name: str, exclude_id: int = None):
-    norm_new = " ".join(name.strip().split()).lower()
-    query = db.query(Category)
-    if exclude_id is not None:
-        query = query.filter(Category.id != exclude_id)
-    for cat in query.all():
-        norm_cat = " ".join(cat.name.strip().split()).lower()
-        if norm_cat == norm_new:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Category with name '{name}' already exists (matches '{cat.name}')."
-            )
+    check_duplicate_catalog_item(
+        query=db.query(Category),
+        name_to_check=name,
+        name_attr="name",
+        id_attr="id",
+        exclude_id=exclude_id,
+        item_type="Category"
+    )
 
 
 def create_category(db: Session, data: CategoryCreate) -> CategoryResponse:
@@ -317,17 +238,18 @@ def create_category(db: Session, data: CategoryCreate) -> CategoryResponse:
             detail="Your current store configuration has reached the maximum allowed limit. Please contact the system administrator if you need additional categories or collections."
         )
 
-    check_duplicate_category(db, data.name)
-
-    norm_name = normalize_category_name(data.name)
-    if norm_name:
-        raise BusinessRuleError(
-            f"Category creation is disabled for Main Products. '{norm_name}' already exists.",
-            code="CATEGORY_RESERVED",
+    norm_name = normalize_name(data.name)
+    if not norm_name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Category name cannot be empty or whitespace only."
         )
-    slug = _unique_slug(db, Category, _slugify(data.name))
+
+    check_duplicate_category(db, norm_name)
+
+    slug = _unique_slug(db, Category, _slugify(norm_name))
     cat = Category(
-        name=data.name.strip(),
+        name=norm_name,
         slug=slug,
         description=data.description,
         status=data.status,
@@ -346,30 +268,18 @@ def create_category(db: Session, data: CategoryCreate) -> CategoryResponse:
 
 def update_category(db: Session, category_id: int, data: CategoryUpdate) -> CategoryResponse:
     cat = get_category(db, category_id)
-    PROTECTED_SET = set(PROTECTED_PRODUCT_CATEGORIES)
     patch = data.model_dump(exclude_unset=True)
 
-    if cat.name in PROTECTED_SET:
-        # Only the name field is protected — status, description, sort_order can change
-        if "name" in patch and patch["name"] != cat.name:
-            raise BusinessRuleError(
-                "Category renaming is disabled for Main Product categories.",
-                code="CATEGORY_RENAME_BLOCKED",
+    if "name" in patch:
+        norm_name = normalize_name(patch["name"])
+        if not norm_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Category name cannot be empty or whitespace only."
             )
-        # Remove name from patch to be safe; allow all other fields
-        patch.pop("name", None)
-        patch.pop("slug", None)
-
-    else:
-        if "name" in patch:
-            norm_name = normalize_category_name(patch["name"])
-            if norm_name:
-                raise HTTPException(
-                    status.HTTP_400_BAD_REQUEST,
-                    f"Cannot rename category to '{norm_name}' as it is a reserved Main Product category."
-                )
-            check_duplicate_category(db, patch["name"], exclude_id=category_id)
-            patch["slug"] = _unique_slug(db, Category, _slugify(patch["name"]), exclude_id=category_id)
+        check_duplicate_category(db, norm_name, exclude_id=category_id)
+        patch["name"] = norm_name
+        patch["slug"] = _unique_slug(db, Category, _slugify(norm_name), exclude_id=category_id)
 
     for k, v in patch.items():
         setattr(cat, k, v)
@@ -384,12 +294,6 @@ def update_category(db: Session, category_id: int, data: CategoryUpdate) -> Cate
 
 def delete_category(db: Session, category_id: int) -> None:
     cat = get_category(db, category_id)
-    PROTECTED_SET = set(PROTECTED_PRODUCT_CATEGORIES)
-    if cat.name in PROTECTED_SET:
-        raise BusinessRuleError(
-            "Category deletion is disabled for Main Product categories.",
-            code="CATEGORY_DELETE_BLOCKED",
-        )
     # Check if category is assigned to products
     assigned_products = db.query(Product).filter(Product.category_id == category_id, Product.deleted_at.is_(None)).first()
     if assigned_products:
@@ -411,162 +315,16 @@ def delete_category(db: Session, category_id: int) -> None:
 
 import json
 
-def _parse_collection_description(description: Optional[str]) -> tuple[Optional[str], list[str]]:
+def _parse_collection_description(description: Optional[str]) -> Optional[str]:
     if not description:
-        return None, []
+        return None
     try:
         data = json.loads(description)
         if isinstance(data, dict):
-            desc = data.get("description")
-            sub_cols = data.get("sub_collections", [])
-            if isinstance(sub_cols, list):
-                return desc, [str(s) for s in sub_cols]
+            return data.get("description")
     except Exception:
         pass
-    return description, []
-
-def _serialize_collection_description(description: Optional[str], sub_collections: list[str]) -> str:
-    return json.dumps({
-        "description": description,
-        "sub_collections": sub_collections
-    })
-
-def get_sub_collections_for_collection(db: Session, collection_id: int) -> list[str]:
-    col = db.get(Collection, collection_id)
-    if not col:
-        return []
-    
-    _, predefined = _parse_collection_description(col.description)
-    
-    query = db.query(Product.collection).filter(
-        Product.collection_id == collection_id,
-        Product.collection.isnot(None),
-        Product.collection != "",
-        Product.deleted_at.is_(None),
-    )
-    dynamic = [row[0].strip() for row in query.distinct().all() if row[0]]
-    
-    seen = set()
-    combined = []
-    for item in predefined:
-        item_clean = item.strip()
-        if item_clean and item_clean.lower() not in seen:
-            seen.add(item_clean.lower())
-            combined.append(item_clean)
-    for item in dynamic:
-        item_clean = item.strip()
-        if item_clean and item_clean.lower() not in seen:
-            seen.add(item_clean.lower())
-            combined.append(item_clean)
-            
-    return combined
-
-def create_sub_collection(db: Session, collection_id: int, name: str) -> list[str]:
-    col = get_collection(db, collection_id)
-    name_clean = name.strip()
-    
-    from app.core.constants import MIN_SUB_COLLECTION_NAME_LENGTH, MAX_SUB_COLLECTION_NAME_LENGTH
-    if len(name_clean) < MIN_SUB_COLLECTION_NAME_LENGTH or len(name_clean) > MAX_SUB_COLLECTION_NAME_LENGTH:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Sub Collection name must be between {MIN_SUB_COLLECTION_NAME_LENGTH} and {MAX_SUB_COLLECTION_NAME_LENGTH} characters"
-        )
-        
-    current = get_sub_collections_for_collection(db, collection_id)
-    if name_clean.lower() in {c.lower() for c in current}:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Sub-collection '{name_clean}' already exists."
-        )
-        
-    if len(current) >= MAX_SUB_COLLECTIONS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Your current store configuration has reached the maximum allowed limit. Please contact the system administrator if you need additional categories or collections."
-        )
-        
-    desc_text, predefined = _parse_collection_description(col.description)
-    predefined.append(name_clean)
-    col.description = _serialize_collection_description(desc_text, predefined)
-    try:
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        raise e
-        
-    return get_sub_collections_for_collection(db, collection_id)
-
-def update_sub_collection(db: Session, collection_id: int, old_name: str, new_name: str) -> list[str]:
-    col = get_collection(db, collection_id)
-    old_clean = old_name.strip()
-    new_clean = new_name.strip()
-    
-    from app.core.constants import MIN_SUB_COLLECTION_NAME_LENGTH, MAX_SUB_COLLECTION_NAME_LENGTH
-    if len(new_clean) < MIN_SUB_COLLECTION_NAME_LENGTH or len(new_clean) > MAX_SUB_COLLECTION_NAME_LENGTH:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Sub Collection name must be between {MIN_SUB_COLLECTION_NAME_LENGTH} and {MAX_SUB_COLLECTION_NAME_LENGTH} characters"
-        )
-        
-    current = get_sub_collections_for_collection(db, collection_id)
-    if old_clean.lower() not in {c.lower() for c in current}:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Sub-collection '{old_clean}' not found."
-        )
-        
-    if old_clean.lower() != new_clean.lower() and new_clean.lower() in {c.lower() for c in current}:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Sub-collection '{new_clean}' already exists."
-        )
-        
-    desc_text, predefined = _parse_collection_description(col.description)
-    predefined = [new_clean if s.strip().lower() == old_clean.lower() else s for s in predefined]
-    col.description = _serialize_collection_description(desc_text, predefined)
-    
-    products = db.query(Product).filter(
-        Product.collection_id == collection_id,
-        Product.collection == old_clean,
-        Product.deleted_at.is_(None)
-    ).all()
-    for p in products:
-        p.collection = new_clean
-        
-    try:
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        raise e
-        
-    return get_sub_collections_for_collection(db, collection_id)
-
-def delete_sub_collection(db: Session, collection_id: int, name: str) -> list[str]:
-    col = get_collection(db, collection_id)
-    name_clean = name.strip()
-    
-    assigned_products = db.query(Product).filter(
-        Product.collection_id == collection_id,
-        Product.collection == name_clean,
-        Product.deleted_at.is_(None)
-    ).first()
-    if assigned_products:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This sub-collection is currently assigned to products. Remove or reassign those products before deleting the sub-collection."
-        )
-        
-    desc_text, predefined = _parse_collection_description(col.description)
-    predefined = [s for s in predefined if s.strip().lower() != name_clean.lower()]
-    col.description = _serialize_collection_description(desc_text, predefined)
-    
-    try:
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        raise e
-        
-    return get_sub_collections_for_collection(db, collection_id)
+    return description
 
 
 def get_collections(
@@ -576,11 +334,7 @@ def get_collections(
 ) -> List[CollectionResponse]:
     q = db.query(Collection)
     if category_id:
-        cat = db.get(Category, category_id)
-        if cat and cat.name in set(DEFAULT_PRODUCT_CATEGORIES):
-            q = q.filter(or_(Collection.category_id == category_id, Collection.category_id.is_(None)))
-        else:
-            q = q.filter(Collection.category_id == category_id)
+        q = q.filter(Collection.category_id == category_id)
     if status_filter:
         q = q.filter(Collection.status == status_filter)
     rows = q.order_by(Collection.name).all()
@@ -596,13 +350,12 @@ def get_collections(
             id=r.id,
             name=r.name,
             slug=r.slug,
-            description=_parse_collection_description(r.description)[0],
+            description=_parse_collection_description(r.description),
             status=r.status,
             category_id=r.category_id,
             category_name=cat_map.get(r.category_id),
             created_at=r.created_at,
             updated_at=r.updated_at,
-            sub_collections=get_sub_collections_for_collection(db, r.id),
         )
         for r in rows
     ]
@@ -616,17 +369,14 @@ def get_collection(db: Session, collection_id: int) -> Collection:
 
 
 def check_duplicate_collection(db: Session, name: str, exclude_id: int = None):
-    norm_new = name.strip().lower()
-    query = db.query(Collection)
-    if exclude_id is not None:
-        query = query.filter(Collection.id != exclude_id)
-    for col in query.all():
-        norm_col = col.name.strip().lower()
-        if norm_col == norm_new:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Collection with name '{name}' already exists (matches '{col.name}')."
-            )
+    check_duplicate_catalog_item(
+        query=db.query(Collection),
+        name_to_check=name,
+        name_attr="name",
+        id_attr="id",
+        exclude_id=exclude_id,
+        item_type="Collection"
+    )
 
 
 def create_collection(db: Session, data: CollectionCreate) -> CollectionResponse:
@@ -638,23 +388,22 @@ def create_collection(db: Session, data: CollectionCreate) -> CollectionResponse
             detail="Your current store configuration has reached the maximum allowed limit. Please contact the system administrator if you need additional categories or collections."
         )
 
-    check_duplicate_collection(db, data.name)
-
-    norm_name = normalize_collection_name(data.name)
-    if norm_name:
-        raise BusinessRuleError(
-            f"Collection creation is disabled for Main Products. '{norm_name}' already exists.",
-            code="COLLECTION_RESERVED",
+    norm_name = normalize_name(data.name)
+    if not norm_name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Collection name cannot be empty or whitespace only."
         )
+
+    check_duplicate_collection(db, norm_name)
 
     if data.category_id:
         get_category(db, data.category_id)
-    slug = _unique_slug(db, Collection, _slugify(data.name))
-    desc_wrapped = _serialize_collection_description(data.description, [])
+    slug = _unique_slug(db, Collection, _slugify(norm_name))
     col = Collection(
-        name=data.name,
+        name=norm_name,
         slug=slug,
-        description=desc_wrapped,
+        description=data.description,
         status=data.status,
         category_id=data.category_id,
     )
@@ -673,44 +422,28 @@ def create_collection(db: Session, data: CollectionCreate) -> CollectionResponse
 
     return CollectionResponse(
         id=col.id, name=col.name, slug=col.slug,
-        description=_parse_collection_description(col.description)[0],
+        description=_parse_collection_description(col.description),
         status=col.status, category_id=col.category_id,
         category_name=cat_name, created_at=col.created_at, updated_at=col.updated_at,
-        sub_collections=get_sub_collections_for_collection(db, col.id),
     )
 
 
 def update_collection(db: Session, collection_id: int, data: CollectionUpdate) -> CollectionResponse:
     col = get_collection(db, collection_id)
-    PROTECTED_SET = set(PROTECTED_COLLECTIONS)
     patch = data.model_dump(exclude_unset=True)
 
-    if col.name in PROTECTED_SET:
-        if "name" in patch and patch["name"] != col.name:
-            raise BusinessRuleError(
-                "Collection renaming is disabled for Main Product collections.",
-                code="COLLECTION_RENAME_BLOCKED",
+    if "category_id" in patch and patch["category_id"]:
+        get_category(db, patch["category_id"])
+    if "name" in patch:
+        norm_name = normalize_name(patch["name"])
+        if not norm_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Collection name cannot be empty or whitespace only."
             )
-        patch.pop("name", None)
-        patch.pop("slug", None)
-
-    else:
-        if "category_id" in patch and patch["category_id"]:
-            get_category(db, patch["category_id"])
-        if "name" in patch:
-            norm_name = normalize_collection_name(patch["name"])
-            if norm_name:
-                raise HTTPException(
-                    status.HTTP_400_BAD_REQUEST,
-                    f"Cannot rename collection to '{norm_name}' as it is a reserved Main Product collection."
-                )
-            check_duplicate_collection(db, patch["name"], exclude_id=collection_id)
-            patch["slug"] = _unique_slug(db, Collection, _slugify(patch["name"]), exclude_id=collection_id)
-
-    _, current_sub_cols = _parse_collection_description(col.description)
-    if "description" in patch:
-        new_desc = patch["description"]
-        patch["description"] = _serialize_collection_description(new_desc, current_sub_cols)
+        check_duplicate_collection(db, norm_name, exclude_id=collection_id)
+        patch["name"] = norm_name
+        patch["slug"] = _unique_slug(db, Collection, _slugify(norm_name), exclude_id=collection_id)
 
     for k, v in patch.items():
         setattr(col, k, v)
@@ -728,21 +461,14 @@ def update_collection(db: Session, collection_id: int, data: CollectionUpdate) -
 
     return CollectionResponse(
         id=col.id, name=col.name, slug=col.slug,
-        description=_parse_collection_description(col.description)[0],
+        description=_parse_collection_description(col.description),
         status=col.status, category_id=col.category_id,
         category_name=cat_name, created_at=col.created_at, updated_at=col.updated_at,
-        sub_collections=get_sub_collections_for_collection(db, col.id),
     )
 
 
 def delete_collection(db: Session, collection_id: int) -> None:
     col = get_collection(db, collection_id)
-    PROTECTED_SET = set(PROTECTED_COLLECTIONS)
-    if col.name in PROTECTED_SET:
-        raise BusinessRuleError(
-            "Collection deletion is disabled for Main Product collections.",
-            code="COLLECTION_DELETE_BLOCKED",
-        )
     # Check if collection is assigned to products
     assigned_products = db.query(Product).filter(Product.collection_id == collection_id, Product.deleted_at.is_(None)).first()
     if assigned_products:
@@ -826,7 +552,7 @@ def get_products_paginated(
     status_filter: Optional[ProductStatus] = None,
     category_id: Optional[int] = None,
     collection_id: Optional[int] = None,
-    sub_collection: Optional[str] = None,
+    genders: Optional[List[str]] = None,
     stock_status: Optional[str] = None,   # "in_stock" | "low_stock" | "out_of_stock"
     is_featured: Optional[bool] = None,
     is_trending: Optional[bool] = None,
@@ -840,36 +566,18 @@ def get_products_paginated(
     base_filters = [Product.deleted_at.is_(None)]
 
     if search:
-        words = [w.strip() for w in search.split() if w.strip()]
-        if len(words) > 1:
-            for word in words:
-                w_term = f"%{word}%"
-                w_sku_subq = db.query(ProductVariant.product_id).filter(ProductVariant.sku.ilike(w_term)).subquery()
-                w_cat_subq = db.query(Category.id).filter(Category.name.ilike(w_term)).subquery()
-                w_col_subq = db.query(Collection.id).filter(Collection.name.ilike(w_term)).subquery()
-                base_filters.append(or_(
-                    Product.title.ilike(w_term),
-                    Product.slug.ilike(w_term),
-                    Product.collection.ilike(w_term),
-                    Product.description.ilike(w_term),
-                    Product.short_description.ilike(w_term),
-                    cast(Product.tags, Text).ilike(w_term),
-                    Product.id.in_(w_sku_subq),
-                    Product.category_id.in_(w_cat_subq),
-                    Product.collection_id.in_(w_col_subq),
-                ))
-        else:
-            term = f"%{search.strip()}%"
-            sku_subq = db.query(ProductVariant.product_id).filter(ProductVariant.sku.ilike(term)).subquery()
-            cat_subq  = db.query(Category.id).filter(Category.name.ilike(term)).subquery()
-            col_subq  = db.query(Collection.id).filter(Collection.name.ilike(term)).subquery()
+        search_terms = get_search_terms(search)
+        for term in search_terms:
+            w_term = f"%{term}%"
+            sku_subq = db.query(ProductVariant.product_id).filter(ProductVariant.sku.ilike(w_term)).subquery()
+            cat_subq = db.query(Category.id).filter(Category.name.ilike(w_term)).subquery()
+            col_subq = db.query(Collection.id).filter(Collection.name.ilike(w_term)).subquery()
             base_filters.append(or_(
-                Product.title.ilike(term),
-                Product.slug.ilike(term),
-                Product.collection.ilike(term),
-                Product.description.ilike(term),
-                Product.short_description.ilike(term),
-                cast(Product.tags, Text).ilike(term),
+                Product.title.ilike(w_term),
+                Product.slug.ilike(w_term),
+                Product.description.ilike(w_term),
+                Product.short_description.ilike(w_term),
+                cast(Product.tags, Text).ilike(w_term),
                 Product.id.in_(sku_subq),
                 Product.category_id.in_(cat_subq),
                 Product.collection_id.in_(col_subq),
@@ -880,8 +588,9 @@ def get_products_paginated(
         base_filters.append(Product.category_id == category_id)
     if collection_id:
         base_filters.append(Product.collection_id == collection_id)
-    if sub_collection:
-        base_filters.append(Product.collection == sub_collection)
+    if genders:
+        gender_subq = db.query(ProductGender.product_id).filter(ProductGender.gender.in_(genders)).subquery()
+        base_filters.append(Product.id.in_(gender_subq))
     if is_featured is not None:
         base_filters.append(Product.is_featured == is_featured)
     if is_trending is not None:
@@ -916,13 +625,14 @@ def get_products_paginated(
 
     products = (
         db.query(Product)
-        .options(selectinload(Product.variants))
+        .options(selectinload(Product.variants), selectinload(Product.genders_rel))
         .filter(*base_filters)
         .order_by(Product.created_at.desc())
         .offset((page - 1) * per_page)
         .limit(per_page)
         .all()
     )
+
 
     product_ids = [p.id for p in products]
     agg_rows = _build_agg_subquery(db, product_ids)  # no stock_status here; already filtered above
@@ -953,50 +663,14 @@ def get_products_paginated(
 # PRODUCT CRUD
 # ─────────────────────────────────────────────────────────────
 
-def validate_sub_collection_limit(db: Session, collection_id: Optional[int], new_sub_col: Optional[str], exclude_product_ids: List[int] = None) -> None:
-    if not collection_id or not new_sub_col:
-        return
-    
-    new_sub_col_clean = new_sub_col.strip()
-    if not new_sub_col_clean:
-        return
-        
-    # Get all unique sub-collection strings for this collection_id
-    query = db.query(Product.collection).filter(
-        Product.collection_id == collection_id,
-        Product.collection.isnot(None),
-        Product.collection != "",
-        Product.deleted_at.is_(None),
-    )
-    if exclude_product_ids:
-        query = query.filter(Product.id.notin_(exclude_product_ids))
-        
-    existing_sub_cols = {row[0].strip().lower() for row in query.distinct().all() if row[0]}
-    
-    # If the new one is not already in the existing set
-    if new_sub_col_clean.lower() not in existing_sub_cols:
-        if len(existing_sub_cols) >= MAX_SUB_COLLECTIONS:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"You have reached the maximum allowed limit of {MAX_SUB_COLLECTIONS} sub collections for this collection. Please delete an existing sub collection before creating a new one."
-            )
-
 
 def create_product(db: Session, product_in: ProductCreate) -> ProductResponse:
-    # Determine if it's a main product
-    cat_id = product_in.category_id
-    is_main_product = False
-    if cat_id:
-        cat = db.get(Category, cat_id)
-        if cat and cat.name in set(DEFAULT_PRODUCT_CATEGORIES):
-            is_main_product = True
-
-    if is_main_product:
-        validate_main_product_category(db, cat_id)
-        validate_main_product_collection(db, product_in.collection_id, cat_id)
-
-    db_collection = product_in.sub_collection if product_in.sub_collection is not None else product_in.collection
-    validate_sub_collection_limit(db, product_in.collection_id, db_collection)
+    existing_products_count = db.query(sqla_func.count(Product.id)).filter(Product.deleted_at.is_(None)).scalar() or 0
+    if existing_products_count >= MAX_PRODUCTS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Maximum product limit reached. You can only maintain up to {MAX_PRODUCTS} products. Please delete an existing product before adding a new one."
+        )
 
     base_slug = _slugify(product_in.title)
     slug = _ensure_unique_slug(db, base_slug)
@@ -1006,9 +680,9 @@ def create_product(db: Session, product_in: ProductCreate) -> ProductResponse:
         slug=slug,
         description=product_in.description,
         short_description=product_in.short_description,
-        collection=db_collection,
         category_id=product_in.category_id,
         collection_id=product_in.collection_id,
+        material=product_in.material,
         tags=product_in.tags or [],
         status=ProductStatus(product_in.status),
         is_featured=product_in.is_featured,
@@ -1020,15 +694,24 @@ def create_product(db: Session, product_in: ProductCreate) -> ProductResponse:
         gallery_images=[],
     )
 
+    if product_in.genders:
+        for g in product_in.genders:
+            product.genders_rel.append(ProductGender(gender=g))
+
     db.add(product)
     try:
         db.commit()
         db.refresh(product)     # single refresh — commit already flushed
     except IntegrityError as exc:
         db.rollback()
+        logger.error(f"IntegrityError in create_product: {exc}", exc_info=True)
         if "slug" in str(exc).lower():
             raise HTTPException(status.HTTP_409_CONFLICT, "A product with this slug already exists.")
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to create product.")
+        raise HTTPException(status.HTTP_409_CONFLICT, "Database integrity constraint violation during product creation.")
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"Unexpected error in create_product: {exc}", exc_info=True)
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "An unexpected error occurred while creating the product.")
 
     return get_product_response(db, product.id)
 
@@ -1036,7 +719,7 @@ def create_product(db: Session, product_in: ProductCreate) -> ProductResponse:
 def get_product(db: Session, product_id: int) -> Product:
     product = (
         db.query(Product)
-        .options(selectinload(Product.variants))
+        .options(selectinload(Product.variants), selectinload(Product.genders_rel))
         .filter(Product.id == product_id, Product.deleted_at.is_(None))
         .first()
     )
@@ -1064,20 +747,26 @@ def update_product(db: Session, product_id: int, product_in: ProductUpdate) -> P
     product = get_product(db, product_id)
     patch = product_in.model_dump(exclude_unset=True)
 
-    # Determine if it's a main product
-    cat_id = patch.get("category_id", product.category_id)
-    is_main_product = False
-    if cat_id:
-        cat = db.get(Category, cat_id)
-        if cat and cat.name in set(DEFAULT_PRODUCT_CATEGORIES):
-            is_main_product = True
+    # Normalize image fields to relative database paths before saving
+    from app.shared.storage.supabase_storage import _object_path_from_public_url, is_supabase_configured
+    from app.core.config import settings
 
-    if is_main_product:
-        if "category_id" in patch:
-            validate_main_product_category(db, patch["category_id"])
-        if "collection_id" in patch or "category_id" in patch:
-            coll_id = patch.get("collection_id", product.collection_id)
-            validate_main_product_collection(db, coll_id, cat_id)
+    def normalize_img(val: Optional[str]) -> Optional[str]:
+        if not val:
+            return val
+        if val.startswith("http://") or val.startswith("https://"):
+            if is_supabase_configured():
+                path = _object_path_from_public_url(val, settings.SUPABASE_PRODUCT_BUCKET)
+                if path:
+                    return path
+            return val
+        if val.startswith("/uploads/products/"):
+            return val.replace("/uploads/products/", "", 1)
+        return val
+
+    for img_field in ["thumbnail", "image_front", "image_back", "image_size_chart"]:
+        if img_field in patch:
+            patch[img_field] = normalize_img(patch[img_field])
 
     if "title" in patch and patch["title"]:
         base_slug = _slugify(patch["title"])
@@ -1086,13 +775,12 @@ def update_product(db: Session, product_id: int, product_in: ProductUpdate) -> P
     if "status" in patch and patch["status"]:
         patch["status"] = ProductStatus(patch["status"])
 
-    if "sub_collection" in patch:
-        patch["collection"] = patch["sub_collection"]
-        del patch["sub_collection"]
-
-    target_col_id = patch.get("collection_id", product.collection_id)
-    target_sub_col = patch.get("collection", product.collection)
-    validate_sub_collection_limit(db, target_col_id, target_sub_col, exclude_product_ids=[product.id])
+    if "genders" in patch:
+        product.genders_rel.clear()
+        if patch["genders"]:
+            for g in patch["genders"]:
+                product.genders_rel.append(ProductGender(gender=g))
+        del patch["genders"]
 
     for k, v in patch.items():
         setattr(product, k, v)
@@ -1102,9 +790,14 @@ def update_product(db: Session, product_id: int, product_in: ProductUpdate) -> P
         db.refresh(product)
     except IntegrityError as exc:
         db.rollback()
+        logger.error(f"IntegrityError in update_product: {exc}", exc_info=True)
         if "slug" in str(exc).lower():
             raise HTTPException(status.HTTP_409_CONFLICT, "A product with this slug already exists.")
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to update product.")
+        raise HTTPException(status.HTTP_409_CONFLICT, "Database integrity constraint violation during product update.")
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"Unexpected error in update_product: {exc}", exc_info=True)
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "An unexpected error occurred while updating the product.")
 
     return get_product_response(db, product_id)
 
@@ -1154,28 +847,15 @@ def bulk_action(db: Session, payload: BulkActionPayload) -> dict:
     elif action == "move_category":
         if not payload.category_id:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "category_id required for move_category.")
-        validate_main_product_category(db, payload.category_id)
+        get_category(db, payload.category_id)
         for p in products:
             p.category_id = payload.category_id
     elif action == "move_collection":
         if not payload.collection_id:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "collection_id required for move_collection.")
-        # Enforce validation: Collection must be Men, Women, or Kids for Main Products
+        get_collection(db, payload.collection_id)
         for p in products:
-            validate_main_product_collection(db, payload.collection_id, p.category_id)
             p.collection_id = payload.collection_id
-    elif action == "move_sub_collection":
-        new_sub = payload.sub_collection.strip() if (payload.sub_collection and payload.sub_collection.strip()) else None
-        if new_sub:
-            # Group products by collection_id to validate each collection
-            collection_to_product_ids = {}
-            for p in products:
-                if p.collection_id:
-                    collection_to_product_ids.setdefault(p.collection_id, []).append(p.id)
-            for col_id, p_ids in collection_to_product_ids.items():
-                validate_sub_collection_limit(db, col_id, new_sub, exclude_product_ids=p_ids)
-        for p in products:
-            p.collection = new_sub
     else:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Unknown action: {action}")
 
@@ -1202,46 +882,6 @@ def validate_product_variant_limits(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"You have reached the maximum allowed limit of {MAX_PRODUCT_VARIANTS} variants for this product. Please delete an existing variant before adding a new one."
-        )
-
-    # 2. Sizes Check
-    sizes = {v.size.strip().upper() for v in current_variants if v.size}
-    if updating_variant_id:
-        old_var = next(v for v in product.variants if v.id == updating_variant_id)
-        updating_size = patch.get("size") if patch else None
-        final_size = (updating_size or old_var.size).strip().upper()
-        sizes.add(final_size)
-    else:
-        for nv in new_variants:
-            sizes.add(nv.size.strip().upper())
-            
-    if len(sizes) > MAX_SIZES:
-        logger.warning(f"Attempted to add size exceeding limit for product {product.id}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"You have reached the maximum allowed limit of {MAX_SIZES} sizes for this product. Please delete an existing size before adding a new one."
-        )
-
-    # 3. Colors Check
-    colors = {v.color.strip().lower() for v in current_variants if v.color}
-    if updating_variant_id:
-        old_var = next(v for v in product.variants if v.id == updating_variant_id)
-        if patch and "color" in patch:
-            final_color = patch["color"]
-        else:
-            final_color = old_var.color
-        if final_color and final_color.strip():
-            colors.add(final_color.strip().lower())
-    else:
-        for nv in new_variants:
-            if nv.color and nv.color.strip():
-                colors.add(nv.color.strip().lower())
-                
-    if len(colors) > MAX_COLORS:
-        logger.warning(f"Attempted to add color exceeding limit for product {product.id}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"You have reached the maximum allowed limit of {MAX_COLORS} colors for this product. Please delete an existing color before adding a new one."
         )
 
 
@@ -1486,7 +1126,7 @@ def get_products_public(
     *,
     search: str = "",
     collection: Optional[str] = None,
-    sub_collection: Optional[str] = None,
+    genders: Optional[List[str]] = None,
     collection_id: Optional[int] = None,
     category: Optional[str] = None,
     category_id: Optional[int] = None,
@@ -1508,53 +1148,37 @@ def get_products_public(
     ]
 
     if search:
-        words = [w.strip() for w in search.split() if w.strip()]
-        if len(words) > 1:
-            for word in words:
-                w_term = f"%{word}%"
-                w_sku_subq = db.query(ProductVariant.product_id).filter(ProductVariant.sku.ilike(w_term)).subquery()
-                w_cat_subq = db.query(Category.id).filter(Category.name.ilike(w_term)).subquery()
-                w_col_subq = db.query(Collection.id).filter(Collection.name.ilike(w_term)).subquery()
-                base_filters.append(or_(
-                    Product.title.ilike(w_term),
-                    Product.slug.ilike(w_term),
-                    Product.collection.ilike(w_term),
-                    Product.description.ilike(w_term),
-                    Product.short_description.ilike(w_term),
-                    cast(Product.tags, Text).ilike(w_term),
-                    Product.id.in_(w_sku_subq),
-                    Product.category_id.in_(w_cat_subq),
-                    Product.collection_id.in_(w_col_subq),
-                ))
-        else:
-            term = f"%{search.strip()}%"
-            sku_subq = db.query(ProductVariant.product_id).filter(ProductVariant.sku.ilike(term)).subquery()
-            cat_subq  = db.query(Category.id).filter(Category.name.ilike(term)).subquery()
-            col_subq  = db.query(Collection.id).filter(Collection.name.ilike(term)).subquery()
+        search_terms = get_search_terms(search)
+        for term in search_terms:
+            w_term = f"%{term}%"
+            sku_subq = db.query(ProductVariant.product_id).filter(ProductVariant.sku.ilike(w_term)).subquery()
+            cat_subq = db.query(Category.id).filter(Category.name.ilike(w_term)).subquery()
+            col_subq = db.query(Collection.id).filter(Collection.name.ilike(w_term)).subquery()
             base_filters.append(or_(
-                Product.title.ilike(term),
-                Product.slug.ilike(term),
-                Product.collection.ilike(term),
-                Product.description.ilike(term),
-                Product.short_description.ilike(term),
-                cast(Product.tags, Text).ilike(term),
+                Product.title.ilike(w_term),
+                Product.slug.ilike(w_term),
+                Product.description.ilike(w_term),
+                Product.short_description.ilike(w_term),
+                cast(Product.tags, Text).ilike(w_term),
                 Product.id.in_(sku_subq),
                 Product.category_id.in_(cat_subq),
                 Product.collection_id.in_(col_subq),
             ))
     if collection:
-        # Check if collection name matches a normalized collection (Men, Women, Kids)
-        col_db = db.query(Collection.id).filter(Collection.name.ilike(collection)).first()
+        norm_col = normalize_name(collection)
+        col_db = db.query(Collection.id).filter(Collection.name.ilike(norm_col)).first()
         if col_db:
             base_filters.append(Product.collection_id == col_db.id)
         else:
-            base_filters.append(Product.collection.ilike(f"%{collection}%"))
+            base_filters.append(Product.collection_id == -1)
     if collection_id:
         base_filters.append(Product.collection_id == collection_id)
-    if sub_collection:
-        base_filters.append(Product.collection.ilike(f"%{sub_collection}%"))
+    if genders:
+        gender_subq = db.query(ProductGender.product_id).filter(ProductGender.gender.in_(genders)).subquery()
+        base_filters.append(Product.id.in_(gender_subq))
     if category:
-        cat_db = db.query(Category.id).filter(Category.name.ilike(category)).first()
+        norm_cat = normalize_name(category)
+        cat_db = db.query(Category.id).filter(Category.name.ilike(norm_cat)).first()
         if cat_db:
             base_filters.append(Product.category_id == cat_db.id)
     if category_id:
@@ -1604,7 +1228,7 @@ def get_products_public(
 
     products = (
         db.query(Product)
-        .options(selectinload(Product.variants))
+        .options(selectinload(Product.variants), selectinload(Product.genders_rel))
         .filter(*base_filters)
         .order_by(order_clause)
         .offset((page - 1) * per_page)
@@ -1635,7 +1259,7 @@ def get_products_public(
 def get_product_by_slug(db: Session, slug: str) -> ProductResponse:
     product = (
         db.query(Product)
-        .options(selectinload(Product.variants))
+        .options(selectinload(Product.variants), selectinload(Product.genders_rel))
         .filter(
             Product.slug == slug,
             Product.deleted_at.is_(None),
@@ -1680,7 +1304,7 @@ def get_related_products(db: Session, product: ProductResponse, limit: int = 6) 
     def fetch(extra_filters, n) -> List[ProductResponse]:
         rows = (
             db.query(Product)
-            .options(selectinload(Product.variants))
+            .options(selectinload(Product.variants), selectinload(Product.genders_rel))
             .filter(*base, *extra_filters)
             .limit(n)
             .all()

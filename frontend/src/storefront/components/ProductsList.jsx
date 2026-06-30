@@ -20,7 +20,7 @@ export default function ProductsList() {
     category_id: searchParams.get('category_id') || '',
     category: searchParams.get('category') || '',
     collection: searchParams.get('collection') || '',
-    sub_collection: searchParams.get('sub_collection') || '',
+    gender: searchParams.get('gender') || '',
     min_price: searchParams.get('min_price') || '',
     max_price: searchParams.get('max_price') || '',
     rating: null,
@@ -34,16 +34,10 @@ export default function ProductsList() {
     return categoriesData.filter(c => c.name !== "Custom Printing")
   }, [categoriesData])
 
-  const subCollections = useMemo(() => [
-    'Casual',
-    'Essentials',
-    'Premium',
-    'Sports',
-    'Oversized',
-    'Printed',
-    'Lifestyle',
-    'Summer',
-    'Winter'
+  const gendersList = useMemo(() => [
+    'Men',
+    'Women',
+    'Kids'
   ], [])
 
   const queryFilters = useMemo(() => {
@@ -54,7 +48,7 @@ export default function ProductsList() {
       category_id: filters.category_id || undefined,
       category: filters.category || undefined,
       collection: filters.collection || undefined,
-      sub_collection: filters.sub_collection || undefined,
+      genders: filters.gender ? [filters.gender] : undefined,
       min_price: filters.min_price || undefined,
       max_price: filters.max_price || undefined,
     }
@@ -76,7 +70,7 @@ export default function ProductsList() {
       params.collection = filters.collection
     }
     
-    if (filters.sub_collection) params.sub_collection = filters.sub_collection
+    if (filters.gender) params.gender = filters.gender
     
     if (filters.category_id) {
       const catObj = categories.find(c => String(c.id) === String(filters.category_id))
@@ -103,7 +97,7 @@ export default function ProductsList() {
     setFilters((prev) => {
       const newSort = searchParams.get('sort_by') || 'newest'
       const newCol = searchParams.get('collection') || ''
-      const newSubCol = searchParams.get('sub_collection') || ''
+      const newGender = searchParams.get('gender') || ''
       const newCat = searchParams.get('category') || ''
       const newMin = searchParams.get('min_price') || ''
       const newMax = searchParams.get('max_price') || ''
@@ -124,7 +118,7 @@ export default function ProductsList() {
         prev.sort_by === newSort &&
         prev.collection_id === newColId &&
         prev.collection === newCol &&
-        prev.sub_collection === newSubCol &&
+        prev.gender === newGender &&
         prev.category_id === newCatId &&
         prev.category === newCat &&
         prev.min_price === newMin &&
@@ -138,7 +132,7 @@ export default function ProductsList() {
         sort_by: newSort,
         collection_id: newColId,
         collection: newCol,
-        sub_collection: newSubCol,
+        gender: newGender,
         category_id: newCatId,
         category: newCat,
         min_price: newMin,
@@ -182,7 +176,7 @@ export default function ProductsList() {
       category_id: '',
       category: '',
       collection: '',
-      sub_collection: '',
+      gender: '',
       min_price: '',
       max_price: '',
       rating: null,
@@ -220,7 +214,7 @@ export default function ProductsList() {
         <ProductFilters
           collections={collections}
           categories={categories}
-          subCollections={subCollections}
+          genders={gendersList}
           filters={filters}
           onChange={setFilters}
           onReset={handleReset}

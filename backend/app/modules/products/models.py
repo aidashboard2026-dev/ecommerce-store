@@ -88,8 +88,7 @@ class Product(Base):
     # Classification — FKs to categories/collections tables
     category_id = Column(Integer, ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True)
     collection_id = Column(Integer, ForeignKey("collections.id", ondelete="SET NULL"), nullable=True, index=True)
-    # Legacy free-text collection field — preserved for backward compat
-    collection = Column(String(100), nullable=True)
+    material = Column(String(255), nullable=True)
 
     tags = Column(JSON, default=list, nullable=False,)
     
@@ -132,6 +131,7 @@ class Product(Base):
     variants       = relationship("ProductVariant", back_populates="product", cascade="all, delete-orphan")
     category       = relationship("Category", back_populates="products")
     collection_rel = relationship("Collection", back_populates="products")
+    genders_rel    = relationship("ProductGender", back_populates="product", cascade="all, delete-orphan")
 
     @property
     def total_stock(self) -> int:
@@ -192,3 +192,16 @@ class ProductVariant(Base):
         if avail <= self.low_stock_threshold:
             return "low_stock"
         return "in_stock"
+
+
+# ─────────────────────────────────────────────────────────────
+# Product gender association model
+# ─────────────────────────────────────────────────────────────
+
+class ProductGender(Base):
+    __tablename__ = "product_genders"
+
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), primary_key=True, index=True)
+    gender = Column(String(50), primary_key=True, index=True)
+
+    product = relationship("Product", back_populates="genders_rel")

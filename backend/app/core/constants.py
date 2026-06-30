@@ -7,44 +7,12 @@ ALLOWED_IMAGE_EXTENSIONS = {
     "webp",
 }
 
-# ── Standard Product Domain ────────────────────────────────────────────────────
-
-DEFAULT_PRODUCT_CATEGORIES = [
-    "T-Shirt",
-    "Shirt",
-    "Track Pant",
-    "Jersey",
-    "Trouser",
-]
-
-DEFAULT_COLLECTIONS = [
-    "Men",
-    "Women",
-    "Kids",
-]
-
-PROTECTED_PRODUCT_CATEGORIES = [
-    "T-Shirt",
-    "Shirt",
-    "Track Pant",
-    "Jersey",
-    "Trouser",
-]
-
-PROTECTED_COLLECTIONS = [
-    "Men",
-    "Women",
-    "Kids",
-]
-
 # Category
 MAX_CATEGORIES = 5
 
 # Collections
-MAX_COLLECTIONS = 3
+MAX_COLLECTIONS = 20
 
-# Sub Collections
-MAX_SUB_COLLECTIONS = 10
 
 # ── Custom Printing Domain ─────────────────────────────────────────────────────
 
@@ -61,9 +29,8 @@ MAX_OFFERS = 5
 
 # Product
 MAX_PRODUCT_IMAGES = 7
-MAX_PRODUCT_VARIANTS = 20
-MAX_SIZES = 5
-MAX_COLORS = 6
+MAX_PRODUCT_VARIANTS = 30
+MAX_PRODUCTS = 100
 
 
 # Name Validation
@@ -76,8 +43,6 @@ MAX_CATEGORY_NAME_LENGTH = 50
 MIN_COLLECTION_NAME_LENGTH = 2
 MAX_COLLECTION_NAME_LENGTH = 50
 
-MIN_SUB_COLLECTION_NAME_LENGTH = 2
-MAX_SUB_COLLECTION_NAME_LENGTH = 50
 
 MIN_BANNER_TITLE_LENGTH = 3
 MAX_BANNER_TITLE_LENGTH = 100

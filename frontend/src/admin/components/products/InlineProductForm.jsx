@@ -312,7 +312,8 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
   // ─── Blank form ref ──────────────────────────────────────────────────────────
   const blankForm = useRef({
     title: '', description: '', short_description: '',
-    collection: '', category_id: '', collection_id: '', sub_collection: '',
+    category_id: '', collection_id: '', genders: [],
+    material: '',
     tags: '', status: 'draft',
     is_featured: false, is_trending: false, is_best_seller: false, is_new_arrival: false,
     seo_title: '', seo_description: '',
@@ -373,10 +374,10 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
       title:             p.title,
       description:       p.description       || '',
       short_description: p.short_description || '',
-      collection:        p.collection        || '',
       category_id:       p.category_id       || '',
       collection_id:     p.collection_id     || '',
-      sub_collection:    p.sub_collection    || '',
+      genders:           p.genders           || [],
+      material:          p.material          || '',
       tags:              (p.tags || []).join(', '),
       status:            p.status,
       is_featured:       p.is_featured       || false,
@@ -417,14 +418,18 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  const payload = () => ({
-    ...form,
-    title:        form.title.trim(),
-    category_id:  form.category_id   ? Number(form.category_id)   : null,
-    collection_id: form.collection_id ? Number(form.collection_id) : null,
-    sub_collection: form.sub_collection ? form.sub_collection.trim() : null,
-    tags:         form.tags.split(',').map(t => t.trim()).filter(Boolean),
-  })
+  const payload = () => {
+    const { collection, ...rest } = form;
+    return {
+      ...rest,
+      title:        form.title.trim(),
+      category_id:  form.category_id   ? Number(form.category_id)   : null,
+      collection_id: form.collection_id ? Number(form.collection_id) : null,
+      genders:      form.genders || [],
+      material:     form.material ? form.material.trim() : null,
+      tags:         form.tags.split(',').map(t => t.trim()).filter(Boolean),
+    };
+  }
 
   const validateForm = (data) => {
     if (data.title.length < 2) {
@@ -810,21 +815,37 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                 </select>
               </div>
 
-              {/* Sub-Collection */}
+              {/* Gender */}
               <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
-                <label className="text-xs font-bold text-muted">Sub-Collection</label>
-                <input
-                  list="sub-collections-list"
-                  className="input-field py-2.5 text-xs"
-                  value={form.sub_collection}
-                  onChange={e => set('sub_collection', e.target.value)}
-                  placeholder="e.g. Essentials, Casual"
-                />
-                <datalist id="sub-collections-list">
-                  {(filteredCollections.find(c => String(c.id) === String(form.collection_id))?.sub_collections || []).map(sub => (
-                    <option key={sub} value={sub} />
+                <label className="text-xs font-bold text-muted">Gender</label>
+                <div className="flex flex-wrap gap-4 items-center">
+                  {['Men', 'Women', 'Kids'].map(g => (
+                    <label key={g} className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={(form.genders || []).includes(g)}
+                        onChange={e => {
+                          const current = form.genders || [];
+                          if (e.target.checked) {
+                            set('genders', [...current, g]);
+                          } else {
+                            set('genders', current.filter(item => item !== g));
+                          }
+                        }}
+                        className="w-3.5 h-3.5 accent-brand-500"
+                      />
+                      <span className="text-xs font-medium text-muted">{g}</span>
+                    </label>
                   ))}
-                </datalist>
+                </div>
+              </div>
+
+              {/* Material */}
+              <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
+                <label htmlFor="product-material" className="text-xs font-bold text-muted">Material</label>
+                <input id="product-material" className="input-field py-2.5 text-xs"
+                  value={form.material} onChange={e => set('material', e.target.value)}
+                  placeholder="e.g. Cotton, Polyester, Denim" maxLength={255} />
               </div>
 
               {/* Status + Tags */}

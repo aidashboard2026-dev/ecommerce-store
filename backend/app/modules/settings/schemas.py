@@ -74,6 +74,14 @@ class StoreSettingsResponse(StoreSettingsBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
+    @model_validator(mode="after")
+    def add_cache_buster_to_logo(self) -> "StoreSettingsResponse":
+        if self.logo:
+            if "?t=" not in self.logo:
+                ts = int(self.updated_at.timestamp()) if self.updated_at else int(datetime.utcnow().timestamp())
+                self.logo = f"{self.logo}?t={ts}"
+        return self
+
     class Config:
         from_attributes = True
 
