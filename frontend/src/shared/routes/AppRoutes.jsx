@@ -43,6 +43,9 @@ const ResetPasswordPage = lazy(
 );
 const SupportPage = lazy(() => import("@/storefront/pages/SupportPage"));
 const CustomPage = lazy(() => import("@/storefront/pages/CustomPage"));
+const StorefrontOffersPage = lazy(
+  () => import("@/storefront/pages/OffersPage"),
+);
 const NotFoundPage = lazy(() => import("@/storefront/pages/NotFoundPage"));
 
 // Storefront components used directly as route elements
@@ -102,19 +105,20 @@ function CategoryRedirect() {
   const { slug } = useParams();
   const normalizedCategory = useMemo(() => {
     if (!slug) return "";
+    // Map legacy URL slugs to canonical category slugs (must match Category.slug in DB)
     const mapping = {
-      "t-shirt": "T-Shirt",
-      "track-pant": "Track Pant",
-      jersey: "Jersey",
-      shirt: "Shirt",
-      trouser: "Trouser",
-      "t-shirts": "T-Shirt",
-      "track-pants": "Track Pant",
-      jerseys: "Jersey",
-      shirts: "Shirt",
-      trousers: "Trouser",
+      "t-shirt": "t-shirt",
+      "track-pant": "track-pant",
+      "jersey": "jersey",
+      "shirt": "shirt",
+      "trouser": "trouser",
+      "t-shirts": "t-shirt",
+      "track-pants": "track-pant",
+      "jerseys": "jersey",
+      "shirts": "shirt",
+      "trousers": "trouser",
     };
-    return mapping[slug.toLowerCase()] || slug;
+    return mapping[slug.toLowerCase()] || slug.toLowerCase();
   }, [slug]);
 
   return (
@@ -206,6 +210,7 @@ export default function AppRoutes() {
           {/* Custom orders (new) */}
           <Route path="custom" element={<CustomPage />} />
           <Route path="custom/:productType" element={<CustomPage />} />
+          <Route path="offers" element={<StorefrontOffersPage />} />
 
           {/* Support / info (new) */}
           <Route path="support" element={<SupportPage />} />

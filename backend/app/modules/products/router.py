@@ -295,18 +295,56 @@ def list_products_admin(
     is_trending:    Optional[bool]         = None,
     is_best_seller: Optional[bool]         = None,
     is_new_arrival: Optional[bool]         = None,
+    # ── Price range ─────────────────────────────────────────────────────────
+    min_price:      Optional[float]        = None,
+    max_price:      Optional[float]        = None,
+    # ── Date range ──────────────────────────────────────────────────────────
+    created_after:  Optional[str]          = None,   # ISO-8601 date string
+    created_before: Optional[str]          = None,
+    updated_after:  Optional[str]          = None,
+    updated_before: Optional[str]          = None,
+    # ── Sorting ─────────────────────────────────────────────────────────────
+    sort_by:        Optional[str]          = None,   # newest|oldest|alpha_asc|updated
     page:    int = Query(1,  ge=1),
     per_page:int = Query(15, ge=1, le=100),
     db: Session = Depends(get_db),
     _:  Admin   = Depends(get_current_admin),
 ):
+    from datetime import datetime, timezone
+
+    def _parse_dt(s: Optional[str]) -> Optional[datetime]:
+        """Parse an ISO-8601 date/datetime string; return None on any error."""
+        if not s:
+            return None
+        try:
+            # Accept both date-only ("2024-01-01") and full datetime strings
+            if "T" not in s and " " not in s:
+                s = s + "T00:00:00"
+            return datetime.fromisoformat(s).replace(tzinfo=timezone.utc)
+        except (ValueError, AttributeError):
+            return None
+
     return get_products_paginated(
-        db, search=search, status_filter=status_filter,
-        category_id=category_id, collection_id=collection_id,
-        genders=genders, stock_status=stock_status,
-        is_featured=is_featured, is_trending=is_trending,
-        is_best_seller=is_best_seller, is_new_arrival=is_new_arrival,
-        page=page, per_page=per_page,
+        db,
+        search=search,
+        status_filter=status_filter,
+        category_id=category_id,
+        collection_id=collection_id,
+        genders=genders,
+        stock_status=stock_status,
+        is_featured=is_featured,
+        is_trending=is_trending,
+        is_best_seller=is_best_seller,
+        is_new_arrival=is_new_arrival,
+        min_price=min_price,
+        max_price=max_price,
+        created_after=_parse_dt(created_after),
+        created_before=_parse_dt(created_before),
+        updated_after=_parse_dt(updated_after),
+        updated_before=_parse_dt(updated_before),
+        sort_by=sort_by,
+        page=page,
+        per_page=per_page,
     )
 
 
@@ -714,6 +752,7 @@ def list_products_public(
     is_new_arrival: Optional[bool] = None,
     min_price:      Optional[float]= None,
     max_price:      Optional[float]= None,
+    on_offer:       Optional[bool] = None,
     sort_by:        str            = "newest",
     page:    int = Query(1,  ge=1),
     per_page:int = Query(12, ge=1, le=100),
@@ -724,7 +763,7 @@ def list_products_public(
         collection_id=collection_id, category=category, category_id=category_id,
         is_featured=is_featured, is_trending=is_trending,
         is_best_seller=is_best_seller, is_new_arrival=is_new_arrival,
-        min_price=min_price, max_price=max_price,
+        min_price=min_price, max_price=max_price, on_offer=on_offer,
         sort_by=sort_by, page=page, per_page=per_page,
     )
 

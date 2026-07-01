@@ -19,6 +19,22 @@ import { CartBadge } from "@/storefront/components/cart";
 import { openCartDrawer } from "@/storefront/store/cartSlice";
 import useStoreSettings from '@/shared/hooks/useStoreSettings'
 
+// Static nav config — module scope so it isn't re-allocated every render.
+// `to` values must resolve against real routes/filters (see AppRoutes.jsx
+// CategoryRedirect + ProductsList.jsx searchParams contract). Do not point
+// these at "/sub-products" — that route is a dead catch-all redirect to
+// /products with no category context.
+const MOBILE_NAV_LINKS = [
+  { label: 'Home', to: '/' },
+  { label: 'T-shirt for mens', to: '/products?category=t-shirt&gender=Men' },
+  { label: 'Track Pants for mens', to: '/products?category=track-pant&gender=Men' },
+  { label: 'Trousers for mens', to: '/products?category=trouser&gender=Men' },
+  { label: 'Shirt for mens', to: '/products?category=shirt&gender=Men' },
+  { label: 'Custom product', to: '/custom' },
+  { label: 'Offers', to: '/offers' },
+  { label: 'Track Order', to: '/tracking' },
+]
+
 export default function StoreHeader({
   toggleTheme,
   isDark,
@@ -290,71 +306,23 @@ export default function StoreHeader({
               </button>
             </div>
 
-            {/* Navigation */}
+            {/* Navigation
+                Each entry maps to a real, filterable destination.
+                category/gender values must match the Category.name and
+                ProductGender.gender values used by the backend service
+                layer (see app/modules/products/service.py) so the query
+                params here actually filter results on /products. */}
             <div className="flex flex-col py-3">
-              <Link
-                to="/"
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-5 py-3 uppercase hover:bg-surface"
-              >
-                Home
-              </Link>
-
-              <Link
-                to="/products"
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-5 py-3 uppercase hover:bg-surface"
-              >
-                T-shirt for mens
-              </Link>
-
-              <Link
-                to="/sub-products"
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-5 py-3 uppercase hover:bg-surface"
-              >
-                Track Pants for mens
-              </Link>
-
-              <Link
-                to="/sub-products"
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-5 py-3 uppercase hover:bg-surface"
-              >
-                Track Trousers for mens
-              </Link>
-
-              <Link
-                to="/sub-products"
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-5 py-3 uppercase hover:bg-surface"
-              >
-                Shirt for mens
-              </Link>
-
-              <Link
-                to="/sub-products"
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-5 py-3 uppercase hover:bg-surface"
-              >
-                custom product
-              </Link>
-
-              <Link
-                to="/sub-products"
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-5 py-3 uppercase hover:bg-surface"
-              >
-                offers
-              </Link>
-
-              <Link
-                to="/tracking"
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-5 py-3 uppercase hover:bg-surface"
-              >
-                Track Order
-              </Link>
+              {MOBILE_NAV_LINKS.map((link) => (
+                <Link
+                  key={link.label}
+                  to={link.to}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-5 py-3 uppercase hover:bg-surface"
+                >
+                  {link.label}
+                </Link>
+              ))}
 
               <div className="flex flex-col md:hidden ">
                 <Link

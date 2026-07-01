@@ -23,6 +23,17 @@ const MAX_FILE_SIZE    = 10 * 1024 * 1024
 const ALLOWED_TYPES    = ['image/jpeg', 'image/png', 'image/webp']
 const ALLOWED_ACCEPT   = 'image/jpeg,image/png,image/webp'
 
+// ─── Gallery-specific rules ────────────────────────────────────────────────────
+// Gallery images follow a dedicated, fixed business rule (max 4 images, max
+// 4 MB per image) that is independent of the dynamic per-store business
+// limits used by the other single-image slots (thumbnail/front/back/size
+// chart). Keeping these as standalone constants avoids coupling the fixed
+// product requirement to configuration that may change per store.
+const GALLERY_MAX_IMAGES          = 4
+const GALLERY_MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024 // 4 MB
+const GALLERY_MAX_FILE_SIZE_LABEL = '4 MB'
+const GALLERY_ALLOWED_FORMATS_LABEL = 'JPG, PNG, WEBP'
+
 // ─── Tab configuration ────────────────────────────────────────────────────────
 
 const IMAGE_TABS = [
@@ -39,6 +50,53 @@ function validateFile(f) {
   if (!ALLOWED_TYPES.includes(f.type)) return 'Only JPG, PNG, WebP allowed.'
   if (f.size > MAX_FILE_SIZE) return `File must be under ${MAX_FILE_SIZE / (1024 * 1024)} MB.`
   return null
+}
+
+/**
+ * Renders a titled, multi-line toast using the app's existing react-hot-toast
+ * setup. Centralising this avoids duplicating the same title/message JSX
+ * across every validation branch.
+ */
+function showActionToast(kind, title, message) {
+  const emit = kind === 'success' ? toast.success : toast.error
+  emit(
+    <div>
+      <strong style={{ display: 'block', marginBottom: '4px' }}>{title}</strong>
+      <div style={{ whiteSpace: 'pre-line', fontSize: '12px', lineHeight: '1.4' }}>{message}</div>
+    </div>
+  )
+}
+
+/**
+ * Splits a batch of user-selected files for the gallery into:
+ *  - filesToUpload: valid files that still fit within the remaining slots
+ *  - hasUnsupportedType / hasOversized: flags for the corresponding toasts
+ *  - remainingSlots / overflowCount: used to compose the "limit reached" copy
+ *
+ * Pure function — no side effects — so it stays easy to unit test and reuse.
+ */
+function validateGalleryFiles(files, existingCount) {
+  const remainingSlots = Math.max(0, GALLERY_MAX_IMAGES - existingCount)
+  const valid = []
+  let hasUnsupportedType = false
+  let hasOversized = false
+
+  for (const file of files) {
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      hasUnsupportedType = true
+      continue
+    }
+    if (file.size > GALLERY_MAX_FILE_SIZE_BYTES) {
+      hasOversized = true
+      continue
+    }
+    valid.push(file)
+  }
+
+  const filesToUpload = valid.slice(0, remainingSlots)
+  const overflowCount = valid.length - filesToUpload.length
+
+  return { filesToUpload, hasUnsupportedType, hasOversized, remainingSlots, overflowCount }
 }
 
 // ─── Single image slot (thumbnail / front / back / size_chart) ────────────────
@@ -109,9 +167,6 @@ function GalleryGrid({ images = [], onDelete, deletingIndex }) {
 
   return (
     <div>
-      <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
-        Gallery ({images.length})
-      </p>
       <div className="grid grid-cols-4 gap-2">
         {images.map((url, idx) => (
           <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden border border-app bg-surface">
@@ -131,6 +186,93 @@ function GalleryGrid({ images = [], onDelete, deletingIndex }) {
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+// ─── Gallery heading + live counter ────────────────────────────────────────────
+// Shows "Gallery Images" with a "n/4 Images" badge that re-renders whenever
+// `count` changes (add or remove), plus the file-size/format info line.
+
+function GalleryImagesHeader({ count, max }) {
+  const isFull = count >= max
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <h4 className="text-sm font-semibold text-app flex items-center gap-1.5">
+          <LayoutGrid size={14} className="text-brand-500" />
+          Gallery Images
+        </h4>
+        <span
+          className={`text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap
+            ${isFull ? 'bg-red-500/10 text-red-500' : 'bg-brand-500/10 text-brand-500'}`}
+        >
+          {count}/{max} Images
+        </span>
+      </div>
+      <p className="text-xs text-muted">Maximum file size: {GALLERY_MAX_FILE_SIZE_LABEL}</p>
+      <p className="text-xs text-muted">Supported formats: {GALLERY_ALLOWED_FORMATS_LABEL}</p>
+    </div>
+  )
+}
+
+// ─── Gallery drop zone (multi-file, auto-upload) ───────────────────────────────
+// Unlike the single-image DropZone below, gallery selection can include
+// multiple files at once and uploads immediately (there is nothing to
+// "replace", only slots to fill), so it owns its own file input/ref instead
+// of sharing state with the single-image flow.
+
+function GalleryDropZone({ onFilesSelected, disabled, uploading, remainingSlots, progress }) {
+  const fileRef = useRef(null)
+  const [dragging, setDragging] = useState(false)
+
+  const handleFiles = (fileList) => {
+    if (disabled || !fileList || fileList.length === 0) return
+    onFilesSelected(fileList)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  return (
+    <div
+      onClick={() => { if (disabled) return; fileRef.current?.click() }}
+      onDragOver={e => { e.preventDefault(); if (disabled) return; setDragging(true) }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={e => { e.preventDefault(); setDragging(false); if (disabled) return; handleFiles(e.dataTransfer.files) }}
+      title={disabled ? (uploading ? 'Upload in progress…' : 'Maximum gallery limit reached.\nRemove an image to add another.') : ''}
+      className={`border-2 border-dashed rounded-xl p-6 text-center transition-all
+        ${disabled ? 'opacity-50 cursor-not-allowed border-gray-400 bg-gray-100/10' : dragging ? 'border-brand-500 bg-brand-500/5 cursor-pointer' : 'border-app hover:border-brand-400 hover:bg-surface/50 cursor-pointer'}`}
+    >
+      {uploading ? (
+        <>
+          <Loader2 size={24} className="mx-auto mb-2 text-brand-500 animate-spin" />
+          <p className="text-sm text-muted">
+            {progress?.total > 1
+              ? `Uploading image ${Math.min(progress.done + 1, progress.total)} of ${progress.total}…`
+              : 'Uploading…'}
+          </p>
+        </>
+      ) : (
+        <>
+          <ImagePlus size={24} className="mx-auto mb-2 text-muted" />
+          <p className="text-sm text-muted">
+            Drop gallery images here or <span className="text-brand-500">browse</span>
+          </p>
+          <p className="text-xs text-muted mt-1">
+            {remainingSlots > 0
+              ? `You can add up to ${remainingSlots} more image${remainingSlots === 1 ? '' : 's'}`
+              : 'Gallery limit reached'}
+          </p>
+        </>
+      )}
+      <input
+        ref={fileRef}
+        type="file"
+        accept={ALLOWED_ACCEPT}
+        multiple
+        className="hidden"
+        disabled={disabled}
+        onChange={e => handleFiles(e.target.files)}
+      />
     </div>
   )
 }
@@ -266,6 +408,94 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
     onError: () => toast.error('Failed to remove gallery image'),
   })
 
+  // ── Gallery batch upload mutation ─────────────────────────────────────────────
+  // The upload endpoint only accepts one file per request (existing
+  // architecture, unchanged), so a multi-file selection is uploaded
+  // sequentially. The gallery cache is invalidated after every individual
+  // file so the grid + "n/4 Images" counter update immediately as each
+  // upload lands, instead of waiting for the whole batch to finish.
+
+  const [galleryProgress, setGalleryProgress] = useState({ done: 0, total: 0 })
+
+  const galleryUploadMutation = useMutation({
+    mutationFn: async (files) => {
+      setGalleryProgress({ done: 0, total: files.length })
+      let succeeded = 0
+      let failed = 0
+
+      for (const galleryFile of files) {
+        try {
+          await productsApi.uploadImage(product.id, galleryFile, 'gallery')
+          succeeded += 1
+        } catch (err) {
+          // Never surface raw backend/network errors to the user — log
+          // internally and let the aggregated toast below handle messaging.
+          console.error('Gallery image upload failed:', err)
+          failed += 1
+        } finally {
+          setGalleryProgress(prev => ({ ...prev, done: prev.done + 1 }))
+          // Refresh after each file so the UI reflects partial progress
+          // ("2/4" -> "3/4" -> "4/4") rather than jumping at the very end.
+          await qc.invalidateQueries({ queryKey: ['products', product.id] })
+          await qc.invalidateQueries({ queryKey: ['products'] })
+        }
+      }
+
+      return { succeeded, failed }
+    },
+    onSuccess: ({ succeeded, failed }) => {
+      if (succeeded > 0) {
+        toast.success(`${succeeded} gallery image${succeeded === 1 ? '' : 's'} uploaded successfully.`)
+      }
+      if (failed > 0) {
+        showActionToast('error', 'Upload Failed', 'Unable to upload the image. Please try again.')
+      }
+    },
+    onSettled: () => {
+      setGalleryProgress({ done: 0, total: 0 })
+    },
+  })
+
+  const isGalleryUploading = galleryUploadMutation.isPending
+
+  const handleGalleryFilesSelected = useCallback((fileList) => {
+    if (isGalleryUploading) return // prevent duplicate/overlapping uploads
+
+    const files = Array.from(fileList)
+    const existingCount = product?.gallery_images?.length || 0
+
+    // Already at the cap — nothing selected can be accepted.
+    if (existingCount >= GALLERY_MAX_IMAGES) {
+      showActionToast(
+        'error',
+        'Image Limit Reached',
+        'You can upload a maximum of 4 gallery images.\nPlease remove an existing image before adding another.'
+      )
+      return
+    }
+
+    const { filesToUpload, hasUnsupportedType, hasOversized, remainingSlots, overflowCount } =
+      validateGalleryFiles(files, existingCount)
+
+    if (hasUnsupportedType) {
+      showActionToast('error', 'Unsupported File', 'Please upload JPG, PNG, or WEBP images only.')
+    }
+    if (hasOversized) {
+      showActionToast('error', 'Image Too Large', 'Please upload an image smaller than 4 MB.')
+    }
+    if (overflowCount > 0) {
+      showActionToast(
+        'error',
+        'Image Limit Reached',
+        `Only ${remainingSlots} more image${remainingSlots === 1 ? '' : 's'} can be added.\nMaximum gallery limit is 4 images.`
+      )
+    }
+
+    if (filesToUpload.length === 0) return
+
+    galleryUploadMutation.mutate(filesToUpload)
+  }, [isGalleryUploading, product?.gallery_images, galleryUploadMutation])
+
   // ── Current image for the active tab ─────────────────────────────────────────
 
   const currentTab = IMAGE_TABS.find(t => t.key === activeTab)
@@ -274,6 +504,11 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
 
   const isGallery  = activeTab === 'gallery'
   const isThumbnail = activeTab === 'thumbnail'
+
+  // Gallery uses its own fixed 4-image cap, independent of the dynamic
+  // per-store business limits used by the single-image slots above.
+  const galleryRemainingSlots = Math.max(0, GALLERY_MAX_IMAGES - galleryImages.length)
+  const isGalleryFull = galleryImages.length >= GALLERY_MAX_IMAGES
 
   const currentCount = (product?.thumbnail ? 1 : 0) + 
                        (product?.image_front ? 1 : 0) + 
@@ -358,8 +593,12 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
           })}
         </div>
 
-        {/* ── Tab description ── */}
-        <p className="text-xs text-muted">{currentTab?.description}</p>
+        {/* ── Tab description / Gallery heading + live counter ── */}
+        {isGallery ? (
+          <GalleryImagesHeader count={galleryImages.length} max={GALLERY_MAX_IMAGES} />
+        ) : (
+          <p className="text-xs text-muted">{currentTab?.description}</p>
+        )}
 
         {/* ── Current image(s) ── */}
         {isGallery ? (
@@ -378,26 +617,33 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
         )}
 
         {/* ── Upload zone ── */}
-        {(!isLimitReached || !willIncrease) && (
-          <div>
-            <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
-              {isGallery
-                ? `Add Gallery Image (${galleryImages.length})`
-                : currentImageUrl ? `Replace ${currentTab?.label}` : `Upload ${currentTab?.label}`
-              }
-            </p>
-            <DropZone
-              preview={preview}
-              onFile={pickFile}
-              fileRef={fileRef}
-              label={currentTab?.label?.toLowerCase() || ''}
-              disabled={isLimitReached}
-            />
-          </div>
+        {isGallery ? (
+          <GalleryDropZone
+            onFilesSelected={handleGalleryFilesSelected}
+            disabled={isGalleryFull || isGalleryUploading}
+            uploading={isGalleryUploading}
+            remainingSlots={galleryRemainingSlots}
+            progress={galleryProgress}
+          />
+        ) : (
+          (!isLimitReached || !willIncrease) && (
+            <div>
+              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">
+                {currentImageUrl ? `Replace ${currentTab?.label}` : `Upload ${currentTab?.label}`}
+              </p>
+              <DropZone
+                preview={preview}
+                onFile={pickFile}
+                fileRef={fileRef}
+                label={currentTab?.label?.toLowerCase() || ''}
+                disabled={isLimitReached}
+              />
+            </div>
+          )
         )}
 
-        {/* ── Clear selection ── */}
-        {file && (
+        {/* ── Clear selection (single-image tabs only — gallery uploads immediately) ── */}
+        {!isGallery && file && (
           <button onClick={clearSelection} className="text-xs text-muted hover:text-app flex items-center gap-1">
             <X size={11} /> Clear selection
           </button>
@@ -406,17 +652,19 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
         {/* ── Actions ── */}
         <div className="flex flex-col-reverse sm:flex-row gap-3">
           <button onClick={onClose} className="btn-secondary sm:px-6">Done</button>
-          <button
-            onClick={handleUploadClick}
-            disabled={!file || uploadMutation.isPending || isLimitReached}
-            title={isLimitReached ? "Maximum limit reached.\nDelete an existing item to continue." : ""}
-            className="flex-1 btn-primary flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {uploadMutation.isPending
-              ? <Loader2 size={14} className="animate-spin" />
-              : <Upload size={14} />}
-            {uploadMutation.isPending ? 'Uploading…' : uploadLabel}
-          </button>
+          {!isGallery && (
+            <button
+              onClick={handleUploadClick}
+              disabled={!file || uploadMutation.isPending || isLimitReached}
+              title={isLimitReached ? "Maximum limit reached.\nDelete an existing item to continue." : ""}
+              className="flex-1 btn-primary flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {uploadMutation.isPending
+                ? <Loader2 size={14} className="animate-spin" />
+                : <Upload size={14} />}
+              {uploadMutation.isPending ? 'Uploading…' : uploadLabel}
+            </button>
+          )}
         </div>
 
       </div>
