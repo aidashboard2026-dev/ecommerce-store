@@ -117,7 +117,14 @@ export default function CheckoutPage() {
 
       if (paymentMethod === "COD") {
         toast.success("Order placed successfully!");
-        navigate("/orders", { state: { justPlaced: true } });
+
+        navigate("/order-success", {
+          state: {
+            orders: createdOrders,
+            totals,
+            paymentMethod,
+          },
+        });
       } else {
         navigate("/payment");
       }
