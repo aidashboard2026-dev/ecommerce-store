@@ -252,6 +252,30 @@ class CustomProduct(Base):
     orders_count = Column(Integer, nullable=False, default=0)
     sales_count  = Column(Integer, nullable=False, default=0)
 
+
+    # -------------------------------------------------
+    # Inventory
+    # -------------------------------------------------
+
+    stock_quantity = Column(
+        Integer,
+        nullable=False,
+        default=0,
+        index=True,
+    )
+
+    low_stock_threshold = Column(
+        Integer,
+        nullable=False,
+        default=5,
+    )
+
+    size = Column(
+        String(100),
+        nullable=False,
+        default="All Size",
+    )
+
     # -------------------------------------------------
     # Timestamps
     # -------------------------------------------------

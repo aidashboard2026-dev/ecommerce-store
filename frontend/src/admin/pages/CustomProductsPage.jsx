@@ -112,9 +112,10 @@ function DeleteButton({ onConfirm, loading }) {
 const MobileActions = React.memo(function MobileActions({
   product,
   onEdit,
+  onImage,
   onToggleStatus,
   onDelete,
-  onCategoryEdit
+  onCategoryEdit,
 }) {
   const [open, setOpen] = useState(false)
   const ref = React.useRef(null)
@@ -727,8 +728,26 @@ export default function ProductsPage() {
                         : formatPrice(product.selling_price_min)}
                     </TableCell>
                     <TableCell className="font-medium text-amber-600">{discPct}</TableCell>
-                    <TableCell><span className="text-[10px] text-muted">—</span></TableCell>
-                    <TableCell className="text-muted">—</TableCell>
+                    <TableCell>
+                      <span
+                        className={clsx(
+                          "px-2 py-1 rounded text-xs font-semibold",
+                          stock <= 0 &&
+                            "bg-red-100 text-red-600",
+                          stock > 0 &&
+                            stock <= (product.low_stock_threshold ?? 5) &&
+                            "bg-yellow-100 text-yellow-700",
+                          stock > (product.low_stock_threshold ?? 5) &&
+                            "bg-green-100 text-green-700"
+                        )}
+                      >
+                        {stock}
+                      </span>
+                    </TableCell>
+                    
+                    <TableCell className="text-muted">
+                      {size}
+                    </TableCell>
                     <TableCell>
                       <Badge label={product.status} variant={statusMap[product.status] || 'default'} />
                     </TableCell>

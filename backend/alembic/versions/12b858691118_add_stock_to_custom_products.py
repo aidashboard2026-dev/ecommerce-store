@@ -55,8 +55,32 @@ def upgrade():
         server_default=None,
     )
 
+    op.add_column(
+        "custom_products",
+        sa.Column(
+            "size",
+            sa.String(length=100),
+            nullable=True,
+        ),
+    )
+
+    op.execute(
+        "UPDATE custom_products SET size='All Size' WHERE size IS NULL"
+    )
+
+    op.alter_column(
+        "custom_products",
+        "size",
+        nullable=False,
+    )
 
 def downgrade():
+
+    op.drop_column(
+        "custom_products",
+        "size",
+    )
+
     op.drop_index(
         "ix_custom_products_stock_quantity",
         table_name="custom_products",

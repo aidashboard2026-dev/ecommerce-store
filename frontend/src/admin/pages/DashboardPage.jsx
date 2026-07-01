@@ -106,13 +106,10 @@ export default function DashboardPage() {
 
     setNotificationActivity(notificationData);
 
-    const refreshTimer = window.setInterval(load, 15000);
-    window.addEventListener("focus", load);
+  
 
     return () => {
       active = false;
-      window.clearInterval(refreshTimer);
-      window.removeEventListener("focus", load);
     };
   }, []);
   const groupedNotifications = Object.values(

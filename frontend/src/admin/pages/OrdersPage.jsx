@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Download, ClipboardList, Ban, CheckCircle, Package, Clock, Calendar as CalendarIcon, Loader2 } from "lucide-react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
-import jsPDF from "jspdf";
+
 import clsx from "clsx";
 import toast from "react-hot-toast";
 
@@ -10,6 +10,7 @@ import PageHeader from "@/shared/components/ui/PageHeader";
 import SearchBar from "@/shared/components/ui/SearchBar";
 import Badge from "@/shared/components/ui/Badge";
 import Button from "@/shared/components/ui/Button";
+import { generateInvoice } from "@/shared/utils/invoiceGenerator";
 
 import {
   getOrders,
@@ -59,159 +60,7 @@ export default function OrdersPage() {
 
   const totalPages = Math.max(1, Math.ceil(totalOrders / PAGE_SIZE));
 
-  const downloadInvoice = (order) => {
-    const pdf = new jsPDF();
-
-    pdf.setFontSize(22);
-    pdf.text("My Design", 85, 20);
-
-    pdf.setFontSize(12);
-    pdf.text("T-Shirt Store Invoice", 70, 28);
-
-    pdf.line(10, 35, 200, 35);
-
-    pdf.text(
-      `Invoice No : ${order.order_number}`,
-      10,
-      50
-    );
-
-    pdf.text(
-      `Date : ${order.ordered_at?.split("T")[0]}`,
-      10,
-      58
-    );
-
-    pdf.line(10, 65, 200, 65);
-
-    pdf.setFontSize(14);
-    pdf.text("Customer Details", 10, 75);
-
-    pdf.setFontSize(11);
-
-    pdf.text(
-      `Name : ${order.customer_name}`,
-      10,
-      85
-    );
-
-    pdf.text(
-      `Email : ${order.customer_email}`,
-      10,
-      93
-    );
-
-    pdf.text(
-      `Phone : ${order.customer_phone}`,
-      10,
-      101
-    );
-
-    pdf.text(
-      `Address : ${order.address_line1}`,
-      10,
-      109
-    );
-
-    pdf.text(
-      `${order.city} - ${order.pincode}`,
-      10,
-      117
-    );
-
-    pdf.line(10, 125, 200, 125);
-
-    pdf.setFontSize(14);
-    pdf.text("Order Details", 10, 135);
-
-    pdf.setFontSize(11);
-
-    pdf.text(
-      `Product : ${order.product_name}`,
-      10,
-      145
-    );
-
-    pdf.text(
-      `Size : ${order.size}`,
-      10,
-      153
-    );
-
-    pdf.text(
-      `Color : ${order.color}`,
-      10,
-      161
-    );
-
-    pdf.text(
-      `Quantity : ${order.quantity}`,
-      10,
-      169
-    );
-
-    pdf.text(
-      `Price : ₹${order.price}`,
-      10,
-      177
-    );
-
-    pdf.line(10, 185, 200, 185);
-
-    pdf.setFontSize(14);
-    pdf.text("Payment Summary", 10, 195);
-
-    pdf.setFontSize(11);
-
-    pdf.text(
-      `Subtotal : ₹${order.total_amount}`,
-      10,
-      205
-    );
-
-    pdf.text(
-      "Shipping : FREE",
-      10,
-      213
-    );
-
-    pdf.text(
-      "Tax : ₹0",
-      10,
-      221
-    );
-
-    pdf.line(10, 228, 200, 228);
-
-    pdf.setFontSize(14);
-
-    pdf.text(
-      `Total : ₹${order.total_amount}`,
-      10,
-      238
-    );
-
-    pdf.line(10, 245, 200, 245);
-
-    pdf.setFontSize(11);
-
-    pdf.text(
-      `Payment Status : ${order.payment_status}`,
-      10,
-      255
-    );
-
-    pdf.text(
-      `Tracking Status : ${order.tracking_status}`,
-      10,
-      263
-    );
-
-    pdf.save(
-      `Invoice-${order.order_number}.pdf`
-    );
-  };
-
+  
   const getOrderDraft = (order) => {
     return orderDrafts[order.id] || {
       logistics: order.logistics || "",
@@ -630,7 +479,7 @@ export default function OrdersPage() {
                     </div>
 
                   <Button
-                    onClick={() => downloadInvoice(order)}
+                    onClick={() => generateInvoice(order)}
                     variant="download"
                     className="flex"
                     icon={Download}
