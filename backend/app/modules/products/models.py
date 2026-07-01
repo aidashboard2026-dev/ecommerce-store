@@ -87,9 +87,14 @@ class Product(Base):
 
     # Classification — FKs to categories/collections tables
     category_id = Column(Integer, ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True)
-    collection_id = Column(Integer, ForeignKey("collections.id", ondelete="SET NULL"), nullable=True, index=True)
+    collection_id = Column(
+        Integer,
+        ForeignKey("collections.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     # Legacy free-text collection field — preserved for backward compat
-    collection = Column(String(100), nullable=True)
+    
 
     tags = Column(JSON, default=list, nullable=False,)
     

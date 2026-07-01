@@ -37,7 +37,18 @@ operation must not fail because the audit write failed.
 
 from __future__ import annotations
 
+import json
+import enum
+
 import logging
+from decimal import Decimal
+from uuid import UUID
+
+from datetime import datetime, date
+
+
+
+
 from typing import Any, Dict, Optional
 
 from fastapi import Request
@@ -58,7 +69,40 @@ class AuditService:
     # ─────────────────────────────────────────────────────────
     # Core log method
     # ─────────────────────────────────────────────────────────
+    @staticmethod
+    def _json_safe(value):
+        """
+        Recursively convert unsupported Python types into JSON-safe values.
+        """
 
+        if value is None:
+            return None
+
+        if isinstance(value, Decimal):
+            return float(value)
+
+        if isinstance(value, (datetime, date)):
+            return value.isoformat()
+
+        if isinstance(value, UUID):
+            return str(value)
+
+        if isinstance(value, enum.Enum):
+            return value.value
+
+        if isinstance(value, dict):
+            return {
+                str(k): AuditService._json_safe(v)
+                for k, v in value.items()
+            }
+
+        if isinstance(value, (list, tuple, set)):
+            return [
+                AuditService._json_safe(v)
+                for v in value
+            ]
+
+        return value
     def log(
         self,
         *,
@@ -105,6 +149,10 @@ class AuditService:
             ip = self._extract_ip(request)
             ua = self._extract_user_agent(request)
 
+            safe_changes = self._json_safe(changes)
+
+            json.dumps(safe_changes)
+
             entry = AuditLog(
                 admin_id=_admin_id,
                 admin_email=_admin_email,
@@ -113,7 +161,7 @@ class AuditService:
                 resource_type=resource_type,
                 resource_id=resource_id,
                 resource_label=resource_label,
-                changes=changes,
+                changes=self._json_safe(changes),
                 ip_address=ip,
                 user_agent=ua,
                 status=status,
@@ -182,7 +230,7 @@ class AuditService:
             admin_name=admin_name,
             resource_id=resource_id,
             resource_label=resource_label,
-            changes=changes,
+            changes=self._json_safe(changes),
             request=request,
             status=AuditStatus.failure,
             error_message=error_message,

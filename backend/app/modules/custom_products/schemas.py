@@ -115,6 +115,9 @@ class CustomProductBase(BaseModel):
     gallery_images:   List[str] = Field(default_factory=list)
     # WhatsApp lead generation message — pre-filled in the WhatsApp quotation link
     whatsapp_message: Optional[str] = None
+    stock_quantity: int = Field(default=0, ge=0)
+    low_stock_threshold: int = Field(default=5, ge=0)
+    size: str = "All Size"
 
 
 class CustomProductCreate(CustomProductBase):
@@ -176,6 +179,9 @@ class CustomProductUpdate(BaseModel):
     selling_price_min:  Optional[Decimal] = None
     selling_price_max:  Optional[Decimal] = None
     whatsapp_message:   Optional[str] = None
+    stock_quantity: Optional[int] = Field(default=None, ge=0)
+    low_stock_threshold: Optional[int] = Field(default=None, ge=0)
+    size: Optional[str] = None
 
     @field_validator("title")
     @classmethod
@@ -242,6 +248,9 @@ class CustomProductResponse(BaseModel):
     view_count:        int = 0
     orders_count:      int = 0
     sales_count:       int = 0
+    stock_quantity: int = 0
+    size: str = "All Size"
+    low_stock_threshold: int = 5
     created_at:        datetime
     updated_at:        Optional[datetime] = None
 

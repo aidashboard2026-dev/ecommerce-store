@@ -230,6 +230,9 @@ def _build_product_response(
         view_count=p.view_count or 0,
         orders_count=p.orders_count or 0,
         sales_count=p.sales_count or 0,
+        stock_quantity=p.stock_quantity,
+        low_stock_threshold=p.low_stock_threshold,
+        size=p.size,
         whatsapp_message=p.whatsapp_message,
         created_at=p.created_at,
         updated_at=p.updated_at,
@@ -396,24 +399,36 @@ def create_custom_product(
         custom_category_id=data.custom_category_id,
         tags=data.tags or [],
         sku=data.sku,
+
         status=CustomProductStatus(data.status),
+
         is_featured=data.is_featured,
         is_trending=data.is_trending,
         is_best_seller=data.is_best_seller,
         is_new_arrival=data.is_new_arrival,
+
         seo_title=data.seo_title,
         seo_description=data.seo_description,
+
         original_price_min=data.original_price_min,
         original_price_max=data.original_price_max,
         selling_price_min=data.selling_price_min,
         selling_price_max=data.selling_price_max,
+
         thumbnail=data.thumbnail,
         image_front=data.image_front,
         image_back=data.image_back,
         image_size_chart=data.image_size_chart,
         gallery_images=data.gallery_images or [],
+
         whatsapp_message=data.whatsapp_message,
+
+        stock_quantity=data.stock_quantity,
+        low_stock_threshold=data.low_stock_threshold,
+
+        size=data.size,
     )
+    
 
     db.add(product)
     try:

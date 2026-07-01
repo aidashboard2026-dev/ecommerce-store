@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { loginThunk, clearError } from '@/admin/store/authSlice'
 import { useTheme } from '@/shared/hooks/useAuth'
@@ -9,6 +10,7 @@ import { Card, CardContent } from '@/shared/components/ui/Card'
 
 export default function LoginPage() {
   const dispatch = useDispatch()
+  const navigate = useNavigate()
   const { loading, error } = useSelector((s) => s.auth)
   const { isDark, toggle } = useTheme()
 
@@ -31,7 +33,7 @@ export default function LoginPage() {
     )
 
     if (loginThunk.fulfilled.match(result)) {
-      window.location.href = '/admin'
+      navigate('/admin', { replace: true })
     }
   }
 
