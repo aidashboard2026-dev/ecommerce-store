@@ -8,6 +8,19 @@ import ProductFilters from '@/storefront/components/ProductFilters'
 import { useDebounce } from '@/shared/utils/productUtils'
 import SortDropdown from "@/storefront/components/filters/SortDropdown";
 import FilterDrawer from "@/storefront/components/filters/FilterDrawer";
+
+  const DEFAULT_FILTERS={
+      sort_by:"newest",
+      collection_id:"",
+      category_id:"",
+      category:"",
+      collection:"",
+      gender:"",
+      min_price:"",
+      max_price:"",
+      rating:null,
+      in_stock_only:false
+  }
 export default function ProductsList() {
   const [searchParams, setSearchParams] = useSearchParams()
   
@@ -92,7 +105,13 @@ export default function ProductsList() {
     if (hasChanged) {
       setSearchParams(params, { replace: true })
     }
-  }, [debouncedSearch, filters, collections, categories, searchParams, setSearchParams])
+   },[
+  debouncedSearch,
+  filters,
+  collections,
+  categories,
+  setSearchParams
+  ])
 
   // Sync URL params -> State (handles nav clicks & back button)
   useEffect(() => {
@@ -170,30 +189,25 @@ export default function ProductsList() {
     return filters.in_stock_only ? all.filter((p) => (p.total_stock ?? 0) > 0) : all
   }, [data, filters.in_stock_only])
 
-  const DEFAULT_FILTERS={
-      sort_by:"newest",
-      collection_id:"",
-      category_id:"",
-      category:"",
-      collection:"",
-      gender:"",
-      min_price:"",
-      max_price:"",
-      rating:null,
-      in_stock_only:false
-  }
+  
 
-  const handleReset=()=>{
+  const handleReset = () => {
+    setSearch("");
 
-      const params=new URLSearchParams();
+    setFilters((prev) => {
+      if (JSON.stringify(prev) === JSON.stringify(DEFAULT_FILTERS)) {
+        return prev;
+      }
 
-      setSearch("");
+      return {
+        ...DEFAULT_FILTERS,
+      };
+    });
 
-      setFilters(DEFAULT_FILTERS);
-
-      setSearchParams(params,{replace:true});
-
-  }
+    if (searchParams.toString() !== "") {
+      setSearchParams({}, { replace: true });
+    }
+  };
   const hasActiveFilters = useMemo(() => {
     return (
       search.trim() !== "" ||
