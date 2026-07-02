@@ -15,6 +15,7 @@ import {
   X,
   Zap,
   Image,
+  Grid2X2,
   Bell
 } from 'lucide-react'
 import clsx from 'clsx'
@@ -28,6 +29,7 @@ import useStoreSettings from '@/shared/hooks/useStoreSettings'
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/products', label: 'Products', icon: Package },
+  { to: '/admin/categories', label: 'Categories', icon: Grid2X2 },
   { to: "/admin/custom-products", label: "Custom Products", icon: Package},
   { to: '/admin/orders', label: 'Orders', icon: ShoppingCart },
   { to: '/admin/offers', label: 'Offers', icon: Tags },
@@ -36,7 +38,7 @@ const navItems = [
   { to: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 
-export default function Header() {
+const HeaderComponent = function Header() {
   const { admin } = useAuth()
   const { isDark, toggle } = useTheme()
   const dispatch = useDispatch()
@@ -319,7 +321,7 @@ export default function Header() {
   )
 }
 
-function Logo({ compact = false, sidebarOpen = true }) {
+const Logo = React.memo(function Logo({ compact = false, sidebarOpen = true }) {
   const { settings } = useStoreSettings()
   const logoUrl = settings?.logo
   const storeName = settings?.store_name || 'AdminDash'
@@ -354,4 +356,8 @@ function Logo({ compact = false, sidebarOpen = true }) {
       </span>
     </div>
   )
-}
+})
+
+const Header = React.memo(HeaderComponent)
+export default Header
+

@@ -53,7 +53,7 @@ class Order(Base):
 
     # ── Customer ─────────────────────────────────────────────────────────────
     customer_name  = Column(String(255), nullable=False)
-    customer_email = Column(String(255))
+    customer_email = Column(String(255), index=True)
     customer_phone = Column(String(20))
 
     # ── Shipping address ─────────────────────────────────────────────────────

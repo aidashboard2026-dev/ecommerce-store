@@ -42,7 +42,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('admin')
-      window.location.href = '/admin/login'
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'))
     }
     return Promise.reject(error)
   }
@@ -74,7 +74,7 @@ storefrontClient.interceptors.response.use(
     if (err.response?.status === 401) {
       localStorage.removeItem('customer_token')
       localStorage.removeItem('customer')
-      window.location.href = '/login'
+      window.dispatchEvent(new CustomEvent('customer:unauthorized'))
     }
     return Promise.reject(err)
   }
@@ -111,6 +111,14 @@ export const categoriesAPI = {
   delete: (id)          => api.delete(`/products/admin/categories/${id}`),
   // Public (storefront)
   listPublic: () => storefrontClient.get('/products/categories'),
+}
+
+export const homepageCategoriesAPI = {
+  list: () => api.get('/admin/categories'),
+  create: (formData) => api.post('/admin/categories', formData),
+  update: (id, formData) => api.put(`/admin/categories/${id}`, formData),
+  delete: (id) => api.delete(`/admin/categories/${id}`),
+  listPublic: () => storefrontClient.get('/categories'),
 }
 
 // ─── Collections ──────────────────────────────────────────────────────────────
@@ -233,6 +241,7 @@ export const storefrontAPI = {
   getProductBySlug: (slug)        => storefrontClient.get(`/products/slug/${slug}`),
   getRelated:       (slug, limit = 6) => storefrontClient.get(`/products/slug/${slug}/related`, { params: { limit } }),
   getCategories:    ()            => storefrontClient.get('/products/categories'),
+  getHomepageCategories: ()       => storefrontClient.get('/categories'),
   getCollections:   (params = {}) => storefrontClient.get('/products/collections', { params }),
   getBanners:       ()            => storefrontClient.get('/banners/active/all'),
   getOffers:        ()            => storefrontClient.get('/offers/active/all'),

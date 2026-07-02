@@ -2,10 +2,10 @@ import React from "react";
 import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import HeroSection from "@/storefront/components/HeroSection";
-import CategorySection from "@/storefront/components/CategorySection";
-import OfferSection from "@/storefront/components/OfferSection";
-import ProductGrid from "@/storefront/components/ProductGrid";
+import HeroSection from "@/storefront/components/home/HeroSection";
+import CategorySection from "@/storefront/components/home/CategorySection";
+import OfferSection from "@/storefront/components/home/OfferSection";
+import ProductGrid from "@/storefront/components/home/ProductGrid";
 
 import {
   useFeaturedProducts,
@@ -46,7 +46,6 @@ export default function HomePage() {
 
   const handleWheel = (e) => {
     if (scrollRef.current) {
-     
       scrollRef.current.scrollLeft += e.deltaY;
     }
   };
@@ -81,6 +80,7 @@ export default function HomePage() {
             products={featured}
             loading={loadingFeatured}
             skeletonCount={4}
+            limit={8}
           />
         </section>
       )}
@@ -95,6 +95,7 @@ export default function HomePage() {
           products={newArrivals}
           loading={loadingNew}
           skeletonCount={4}
+          limit={8}
         />
       </section>
 
@@ -109,6 +110,7 @@ export default function HomePage() {
             products={bestSellers}
             loading={loadingBest}
             skeletonCount={4}
+            limit={8}
           />
         </section>
       )}

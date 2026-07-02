@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, Suspense } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import clsx from 'clsx'
 
 import Header from '@/admin/components/layout/Header'
 import PageHeader from '@/admin/components/layout/PageHeader'
+import { PageLoader } from '@/shared/components/common/Spinner'
 
 const pageTitles = {
   '/admin': 'Dashboard',
   '/admin/products': 'Products',
+  '/admin/categories': 'Categories',
   '/admin/orders': 'Orders',
   '/admin/offers': 'Offers',
   '/admin/banners': 'Banners',
@@ -38,6 +40,13 @@ export default function MainLayout() {
     }
   }, [])
 
+  // Reset scroll position of content panel on navigation
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0
+    }
+  }, [location.pathname])
+
   return (
     <div className="h-screen overflow-hidden bg-app">
       <Header />
@@ -62,13 +71,15 @@ export default function MainLayout() {
           className={clsx(
             'mx-auto w-full md:pl-60 md:pb-0 pb-20 max-w-[1400px] animate-slide-up transition-all duration-300',
           )}
-          key={location.pathname}
         >
           <div className="px-6 py-6 md:px-8">
-            <Outlet />
+            <Suspense fallback={<PageLoader />}>
+              <Outlet />
+            </Suspense>
           </div>
         </div>
       </main>
     </div>
   )
 }
+

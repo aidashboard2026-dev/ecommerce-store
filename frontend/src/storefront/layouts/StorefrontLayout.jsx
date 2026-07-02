@@ -1,13 +1,14 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 
 import { useTheme } from "@/shared/hooks/useAuth";
 import { customerLogoutThunk } from "@/storefront/store/customerSlice";
 
-import StoreHeader from "@/storefront/components/StoreHeader";
-import StoreFooter from "@/storefront/components/StoreFooter";
-import { CartDrawer } from "@/storefront/components/cart";
+import StoreHeader from "@/storefront/components/storeindex/StoreHeader";
+import StoreFooter from "@/storefront/components/storeindex/StoreFooter";
+import { CartDrawer } from "@/storefront/components/shoppingcart";
+import { PageLoader } from "@/shared/components/common/Spinner";
 
 export default function StorefrontLayout() {
   const navigate = useNavigate();
@@ -18,6 +19,11 @@ export default function StorefrontLayout() {
   const wishlistItems = useSelector((s) => s.wishlist.items);
 
   const { isDark, toggle: toggleTheme } = useTheme();
+
+  React.useEffect(() => {
+    console.log("=== StorefrontLayout MOUNTED ===");
+    return () => console.log("=== StorefrontLayout UNMOUNTED ===");
+  }, []);
 
   // Track page scroll to toggle header background glassmorphism
   const handleLogout = () => {
@@ -52,7 +58,9 @@ export default function StorefrontLayout() {
 
       {/* Main Page Layout Wrapper */}
       <main className="flex-1 w-full mt-5 p-2 relative">
-        <Outlet />
+        <Suspense fallback={<PageLoader />}>
+          <Outlet />
+        </Suspense>
       </main>
 
       <CartDrawer />
