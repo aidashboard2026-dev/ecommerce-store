@@ -8,6 +8,7 @@ from app.modules.custom_products import router as custom_products
 from app.modules.customers import router as customers
 from app.modules.dashboard import router as dashboard
 from app.modules.delivery_zones import router as delivery_zones
+from app.modules.homepage_categories.router import router as homepage_categories
 from app.modules.offers import router as offers
 from app.modules.orders import router as orders
 from app.modules.products import router as products
@@ -16,6 +17,10 @@ from app.modules.settings import router as settings
 api_router = APIRouter()
 
 api_router.include_router(auth.router,            prefix="/auth",            tags=["Authentication"])
+api_router.include_router(
+    homepage_categories,
+    tags=["Homepage Categories"]
+)
 api_router.include_router(admins.router,           prefix="/admins",          tags=["Admins"])
 api_router.include_router(dashboard.router,        prefix="/dashboard",       tags=["Dashboard"])
 api_router.include_router(products.router,         prefix="/products",        tags=["Products"])

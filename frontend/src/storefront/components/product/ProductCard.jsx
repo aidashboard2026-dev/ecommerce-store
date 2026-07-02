@@ -185,13 +185,17 @@ function ProductCard({ product }) {
   );
 }
 
-export default memo(
-    ProductCard,
-    (prev,next)=>{
-        return (
-            prev.product.id===next.product.id &&
-            prev.product.updated_at===next.product.updated_at &&
-            prev.product.total_stock===next.product.total_stock
-        );
-    }
-);
+export default memo(ProductCard, (prev, next) => {
+  const a = prev.product;
+  const b = next.product;
+
+  return (
+    a.id === b.id &&
+    a.slug === b.slug &&
+    a.title === b.title &&
+    a.thumbnail === b.thumbnail &&
+    a.min_price === b.min_price &&
+    a.total_stock === b.total_stock &&
+    a.is_featured === b.is_featured
+  );
+});

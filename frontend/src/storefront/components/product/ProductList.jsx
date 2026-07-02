@@ -3,12 +3,12 @@ import { useSearchParams } from 'react-router-dom'
 import { SlidersHorizontal } from 'lucide-react'
 import { useProductsInfinite, useCollections, useCategories } from '@/storefront/hooks/useProducts'
 
-import ProductGrid from '@/storefront/components/ProductGrid'
-import ProductFilters from '@/storefront/components/ProductFilters'
+import ProductGrid from '@/storefront/components/home/ProductGrid'
+import ProductFilters from '@/storefront/components/product/ProductFilters'
 import { useDebounce } from '@/shared/utils/productUtils'
 import SortDropdown from "@/storefront/components/filters/SortDropdown";
 import FilterDrawer from "@/storefront/components/filters/FilterDrawer";
-
+import { useLocation } from "react-router-dom";
   const DEFAULT_FILTERS={
       sort_by:"newest",
       collection_id:"",
@@ -22,6 +22,9 @@ import FilterDrawer from "@/storefront/components/filters/FilterDrawer";
       in_stock_only:false
   }
 export default function ProductsList() {
+  const location = useLocation();
+
+  const fromMenu = location.state?.fromMenu === true;
   const [searchParams, setSearchParams] = useSearchParams()
   
 
@@ -106,11 +109,8 @@ export default function ProductsList() {
       setSearchParams(params, { replace: true })
     }
    },[
-  debouncedSearch,
-  filters,
-  collections,
-  categories,
-  setSearchParams
+    debouncedSearch,
+    filters,
   ])
 
   // Sync URL params -> State (handles nav clicks & back button)
@@ -165,7 +165,7 @@ export default function ProductsList() {
     if (search !== newSearch) {
       setSearch(newSearch)
     }
-  }, [searchParams, collections, categories])
+  }, [searchParams])
 
   // Infinite scroll sentinel
   const sentinelRef = useRef(null)
@@ -184,44 +184,85 @@ export default function ProductsList() {
     return () => observer.disconnect()
   }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
-  let products = useMemo(() => {
-    const all = data?.pages?.flatMap((p) => p.items) || []
-    return filters.in_stock_only ? all.filter((p) => (p.total_stock ?? 0) > 0) : all
-  }, [data, filters.in_stock_only])
+ const products = useMemo(() => {
 
+   if(!data?.pages) return [];
+
+   const all=[];
+
+   for(const page of data.pages){
+      all.push(...page.items);
+   }
+
+   if(!filters.in_stock_only){
+      return all;
+   }
+
+   return all.filter(
+      p=>(p.total_stock??0)>0
+   );
+
+},[
+   data?.pages,
+   filters.in_stock_only
+]);
   
 
   const handleReset = () => {
+
+    if(
+        !hasActiveFilters
+    ){
+        return;
+    }
+
     setSearch("");
 
-    setFilters((prev) => {
-      if (JSON.stringify(prev) === JSON.stringify(DEFAULT_FILTERS)) {
-        return prev;
-      }
+    setFilters(DEFAULT_FILTERS);
 
-      return {
-        ...DEFAULT_FILTERS,
-      };
-    });
+    setSearchParams(
+        {},
+        {
+          replace:true
+        }
+    );
 
-    if (searchParams.toString() !== "") {
-      setSearchParams({}, { replace: true });
-    }
-  };
+  }
   const hasActiveFilters = useMemo(() => {
+
+    const hasDrawerFilters =
+      filters.sort_by !== "newest" ||
+      filters.min_price !== "" ||
+      filters.max_price !== "" ||
+      filters.in_stock_only;
+
+    if (fromMenu) {
+      return hasDrawerFilters;
+    }
+
     return (
       search.trim() !== "" ||
-      filters.sort_by !== "newest" ||
+      hasDrawerFilters ||
       filters.collection_id !== "" ||
       filters.category_id !== "" ||
       filters.collection !== "" ||
       filters.category !== "" ||
-      filters.gender !== "" ||
-      filters.min_price !== "" ||
-      filters.max_price !== "" ||
-      filters.in_stock_only
-    )
-  }, [search, filters])
+      filters.gender !== ""
+    );
+
+  }, [
+    search,
+    fromMenu,
+    filters.sort_by,
+    filters.min_price,
+    filters.max_price,
+    filters.in_stock_only,
+    filters.collection_id,
+    filters.category_id,
+    filters.collection,
+    filters.category,
+    filters.gender,
+  ]);
   return (
     <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       <div className="flex flex-col gap-2 mb-6">
@@ -287,16 +328,26 @@ export default function ProductsList() {
 
         <SortDropdown
           value={filters.sort_by}
-          onChange={(value) =>
-            setFilters((prev) => ({
-              ...prev,
-              sort_by: value,
-            }))
-          }
+          onChange={(value)=>{
+
+            if(value===filters.sort_by){
+                return;
+            }
+
+            setFilters(prev=>({
+                ...prev,
+                sort_by:value
+            }));
+
+          }}
         />
 
         <button
-          onClick={() => setDrawerOpen(true)}
+          onClick={()=>{
+            if(!drawerOpen){
+                setDrawerOpen(true);
+            }
+          }}
           className="
             flex
             w-[140px]

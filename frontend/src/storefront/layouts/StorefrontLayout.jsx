@@ -5,9 +5,9 @@ import { useSelector, useDispatch } from "react-redux";
 import { useTheme } from "@/shared/hooks/useAuth";
 import { customerLogoutThunk } from "@/storefront/store/customerSlice";
 
-import StoreHeader from "@/storefront/components/StoreHeader";
-import StoreFooter from "@/storefront/components/StoreFooter";
-import { CartDrawer } from "@/storefront/components/cart";
+import StoreHeader from "@/storefront/components/storeindex/StoreHeader";
+import StoreFooter from "@/storefront/components/storeindex/StoreFooter";
+import { CartDrawer } from "@/storefront/components/shoppingcart";
 
 export default function StorefrontLayout() {
   const navigate = useNavigate();

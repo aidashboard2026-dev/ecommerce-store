@@ -33,6 +33,7 @@ logger = logging.getLogger("app")
 UPLOADS_ROOT = os.path.abspath(settings.UPLOAD_DIR)
 os.makedirs(os.path.join(UPLOADS_ROOT, "products"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_ROOT, "custom_products"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_ROOT, "categories"), exist_ok=True)
 
 
 # ──────────────────────────────────────────────────────────────────────────────

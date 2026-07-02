@@ -15,7 +15,7 @@ import {
   LogOut,
   ClipboardList,
 } from "lucide-react";
-import { CartBadge } from "@/storefront/components/cart";
+import { CartBadge } from "@/storefront/components/shoppingcart";
 import { openCartDrawer } from "@/storefront/store/cartSlice";
 import useStoreSettings from '@/shared/hooks/useStoreSettings'
 
@@ -317,6 +317,7 @@ export default function StoreHeader({
                 <Link
                   key={link.label}
                   to={link.to}
+                  state={{ fromMenu: true }}
                   onClick={() => setMobileMenuOpen(false)}
                   className="px-5 py-3 uppercase hover:bg-surface"
                 >
