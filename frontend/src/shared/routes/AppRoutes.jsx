@@ -14,14 +14,16 @@ import MainLayout from "@/admin/layouts/MainLayout";
 
 // Storefront Layout
 import StorefrontLayout from "@/storefront/layouts/StorefrontLayout";
-import ProductDetails from "@/storefront/components/ProductDetails";
+import ProductDetails from "@/storefront/components/product/ProductDetails";
 import OrderSuccess from "@/storefront/components/checkout/OrderSuccess";
 import ReturnsPolicy from "@/storefront/pages/ReturnsPolicy";
+// import OrderTimelinePage from "@/storefront/components/order/components/OrderTimeline";
 
 // Lazy loaded pages/components to optimize bundle sizes
 const AdminLoginPage = lazy(() => import("@/admin/pages/LoginPage"));
 const DashboardPage = lazy(() => import("@/admin/pages/DashboardPage"));
 const AdminProductsPage = lazy(() => import("@/admin/pages/ProductsPage"));
+const CategoriesPage = lazy(() => import("@/admin/pages/CategoriesPage"));
 const AdminOrdersPage = lazy(() => import("@/admin/pages/OrdersPage"));
 const OffersPage = lazy(() => import("@/admin/pages/OffersPage"));
 const CustomersPage = lazy(() => import("@/admin/pages/CustomersPage"));
@@ -62,10 +64,18 @@ const Spinner = () => (
 
 // ── ADMIN AUTH STATE ──────────────────────────────────────────────────────────
 function useAdminAuthState() {
-  return useSelector((s) => ({
-    isAuthenticated: !!s.auth.admin,
-    initialized: s.auth.initialized,
-  }));
+  const isAuthenticated = useSelector(
+    (state) => !!state.auth.admin
+  );
+
+  const initialized = useSelector(
+    (state) => state.auth.initialized
+  );
+
+  return {
+    isAuthenticated,
+    initialized,
+  };
 }
 
 function AdminProtectedRoute({ children }) {
@@ -175,6 +185,7 @@ export default function AppRoutes() {
         >
           <Route index element={<DashboardPage />} />
           <Route path="products" element={<AdminProductsPage />} />
+          <Route path="categories" element={<CategoriesPage />} />
           <Route path="custom-products" element={<CustomProductsPage />} />
           <Route path="orders" element={<AdminOrdersPage />} />
           <Route path="offers" element={<OffersPage />} />
@@ -194,7 +205,7 @@ export default function AppRoutes() {
 
           <Route path="returns-policy" element={<ReturnsPolicy />} />
           <Route path="order-success" element={<OrderSuccess />} />
-
+          {/* <Route path="ordertimeline" element={<OrderTimelinePage />} /> */}
           <Route
             path="sub-products"
             element={<Navigate to="/products" replace />}

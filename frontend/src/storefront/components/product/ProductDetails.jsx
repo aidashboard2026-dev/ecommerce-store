@@ -27,7 +27,7 @@ import {
   toggleWishlist,
   selectIsWishlisted,
 } from "@/storefront/store/wishlistSlice";
-import ProductGrid from "@/storefront/components/ProductGrid";
+import ProductGrid from "@/storefront/components/home/ProductGrid";
 
 export default function ProductDetails() {
   const { slug } = useParams();
