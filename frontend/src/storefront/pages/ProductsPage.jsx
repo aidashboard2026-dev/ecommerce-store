@@ -1,7 +1,7 @@
 import React from 'react'
 import { useParams } from 'react-router-dom'
-import ProductsList from '@/storefront/components/ProductsList'
-import ProductDetails from '@/storefront/components/ProductDetails'
+import ProductsList from '@/storefront/components/product/ProductList'
+import ProductDetails from '@/storefront/components/product/ProductDetails'
 
 // Consolidated storefront products page.
 //

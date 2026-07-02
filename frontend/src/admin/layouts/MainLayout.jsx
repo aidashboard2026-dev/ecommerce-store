@@ -9,6 +9,7 @@ import PageHeader from '@/admin/components/layout/PageHeader'
 const pageTitles = {
   '/admin': 'Dashboard',
   '/admin/products': 'Products',
+  '/admin/categories': 'Categories',
   '/admin/orders': 'Orders',
   '/admin/offers': 'Offers',
   '/admin/banners': 'Banners',

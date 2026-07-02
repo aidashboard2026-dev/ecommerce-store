@@ -15,7 +15,7 @@ import {
   LogOut,
   ClipboardList,
 } from "lucide-react";
-import { CartBadge } from "@/storefront/components/cart";
+import { CartBadge } from "@/storefront/components/shoppingcart";
 import { openCartDrawer } from "@/storefront/store/cartSlice";
 import useStoreSettings from '@/shared/hooks/useStoreSettings'
 

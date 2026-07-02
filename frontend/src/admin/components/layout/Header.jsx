@@ -15,6 +15,7 @@ import {
   X,
   Zap,
   Image,
+  Grid2X2,
   Bell
 } from 'lucide-react'
 import clsx from 'clsx'
@@ -28,6 +29,7 @@ import useStoreSettings from '@/shared/hooks/useStoreSettings'
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/products', label: 'Products', icon: Package },
+  { to: '/admin/categories', label: 'Categories', icon: Grid2X2 },
   { to: "/admin/custom-products", label: "Custom Products", icon: Package},
   { to: '/admin/orders', label: 'Orders', icon: ShoppingCart },
   { to: '/admin/offers', label: 'Offers', icon: Tags },

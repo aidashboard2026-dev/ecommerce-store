@@ -113,6 +113,14 @@ export const categoriesAPI = {
   listPublic: () => storefrontClient.get('/products/categories'),
 }
 
+export const homepageCategoriesAPI = {
+  list: () => api.get('/admin/categories'),
+  create: (formData) => api.post('/admin/categories', formData),
+  update: (id, formData) => api.put(`/admin/categories/${id}`, formData),
+  delete: (id) => api.delete(`/admin/categories/${id}`),
+  listPublic: () => storefrontClient.get('/categories'),
+}
+
 // ─── Collections ──────────────────────────────────────────────────────────────
 
 export const collectionsAPI = {
@@ -233,6 +241,7 @@ export const storefrontAPI = {
   getProductBySlug: (slug)        => storefrontClient.get(`/products/slug/${slug}`),
   getRelated:       (slug, limit = 6) => storefrontClient.get(`/products/slug/${slug}/related`, { params: { limit } }),
   getCategories:    ()            => storefrontClient.get('/products/categories'),
+  getHomepageCategories: ()       => storefrontClient.get('/categories'),
   getCollections:   (params = {}) => storefrontClient.get('/products/collections', { params }),
   getBanners:       ()            => storefrontClient.get('/banners/active/all'),
   getOffers:        ()            => storefrontClient.get('/offers/active/all'),
