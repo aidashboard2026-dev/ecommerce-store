@@ -333,6 +333,7 @@ const StoreHeaderComponent = function StoreHeader({
                 <Link
                   key={link.label}
                   to={link.to}
+                  state={{ fromMenu: true }}
                   onClick={() => setMobileMenuOpen(false)}
                   className="px-5 py-3 uppercase hover:bg-surface"
                 >
