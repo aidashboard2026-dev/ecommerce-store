@@ -1,5 +1,4 @@
-import { createSlice } from "@reduxjs/toolkit";
-
+import { createSlice, createSelector } from "@reduxjs/toolkit";
 const STORAGE_KEY = "aurastore_cart";
 
 function loadCart() {
@@ -123,50 +122,70 @@ export default cartSlice.reducer;
 
 // ── Selectors / derived totals ────────────────────────────────────────────────
 
-export const selectCartSubtotal = (state) =>
-  state.cart.items.reduce(
-    (sum, item) => sum + Number(item.sellingPrice) * item.quantity,
-    0,
-  );
+export const selectCartSubtotal = createSelector(
+  [(state) => state.cart.items],
+  (items) =>
+    items.reduce(
+      (sum, item) => sum + Number(item.sellingPrice) * item.quantity,
+      0,
+    ),
+);
 
-export const selectCartOriginalTotal = (state) =>
-  state.cart.items.reduce(
-    (sum, item) =>
-      sum + Number(item.originalPrice ?? item.sellingPrice) * item.quantity,
-    0,
-  );
+export const selectCartOriginalTotal = createSelector(
+  [(state) => state.cart.items],
+  (items) =>
+    items.reduce(
+      (sum, item) =>
+        sum + Number(item.originalPrice ?? item.sellingPrice) * item.quantity,
+      0,
+    ),
+);
 
-export const selectCartCount = (state) =>
-  state.cart.items.reduce((sum, item) => sum + item.quantity, 0);
+export const selectCartCount = createSelector(
+  [(state) => state.cart.items],
+  (items) => items.reduce((sum, item) => sum + item.quantity, 0),
+);
 
 // Simple shipping rule: free over ₹999, otherwise flat ₹79
 export const SHIPPING_THRESHOLD = 999;
 export const FLAT_SHIPPING_FEE = 79;
 
-export const selectShippingCost = (state) => {
-  const subtotal = selectCartSubtotal(state);
-  if (subtotal === 0) return 0;
-  return subtotal >= SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING_FEE;
-};
+export const selectShippingCost = createSelector(
+  [selectCartSubtotal],
+  (subtotal) => {
+    if (subtotal === 0) return 0;
+    return subtotal >= SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING_FEE;
+  },
+);
+
+// export const selectShippingCost = (state) => {
+//   const subtotal = selectCartSubtotal(state);
+//   if (subtotal === 0) return 0;
+//   return subtotal >= SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING_FEE;
+// };
 
 // GST-style flat tax rate applied to subtotal after discount
 export const TAX_RATE = 0.05;
 
-export const selectCartTotals = (state) => {
-  const subtotal = selectCartSubtotal(state);
-  const { couponDiscount } = state.cart;
-  const discountAmount = (subtotal * (couponDiscount || 0)) / 100;
-  const discountedSubtotal = subtotal - discountAmount;
-  const shipping = selectShippingCost(state);
-  const tax = discountedSubtotal * TAX_RATE;
-  const total = discountedSubtotal + shipping + tax;
+export const selectCartTotals = createSelector(
+  [
+    selectCartSubtotal,
+    selectShippingCost,
+    (state) => state.cart.couponDiscount,
+  ],
+  (subtotal, shipping, couponDiscount) => {
+    const discountAmount = (subtotal * (couponDiscount || 0)) / 100;
+    const discountedSubtotal = subtotal - discountAmount;
+    const tax = discountedSubtotal * TAX_RATE;
+    const total = discountedSubtotal + shipping + tax;
 
-  return {
-    subtotal,
-    discountAmount,
-    discountedSubtotal,
-    shipping,
-    tax,
-    total,
-  };
-};
+    return {
+      subtotal,
+      discountAmount,
+      discountedSubtotal,
+      shipping,
+      tax,
+      total,
+    };
+  },
+);

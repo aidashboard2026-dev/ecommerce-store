@@ -132,3 +132,23 @@ export function useActiveBanners() {
     retry: 1,
   })
 }
+
+
+export function useCustomProducts(filters = {}) {
+  return useQuery({
+    queryKey: ['custom-products', filters],
+    queryFn: () =>
+      storefrontAPI.getCustomProducts(filters).then((r) => r.data),
+    staleTime: 60_000,
+  })
+}
+
+export function useCustomProduct(id) {
+  return useQuery({
+    queryKey: ['custom-product', id],
+    queryFn: () =>
+      storefrontAPI.getCustomProduct(id).then((r) => r.data),
+    enabled: !!id,
+    staleTime: 60_000,
+  })
+}

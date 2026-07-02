@@ -1,8 +1,9 @@
-import React from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
-import { PRODUCT_TYPES } from '@/storefront/components/customProductTypes'
-import CustomProductForm from '@/storefront/components/CustomProductForm'
+import React from "react";
+import { Link, useParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+
+import CustomProductForm from "@/storefront/components/CustomProductForm";
+import { useCustomProducts } from "@/storefront/hooks/useProducts";
 
 // Index cards shown at /custom. Cup Printing is offered as two distinct
 // cards (Magic Cup / White Cup) per the brief's 9-section list, even though

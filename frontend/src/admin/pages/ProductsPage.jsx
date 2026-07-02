@@ -317,6 +317,7 @@ export default function ProductsPage() {
   const [genderFilter, setGenderFilter] = useState('')
   const [stockStatus, setStockStatus]   = useState('')
   const [flagFilters, setFlagFilters]   = useState({})
+  const [sortBy, setSortBy]             = useState('')
   const [page, setPage]                 = useState(1)
   const [selectedIds, setSelectedIds]   = useState(new Set())
 
@@ -336,7 +337,7 @@ export default function ProductsPage() {
   // Reset page on any filter change
   React.useEffect(() => { setPage(1); setSelectedIds(new Set()) },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [debouncedSearch, statusFilter, categoryId, collectionId, genderFilter, stockStatus, flagKey])
+    [debouncedSearch, statusFilter, categoryId, collectionId, genderFilter, stockStatus, flagKey, sortBy])
 
   // ── Data queries ─────────────────────────────────────────────────────────────
 
@@ -351,6 +352,7 @@ export default function ProductsPage() {
     is_trending:    flagFilters.is_trending    || undefined,
     is_best_seller: flagFilters.is_best_seller || undefined,
     is_new_arrival: flagFilters.is_new_arrival || undefined,
+    sort_by:        sortBy        || undefined,
     page,
     per_page: 15,
   }
@@ -373,19 +375,12 @@ export default function ProductsPage() {
     staleTime: 5 * 60_000,
   })
 
+  // Filter collections to those belonging to the selected category.
+  // If no category is selected, show all collections.
   const filteredCollections = useMemo(() => {
     if (!categoryId) return collections
-    const selectedCat = categories.find(c => String(c.id) === String(categoryId))
-    // Variant section is always available — backend enforces per-category rules
-    const isMainProduct = true
-    if (isMainProduct) {
-      return collections.filter(c => {
-        const norm = c.name.trim().toLowerCase()
-        return ["men", "women", "kids"].includes(norm) || String(c.category_id) === String(categoryId)
-      })
-    }
     return collections.filter(c => String(c.category_id) === String(categoryId))
-  }, [collections, categoryId, categories])
+  }, [collections, categoryId])
 
   // ── Mutations ────────────────────────────────────────────────────────────────
 
@@ -471,7 +466,7 @@ export default function ProductsPage() {
     bulkMutation.mutate({ product_ids: [...selectedIds], action, ...extra })
   }
 
-  const hasFilters = !!(statusFilter || categoryId || collectionId || genderFilter || stockStatus || Object.keys(flagFilters).some(k => flagFilters[k]))
+  const hasFilters = !!(statusFilter || categoryId || collectionId || genderFilter || stockStatus || sortBy || Object.keys(flagFilters).some(k => flagFilters[k]))
 
   const emptyState = useMemo(() => (
     <div className="py-20 text-center">
@@ -608,7 +603,7 @@ export default function ProductsPage() {
           {hasFilters && (
             <button onClick={() => {
               setStatusFilter(''); setCategoryId(''); setCollectionId('')
-              setGenderFilter(''); setStockStatus(''); setFlagFilters({})
+              setGenderFilter(''); setStockStatus(''); setFlagFilters({}); setSortBy('')
             }} className="text-xs text-muted hover:text-app underline flex items-center gap-1">
               <X size={10} /> Clear filters
             </button>

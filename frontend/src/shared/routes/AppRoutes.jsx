@@ -1,144 +1,157 @@
-import React, { useEffect, useMemo, lazy, Suspense } from 'react'
-import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { useSelector, useDispatch } from 'react-redux'
+import React, { useEffect, useMemo, lazy, Suspense } from "react";
+import {
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
 
 // Admin Layout & Pages
-import { logoutThunk } from '@/admin/store/authSlice'
-import MainLayout from '@/admin/layouts/MainLayout'
+import { logoutThunk } from "@/admin/store/authSlice";
+import MainLayout from "@/admin/layouts/MainLayout";
 
 // Storefront Layout
-import StorefrontLayout from '@/storefront/layouts/StorefrontLayout'
+import StorefrontLayout from "@/storefront/layouts/StorefrontLayout";
 import ProductDetails from "@/storefront/components/ProductDetails";
+import OrderSuccess from "@/storefront/components/checkout/OrderSuccess";
 import ReturnsPolicy from "@/storefront/pages/ReturnsPolicy";
 
 // Lazy loaded pages/components to optimize bundle sizes
-const AdminLoginPage = lazy(() => import('@/admin/pages/LoginPage'))
-const DashboardPage = lazy(() => import('@/admin/pages/DashboardPage'))
-const AdminProductsPage = lazy(() => import('@/admin/pages/ProductsPage'))
-const AdminOrdersPage = lazy(() => import('@/admin/pages/OrdersPage'))
-const OffersPage = lazy(() => import('@/admin/pages/OffersPage'))
-const CustomersPage = lazy(() => import('@/admin/pages/CustomersPage'))
-const SettingsPage = lazy(() => import('@/admin/pages/SettingsPage'))
-const BannerPage = lazy(() => import('@/admin/pages/BannerPage'))
-const CustomProductsPage = lazy(() => import('@/admin/pages/CustomProductsPage'))
+const AdminLoginPage = lazy(() => import("@/admin/pages/LoginPage"));
+const DashboardPage = lazy(() => import("@/admin/pages/DashboardPage"));
+const AdminProductsPage = lazy(() => import("@/admin/pages/ProductsPage"));
+const AdminOrdersPage = lazy(() => import("@/admin/pages/OrdersPage"));
+const OffersPage = lazy(() => import("@/admin/pages/OffersPage"));
+const CustomersPage = lazy(() => import("@/admin/pages/CustomersPage"));
+const SettingsPage = lazy(() => import("@/admin/pages/SettingsPage"));
+const BannerPage = lazy(() => import("@/admin/pages/BannerPage"));
+const CustomProductsPage = lazy(
+  () => import("@/admin/pages/CustomProductsPage"),
+);
 
 // Storefront Pages
-const HomePage = lazy(() => import('@/storefront/pages/HomePage'))
-const ProductsPage = lazy(() => import('@/storefront/pages/ProductsPage'))
-const CartPage = lazy(() => import('@/storefront/pages/CartPage'))
-const OrdersPage = lazy(() => import('@/storefront/pages/OrdersPage'))
-const ProfilePage = lazy(() => import('@/storefront/pages/ProfilePage'))
-const AuthPage = lazy(() => import('@/storefront/pages/AuthPage'))
-const ResetPasswordPage = lazy(() => import('@/storefront/pages/ResetPasswordPage'))
-const SupportPage = lazy(() => import('@/storefront/pages/SupportPage'))
-const CustomPage = lazy(() => import('@/storefront/pages/CustomPage'))
-const NotFoundPage = lazy(() => import('@/storefront/pages/NotFoundPage'))
+const HomePage = lazy(() => import("@/storefront/pages/HomePage"));
+const ProductsPage = lazy(() => import("@/storefront/pages/ProductsPage"));
+const CartPage = lazy(() => import("@/storefront/pages/CartPage"));
+const OrdersPage = lazy(() => import("@/storefront/pages/OrdersPage"));
+const ProfilePage = lazy(() => import("@/storefront/pages/ProfilePage"));
+const AuthPage = lazy(() => import("@/storefront/pages/AuthPage"));
+const ResetPasswordPage = lazy(
+  () => import("@/storefront/pages/ResetPasswordPage"),
+);
+const SupportPage = lazy(() => import("@/storefront/pages/SupportPage"));
+const CustomPage = lazy(() => import("@/storefront/pages/CustomPage"));
+const StorefrontOffersPage = lazy(
+  () => import("@/storefront/pages/OffersPage"),
+);
+const NotFoundPage = lazy(() => import("@/storefront/pages/NotFoundPage"));
 
 // Storefront components used directly as route elements
-const CheckoutPage = lazy(() => import('@/storefront/components/checkout/CheckoutPage'))
-const WishlistGrid = lazy(() => import('@/storefront/components/WishlistGrid'))
-const ProductDetailsPage = lazy(() => import('@/storefront/pages/CustomProductDetailsPage'))
+const CheckoutPage = lazy(
+  () => import("@/storefront/components/checkout/CheckoutPage"),
+);
+const WishlistGrid = lazy(() => import("@/storefront/components/WishlistGrid"));
+const ProductDetailsPage = lazy(
+  () => import("@/storefront/pages/CustomProductDetailsPage"),
+);
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-app">
     <div className="w-10 h-10 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
   </div>
-)
+);
 
 // ── ADMIN AUTH STATE ──────────────────────────────────────────────────────────
 function useAdminAuthState() {
   return useSelector((s) => ({
     isAuthenticated: !!s.auth.admin,
     initialized: s.auth.initialized,
-  }))
+  }));
 }
 
 function AdminProtectedRoute({ children }) {
-  const { isAuthenticated, initialized } = useAdminAuthState()
+  const { isAuthenticated, initialized } = useAdminAuthState();
 
-  if (!initialized) return <Spinner />
+  if (!initialized) return <Spinner />;
 
-  return isAuthenticated
-    ? children
-    : <Navigate to="/admin/login" replace />
+  return isAuthenticated ? children : <Navigate to="/admin/login" replace />;
 }
 
 function AdminPublicRoute({ children }) {
-  const { isAuthenticated, initialized } = useAdminAuthState()
+  const { isAuthenticated, initialized } = useAdminAuthState();
 
-  if (!initialized) return <Spinner />
+  if (!initialized) return <Spinner />;
 
-  return isAuthenticated
-    ? <Navigate to="/admin" replace />
-    : children
+  return isAuthenticated ? <Navigate to="/admin" replace /> : children;
 }
 
 // ── CUSTOMER AUTH STATE ──────────────────────────────────────────────────────
 function CustomerProtectedRoute({ children }) {
-  const { token, customer } = useSelector((s) => s.customer)
+  const { token, customer } = useSelector((s) => s.customer);
 
-  return token && customer
-    ? children
-    : <Navigate to="/auth/login" replace />
+  return token && customer ? children : <Navigate to="/auth/login" replace />;
 }
 
 function CustomerPublicRoute({ children }) {
-  const { token, customer } = useSelector((s) => s.customer)
+  const { token, customer } = useSelector((s) => s.customer);
 
-  return token && customer
-    ? <Navigate to="/profile" replace />
-    : children
+  return token && customer ? <Navigate to="/profile" replace /> : children;
 }
 
 // Helper component to redirect legacy category URLs to storefront catalog search
 function CategoryRedirect() {
-  const { slug } = useParams()
+  const { slug } = useParams();
   const normalizedCategory = useMemo(() => {
-    if (!slug) return ''
+    if (!slug) return "";
+    // Map legacy URL slugs to canonical category slugs (must match Category.slug in DB)
     const mapping = {
-      't-shirt': 'T-Shirt',
-      'track-pant': 'Track Pant',
-      'jersey': 'Jersey',
-      'shirt': 'Shirt',
-      'trouser': 'Trouser',
-      't-shirts': 'T-Shirt',
-      'track-pants': 'Track Pant',
-      'jerseys': 'Jersey',
-      'shirts': 'Shirt',
-      'trousers': 'Trouser',
-    }
-    return mapping[slug.toLowerCase()] || slug
-  }, [slug])
+      "t-shirt": "t-shirt",
+      "track-pant": "track-pant",
+      "jersey": "jersey",
+      "shirt": "shirt",
+      "trouser": "trouser",
+      "t-shirts": "t-shirt",
+      "track-pants": "track-pant",
+      "jerseys": "jersey",
+      "shirts": "shirt",
+      "trousers": "trouser",
+    };
+    return mapping[slug.toLowerCase()] || slug.toLowerCase();
+  }, [slug]);
 
-  return <Navigate to={`/products?category=${encodeURIComponent(normalizedCategory)}`} replace />
+  return (
+    <Navigate
+      to={`/products?category=${encodeURIComponent(normalizedCategory)}`}
+      replace
+    />
+  );
 }
 
 export default function AppRoutes() {
-  const navigate = useNavigate()
-  const dispatch = useDispatch()
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   // Admin unauthorized/session expiration handler
   useEffect(() => {
     const handle = () => {
-      dispatch(logoutThunk())
-      navigate('/admin/login', { replace: true })
-    }
+      dispatch(logoutThunk());
+      navigate("/admin/login", { replace: true });
+    };
 
-    window.addEventListener('auth:unauthorized', handle)
+    window.addEventListener("auth:unauthorized", handle);
 
     return () => {
-      window.removeEventListener('auth:unauthorized', handle)
-    }
-  }, [dispatch, navigate])
+      window.removeEventListener("auth:unauthorized", handle);
+    };
+  }, [dispatch, navigate]);
 
   return (
     <Suspense fallback={<Spinner />}>
       <Routes>
         {/* ── BACKWARD COMPATIBILITY REDIRECTS ─────────────────────────────── */}
-        <Route
-          path="/login"
-          element={<Navigate to="/admin/login" replace />}
-        />
+        <Route path="/login" element={<Navigate to="/admin/login" replace />} />
 
         <Route
           path="/signup"
@@ -183,12 +196,13 @@ export default function AppRoutes() {
           <Route path="products" element={<ProductsPage />} />
           <Route path="products/:slug" element={<ProductsPage />} />
 
-            <Route
-    path="returns-policy"
-    element={<ReturnsPolicy />}
-  />
+          <Route path="returns-policy" element={<ReturnsPolicy />} />
+          <Route path="order-success" element={<OrderSuccess />} />
 
-          <Route path="sub-products" element={<Navigate to="/products" replace />} />
+          <Route
+            path="sub-products"
+            element={<Navigate to="/products" replace />}
+          />
           <Route path="category/:slug" element={<CategoryRedirect />} />
 
           <Route path="cart" element={<CartPage />} />
@@ -196,6 +210,7 @@ export default function AppRoutes() {
           {/* Custom orders (new) */}
           <Route path="custom" element={<CustomPage />} />
           <Route path="custom/:productType" element={<CustomPage />} />
+          <Route path="offers" element={<StorefrontOffersPage />} />
 
           {/* Support / info (new) */}
           <Route path="support" element={<SupportPage />} />
@@ -209,10 +224,7 @@ export default function AppRoutes() {
               one page component that dispatches internally on the route */}
           <Route path="tracking" element={<OrdersPage />} />
           <Route path="wishlist" element={<WishlistGrid />} />
-          <Route
-              path="/product/:id"
-              element={<ProductDetailsPage />}
-          />
+          <Route path="/product/:id" element={<ProductDetailsPage />} />
           {/* Customer Auth — login/register/forgot-password consolidated;
               /auth/signup kept as a legacy alias for /auth/register */}
           <Route
@@ -251,19 +263,10 @@ export default function AppRoutes() {
             }
           />
 
-          <Route
-            path="auth/reset-password"
-            element={<ResetPasswordPage />}
-          />
+          <Route path="auth/reset-password" element={<ResetPasswordPage />} />
 
           {/* Protected Customer Routes */}
-          <Route
-            path="checkout"
-            element={
-                <CheckoutPage />
-              
-            }
-          />
+          <Route path="checkout" element={<CheckoutPage />} />
 
           <Route
             path="payment"
@@ -368,5 +371,5 @@ export default function AppRoutes() {
         </Route>
       </Routes>
     </Suspense>
-  )
+  );
 }

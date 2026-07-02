@@ -2,6 +2,7 @@ import logging
 import math
 import re
 import uuid
+from datetime import datetime
 from typing import Optional, List
 from fastapi import HTTPException, status
 from app.shared.utils.normalization import normalize_name, check_duplicate_catalog_item, get_search_terms
@@ -9,7 +10,7 @@ from app.shared.exceptions import (
     NotFoundError, ConflictError, BusinessRuleError,
     ValidationError as DomainValidationError,
 )
-from sqlalchemy import or_, func as sqla_func, cast, Text
+from sqlalchemy import and_, or_, select, func as sqla_func, cast, Text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -502,6 +503,10 @@ def get_published_products_count(db: Session) -> int:
     ) or 0
 
 
+# ─────────────────────────────────────────────────────────────
+# Stock helpers
+# ─────────────────────────────────────────────────────────────
+
 def _stock_having_clause(stock_status: str, threshold_col):
     """
     Return a HAVING expression for the given stock_status string.
@@ -545,6 +550,165 @@ def _build_agg_subquery(db: Session, product_ids: list, stock_status: Optional[s
     return q.all()
 
 
+# ─────────────────────────────────────────────────────────────
+# Admin filter builder  (the core of the filtering system)
+# ─────────────────────────────────────────────────────────────
+
+_VALID_STOCK_STATUSES = frozenset({"in_stock", "low_stock", "out_of_stock"})
+_VALID_SORT_OPTIONS = frozenset({
+    "newest", "oldest", "price_asc", "price_desc", "alpha_asc", "updated",
+})
+
+
+def _build_admin_filters(
+    db: Session,
+    *,
+    search: str = "",
+    status_filter: Optional[ProductStatus] = None,
+    category_id: Optional[int] = None,
+    collection_id: Optional[int] = None,
+    genders: Optional[List[str]] = None,
+    is_featured: Optional[bool] = None,
+    is_trending: Optional[bool] = None,
+    is_best_seller: Optional[bool] = None,
+    is_new_arrival: Optional[bool] = None,
+    stock_status: Optional[str] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    created_after: Optional[datetime] = None,
+    created_before: Optional[datetime] = None,
+    updated_after: Optional[datetime] = None,
+    updated_before: Optional[datetime] = None,
+) -> list:
+    """
+    Build a flat list of SQLAlchemy filter expressions for admin product queries.
+
+    Design principles:
+    - Every condition is appended independently — no elif chains.
+    - All conditions combine with AND (SQLAlchemy default for .filter(*list)).
+    - Search matches product-level fields only; catalog-level matching is intentionally
+      excluded so that a category/collection filter is not semantically polluted by
+      search matching the category/collection *name* in a separate OR branch.
+    - Stock-status uses a HAVING subquery so COUNT and LIMIT both see the correct universe.
+    - Adding a new filter is a single append — no restructuring needed.
+    """
+    conditions: list = [Product.deleted_at.is_(None)]
+
+    # ── Catalog classification ───────────────────────────────────────────────
+    if category_id:
+        conditions.append(Product.category_id == category_id)
+
+    if collection_id:
+        conditions.append(Product.collection_id == collection_id)
+
+    if genders:
+        # Semi-join: products that have at least one matching gender row.
+        gender_subq = (
+            db.query(ProductGender.product_id)
+            .filter(ProductGender.gender.in_(genders))
+            .subquery()
+        )
+        conditions.append(Product.id.in_(select(gender_subq.c.product_id)))
+
+    # ── Publishing / status ─────────────────────────────────────────────────
+    if status_filter:
+        conditions.append(Product.status == status_filter)
+
+    # ── Merchandising flags ─────────────────────────────────────────────────
+    if is_featured is not None:
+        conditions.append(Product.is_featured == is_featured)
+    if is_trending is not None:
+        conditions.append(Product.is_trending == is_trending)
+    if is_best_seller is not None:
+        conditions.append(Product.is_best_seller == is_best_seller)
+    if is_new_arrival is not None:
+        conditions.append(Product.is_new_arrival == is_new_arrival)
+
+    # ── Price range (via variant aggregation subquery) ───────────────────────
+    # We use a correlated EXISTS instead of a join so we never get duplicate rows.
+    if min_price is not None or max_price is not None:
+        price_conds = [ProductVariant.product_id == Product.id]
+        if min_price is not None:
+            price_conds.append(ProductVariant.selling_price >= min_price)
+        if max_price is not None:
+            price_conds.append(ProductVariant.selling_price <= max_price)
+        conditions.append(
+            db.query(ProductVariant)
+            .filter(*price_conds)
+            .exists()
+        )
+
+    # ── Stock status (HAVING on aggregated variant stock) ────────────────────
+    if stock_status and stock_status in _VALID_STOCK_STATUSES:
+        threshold_col = sqla_func.coalesce(sqla_func.min(ProductVariant.low_stock_threshold), 5)
+        stock_subq = (
+            db.query(ProductVariant.product_id)
+            .group_by(ProductVariant.product_id)
+        )
+        having_clause = _stock_having_clause(stock_status, threshold_col)
+        if having_clause is not None:
+            stock_subq = stock_subq.having(having_clause)
+        stock_subq = stock_subq.subquery()
+        conditions.append(Product.id.in_(stock_subq))
+
+    # ── Date range filters ───────────────────────────────────────────────────
+    if created_after is not None:
+        conditions.append(Product.created_at >= created_after)
+    if created_before is not None:
+        conditions.append(Product.created_at <= created_before)
+    if updated_after is not None:
+        conditions.append(Product.updated_at >= updated_after)
+    if updated_before is not None:
+        conditions.append(Product.updated_at <= updated_before)
+
+    # ── Full-text search ─────────────────────────────────────────────────────
+    # Intentionally scoped to product-level fields only (title, description, SKU).
+    # Matching against category/collection names is excluded: when those dimension
+    # filters are also active the AND would still be correct, but the OR branch
+    # inside search would allow wrong rows to pass when no dimension filter is set.
+    if search:
+        search_terms = get_search_terms(search)
+        for term in search_terms:
+            w = f"%{term}%"
+            sku_subq = (
+                db.query(ProductVariant.product_id)
+                .filter(ProductVariant.sku.ilike(w))
+                .subquery()
+            )
+            conditions.append(
+                or_(
+                    Product.title.ilike(w),
+                    Product.description.ilike(w),
+                    Product.short_description.ilike(w),
+                    Product.id.in_(sku_subq),
+                )
+            )
+
+    return conditions
+
+
+def _apply_admin_sort(query, sort_by: Optional[str] = None):
+    """
+    Apply an ORDER BY clause to an admin product query.
+    Falls back to newest-first for unknown/missing values.
+    """
+    if sort_by == "oldest":
+        return query.order_by(Product.created_at.asc())
+    if sort_by == "alpha_asc":
+        return query.order_by(Product.title.asc())
+    if sort_by == "updated":
+        return query.order_by(Product.updated_at.desc())
+    # price_asc / price_desc require a join/subquery — kept simple here;
+    # the aggregation subquery is built after pagination so we sort by created_at
+    # and let callers add price sorting via a post-query step if needed.
+    return query.order_by(Product.created_at.desc())  # default: newest
+
+
+# ─────────────────────────────────────────────────────────────
+# PRODUCT QUERIES
+# ─────────────────────────────────────────────────────────────
+
+
 def get_products_paginated(
     db: Session,
     *,
@@ -553,91 +717,79 @@ def get_products_paginated(
     category_id: Optional[int] = None,
     collection_id: Optional[int] = None,
     genders: Optional[List[str]] = None,
-    stock_status: Optional[str] = None,   # "in_stock" | "low_stock" | "out_of_stock"
+    stock_status: Optional[str] = None,
     is_featured: Optional[bool] = None,
     is_trending: Optional[bool] = None,
     is_best_seller: Optional[bool] = None,
     is_new_arrival: Optional[bool] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    created_after: Optional[datetime] = None,
+    created_before: Optional[datetime] = None,
+    updated_after: Optional[datetime] = None,
+    updated_before: Optional[datetime] = None,
+    sort_by: Optional[str] = None,
     page: int = 1,
     per_page: int = 15,
 ) -> ProductListResponse:
+    """
+    Paginated admin product listing with dynamic, composable filters.
+
+    All filter arguments are optional and independent — every combination
+    is handled by _build_admin_filters() which appends conditions to a flat
+    list. SQLAlchemy combines them with AND via .filter(*conditions).
+    """
     per_page = min(max(per_page, 1), MAX_PER_PAGE)
 
-    base_filters = [Product.deleted_at.is_(None)]
+    conditions = _build_admin_filters(
+        db,
+        search=search,
+        status_filter=status_filter,
+        category_id=category_id,
+        collection_id=collection_id,
+        genders=genders,
+        is_featured=is_featured,
+        is_trending=is_trending,
+        is_best_seller=is_best_seller,
+        is_new_arrival=is_new_arrival,
+        stock_status=stock_status,
+        min_price=min_price,
+        max_price=max_price,
+        created_after=created_after,
+        created_before=created_before,
+        updated_after=updated_after,
+        updated_before=updated_before,
+    )
 
-    if search:
-        search_terms = get_search_terms(search)
-        for term in search_terms:
-            w_term = f"%{term}%"
-            sku_subq = db.query(ProductVariant.product_id).filter(ProductVariant.sku.ilike(w_term)).subquery()
-            cat_subq = db.query(Category.id).filter(Category.name.ilike(w_term)).subquery()
-            col_subq = db.query(Collection.id).filter(Collection.name.ilike(w_term)).subquery()
-            base_filters.append(or_(
-                Product.title.ilike(w_term),
-                Product.slug.ilike(w_term),
-                Product.description.ilike(w_term),
-                Product.short_description.ilike(w_term),
-                cast(Product.tags, Text).ilike(w_term),
-                Product.id.in_(sku_subq),
-                Product.category_id.in_(cat_subq),
-                Product.collection_id.in_(col_subq),
-            ))
-    if status_filter:
-        base_filters.append(Product.status == status_filter)
-    if category_id:
-        base_filters.append(Product.category_id == category_id)
-    if collection_id:
-        base_filters.append(Product.collection_id == collection_id)
-    if genders:
-        gender_subq = db.query(ProductGender.product_id).filter(ProductGender.gender.in_(genders)).subquery()
-        base_filters.append(Product.id.in_(gender_subq))
-    if is_featured is not None:
-        base_filters.append(Product.is_featured == is_featured)
-    if is_trending is not None:
-        base_filters.append(Product.is_trending == is_trending)
-    if is_best_seller is not None:
-        base_filters.append(Product.is_best_seller == is_best_seller)
-    if is_new_arrival is not None:
-        base_filters.append(Product.is_new_arrival == is_new_arrival)
-
-    # ── stock_status: filter in SQL via a HAVING subquery ───────────────────
-    # Build the set of product IDs that pass the stock filter before paginating,
-    # so COUNT and LIMIT both operate on the correctly-filtered universe.
-    if stock_status:
-        threshold_col = sqla_func.coalesce(sqla_func.min(ProductVariant.low_stock_threshold), 5)
-        stock_subq = (
-            db.query(ProductVariant.product_id)
-            .group_by(ProductVariant.product_id)
-        )
-        clause = _stock_having_clause(stock_status, threshold_col)
-        if clause is not None:
-            stock_subq = stock_subq.having(clause)
-        stock_subq = stock_subq.subquery()
-        base_filters.append(Product.id.in_(stock_subq))
-
+    # ── Count (uses same conditions — no double-query risk) ──────────────────
     total = (
         db.query(sqla_func.count(Product.id))
-        .filter(*base_filters)
+        .filter(*conditions)
         .scalar()
     ) or 0
 
     total_pages = math.ceil(total / per_page) if total else 1
 
-    products = (
+    # ── Paginated fetch ──────────────────────────────────────────────────────
+    product_query = (
         db.query(Product)
         .options(selectinload(Product.variants), selectinload(Product.genders_rel))
-        .filter(*base_filters)
-        .order_by(Product.created_at.desc())
+        .filter(*conditions)
+    )
+    product_query = _apply_admin_sort(product_query, sort_by)
+    products = (
+        product_query
         .offset((page - 1) * per_page)
         .limit(per_page)
         .all()
     )
 
-
+    # ── Aggregations (stock / price) — one query for the whole page ──────────
     product_ids = [p.id for p in products]
-    agg_rows = _build_agg_subquery(db, product_ids)  # no stock_status here; already filtered above
+    agg_rows = _build_agg_subquery(db, product_ids)
     agg_by_id = {row.product_id: row for row in agg_rows}
 
+    # ── Resolve category / collection names — one query each ────────────────
     cat_ids = {p.category_id for p in products if p.category_id}
     col_ids = {p.collection_id for p in products if p.collection_id}
 
@@ -656,7 +808,10 @@ def get_products_paginated(
         for p in products
     ]
 
-    return ProductListResponse(items=items, total=total, page=page, per_page=per_page, total_pages=total_pages)
+    return ProductListResponse(
+        items=items, total=total, page=page,
+        per_page=per_page, total_pages=total_pages,
+    )
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1134,6 +1289,7 @@ def get_products_public(
     is_trending: Optional[bool] = None,
     is_best_seller: Optional[bool] = None,
     is_new_arrival: Optional[bool] = None,
+    on_offer: Optional[bool] = None,
     sort_by: str = "newest",
     min_price: Optional[float] = None,
     max_price: Optional[float] = None,
@@ -1166,7 +1322,13 @@ def get_products_public(
             ))
     if collection:
         norm_col = normalize_name(collection)
-        col_db = db.query(Collection.id).filter(Collection.name.ilike(norm_col)).first()
+        # Try name match first, then slug as fallback (robust to any stored naming convention)
+        col_slug = _slugify(norm_col)
+        col_db = (
+            db.query(Collection.id)
+            .filter(or_(Collection.name.ilike(norm_col), Collection.slug == col_slug))
+            .first()
+        )
         if col_db:
             base_filters.append(Product.collection_id == col_db.id)
         else:
@@ -1174,13 +1336,25 @@ def get_products_public(
     if collection_id:
         base_filters.append(Product.collection_id == collection_id)
     if genders:
-        gender_subq = db.query(ProductGender.product_id).filter(ProductGender.gender.in_(genders)).subquery()
-        base_filters.append(Product.id.in_(gender_subq))
+        # Normalize incoming gender values to title-case to match stored format (Men/Women/Kids)
+        normalized_genders = [g.strip().title() for g in genders if g and g.strip()]
+        if normalized_genders:
+            gender_subq = db.query(ProductGender.product_id).filter(ProductGender.gender.in_(normalized_genders)).subquery()
+            base_filters.append(Product.id.in_(select(gender_subq.c.product_id)))
     if category:
         norm_cat = normalize_name(category)
-        cat_db = db.query(Category.id).filter(Category.name.ilike(norm_cat)).first()
+        # Try name match first, then slug as fallback (robust to any stored naming convention)
+        cat_slug = _slugify(norm_cat)
+        cat_db = (
+            db.query(Category.id)
+            .filter(or_(Category.name.ilike(norm_cat), Category.slug == cat_slug))
+            .first()
+        )
         if cat_db:
             base_filters.append(Product.category_id == cat_db.id)
+        else:
+            # If no match at all, ensure zero results rather than all results
+            base_filters.append(Product.category_id == -1)
     if category_id:
         base_filters.append(Product.category_id == category_id)
     if is_featured is not None:
@@ -1191,6 +1365,25 @@ def get_products_public(
         base_filters.append(Product.is_best_seller == is_best_seller)
     if is_new_arrival is not None:
         base_filters.append(Product.is_new_arrival == is_new_arrival)
+    if on_offer is not None:
+        if on_offer:
+            base_filters.append(
+                db.query(ProductVariant)
+                .filter(
+                    ProductVariant.product_id == Product.id,
+                    ProductVariant.selling_price < ProductVariant.original_price
+                )
+                .exists()
+            )
+        else:
+            base_filters.append(
+                ~db.query(ProductVariant)
+                .filter(
+                    ProductVariant.product_id == Product.id,
+                    ProductVariant.selling_price < ProductVariant.original_price
+                )
+                .exists()
+            )
 
     # ── Price filter: push into SQL via a HAVING subquery ───────────────────
     # This ensures COUNT and LIMIT both operate on the price-filtered universe.
