@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { CartBadge } from "@/storefront/components/cart";
 import { openCartDrawer } from "@/storefront/store/cartSlice";
+import useStoreSettings from '@/shared/hooks/useStoreSettings'
 
 export default function StoreHeader({
   toggleTheme,
@@ -28,6 +29,9 @@ export default function StoreHeader({
   handleLogout,
 }) {
   const dispatch = useDispatch();
+  const { settings } = useStoreSettings()
+  const logoUrl = settings?.logo
+  const storeName = settings?.store_name || 'AuraStore'
   const navigate = useNavigate();
   const location = useLocation();
   const searchRef = useRef(null);
@@ -96,11 +100,25 @@ export default function StoreHeader({
         <div className="mx-auto w-full max-w-[1400px] flex items-center justify-between gap-4">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2.5  group shrink-0">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-indigo-600 text-white shadow-glow-sm transition-transform duration-300 group-hover:scale-105">
-              <Zap size={18} strokeWidth={2.5} />
-            </div>
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={storeName}
+                className="h-9 w-9 rounded-full object-cover transition-transform duration-300 group-hover:scale-105"
+              />
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-indigo-600 text-white shadow-glow-sm transition-transform duration-300 group-hover:scale-105">
+                <Zap size={18} strokeWidth={2.5} />
+              </div>
+            )}
             <span className="font-display font-bold text-lg text-app tracking-tight">
-              Aura<span className="text-brand-500">Store</span>
+              {logoUrl || settings?.store_name ? (
+                <span>{storeName}</span>
+              ) : (
+                <>
+                  Aura<span className="text-brand-500">Store</span>
+                </>
+              )}
             </span>
           </Link>
 

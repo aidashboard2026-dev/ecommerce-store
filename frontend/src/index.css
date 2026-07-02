@@ -428,3 +428,59 @@
 .react-calendar__month-view__weekdays__weekday * {
   text-decoration: none !important;
 }
+
+
+
+
+
+
+
+/* Store front  prodcut sort by Filter related tailwind css  */
+
+.slider{
+  -webkit-appearance:none;
+  appearance:none;
+  pointer-events:none;
+  background:transparent;
+  height:30px;
+}
+
+.slider::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  appearance:none;
+
+  pointer-events:auto;
+
+  width:18px;
+  height:18px;
+
+  border-radius:999px;
+
+  background:white;
+
+  border:2px solid #111;
+
+  cursor:pointer;
+
+  transition:.2s;
+}
+
+.slider::-webkit-slider-thumb:hover{
+
+  transform:scale(1.1);
+
+}
+
+.slider::-moz-range-thumb{
+
+  width:18px;
+
+  height:18px;
+
+  border-radius:999px;
+
+  background:white;
+
+  cursor:pointer;
+
+}

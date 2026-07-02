@@ -185,4 +185,13 @@ function ProductCard({ product }) {
   );
 }
 
-export default memo(ProductCard);
+export default memo(
+    ProductCard,
+    (prev,next)=>{
+        return (
+            prev.product.id===next.product.id &&
+            prev.product.updated_at===next.product.updated_at &&
+            prev.product.total_stock===next.product.total_stock
+        );
+    }
+);

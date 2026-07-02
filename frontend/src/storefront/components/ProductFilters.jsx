@@ -21,7 +21,7 @@ const RATINGS = [4, 3, 2]
 export default function ProductFilters({
   collections = [],
   categories = [],
-  subCollections = [],
+  genders = [],
   filters,
   onChange,
   onReset,
@@ -124,31 +124,31 @@ export default function ProductFilters({
         </div>
       )}
 
-      {/* Sub Collection */}
-      {subCollections.length > 0 && (
+      {/* Gender */}
+      {genders.length > 0 && (
         <div>
-          <h4 className="text-xs font-bold uppercase tracking-wider text-app mb-3">Style / Sub-Collection</h4>
+          <h4 className="text-xs font-bold uppercase tracking-wider text-app mb-3">Gender</h4>
           <div className="flex flex-col gap-2">
             <label className="flex items-center gap-2 text-sm text-app cursor-pointer">
               <input
                 type="radio"
-                name="sub_collection"
-                checked={!filters.sub_collection}
-                onChange={() => update({ sub_collection: '' })}
+                name="gender"
+                checked={!filters.gender}
+                onChange={() => update({ gender: '' })}
                 className="accent-brand-500"
               />
-              All Styles
+              All Genders
             </label>
-            {subCollections.map((sc) => (
-              <label key={sc} className="flex items-center gap-2 text-sm text-app cursor-pointer">
+            {genders.map((g) => (
+              <label key={g} className="flex items-center gap-2 text-sm text-app cursor-pointer">
                 <input
                   type="radio"
-                  name="sub_collection"
-                  checked={filters.sub_collection === sc}
-                  onChange={() => update({ sub_collection: sc })}
+                  name="gender"
+                  checked={filters.gender === g}
+                  onChange={() => update({ gender: g })}
                   className="accent-brand-500"
                 />
-                {sc}
+                {g}
               </label>
             ))}
           </div>
@@ -230,7 +230,7 @@ export default function ProductFilters({
     <>
       {/* Desktop sidebar */}
       <aside className={clsx('hidden lg:block w-64 shrink-0', className)}>
-        <div className="sticky top-24 bg-app border border-app rounded-2xl p-5">{content}</div>
+        <div className="sticky top-24 bg-app border border-gray-300 rounded-2xl p-5">{content}</div>
       </aside>
 
       {/* Mobile drawer */}

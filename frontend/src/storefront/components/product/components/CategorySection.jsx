@@ -16,7 +16,7 @@ export default function CategorySection() {
         {CATEGORIES.map((cat) => (
           <Link
             key={cat.name}
-            to={`/products?sub_collection=${encodeURIComponent(cat.collection)}`}
+            to={`/products?collection=${encodeURIComponent(cat.collection)}`}
             className="group flex flex-col items-center justify-center gap-3 rounded-2xl border border-app bg-surface p-6 sm:p-8 hover:border-brand-500 hover:shadow-card dark:hover:shadow-card-dark transition-all duration-300"
           >
             <span className="text-3xl sm:text-4xl transition-transform duration-300 group-hover:scale-110">

@@ -41,3 +41,4 @@ def downgrade():
     op.drop_index('ix_product_genders_gender', table_name='product_genders')
     op.drop_index('ix_product_genders_product_id', table_name='product_genders')
     op.drop_table('product_genders')
+

@@ -81,6 +81,8 @@ def downgrade():
         "size",
     )
 
+
+def downgrade():
     op.drop_index(
         "ix_custom_products_stock_quantity",
         table_name="custom_products",

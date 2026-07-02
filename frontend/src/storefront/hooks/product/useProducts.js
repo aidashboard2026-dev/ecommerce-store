@@ -11,13 +11,32 @@ const PER_PAGE = 12
 // Infinite scroll product listing
 export function useProductsInfinite(filters) {
   return useInfiniteQuery({
-    queryKey: ['products', filters],
+    queryKey: ["products", filters],
+
     queryFn: ({ pageParam = 1 }) =>
-      fetchProducts({ ...filters, page: pageParam, per_page: PER_PAGE }),
-    getNextPageParam: (lastPage) =>
-      lastPage.page < lastPage.total_pages ? lastPage.page + 1 : undefined,
+      storefrontAPI
+        .getProducts({
+          ...filters,
+          page: pageParam,
+          per_page: PER_PAGE,
+        })
+        .then((r) => r.data),
+
     initialPageParam: 1,
-    staleTime: 60_000,
+
+    getNextPageParam: (lastPage) =>
+      lastPage.page < lastPage.total_pages
+        ? lastPage.page + 1
+        : undefined,
+
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
+
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+
+    placeholderData: (previousData) => previousData,
   })
 }
 

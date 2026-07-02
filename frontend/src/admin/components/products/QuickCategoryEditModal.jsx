@@ -30,13 +30,11 @@ export default function QuickCategoryEditModal({ isOpen, onClose, product }) {
   const qc = useQueryClient()
   const [categoryId, setCategoryId] = useState('')
   const [collectionId, setCollectionId] = useState('')
-  const [subCollection, setSubCollection] = useState('')
 
   useEffect(() => {
     if (isOpen && product) {
       setCategoryId(product.category_id || '')
       setCollectionId(product.collection_id || '')
-      setSubCollection(product.sub_collection || '')
     }
   }, [isOpen, product])
 
@@ -101,7 +99,6 @@ export default function QuickCategoryEditModal({ isOpen, onClose, product }) {
     mutation.mutate({
       category_id: categoryId ? Number(categoryId) : null,
       collection_id: collectionId ? Number(collectionId) : null,
-      sub_collection: subCollection ? subCollection.trim() : null,
     })
   }
 
@@ -132,23 +129,6 @@ export default function QuickCategoryEditModal({ isOpen, onClose, product }) {
             <option value="">— None —</option>
             {filteredCollections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-medium text-muted">Sub-Collection</label>
-          <input
-            list="quick-sub-collections-list"
-            type="text"
-            value={subCollection}
-            onChange={e => setSubCollection(e.target.value)}
-            className="w-full text-xs bg-app border border-app rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-            placeholder="e.g. Essentials, Casual"
-          />
-          <datalist id="quick-sub-collections-list">
-            {(filteredCollections.find(c => String(c.id) === String(collectionId))?.sub_collections || []).map(sub => (
-              <option key={sub} value={sub} />
-            ))}
-          </datalist>
         </div>
 
         <div className="flex gap-3 pt-2">

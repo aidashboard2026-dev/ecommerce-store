@@ -23,6 +23,7 @@ import { logout } from '@/admin/store/authSlice'
 // import { toggleSidebar } from '@/admin/store/uiSlice'
 import Avatar from '@/shared/components/ui/Avatar'
 import ProfileCard from '@/shared/components/ui/ProfileCard'
+import useStoreSettings from '@/shared/hooks/useStoreSettings'
 
 const navItems = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -319,11 +320,23 @@ export default function Header() {
 }
 
 function Logo({ compact = false, sidebarOpen = true }) {
+  const { settings } = useStoreSettings()
+  const logoUrl = settings?.logo
+  const storeName = settings?.store_name || 'AdminDash'
+
   return (
     <div className="flex items-center gap-2.5 px-5 py-4 h-[53px]">
-      <div className="flex h-7.5 w-7.5 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-glow-sm shrink-0">
-        <Zap size={14} strokeWidth={2.5} />
-      </div>
+      {logoUrl ? (
+        <img
+          src={logoUrl}
+          alt={storeName}
+          className="h-[30px] w-[30px] rounded-lg object-cover shrink-0"
+        />
+      ) : (
+        <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-glow-sm shrink-0">
+          <Zap size={14} strokeWidth={2.5} />
+        </div>
+      )}
       <span
         className={clsx(
           'font-display text-sm font-bold tracking-tight text-app transition-all duration-200 truncate',
@@ -331,7 +344,13 @@ function Logo({ compact = false, sidebarOpen = true }) {
           sidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 overflow-hidden'
         )}
       >
-        Admin<span className="text-brand-500">Dash</span>
+        {logoUrl ? (
+          <span>{storeName}</span>
+        ) : (
+          <>
+            Admin<span className="text-brand-500">Dash</span>
+          </>
+        )}
       </span>
     </div>
   )

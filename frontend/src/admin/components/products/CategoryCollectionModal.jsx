@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Edit2, Trash2, Check, X, Loader2, AlertTriangle, Tag, Layers, FolderOpen } from 'lucide-react'
+import { Plus, Edit2, Trash2, Check, X, Loader2, AlertTriangle, Tag, Layers } from 'lucide-react'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
 import Modal from '@/shared/components/common/Modal'
-import { categoriesAPI, collectionsAPI, subCollectionsAPI } from '@/shared/services/api'
+import { categoriesAPI, collectionsAPI } from '@/shared/services/api'
 import useBusinessLimits from '@/shared/hooks/useBusinessLimits'
 import useDefaultCatalog from '@/shared/hooks/useDefaultCatalog'
 import { getStructuralLimitMessage } from '@/shared/utils/limitMessages'
@@ -171,14 +171,10 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
   const [tab, setTab] = useState('categories')
 
   const [newCollectionCategoryId, setNewCollectionCategoryId] = useState('')
-  const [selectedCollectionId, setSelectedCollectionId] = useState('')
-  const [savingSubId, setSavingSubId] = useState(null)
-  const [deletingSubId, setDeletingSubId] = useState(null)
 
   // Draft inputs for unsaved changes confirmation
   const [catDraft, setCatDraft] = useState('')
   const [colDraft, setColDraft] = useState('')
-  const [subDraft, setSubDraft] = useState('')
 
   // Track whether any mutation happened so we can batch-invalidate products on close
   const dirtyRef = useRef(false)
@@ -190,7 +186,6 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
       dirtyRef.current = false
       setCatDraft('')
       setColDraft('')
-      setSubDraft('')
     }
   }, [isOpen])
 
@@ -206,19 +201,6 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
     queryFn: () => collectionsAPI.list().then(r => r.data),
     enabled: isOpen,
     staleTime: 30_000,
-  })
-
-  // Auto-select first collection when sub-collections tab is opened
-  useEffect(() => {
-    if (tab === 'sub-collections' && !selectedCollectionId && collections.length > 0) {
-      setSelectedCollectionId(String(collections[0].id))
-    }
-  }, [tab, collections, selectedCollectionId])
-
-  const { data: subCollections = [], isLoading: subLoading } = useQuery({
-    queryKey: ['sub-collections', selectedCollectionId],
-    queryFn: () => subCollectionsAPI.list(selectedCollectionId).then(r => r.data),
-    enabled: isOpen && !!selectedCollectionId,
   })
 
   // Only invalidate categories + collections mid-session.
@@ -240,18 +222,17 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
 
   // Custom Close attempt that guards against unsaved draft changes
   const handleCloseAttempt = useCallback(() => {
-    const hasUnsavedChanges = catDraft.trim() !== '' || colDraft.trim() !== '' || subDraft.trim() !== ''
+    const hasUnsavedChanges = catDraft.trim() !== '' || colDraft.trim() !== ''
     if (hasUnsavedChanges) {
       if (window.confirm("You have unsaved changes. Do you want to discard them?")) {
         setCatDraft('')
         setColDraft('')
-        setSubDraft('')
         handleClose()
       }
     } else {
       handleClose()
     }
-  }, [catDraft, colDraft, subDraft, handleClose])
+  }, [catDraft, colDraft, handleClose])
 
   // ── Category mutations ──────────────────────────────────────────────────────
 
@@ -320,42 +301,6 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
     onError: e => toast.error(e.response?.data?.detail || 'Failed to delete collection'),
   })
 
-  // ── Sub-Collection mutations ────────────────────────────────────────────────
-
-  const createSubCollection = useMutation({
-    mutationFn: ({ collectionId, name }) => subCollectionsAPI.create(collectionId, name),
-    onSuccess: () => {
-      toast.success('Sub-collection created successfully.')
-      invalidateCatCol()
-      qc.invalidateQueries({ queryKey: ['sub-collections', selectedCollectionId] })
-    },
-    onError: e => toast.error(e.response?.data?.detail || 'Failed to create sub-collection'),
-  })
-
-  const updateSubCollection = useMutation({
-    mutationFn: ({ collectionId, oldName, newName }) => subCollectionsAPI.update(collectionId, oldName, newName),
-    onMutate: ({ oldName }) => setSavingSubId(oldName),
-    onSettled: () => setSavingSubId(null),
-    onSuccess: () => {
-      toast.success('Sub-collection updated successfully.')
-      invalidateCatCol()
-      qc.invalidateQueries({ queryKey: ['sub-collections', selectedCollectionId] })
-    },
-    onError: e => toast.error(e.response?.data?.detail || 'Failed to update sub-collection'),
-  })
-
-  const deleteSubCollection = useMutation({
-    mutationFn: ({ collectionId, name }) => subCollectionsAPI.delete(collectionId, name),
-    onMutate: ({ name }) => setDeletingSubId(name),
-    onSettled: () => setDeletingSubId(null),
-    onSuccess: () => {
-      toast.success('Sub-collection deleted successfully.')
-      invalidateCatCol()
-      qc.invalidateQueries({ queryKey: ['sub-collections', selectedCollectionId] })
-    },
-    onError: e => toast.error(e.response?.data?.detail || 'Failed to delete sub-collection'),
-  })
-
   return (
     <Modal isOpen={isOpen} onClose={handleCloseAttempt} title="Manage Catalog" size="lg">
       <div className="space-y-4">
@@ -386,7 +331,6 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
           {[
             { key: 'categories',  label: 'Categories',  icon: <Tag size={13} />, count: categories.length },
             { key: 'collections', label: 'Collections', icon: <Layers size={13} />, count: collections.length },
-            { key: 'sub-collections', label: 'Sub-Collections', icon: <FolderOpen size={13} />, count: selectedCollectionId ? subCollections.length : 0 },
           ].map(t => (
             <button
               key={t.key}
@@ -437,13 +381,13 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
               ) : (
                 categories.map(c => (
                   <EditableRow
-                    key={c.id}
-                    item={c}
-                    disabled={isMainCategory(c.name, catalog?.protected_product_categories)}
-                    isSaving={savingCatId === c.id && updateCategory.isPending}
-                    isDeleting={deletingCatId === c.id && deleteCategory.isPending}
-                    onSave={(id, data) => updateCategory.mutate({ id, data })}
-                    onDelete={(id) => deleteCategory.mutate(id)}
+                     key={c.id}
+                     item={c}
+                     disabled={isMainCategory(c.name, catalog?.protected_product_categories)}
+                     isSaving={savingCatId === c.id && updateCategory.isPending}
+                     isDeleting={deletingCatId === c.id && deleteCategory.isPending}
+                     onSave={(id, data) => updateCategory.mutate({ id, data })}
+                     onDelete={(id) => deleteCategory.mutate(id)}
                   />
                 ))
               )}
@@ -514,71 +458,10 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
           </div>
         )}
 
-        {/* Sub-Collections tab */}
-        {tab === 'sub-collections' && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-bold text-muted whitespace-nowrap">Collection:</label>
-              <select
-                value={selectedCollectionId}
-                onChange={e => setSelectedCollectionId(e.target.value)}
-                className="flex-1 text-xs bg-app border border-app rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-              >
-                <option value="">Select a collection…</option>
-                {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-
-            {selectedCollectionId ? (
-              <>
-                <NewItemForm
-                  value={subDraft}
-                  onChange={setSubDraft}
-                  placeholder="New sub-collection name…"
-                  disabled={limitsLoading || !!limitsError || (limits && subCollections.length >= limits.max_sub_collections)}
-                  onAdd={(name) => {
-                    if (!limits) return;
-                    if (subCollections.length >= limits.max_sub_collections) {
-                      toast.error(getStructuralLimitMessage('sub_collection', limits.max_sub_collections), { duration: 6000 });
-                      return;
-                    }
-                    createSubCollection.mutate({ collectionId: selectedCollectionId, name }, {
-                      onSuccess: () => setSubDraft('')
-                    })
-                  }}
-                  isAdding={createSubCollection.isPending}
-                />
-                <div className="space-y-1.5 max-h-72 overflow-y-auto overscroll-contain pr-1">
-                  {subLoading ? (
-                    <div className="py-8 flex justify-center"><Loader2 size={18} className="animate-spin text-muted" /></div>
-                  ) : subCollections.length === 0 ? (
-                    <p className="text-xs text-muted text-center py-6">No sub-collections yet.</p>
-                  ) : (
-                    subCollections.map(name => (
-                      <EditableRow
-                        key={name}
-                        item={{ id: name, name }}
-                        isSaving={savingSubId === name && updateSubCollection.isPending}
-                        isDeleting={deletingSubId === name && deleteSubCollection.isPending}
-                        onSave={(id, data) => updateSubCollection.mutate({ collectionId: selectedCollectionId, oldName: id, newName: data.name })}
-                        onDelete={(id) => deleteSubCollection.mutate({ collectionId: selectedCollectionId, name: id })}
-                      />
-                    ))
-                  )}
-                </div>
-              </>
-            ) : (
-              <p className="text-xs text-muted text-center py-8 bg-app/20 rounded-lg border border-dashed border-app">
-                Select a collection from the dropdown above to manage its sub-collections.
-              </p>
-            )}
-          </div>
-        )}
-
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-app">
           <p className="text-[10px] text-muted flex items-start gap-1.5 max-w-md">
             <AlertTriangle size={11} className="flex-shrink-0 mt-0.5" />
-            Deleting a category, collection, or sub-collection is only allowed if no products are assigned to it.
+            Deleting a category or collection is only allowed if no products are assigned to it.
           </p>
           <button
             onClick={handleCloseAttempt}

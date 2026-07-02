@@ -7,12 +7,16 @@ import { Eye, EyeOff, Zap, Sun, Moon } from 'lucide-react'
 import Button from '@/shared/components/ui/Button'
 import Input from '@/shared/components/ui/Input'
 import { Card, CardContent } from '@/shared/components/ui/Card'
+import useStoreSettings from '@/shared/hooks/useStoreSettings'
 
 export default function LoginPage() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { loading, error } = useSelector((s) => s.auth)
   const { isDark, toggle } = useTheme()
+  const { settings } = useStoreSettings()
+  const logoUrl = settings?.logo
+  const storeName = settings?.store_name || 'AdminDash'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -57,11 +61,25 @@ export default function LoginPage() {
       <div className="w-full max-w-[380px] relative animate-slide-up space-y-6">
         {/* Logo Header */}
         <div className="flex flex-col items-center">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-glow mb-4">
-            <Zap size={22} className="text-white" strokeWidth={2.5} />
-          </div>
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={storeName}
+              className="w-12 h-12 rounded-xl object-cover shadow-glow mb-4"
+            />
+          ) : (
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-glow mb-4">
+              <Zap size={22} className="text-white" strokeWidth={2.5} />
+            </div>
+          )}
           <h1 className="font-display font-bold text-xl text-app tracking-tight">
-            Admin<span className="text-brand-500">Dash</span>
+            {logoUrl ? (
+              <span>{storeName}</span>
+            ) : (
+              <>
+                Admin<span className="text-brand-500">Dash</span>
+              </>
+            )}
           </h1>
           <p className="text-muted text-xs mt-1">Enterprise eCommerce Administration Portal</p>
         </div>

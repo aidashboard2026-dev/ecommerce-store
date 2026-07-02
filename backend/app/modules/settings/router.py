@@ -270,22 +270,6 @@ def update_notification(
         )
 
 
-def delete_logo_file(public_url: str):
-    if not public_url:
-        return
-    if public_url.startswith("/uploads/logos/"):
-        filename = public_url.replace("/uploads/logos/", "")
-        if "/" not in filename and "\\" not in filename:
-            uploads_root = os.path.abspath(app_settings.UPLOAD_DIR)
-            logos_dir = os.path.join(uploads_root, "logos")
-            file_path = os.path.join(logos_dir, filename)
-            if os.path.exists(file_path):
-                try:
-                    os.remove(file_path)
-                except Exception:
-                    logger.exception(f"Failed to delete orphaned logo file: {file_path}")
-
-
 @router.put("/profile", response_model=StoreSettingsResponse)
 def update_profile(
     payload: StoreSettingsUpdate,
@@ -324,7 +308,12 @@ def update_profile(
         )
         db.commit()
         if previous_data["logo"] and previous_data["logo"] != result.logo:
-            delete_logo_file(previous_data["logo"])
+            if not result.logo:
+                try:
+                    from app.shared.storage import supabase_storage
+                    supabase_storage.delete_store_logo()
+                except Exception:
+                    logger.exception("Failed to delete store logo from Supabase in update_profile")
         return result
     except HTTPException:
         db.rollback()
@@ -430,38 +419,14 @@ def upload_logo(
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(require_admin_or_superadmin),
 ):
-    import uuid as _uuid
-
     contents = validate_and_read_image(file, max_bytes=2 * 1024 * 1024)  # MIME, extension, size, magic bytes
 
-    # Safe filename — never trust the original filename from the client
-    uploads_root = os.path.abspath(app_settings.UPLOAD_DIR)
-    logos_dir = os.path.join(uploads_root, "logos")
-    os.makedirs(logos_dir, exist_ok=True)
-
-    _, ext = os.path.splitext(file.filename or "")
-    if not ext:
-        ext = ".jpg"
-    safe_name = f"logo_{_uuid.uuid4().hex}{ext}"
-    dest_path = os.path.join(logos_dir, safe_name)
-
-    # Path-traversal guard
-    if not os.path.normpath(dest_path).startswith(logos_dir + os.sep):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid file path.",
-        )
-
-    with open(dest_path, "wb") as out_file:
-        out_file.write(contents)
-
-    public_url = f"/uploads/logos/{safe_name}"
+    from app.shared.storage import supabase_storage
+    public_url = supabase_storage.upload_store_logo(contents, file.content_type)
 
     try:
-        settings_row = db.query(StoreSettings).order_by(StoreSettings.id.asc()).first()
-        if not settings_row:
-            settings_row = StoreSettings()
-            db.add(settings_row)
+        from app.modules.settings.service import get_or_create_store_settings
+        settings_row = get_or_create_store_settings(db)
 
         previous_logo = settings_row.logo
         settings_row.logo = public_url
@@ -477,23 +442,76 @@ def upload_logo(
             request=request,
         )
         db.commit()
-        if previous_logo and previous_logo != public_url:
-            delete_logo_file(previous_logo)
-        db.refresh(settings_row)
-        return settings_row
-    except HTTPException:
-        db.rollback()
-        raise
-    except AppException:
-        db.rollback()
-        raise
     except Exception as e:
         db.rollback()
-        logger.exception("Unexpected error in upload_logo")
+        # If database update fails: delete the newly uploaded logo from Supabase Storage
+        try:
+            supabase_storage.delete_store_logo()
+        except Exception:
+            logger.exception("Failed to delete store logo from Supabase after DB update failure")
+        if isinstance(e, (HTTPException, AppException)):
+            raise
+        logger.exception("Unexpected error in upload_logo during DB update")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred."
+            detail="An unexpected error occurred while saving the logo to database."
         )
+
+    try:
+        db.refresh(settings_row)
+        return settings_row
+    except Exception:
+        return db.query(StoreSettings).order_by(StoreSettings.id.asc()).first()
+
+
+@router.delete("/logo", response_model=StoreSettingsResponse)
+def remove_logo(
+    request: Request = None,
+    db: Session = Depends(get_db),
+    current_admin: Admin = Depends(require_admin_or_superadmin),
+):
+    try:
+        from app.modules.settings.service import get_or_create_store_settings
+        settings_row = get_or_create_store_settings(db)
+        previous_logo = settings_row.logo
+
+        settings_row.logo = None
+        db.flush()
+
+        audit.log(
+            db=db,
+            admin=current_admin,
+            action="settings.logo_removed",
+            resource_type="store_settings",
+            resource_id=settings_row.id,
+            changes={"before": {"logo": previous_logo}, "after": {"logo": None}},
+            request=request,
+        )
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.exception("Unexpected error in remove_logo during DB update")
+        if isinstance(e, (HTTPException, AppException)):
+            raise
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while removing the logo from database."
+        )
+
+    # ONLY AFTER a successful commit: delete the old logo file from Supabase
+    if previous_logo:
+        try:
+            from app.shared.storage import supabase_storage
+            supabase_storage.delete_store_logo()
+        except Exception:
+            logger.exception("Failed to delete store logo from Supabase after successful commit")
+
+    try:
+        db.refresh(settings_row)
+        return settings_row
+    except Exception:
+        return db.query(StoreSettings).order_by(StoreSettings.id.asc()).first()
+
 
 
 @router.put("/two-factor", response_model=AdminSecurityResponse)
@@ -551,7 +569,7 @@ def read_business_limits():
     Frontend must NEVER hardcode any of these values — always read from here.
 
     Limits are grouped by domain:
-    - Standard Product domain: max_categories, max_collections, max_sub_collections
+    - Standard Product domain: max_categories, max_collections
     - Custom Printing domain:  max_custom_categories
     - Operational (delete-to-add semantics): max_banners, max_offers, max_product_images,
       max_product_variants, max_sizes, max_colors
@@ -561,7 +579,6 @@ def read_business_limits():
         # ── Standard Product Domain ──────────────────────────────────────────
         "max_categories": constants.MAX_CATEGORIES,
         "max_collections": constants.MAX_COLLECTIONS,
-        "max_sub_collections": constants.MAX_SUB_COLLECTIONS,
         # ── Custom Printing Domain ───────────────────────────────────────────
         "max_custom_categories": constants.MAX_CUSTOM_CATEGORIES,
         # ── Operational Limits ───────────────────────────────────────────────
@@ -569,8 +586,8 @@ def read_business_limits():
         "max_offers": constants.MAX_OFFERS,
         "max_product_images": constants.MAX_PRODUCT_IMAGES,
         "max_product_variants": constants.MAX_PRODUCT_VARIANTS,
-        "max_sizes": constants.MAX_SIZES,
-        "max_colors": constants.MAX_COLORS,
+        "max_sizes": 999999,
+        "max_colors": 999999,
         "max_image_size": constants.MAX_IMAGE_SIZE,
     }
 
@@ -582,12 +599,11 @@ def read_default_catalog():
     This endpoint isolates built-in/seeded categories and collections
     from the business limits endpoint, as required.
     """
-    from app.core import constants
     return {
-        "default_product_categories": constants.DEFAULT_PRODUCT_CATEGORIES,
-        "default_collections": constants.DEFAULT_COLLECTIONS,
-        "protected_product_categories": constants.PROTECTED_PRODUCT_CATEGORIES,
-        "protected_collections": constants.PROTECTED_COLLECTIONS,
+        "default_product_categories": [],
+        "default_collections": [],
+        "protected_product_categories": [],
+        "protected_collections": [],
     }
 
 
@@ -632,4 +648,38 @@ def read_regional_options():
         ],
         "weight_units": ["kg", "g", "lb", "oz"],
     }
+
+
+@router.get("/public")
+def read_public_settings(db: Session = Depends(get_db)):
+    """Retrieve public store settings (name, logo, description, country, currency, etc.) without authentication."""
+    try:
+        from app.modules.settings.service import get_or_create_store_settings
+        settings_row = get_or_create_store_settings(db)
+        db.commit()
+
+        logo_url = settings_row.logo
+        if logo_url and "?t=" not in logo_url:
+            from datetime import datetime
+            ts = int(settings_row.updated_at.timestamp()) if settings_row.updated_at else int(datetime.utcnow().timestamp())
+            logo_url = f"{logo_url}?t={ts}"
+
+        return {
+            "store_name": settings_row.store_name,
+            "store_url": settings_row.store_url,
+            "logo": logo_url,
+            "description": settings_row.description,
+            "country": settings_row.country,
+            "currency": settings_row.currency,
+            "timezone": settings_row.timezone,
+            "weight_unit": settings_row.weight_unit,
+        }
+    except Exception as e:
+        db.rollback()
+        logger.exception("Unexpected error in read_public_settings")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred."
+        )
+
 

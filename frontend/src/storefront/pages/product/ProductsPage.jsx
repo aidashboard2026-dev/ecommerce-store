@@ -111,15 +111,23 @@ export default function ProductsPage() {
       </div>
 
       <div className="flex gap-8">
-        <ProductFilters
+        {/* <ProductFilters
           collections={collections}
           filters={filters}
           onChange={setFilters}
           onReset={handleReset}
           isOpen={filtersOpen}
           onClose={() => setFiltersOpen(false)}
+        /> */}
+        <FilterDrawer
+            open={filtersOpen}
+            onClose={() => setFiltersOpen(false)}
+            filters={filters}
+            setFilters={setFilters}
+            collections={collections}
+            categories={categories}
+            genders={gendersList}
         />
-
         <div className="flex-1">
           <ProductGrid products={products} loading={isLoading || isFetchingNextPage} />
           <div ref={sentinelRef} className="h-1" />

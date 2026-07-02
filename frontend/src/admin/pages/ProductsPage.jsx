@@ -48,7 +48,6 @@ const BULK_ACTIONS = [
   { value: 'archive',         label: 'Archive' },
   { value: 'move_category',   label: 'Move to Category…' },
   { value: 'move_collection', label: 'Move to Collection…' },
-  { value: 'move_sub_collection', label: 'Move to Sub-Collection…' },
   { value: 'delete',          label: 'Delete Selected', danger: true },
 ]
 
@@ -220,7 +219,6 @@ function BulkActionsBar({ selectedIds, onAction, categories, collections, onClea
   const [pendingAction, setPendingAction] = useState(null)
   const [targetCategoryId, setTargetCategoryId] = useState('')
   const [targetCollectionId, setTargetCollectionId] = useState('')
-  const [targetSubCollection, setTargetSubCollection] = useState('')
   const ref = React.useRef(null)
 
   React.useEffect(() => {
@@ -232,7 +230,7 @@ function BulkActionsBar({ selectedIds, onAction, categories, collections, onClea
 
   const handleAction = (action) => {
     setOpen(false)
-    if (action === 'move_category' || action === 'move_collection' || action === 'move_sub_collection') {
+    if (action === 'move_category' || action === 'move_collection') {
       setPendingAction(action)
     } else {
       onAction(action, {})
@@ -244,13 +242,10 @@ function BulkActionsBar({ selectedIds, onAction, categories, collections, onClea
       onAction('move_category', { category_id: Number(targetCategoryId) })
     } else if (pendingAction === 'move_collection') {
       onAction('move_collection', { collection_id: Number(targetCollectionId) })
-    } else if (pendingAction === 'move_sub_collection') {
-      onAction('move_sub_collection', { sub_collection: targetSubCollection })
     }
     setPendingAction(null)
     setTargetCategoryId('')
     setTargetCollectionId('')
-    setTargetSubCollection('')
   }
 
   if (selectedIds.size === 0) return null
@@ -270,21 +265,16 @@ function BulkActionsBar({ selectedIds, onAction, categories, collections, onClea
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
-          ) : pendingAction === 'move_collection' ? (
-            <select value={targetCollectionId} onChange={e => setTargetCollectionId(e.target.value)}
+          ) : (
+            <select value={targetCollectionId} onChange={e => setCollectionId(e.target.value)}
               className="input-field py-1 text-xs">
               <option value="">Select collection…</option>
               {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-          ) : (
-            <input type="text" value={targetSubCollection} onChange={e => setTargetSubCollection(e.target.value)}
-              className="input-field py-1 text-xs" placeholder="Sub-Collection name…" />
           )}
           <button onClick={confirmMove}
             disabled={
-              pendingAction === 'move_category' ? !targetCategoryId :
-              pendingAction === 'move_collection' ? !targetCollectionId :
-              false
+              pendingAction === 'move_category' ? !targetCategoryId : !targetCollectionId
             }
             className="btn-primary text-xs py-1 px-3 disabled:opacity-40">Confirm</button>
           <button onClick={() => setPendingAction(null)} className="text-xs text-muted hover:text-app">Cancel</button>
@@ -324,14 +314,13 @@ export default function ProductsPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [categoryId, setCategoryId]     = useState('')
   const [collectionId, setCollectionId] = useState('')
-  const [subCollection, setSubCollection] = useState('')
+  const [genderFilter, setGenderFilter] = useState('')
   const [stockStatus, setStockStatus]   = useState('')
   const [flagFilters, setFlagFilters]   = useState({})
   const [page, setPage]                 = useState(1)
   const [selectedIds, setSelectedIds]   = useState(new Set())
 
   const debouncedSearch = useDebounce(search, 400)
-  const debouncedSubCollection = useDebounce(subCollection, 400)
 
   // ── Modals ──────────────────────────────────────────────────────────────────
   const [formModal,      setFormModal]      = useState({ open: false, product: null })
@@ -347,7 +336,7 @@ export default function ProductsPage() {
   // Reset page on any filter change
   React.useEffect(() => { setPage(1); setSelectedIds(new Set()) },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [debouncedSearch, statusFilter, categoryId, collectionId, debouncedSubCollection, stockStatus, flagKey])
+    [debouncedSearch, statusFilter, categoryId, collectionId, genderFilter, stockStatus, flagKey])
 
   // ── Data queries ─────────────────────────────────────────────────────────────
 
@@ -356,7 +345,7 @@ export default function ProductsPage() {
     status_filter:  statusFilter,
     category_id:    categoryId    || undefined,
     collection_id:  collectionId  || undefined,
-    sub_collection: debouncedSubCollection || undefined,
+    genders:        genderFilter  ? [genderFilter] : undefined,
     stock_status:   stockStatus   || undefined,
     is_featured:    flagFilters.is_featured    || undefined,
     is_trending:    flagFilters.is_trending    || undefined,
@@ -482,7 +471,7 @@ export default function ProductsPage() {
     bulkMutation.mutate({ product_ids: [...selectedIds], action, ...extra })
   }
 
-  const hasFilters = !!(statusFilter || categoryId || collectionId || subCollection || stockStatus || Object.keys(flagFilters).some(k => flagFilters[k]))
+  const hasFilters = !!(statusFilter || categoryId || collectionId || genderFilter || stockStatus || Object.keys(flagFilters).some(k => flagFilters[k]))
 
   const emptyState = useMemo(() => (
     <div className="py-20 text-center">
@@ -584,9 +573,14 @@ export default function ProductsPage() {
             </select>
           )}
 
-          {/* Sub-Collection filter */}
-          <input type="text" value={subCollection} onChange={e => setSubCollection(e.target.value)}
-            className="input-field py-1.5 text-xs max-w-[160px]" placeholder="All Sub-Collections" />
+          {/* Gender filter */}
+          <select value={genderFilter} onChange={e => setGenderFilter(e.target.value)}
+            className="input-field py-1.5 text-xs max-w-[160px]">
+            <option value="">All Genders</option>
+            {['Men', 'Women', 'Kids'].map(g => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
 
           {/* Stock status filter pills */}
           {STOCK_OPTIONS.map(opt => (
@@ -614,7 +608,7 @@ export default function ProductsPage() {
           {hasFilters && (
             <button onClick={() => {
               setStatusFilter(''); setCategoryId(''); setCollectionId('')
-              setSubCollection(''); setStockStatus(''); setFlagFilters({})
+              setGenderFilter(''); setStockStatus(''); setFlagFilters({})
             }} className="text-xs text-muted hover:text-app underline flex items-center gap-1">
               <X size={10} /> Clear filters
             </button>

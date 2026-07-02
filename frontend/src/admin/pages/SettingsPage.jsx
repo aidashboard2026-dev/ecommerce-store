@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Globe2,
@@ -235,6 +236,7 @@ function SaveButton({ loading, disabled, children }) {
 }
 
 export default function SettingsPage() {
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [retryTrigger, setRetryTrigger] = useState(0);
@@ -355,10 +357,22 @@ export default function SettingsPage() {
     required: "Current password is required",
   });
 
-  function handleRemoveLogo() {
-    setLogoPreview("");
-    profileForm.setValue("logo", "", { shouldDirty: true });
-    toast.success("Logo removed");
+  async function handleRemoveLogo() {
+    const confirmed = window.confirm("Are you sure you want to remove the store logo?");
+    if (!confirmed) return;
+
+    try {
+      const res = await settingsService.deleteLogo();
+      setLogoPreview("");
+      profileForm.setValue("logo", "", { shouldDirty: false });
+      if (res.data) {
+        setSettings(res.data);
+      }
+      queryClient.invalidateQueries({ queryKey: ["storeSettings"] });
+      toast.success("Logo removed");
+    } catch (err) {
+      toast.error(apiError(err, "Failed to remove logo"));
+    }
   }
   useEffect(() => {
     let mounted = true;
@@ -499,6 +513,7 @@ export default function SettingsPage() {
         logo: updated.logo || cleanData.logo,
       });
       setLogoPreview(updated.logo || "");
+      queryClient.invalidateQueries({ queryKey: ["storeSettings"] });
       toast.success("Store profile saved");
     } catch (error) {
       toast.error(apiError(error, "Failed to save store profile"));
@@ -537,6 +552,7 @@ export default function SettingsPage() {
         timezone: updated.timezone || cleanData.timezone,
         weight_unit: updated.weight_unit || cleanData.weight_unit,
       });
+      queryClient.invalidateQueries({ queryKey: ["storeSettings"] });
       toast.success("Regional settings saved");
     } catch (error) {
       toast.error(apiError(error, "Failed to save regional settings"));
@@ -664,6 +680,7 @@ export default function SettingsPage() {
         const url = res.data.logo || res.data;
         setLogoPreview(url);
         profileForm.setValue("logo", url, { shouldDirty: true });
+        queryClient.invalidateQueries({ queryKey: ["storeSettings"] });
         toast.success("Logo uploaded");
       })
       .catch((err) => {

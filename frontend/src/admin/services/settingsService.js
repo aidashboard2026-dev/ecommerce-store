@@ -11,6 +11,7 @@ export const settingsService = {
   getNotifications: () => api.get('/settings/notifications'),
   updateNotification: (id, data) => api.put(`/settings/notifications/${id}`, data),
   uploadLogo: (formData) => api.post('/settings/logo', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  deleteLogo: () => api.delete('/settings/logo'),
   getBusinessLimits: () => api.get('/settings/business-limits'),
   getDefaultCatalog: () => api.get('/settings/default-catalog'),
   getRegionalOptions: () => api.get('/settings/regional-options'),
