@@ -108,10 +108,12 @@ export default function ProductsList() {
     if (hasChanged) {
       setSearchParams(params, { replace: true })
     }
-   },[
+   }, [
     debouncedSearch,
     filters,
-  ])
+    collections,
+    categories,
+  ]);
 
   // Sync URL params -> State (handles nav clicks & back button)
   useEffect(() => {
@@ -207,6 +209,18 @@ export default function ProductsList() {
    filters.in_stock_only
 ]);
   
+  // const handleReset = () => {
+  //   setSearch("");
+
+  //   setFilters((prev) => ({
+  //     ...prev,
+  //     sort_by: "newest",
+  //     min_price: "",
+  //     max_price: "",
+  //     rating: null,
+  //     in_stock_only: false,
+  //   }));
+  // };
 
   const handleReset = () => {
 
@@ -229,39 +243,22 @@ export default function ProductsList() {
 
   }
   const hasActiveFilters = useMemo(() => {
-
-    const hasDrawerFilters =
+    const drawerFilters =
       filters.sort_by !== "newest" ||
       filters.min_price !== "" ||
       filters.max_price !== "" ||
       filters.in_stock_only;
 
-    if (fromMenu) {
-      return hasDrawerFilters;
-    }
-
     return (
-      search.trim() !== "" ||
-      hasDrawerFilters ||
-      filters.collection_id !== "" ||
-      filters.category_id !== "" ||
-      filters.collection !== "" ||
-      filters.category !== "" ||
-      filters.gender !== ""
+      drawerFilters ||
+      search.trim() !== ""
     );
-
   }, [
-    search,
-    fromMenu,
     filters.sort_by,
     filters.min_price,
     filters.max_price,
     filters.in_stock_only,
-    filters.collection_id,
-    filters.category_id,
-    filters.collection,
-    filters.category,
-    filters.gender,
+    search,
   ]);
   return (
     <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
