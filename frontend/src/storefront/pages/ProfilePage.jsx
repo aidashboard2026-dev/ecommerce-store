@@ -41,6 +41,7 @@ function AccountDetailsSection() {
             value={form.first_name}
             onChange={update('first_name')}
             placeholder="First name"
+            aria-label="First name"
             className="w-full bg-surface border border-app rounded-xl py-2.5 pl-11 pr-4 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
           />
         </div>
@@ -50,6 +51,7 @@ function AccountDetailsSection() {
             value={form.last_name}
             onChange={update('last_name')}
             placeholder="Last name"
+            aria-label="Last name"
             className="w-full bg-surface border border-app rounded-xl py-2.5 pl-11 pr-4 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
           />
         </div>
@@ -58,6 +60,7 @@ function AccountDetailsSection() {
           <input
             value={customer?.email || ''}
             disabled
+            aria-label="Email address (cannot be changed)"
             className="w-full bg-surface border border-app rounded-xl py-2.5 pl-11 pr-4 text-sm text-muted cursor-not-allowed"
           />
         </div>
@@ -67,6 +70,7 @@ function AccountDetailsSection() {
             value={form.phone}
             onChange={update('phone')}
             placeholder="Phone number"
+            aria-label="Phone number"
             className="w-full bg-surface border border-app rounded-xl py-2.5 pl-11 pr-4 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
           />
         </div>

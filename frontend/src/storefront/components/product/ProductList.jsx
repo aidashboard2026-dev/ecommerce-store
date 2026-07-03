@@ -167,24 +167,31 @@ export default function ProductsList() {
     if (search !== newSearch) {
       setSearch(newSearch)
     }
-  }, [searchParams])
+  }, [searchParams, collections, categories])
 
   // Infinite scroll sentinel
   const sentinelRef = useRef(null)
+  const loadMoreRef = useRef()
+  loadMoreRef.current = () => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage()
+    }
+  }
+
   useEffect(() => {
     const el = sentinelRef.current
     if (!el) return
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage()
+        if (entries[0].isIntersecting) {
+          loadMoreRef.current()
         }
       },
       { rootMargin: '400px' }
     )
     observer.observe(el)
     return () => observer.disconnect()
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
+  }, [])
 
  const products = useMemo(() => {
 

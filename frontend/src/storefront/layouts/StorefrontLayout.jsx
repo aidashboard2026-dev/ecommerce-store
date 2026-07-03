@@ -1,4 +1,4 @@
-import React, { Suspense } from "react";
+import React, { Suspense, useCallback } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 
@@ -20,16 +20,11 @@ export default function StorefrontLayout() {
 
   const { isDark, toggle: toggleTheme } = useTheme();
 
-  React.useEffect(() => {
-    console.log("=== StorefrontLayout MOUNTED ===");
-    return () => console.log("=== StorefrontLayout UNMOUNTED ===");
-  }, []);
-
   // Track page scroll to toggle header background glassmorphism
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     dispatch(customerLogoutThunk());
     navigate("/");
-  };
+  }, [dispatch, navigate]);
 
   // Close mobile menu on route change
 

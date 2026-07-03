@@ -4,13 +4,32 @@ import { addToCart } from '@/storefront/store/cartSlice'
 
 import toast from "react-hot-toast";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 // import { Link } from "react-router-dom";
 //   const dispatch = useDispatch()
 import { useDispatch } from "react-redux";
 import { useSelector } from "react-redux";
 import axios from "axios";
 
+const categories = [
+  "Graphic Printed T-Shirt",
+  "Embroidery Design T-Shirt",
+  "Jersey",
+  "Gifts & Printing",
+  "Magic Mug Print",
+  "Photo Frames",
+  "Metal Frames",
+  "Mouse Pads",
+  "Personal Gifts",
+  "White Mug",
+  "Sublimation Products",
+  "Water Bottles",
+  "Skinny Tumblers",
+  "Glass Ware",
+  "Hats & Caps",
+  "Wedding & Greeting Cards",
+  "Pillows"
+];
 
 export default function SubProductsPage() {
   const dispatch = useDispatch();
@@ -23,7 +42,7 @@ export default function SubProductsPage() {
     try {
 
         const response = await axios.get(
-            "http://localhost:8000/api/v1/custom-products"
+            `${import.meta.env.VITE_API_URL || "/api/v1"}/custom-products`
         );
 
         const formattedProducts = response.data.items.map((item) => ({
@@ -44,7 +63,7 @@ export default function SubProductsPage() {
 
     } catch (err) {
 
-        console.log(err);
+        console.error("Error fetching products:", err);
 
     } finally {
 
@@ -57,105 +76,77 @@ export default function SubProductsPage() {
   const wishlistItems = useSelector(
     (state) => state.wishlist.items
   );
- 
+
+  const wishlistSet = useMemo(() => {
+    return new Set(wishlistItems.map((item) => String(item.productId)));
+  }, [wishlistItems]);
 
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedPrice, setSelectedPrice] = useState("");
   const [selectedRating, setSelectedRating] = useState("");
   const [inStockOnly, setInStockOnly] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+
+  const [filters, setFilters] = useState({
+      collection: "",
+      sort_by: "newest",
+      min_price: "",
+      max_price: "",
+      rating: null,
+      in_stock_only: false,
+  });
   
-  
-  
-  const categories = [
-    // "Round Neck T-Shirt",
-    // "Oversized T-Shirt",
-    "Graphic Printed T-Shirt",
+  const filteredProducts = useMemo(() => {
+      return products.filter((product) => {
+          const categoryMatch =
+              selectedCategory === "All" ||
+              product.category === selectedCategory;
 
-    "Embroidery Design T-Shirt",
-    "Jersey",
-    "Gifts & Printing",
-    "Magic Mug Print",
-    "Photo Frames",
-    "Metal Frames",
-    "Mouse Pads",
-    "Personal Gifts",
-    "White Mug",
-    "Sublimation Products",
-    "Water Bottles",
-    "Skinny Tumblers",
-    "Glass Ware",
-    "Hats & Caps",
-    "Wedding & Greeting Cards",
-    "Pillows"
-   ]
-  
-  
-  
-    
-    const [filters, setFilters] = useState({
-        collection: "",
-        sort_by: "newest",
-        min_price: "",
-        max_price: "",
-        rating: null,
-        in_stock_only: false,
-    });
-    
-    const filteredProducts = products.filter((product) => {
+          const searchMatch =
+              (product.name || "")
+                  .toLowerCase()
+                  .includes(searchTerm.toLowerCase());
 
-        // const isWishlisted = wishlistItems.some(
-        //     (item) => item.productId === product.id
-        // );
+          let priceMatch = true;
 
-        const categoryMatch =
-            selectedCategory === "All" ||
-            product.category === selectedCategory;
+          if (selectedPrice === "under500")
+              priceMatch = product.sellingMin < 500;
 
-        const searchMatch =
-            (product.name || "")
-                .toLowerCase()
-                .includes(searchTerm.toLowerCase());
+          if (selectedPrice === "500to1000")
+              priceMatch =
+              product.sellingMin >= 500 &&
+              product.sellingMin <= 1000;
 
-        let priceMatch = true;
+          if (selectedPrice === "1000to2500")
+              priceMatch =
+              product.sellingMin >= 1000 &&
+              product.sellingMin <= 2500;
 
-        if (selectedPrice === "under500")
-            priceMatch = product.price < 500;
+          if (selectedPrice === "2500to5000")
+              priceMatch =
+              product.sellingMin >= 2500 &&
+              product.sellingMin <= 5000;
 
-        if (selectedPrice === "500to1000")
-            priceMatch =
-            product.price >= 500 &&
-            product.price <= 1000;
+          if (selectedPrice === "above5000")
+              priceMatch = product.sellingMin > 5000;
 
-        if (selectedPrice === "1000to2500")
-            priceMatch =
-            product.price >= 1000 &&
-            product.price <= 2500;
+          const ratingMatch =
+              !selectedRating ||
+              product.rating >= selectedRating;
 
-        if (selectedPrice === "2500to5000")
-            priceMatch =
-            product.price >= 2500 &&
-            product.price <= 5000;
+          const stockMatch =
+              !inStockOnly ||
+              product.stock > 0;
 
-        if (selectedPrice === "above5000")
-            priceMatch = product.price > 5000;
-
-        const ratingMatch =
-            !selectedRating ||
-            product.rating >= selectedRating;
-
-        const stockMatch =
-            !inStockOnly ||
-            product.stock > 0;
-
-        return (
-            categoryMatch &&
-            searchMatch &&
-            priceMatch &&
-            ratingMatch &&
-            stockMatch
-        );
-    });
+          return (
+              categoryMatch &&
+              searchMatch &&
+              priceMatch &&
+              ratingMatch &&
+              stockMatch
+          );
+      });
+  }, [products, selectedCategory, searchTerm, selectedPrice, selectedRating, inStockOnly]);
 
     useEffect(() => {
 
@@ -433,9 +424,7 @@ export default function SubProductsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
 
         {filteredProducts.map((product) => {
-            const isWishlisted = wishlistItems.some(
-                (item) => item.productId === product.id
-            );
+            const isWishlisted = wishlistSet.has(String(product.id));
 
             const discount =
                 product.originalMax > 0
@@ -491,7 +480,7 @@ export default function SubProductsPage() {
                                 productId: product.id,
                                 title: product.name,
                                 thumbnail: product.image,
-                                minPrice: product.price,
+                                minPrice: product.sellingMin,
                             })
                             );
 
@@ -520,6 +509,7 @@ export default function SubProductsPage() {
                         <img
                         src={product.image}
                         alt={product.name}
+                        loading="lazy"
                         className="
                             w-full
                             h-80

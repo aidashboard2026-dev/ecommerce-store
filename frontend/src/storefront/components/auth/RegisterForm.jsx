@@ -65,6 +65,7 @@ export default function RegisterForm() {
                 value={form.first_name}
                 onChange={update('first_name')}
                 placeholder="First name"
+                aria-label="First name"
                 className="w-full bg-surface border border-app rounded-xl py-3 pl-11 pr-3 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-muted"
               />
             </div>
@@ -76,6 +77,7 @@ export default function RegisterForm() {
                 value={form.last_name}
                 onChange={update('last_name')}
                 placeholder="Last name"
+                aria-label="Last name"
                 className="w-full bg-surface border border-app rounded-xl py-3 px-4 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-muted"
               />
             </div>
@@ -89,6 +91,7 @@ export default function RegisterForm() {
               value={form.email}
               onChange={update('email')}
               placeholder="Email address"
+              aria-label="Email address"
               className="w-full bg-surface border border-app rounded-xl py-3 pl-11 pr-4 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-muted"
             />
           </div>
@@ -100,6 +103,7 @@ export default function RegisterForm() {
               value={form.phone}
               onChange={update('phone')}
               placeholder="Phone number (optional)"
+              aria-label="Phone number (optional)"
               minLength={10}
               className="w-full bg-surface border border-app rounded-xl py-3 pl-11 pr-4 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-muted"
             />
@@ -112,6 +116,7 @@ export default function RegisterForm() {
               required
               value={form.dob}
               onChange={update('dob')}
+              aria-label="Date of birth"
               className="w-full bg-surface border border-app rounded-xl py-3 pl-11 pr-4 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
             />
           </div>
@@ -125,11 +130,13 @@ export default function RegisterForm() {
               value={form.password}
               onChange={update('password')}
               placeholder="Password (min 8 characters)"
+              aria-label="Password (min 8 characters)"
               className="w-full bg-surface border border-app rounded-xl py-3 pl-11 pr-11 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-muted"
             />
             <button
               type="button"
               onClick={() => setShowPassword((s) => !s)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-app"
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -145,11 +152,13 @@ export default function RegisterForm() {
               value={form.confirmPassword}
               onChange={update('confirmPassword')}
               placeholder="Confirm password"
+              aria-label="Confirm password"
               className="w-full bg-surface border border-app rounded-xl py-3 pl-11 pr-11 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-muted"
             />
             <button
               type="button"
               onClick={() => setShowConfirm((s) => !s)}
+              aria-label={showConfirm ? "Hide confirm password" : "Show confirm password"}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-app"
             >
               {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}

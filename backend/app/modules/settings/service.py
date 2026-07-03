@@ -151,8 +151,9 @@ def ensure_payment_methods(db: Session) -> List[PaymentMethod]:
 
     if changed:
         db.flush()
+        return db.query(PaymentMethod).order_by(PaymentMethod.id.asc()).all()
 
-    return db.query(PaymentMethod).order_by(PaymentMethod.id.asc()).all()
+    return sorted(existing_by_name.values(), key=lambda x: x.id)
 
 
 def update_payment_method(db: Session, payment_id: int, payload: PaymentMethodUpdate) -> PaymentMethod:
@@ -180,8 +181,9 @@ def ensure_notification_settings(db: Session) -> List[NotificationSetting]:
 
     if changed:
         db.flush()
+        return db.query(NotificationSetting).order_by(NotificationSetting.id.asc()).all()
 
-    return db.query(NotificationSetting).order_by(NotificationSetting.id.asc()).all()
+    return sorted(existing_by_name.values(), key=lambda x: x.id)
 
 
 def update_notification_setting(

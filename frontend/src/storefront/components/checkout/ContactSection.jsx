@@ -21,12 +21,13 @@ export default function ContactSection({ form, update }) {
         )}
       </div>
 
-      <label className="mb-2 block text-sm font-medium text-app">
+      <label htmlFor="checkout-email" className="mb-2 block text-sm font-medium text-app">
         Email Address
       </label>
 
       <input
         required
+        id="checkout-email"
         type="email"
         value={form.email}
         onChange={update("email")}

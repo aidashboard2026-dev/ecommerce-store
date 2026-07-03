@@ -88,8 +88,6 @@ const authSlice = createSlice({
       // ── Login ──────────────────────────────────────────────────────────────
       .addCase(loginThunk.fulfilled,(state,action)=>{
 
-        console.log(action.payload)
-
         state.loading=false
         state.error=null
         state.initialized=true

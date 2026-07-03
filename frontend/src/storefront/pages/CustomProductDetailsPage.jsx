@@ -19,6 +19,7 @@ export default function ProductDetailsPage() {
   const { id } = useParams();
 
   const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [relatedProducts, setRelatedProducts] = useState([]);
 
   const wishlistItems = useSelector(
@@ -43,13 +44,12 @@ export default function ProductDetailsPage() {
 
     const fetchProduct = async () => {
         try {
+            setLoading(true);
             const response = await axios.get(
-                `http://localhost:8000/api/v1/custom-products/${id}`
+                `${import.meta.env.VITE_API_URL || "/api/v1"}/custom-products/${id}`
             );
 
             const item = response.data;
-
-            console.log("API Response:", item);
 
             setProduct({
                 id: item.id,
@@ -70,7 +70,7 @@ export default function ProductDetailsPage() {
 
 
             const relatedResponse = await axios.get(
-                "http://localhost:8000/api/v1/custom-products"
+                `${import.meta.env.VITE_API_URL || "/api/v1"}/custom-products`
             );
 
             const related = relatedResponse.data.items
@@ -99,6 +99,8 @@ export default function ProductDetailsPage() {
 
         } catch (error) {
             console.error(error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -111,9 +113,17 @@ export default function ProductDetailsPage() {
 
   }, [id]);
 
+  if (loading) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center bg-app">
+        <div className="w-10 h-10 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   if (!product) {
     return (
-      <h1 className="text-center text-2xl mt-10">
+      <h1 className="text-center text-2xl mt-10 text-app font-semibold">
         Product Not Found
       </h1>
     );
@@ -276,40 +286,7 @@ export default function ProductDetailsPage() {
             </div>
 
             {/* Buttons */}
-            {/* <div className="flex gap-4">
 
-                <button
-                onClick={(e) => {
-                    console.log("wishlist clicked");
-
-                    toast.success("Added to cart succusssfully");
-                    e.preventDefault()
-                    e.stopPropagation();
-                
-                        dispatch(
-                        addToCart({
-                            productId: product.id,
-                            title: product.name,
-                            thumbnail: product.image,
-                            sellingPrice: product.price,
-                            originalPrice: product.oldPrice,
-                            quantity: 1,
-                        })
-                        );
-                    }}
-                className="
-                    flex-1
-                    border-2
-                    border-indigo-500
-                    text-indigo-600
-                    py-4
-                    rounded-2xl
-                    font-bold
-                    hover:bg-indigo-50
-                "
-                >
-                🛒 Add To Cart
-                </button> */}
 
                 <div className="w-full mt-6">
                     <button

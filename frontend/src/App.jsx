@@ -8,10 +8,11 @@ import AppRoutes from '@/shared/routes/AppRoutes'
 
 
 function App() {
-  const dispatch      = useDispatch()
-  const token         = useSelector((s) => s.auth.token)
-  const initialized   = useSelector((s) => s.auth.initialized)
-  const customerToken = useSelector((s) => s.customer.token)
+  const dispatch           = useDispatch()
+  const token              = useSelector((s) => s.auth.token)
+  const initialized        = useSelector((s) => s.auth.initialized)
+  const customerToken      = useSelector((s) => s.customer.token)
+  const customerInitialized = useSelector((s) => s.customer.initialized)
 
   useEffect(() => {
     if (token) {
@@ -25,12 +26,12 @@ function App() {
     }
   }, [customerToken, dispatch])
 
-  if (!initialized) {
+  if (!initialized || !customerInitialized) {
     return (
       <div className="min-h-screen bg-app flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
-          <p className="text-muted text-sm font-medium">Loading AdminDash Pro...</p>
+          <p className="text-muted text-sm font-medium">Loading AuraStore...</p>
         </div>
       </div>
     )

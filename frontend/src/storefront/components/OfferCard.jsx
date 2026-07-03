@@ -27,6 +27,7 @@ export default function OfferCard({ offer, className }) {
           <img
             src={getImageUrl(offer.banner_image)}
             alt={offer.title}
+            loading="lazy"
             className="absolute inset-0 h-full w-full object-cover object-center"
           />
           <div className="absolute inset-0 bg-black/30" />

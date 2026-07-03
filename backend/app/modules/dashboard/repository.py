@@ -147,7 +147,7 @@ class DashboardRepository:
             func.count(Order.id),
         ).filter(
             func.lower(Order.tracking_status) == REVENUE_STATUS,
-            func.lower(Order.payment_status).in_(payment_methods),
+            func.lower(Order.payment_method).in_(payment_methods),
         )
         if start_at:
             q = q.filter(Order.ordered_at >= start_at)

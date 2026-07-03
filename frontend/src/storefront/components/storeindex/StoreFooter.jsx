@@ -21,6 +21,7 @@ const StoreFooterComponent = function StoreFooter() {
               <img
                 src={logoUrl}
                 alt={storeName}
+                loading="lazy"
                 className="h-8 w-8 rounded-full object-cover"
               />
             ) : (
@@ -120,10 +121,15 @@ const StoreFooterComponent = function StoreFooter() {
             <input
               type="email"
               placeholder="your.email@gmail.com"
+              aria-label="Email address for newsletter"
               className="bg-app border border-app text-xs px-3 py-2 rounded-xl focus:outline-none w-full placeholder:text-muted"
             />
 
-            <button className="bg-brand-500 hover:bg-brand-600 p-2 text-white rounded-xl transition-all">
+            <button
+              type="submit"
+              aria-label="Subscribe to newsletter"
+              className="bg-brand-500 hover:bg-brand-600 p-2 text-white rounded-xl transition-all"
+            >
               <ArrowRight size={14} />
             </button>
           </div>

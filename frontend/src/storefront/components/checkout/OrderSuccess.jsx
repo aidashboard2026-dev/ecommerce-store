@@ -14,9 +14,9 @@ import { formatPrice, getImageUrl } from "@/shared/utils/productUtils";
 export default function OrderSuccess() {
   const { state } = useLocation();
 
-  //   if (!state) {
-  //     return <Navigate to="/" replace />;
-  //   }
+  if (!state) {
+    return <Navigate to="/" replace />;
+  }
 
   const orders = state?.orders || [
     {

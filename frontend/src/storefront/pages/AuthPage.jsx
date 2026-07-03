@@ -2,8 +2,8 @@ import React, { useState } from 'react'
 import { useLocation, Link } from 'react-router-dom'
 import { KeyRound, Mail, CheckCircle, AlertCircle } from 'lucide-react'
 import { customerAuthAPI } from '@/shared/services/api'
-import LoginForm from '@/storefront/components/LoginForm'
-import RegisterForm from '@/storefront/components/RegisterForm'
+import LoginForm from '@/storefront/components/auth/LoginForm'
+import RegisterForm from '@/storefront/components/auth/RegisterForm'
 
 // ── Forgot Password ───────────────────────────────────────────────────────────
 

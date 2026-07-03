@@ -23,7 +23,7 @@ function persist(items) {
 // A cart line is uniquely identified by productId + size + color
 function sameLine(a, b) {
   return (
-    a.productId === b.productId && a.size === b.size && a.color === b.color
+    String(a.productId) === String(b.productId) && a.size === b.size && a.color === b.color
   );
 }
 

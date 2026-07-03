@@ -56,6 +56,7 @@ export default function BillingAddress({ form, update }) {
             type="text"
             autoComplete="billing name"
             placeholder="Full Name"
+            aria-label="Billing Full Name"
             value={form.billing_full_name}
             onChange={update("billing_full_name")}
             className="sm:col-span-2 rounded-xl border border-app bg-surface px-4 py-3 text-sm"
@@ -66,6 +67,7 @@ export default function BillingAddress({ form, update }) {
             type="tel"
             autoComplete="billing tel"
             placeholder="Phone Number"
+            aria-label="Billing Phone Number"
             value={form.billing_phone}
             onChange={update("billing_phone")}
             className="sm:col-span-2 rounded-xl border border-app bg-surface px-4 py-3 text-sm"
@@ -76,6 +78,7 @@ export default function BillingAddress({ form, update }) {
             rows={4}
             autoComplete="street-address"
             placeholder="House No, Building Name, Street, Area"
+            aria-label="Billing Address"
             value={form.billing_address}
             onChange={update("billing_address")}
             className="sm:col-span-2 rounded-xl border border-app bg-surface px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
@@ -86,6 +89,7 @@ export default function BillingAddress({ form, update }) {
             type="text"
             autoComplete="billing address-level2"
             placeholder="City"
+            aria-label="Billing City"
             value={form.billing_city}
             onChange={update("billing_city")}
             className="rounded-xl border border-app bg-surface px-4 py-3 text-sm"
@@ -94,6 +98,7 @@ export default function BillingAddress({ form, update }) {
           <select
             required
             autoComplete="billing address-level1"
+            aria-label="Billing State"
             value={form.billing_state}
             onChange={update("billing_state")}
             className="rounded-xl border border-app bg-surface px-4 py-3 text-sm"
@@ -111,6 +116,7 @@ export default function BillingAddress({ form, update }) {
             type="text"
             autoComplete="billing postal-code"
             placeholder="Pincode"
+            aria-label="Billing Pincode"
             value={form.billing_pincode}
             onChange={update("billing_pincode")}
             pattern="\d{4,10}"

@@ -35,7 +35,7 @@ class Customer(Base):
     password_reset_expires = Column(DateTime(timezone=True), nullable=True)
 
     # ── Status & Segmentation ────────────────────────────────────────────────
-    is_active = Column(Boolean, default=True, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
     # Comma-separated tags: "vip,wholesale,returner"
     tags = Column(String(500), nullable=True)
 
@@ -53,6 +53,7 @@ class Customer(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
+        index=True,
     )
     updated_at = Column(
         DateTime(timezone=True),

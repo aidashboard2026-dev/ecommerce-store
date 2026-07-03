@@ -196,7 +196,7 @@ export default function ProductDetails() {
         title: product.title,
         slug: product.slug,
         thumbnail: product.thumbnail,
-        min_price: product.min_price,
+        minPrice: product.min_price,
       }),
     );
     toast.success(isWishlisted ? "Removed from wishlist" : "Added to wishlist");
@@ -392,6 +392,7 @@ export default function ProductDetails() {
                       setSelectedColor(null);
                       setQuantity(1);
                     }}
+                    aria-pressed={selectedSize === size}
                     className={clsx(
                       "min-w-[2rem] px-2 py-1 rounded-md border text-sm font-semibold transition-colors",
                       selectedSize === size
@@ -419,6 +420,8 @@ export default function ProductDetails() {
                       setQuantity(1);
                     }}
                     title={color}
+                    aria-label={`Color option: ${color}`}
+                    aria-pressed={selectedColor === color}
                     className={clsx(
                       "h-6 w-6 rounded-full border-0 transition-all",
                       selectedColor === color
@@ -457,6 +460,7 @@ export default function ProductDetails() {
             <div className="flex items-center border border-app rounded-lg overflow-hidden">
               <button
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                aria-label="Decrease quantity"
                 className="px-3 py-1.5 text-app hover:bg-surface"
               >
                 −
@@ -470,6 +474,7 @@ export default function ProductDetails() {
                     Math.min(q + 1, activeVariant?.stock_quantity ?? 1),
                   )
                 }
+                aria-label="Increase quantity"
                 className="px-3 py-1.5 text-app hover:bg-surface"
               >
                 +

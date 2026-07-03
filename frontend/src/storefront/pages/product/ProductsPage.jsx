@@ -52,20 +52,27 @@ export default function ProductsPage() {
 
   // Infinite scroll sentinel
   const sentinelRef = useRef(null)
+  const loadMoreRef = useRef()
+  loadMoreRef.current = () => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage()
+    }
+  }
+
   useEffect(() => {
     const el = sentinelRef.current
     if (!el) return
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage()
+        if (entries[0].isIntersecting) {
+          loadMoreRef.current()
         }
       },
       { rootMargin: '400px' }
     )
     observer.observe(el)
     return () => observer.disconnect()
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
+  }, [])
 
   let products = useMemo(() => {
     const all = data?.pages?.flatMap((p) => p.items) || []

@@ -51,7 +51,7 @@ export default function WishlistGrid() {
               <X size={14} />
             </button>
 
-            <Link to={`/products/${item.slug}`} className="aspect-[4/5] bg-surface overflow-hidden">
+            <Link to={item.slug ? `/products/${item.slug}` : `/custom/${item.productId}`} className="aspect-[4/5] bg-surface overflow-hidden">
               {item.thumbnail ? (
                 <img
                   src={getImageUrl(item.thumbnail)}
@@ -67,7 +67,7 @@ export default function WishlistGrid() {
             </Link>
 
             <div className="flex flex-col gap-1 p-3.5">
-              <Link to={`/products/${item.slug}`} className="text-sm font-semibold text-app line-clamp-2 hover:text-brand-500">
+              <Link to={item.slug ? `/products/${item.slug}` : `/custom/${item.productId}`} className="text-sm font-semibold text-app line-clamp-2 hover:text-brand-500">
                 {item.title}
               </Link>
               {item.minPrice != null && (

@@ -147,6 +147,7 @@ export default function DeliveryAddress({ form, setForm, update }) {
             required
             autoComplete="name"
             placeholder="Full Name"
+            aria-label="Full Name"
             value={form.full_name}
             onChange={update("full_name")}
             className="bg-surface border border-app rounded-xl py-2.5 px-4 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-muted sm:col-span-2"
@@ -156,6 +157,7 @@ export default function DeliveryAddress({ form, setForm, update }) {
             autoComplete="tel"
             type="tel"
             placeholder="Phone Number"
+            aria-label="Phone Number"
             value={form.phone}
             onChange={update("phone")}
             className="bg-surface border border-app rounded-xl py-2.5 px-4 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-muted sm:col-span-2"
@@ -165,6 +167,7 @@ export default function DeliveryAddress({ form, setForm, update }) {
             rows={4}
             autoComplete="street-address"
             placeholder="House No, Building Name, Street, Area"
+            aria-label="Delivery Address"
             value={form.address_line1}
             onChange={update("address_line1")}
             className="bg-surface border border-app rounded-xl py-3 px-4 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-muted sm:col-span-2 resize-none min-h-[110px]"
@@ -180,6 +183,7 @@ export default function DeliveryAddress({ form, setForm, update }) {
             required
             autoComplete="address-level2"
             placeholder="City"
+            aria-label="City"
             value={form.city}
             onChange={update("city")}
             className="bg-surface border border-app rounded-xl py-2.5 px-4 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-muted"
@@ -187,6 +191,7 @@ export default function DeliveryAddress({ form, setForm, update }) {
           <select
             required
             autoComplete="address-level1"
+            aria-label="State"
             value={form.state}
             onChange={update("state")}
             className="bg-surface border border-app rounded-xl py-2.5 px-4 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
@@ -202,6 +207,7 @@ export default function DeliveryAddress({ form, setForm, update }) {
             required
             autoComplete="postal-code"
             placeholder="Pincode"
+            aria-label="Pincode"
             value={form.pincode}
             onChange={update("pincode")}
             pattern="\d{4,10}"

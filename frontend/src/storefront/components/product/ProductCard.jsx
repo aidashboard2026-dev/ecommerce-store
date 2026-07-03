@@ -115,6 +115,7 @@ function ProductCard({ product }) {
           <button
             onClick={handleWishlist}
             aria-label="Toggle wishlist"
+            aria-pressed={isWishlisted}
             className="p-2 rounded-full bg-app/80 backdrop-blur-sm hover:bg-gray-200/20 text-app transition-colors duration-200 shadow-sm"
           >
             <Heart
@@ -183,7 +184,7 @@ function ProductCard({ product }) {
         aria-label="Quick add to cart"
       >
         <ShoppingBag size={16} />
-        Add to Card
+        Add to Cart
       </button>
     </Link>
   );
