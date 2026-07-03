@@ -6,7 +6,11 @@ const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
 
 const api = axios.create({
   baseURL: BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
+  timeout: 30000, // 30 seconds
+
+  headers: {
+    'Content-Type': 'application/json',
+  },
 })
 
 // ── Attach JWT token to every request ────────────────────────────────────────
@@ -63,10 +67,21 @@ export const dashboardAPI = {
 
 // ─── Orders ───────────────────────────────────────────────────────────────────
 export const ordersAPI = {
-  list:   (skip = 0, limit = 100) => api.get(`/orders/?skip=${skip}&limit=${limit}`),
-  create: (data)                   => api.post('/orders/', data),
-  update: (id, data)               => api.put(`/orders/${id}`, data),
-  cancel: (id)                     => api.post(`/orders/${id}/cancel`),
+  list: (params = {}) => {
+    const cleaned = {}
+
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== '' && v !== null && v !== undefined) {
+        cleaned[k] = v
+      }
+    })
+
+    return api.get('/orders/', { params: cleaned })
+  },
+
+  create: (data) => api.post('/orders/', data),
+  update: (id, data) => api.put(`/orders/${id}`, data),
+  cancel: (id) => api.post(`/orders/${id}/cancel`),
 }
 
 // ─── Customers ────────────────────────────────────────────────────────────────

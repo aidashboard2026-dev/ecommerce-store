@@ -86,9 +86,13 @@ const authSlice = createSlice({
   extraReducers: (builder) => {
     builder
       // ── Login ──────────────────────────────────────────────────────────────
+      .addCase(loginThunk.pending, (state) => {
+          state.loading = true
+          state.error = null
+      })
       .addCase(loginThunk.fulfilled,(state,action)=>{
 
-        console.log(action.payload)
+        
 
         state.loading=false
         state.error=null
