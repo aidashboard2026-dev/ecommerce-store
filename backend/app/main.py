@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy.exc import IntegrityError
 from app.core.config import settings
 from app.api.router import api_router
-
+from fastapi.middleware.gzip import GZipMiddleware
 # Domain exception hierarchy — handlers registered below
 from app.shared.exceptions import (
     AppException,
@@ -171,6 +171,11 @@ app = FastAPI(
     docs_url=None if _IS_PRODUCTION else "/docs",
     redoc_url=None if _IS_PRODUCTION else "/redoc",
     lifespan=lifespan,
+)
+
+app.add_middleware(
+    GZipMiddleware,
+    minimum_size=1000,
 )
 
 

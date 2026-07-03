@@ -58,14 +58,14 @@ export function TableHead({ children, className, ...props }) {
 
 export function TableCell({ children, className, ...props }) {
   return (
-    <th
+    <td
       className={clsx(
-        'px-4 py-3.5 text-xs text-app font-normal whitespace-nowrap align-middle',
+        "px-4 py-3.5 text-xs text-app font-normal whitespace-nowrap align-middle",
         className
       )}
       {...props}
     >
       {children}
-    </th>
+    </td>
   )
 }

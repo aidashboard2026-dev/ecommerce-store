@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -31,22 +32,48 @@ def authenticate_admin(db: Session, email: str, password: str):
         return None
 
     return admin
-def login_admin(db: Session, email: str, password: str):
+
+
+
+def login_admin(db, email, password):
+
+    t0 = time.perf_counter()
+
     admin = authenticate_admin(db, email, password)
+
+    t1 = time.perf_counter()
+
     if not admin:
         return None
 
-    # Record last login time
     admin.last_login_at = datetime.now(timezone.utc)
+
     db.commit()
+
+    t2 = time.perf_counter()
 
     access_token = create_access_token(
         subject=admin.id,
-        expires_delta=timedelta(minutes=settings.ADMIN_TOKEN_EXPIRE_MINUTES),
+        expires_delta=timedelta(
+            minutes=settings.ADMIN_TOKEN_EXPIRE_MINUTES
+        ),
         token_type="admin",
     )
-    return {"access_token": access_token, "token_type": "bearer", "admin": admin}
 
+    t3 = time.perf_counter()
+
+    logger.info(
+        "LOGIN TIMING | auth=%.2f ms | commit=%.2f ms | jwt=%.2f ms",
+        (t1 - t0) * 1000,
+        (t2 - t1) * 1000,
+        (t3 - t2) * 1000,
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "admin": admin,
+    }
 
 # ── Customer auth ─────────────────────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+// import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Users,
@@ -23,8 +23,21 @@ import StatCard, {
   LowStockProductsCard,
   SettlementCard,
 } from "@/admin/components/dashboard/StatCard";
-import SalesDashboard from "@/admin/components/dashboard/SalesDashboard";
-import OrderStatusAnalytics from "@/admin/components/dashboard/OrderStatusAnalytics";
+import React, {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+const SalesDashboard = lazy(() =>
+  import("@/admin/components/dashboard/SalesDashboard")
+);
+
+const OrderStatusAnalytics = lazy(() =>
+  import("@/admin/components/dashboard/OrderStatusAnalytics")
+);
 import { PageLoader } from "@/shared/components/common/Spinner";
 import { useAuth, useTheme } from "@/shared/hooks/useAuth";
 import PageHeader from '@/shared/components/ui/PageHeader';
@@ -61,7 +74,28 @@ const numberFormatter = new Intl.NumberFormat("en-IN", {
 function formatCurrency(value) {
   return currencyFormatter.format(Number(value || 0));
 }
+function formatActivityTime(time) {
 
+    if (!time) return ""
+
+    const d = new Date(time)
+
+    const diffMs = Date.now() - d.getTime()
+
+    const diffMin = Math.floor(diffMs / 60000)
+
+    if (diffMin < 1) return "Just now"
+
+    if (diffMin < 60)
+        return `${diffMin} min ago`
+
+    const diffHr = Math.floor(diffMin / 60)
+
+    if (diffHr < 24)
+        return `${diffHr} hr ago`
+
+    return d.toLocaleDateString()
+} 
 export default function DashboardPage() {
   const { admin } = useAuth();
   const { isDark } = useTheme();
@@ -112,28 +146,33 @@ export default function DashboardPage() {
       active = false;
     };
   }, []);
-  const groupedNotifications = Object.values(
-    notificationActivity.reduce((acc, item) => {
-      if (!acc[item.event]) {
-        acc[item.event] = {
-          event: item.event,
-          email: false,
-          whatsapp: false,
-        };
-      }
+  const groupedNotifications = useMemo(() => {
 
-      if (item.channel === "Email") {
-        acc[item.event].email = true;
-      }
+    return Object.values(
+      notificationActivity.reduce((acc, item) => {
 
-      if (item.channel === "WhatsApp") {
-        acc[item.event].whatsapp = true;
-      }
+        if (!acc[item.event]) {
 
-      return acc;
-    }, {}),
-  );
+          acc[item.event] = {
+            event: item.event,
+            email: false,
+            whatsapp: false,
+          }
 
+        }
+
+        if (item.channel === "Email")
+          acc[item.event].email = true
+
+        if (item.channel === "WhatsApp")
+          acc[item.event].whatsapp = true
+
+        return acc
+
+      }, {})
+    )
+
+  }, [notificationActivity])
   const adminFirstName = admin?.name?.split(" ")[0] || "Admin";
   const liveProductCount = stats?.total_products ?? 0;
 
@@ -243,8 +282,23 @@ export default function DashboardPage() {
 
       {/* Analytics Charts section */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <SalesDashboard isDark={isDark} />
-        <OrderStatusAnalytics isDark={isDark} />
+
+        <Suspense
+          fallback={
+            <div className="h-[380px] rounded-xl border border-app animate-pulse bg-surface" />
+          }
+        >
+          <SalesDashboard isDark={isDark} />
+        </Suspense>
+
+        <Suspense
+          fallback={
+            <div className="h-[380px] rounded-xl border border-app animate-pulse bg-surface" />
+          }
+        >
+          <OrderStatusAnalytics isDark={isDark} />
+        </Suspense>
+
       </div>
 
       {/* Secondary Financial Stats Grid */}
@@ -405,21 +459,7 @@ export default function DashboardPage() {
                 activityColors[item.type] || activityColors.alert;
 
               // Format ISO timestamp to human-readable relative or absolute time
-              const formattedTime = (() => {
-                if (!item.time) return "";
-                try {
-                  const d = new Date(item.time);
-                  const diffMs = Date.now() - d.getTime();
-                  const diffMin = Math.floor(diffMs / 60000);
-                  if (diffMin < 1)   return "Just now";
-                  if (diffMin < 60)  return `${diffMin} min ago`;
-                  const diffHr = Math.floor(diffMin / 60);
-                  if (diffHr < 24)   return `${diffHr} hr ago`;
-                  return d.toLocaleDateString();
-                } catch {
-                  return item.time;
-                }
-              })();
+              const formattedTime = formatActivityTime(item.time);
 
               return (
                 <div
