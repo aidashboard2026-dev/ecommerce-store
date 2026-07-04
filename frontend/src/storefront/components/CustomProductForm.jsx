@@ -1,40 +1,17 @@
 import React, { useState } from 'react'
-import clsx from 'clsx'
 import UploadDesign from '@/storefront/components/UploadDesign'
 import DesignPreview from '@/storefront/components/DesignPreview'
 import QuoteRequest from '@/storefront/components/QuoteRequest'
 import { revokeObjectURLs } from '@/shared/utils/productUtils'
 
-function OptionChips({ title, options, value, onChange }) {
-  return (
-    <div>
-      <h4 className="text-xs font-bold uppercase tracking-wider text-app mb-2">{title}</h4>
-      <div className="flex flex-wrap gap-2">
-        {options.map((opt) => (
-          <button
-            key={opt}
-            type="button"
-            onClick={() => onChange(opt)}
-            className={clsx(
-              'px-3.5 py-2 rounded-xl border text-sm font-semibold transition-colors',
-              value === opt
-                ? 'border-brand-500 bg-brand-500 text-white'
-                : 'border-app text-app hover:border-brand-500'
-            )}
-          >
-            {opt}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 export default function CustomProductForm({ product }) {
-  const [size, setSize] = useState(product?.size || '')
-  const [color, setColor] = useState('')
-  const [style, setStyle] = useState('')
-  const [placement, setPlacement] = useState('')
+  // style/color/placement/size selection UI is not currently offered for
+  // this product type (see git history for the disabled OptionChips picker);
+  // these stay as plain values rather than state since nothing sets them.
+  const size = product?.size || ''
+  const color = ''
+  const style = ''
+  const placement = ''
   const [quantity, setQuantity] = useState(1)
   const [notes, setNotes] = useState('')
   const [designFiles, setDesignFiles] = useState([])
@@ -67,22 +44,6 @@ export default function CustomProductForm({ product }) {
             <p className="text-sm text-muted mt-0.5">{product.description}</p>
           </div>
         </div>
-
-        {false && (
-          <OptionChips title="Cup Style" options={productType.styles} value={style} onChange={setStyle} />
-        )}
-
-        {false && (
-          <OptionChips title="Size" options={productType.sizes} value={size} onChange={setSize} />
-        )}
-
-        {false && (
-          <OptionChips title="Color" options={productType.colors} value={color} onChange={setColor} />
-        )}
-
-        {false && (
-          <OptionChips title="Design Placement" options={productType.placements} value={placement} onChange={setPlacement} />
-        )}
 
         {/* Quantity */}
         <div className="flex items-center gap-4">

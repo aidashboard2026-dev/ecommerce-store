@@ -21,16 +21,9 @@ import { useCustomProducts } from "@/storefront/hooks/useProducts";
 
 function ProductTypeGrid() {
 
-  const { data, isLoading } = useCustomProducts()
+  const { data } = useCustomProducts()
 
   const products = data?.items || []
-  if (isLoading) {
-    return (
-      <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-20 text-center">
-        <div className="w-10 h-10 border-2 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto" />
-      </div>
-    )
-  }
   return (
     <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
       <div className="text-center mb-10">
@@ -94,21 +87,13 @@ function ProductTypeGrid() {
 export default function CustomPage() {
   const { productType } = useParams()
   // const [searchParams] = useSearchParams()
+  const { data } = useCustomProducts()
 
   if (!productType) {
     return <ProductTypeGrid />
   }
 
   // const config = PRODUCT_TYPES.find((t) => t.key === productType)
-  const { data, isLoading } = useCustomProducts()
-
-  if (isLoading) {
-    return (
-      <div className="mx-auto w-full max-w-[800px] px-4 sm:px-6 lg:px-8 py-20 text-center">
-        <div className="w-10 h-10 border-2 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto" />
-      </div>
-    )
-  }
 
   const product =
       data?.items?.find(

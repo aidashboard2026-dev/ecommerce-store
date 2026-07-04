@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Plus, Download, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -34,9 +35,12 @@ function exportToCSV(customers) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function CustomersPage() {
+  const [searchParams] = useSearchParams()
+  const urlStatus = searchParams.get('status') || ''
+
   // ── Filters & Pagination ─────────────────────────────────────────────────
   const [search, setSearch]           = useState('')
-  const [statusFilter, setStatus]     = useState('')
+  const [statusFilter, setStatus]     = useState(urlStatus)
   const [tagFilter, setTag]           = useState('')
   const [sortBy, setSortBy]           = useState('created_at')
   const [sortDir, setSortDir]         = useState('desc')

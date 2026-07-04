@@ -14,45 +14,24 @@ import { formatPrice, getImageUrl } from "@/shared/utils/productUtils";
 export default function OrderSuccess() {
   const { state } = useLocation();
 
-  if (!state) {
+  if (!state?.orders?.length) {
     return <Navigate to="/" replace />;
   }
 
-  const orders = state?.orders || [
-    {
-      id: "ORD-1001",
-      customer_name: "Bharath",
-      customer_phone: "9876543210",
-      address_line1: "12, Anna Nagar",
-      city: "Chennai",
-      state: "Tamil Nadu",
-      pincode: "600001",
-      product_name: "Nike Air Max",
-      product_image: "",
-      quantity: 1,
-      total_amount: 2999,
-    },
-  ];
-
-  const totals = state?.totals || {
-    subtotal: 2999,
+  const orders = state.orders;
+  const totals = state.totals || {
+    subtotal: 0,
     shipping: 0,
-    tax: 150,
-    total: 3149,
+    tax: 0,
+    total: 0,
   };
 
-  //   const orders = state?.orders || [];
-  //   const totals = state?.totals;
   const paymentMethod = state?.paymentMethod || "COD";
 
   const firstOrder = orders?.[0] || null;
 
   const paymentLabel =
     paymentMethod === "COD" ? "Cash on Delivery" : "Online Payment";
-
-  if (!orders.length) {
-    return <Navigate to="/" replace />;
-  }
 
   const deliveryDate = new Date();
 

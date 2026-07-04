@@ -331,7 +331,6 @@ export default function ProductsPage() {
   React.useEffect(() => {
     setPage(1)
     setSelectedIds(new Set())
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch, statusFilter, categoryId, stockStatus, flagKey])
 
   // ── Data queries ─────────────────────────────────────────────────────────────

@@ -2,7 +2,7 @@ import React from 'react'
 import { useParams, useLocation } from 'react-router-dom'
 import OrdersList from '@/storefront/components/OrdersList'
 import OrderDetails from '@/storefront/components/OrderDetails'
-import OrderSuccess from '@/storefront/components/OrderSuccess'
+import OrderSuccess from '@/storefront/components/checkout/OrderSuccess'
 import OrderTrackingLookup from '@/storefront/components/OrderTrackingLookup'
 
 // Consolidated storefront orders page.

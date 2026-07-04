@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import {
   PieChart as PieIcon,
@@ -11,6 +12,7 @@ const STATUS_CONFIG = [
   {
     key: 'orders',
     name: 'Orders',
+    statusParam: 'pending',
     color: '#6366f1',
     track: 'bg-blue-100 dark:bg-blue-950/50',
     bar: 'bg-blue-500',
@@ -18,6 +20,7 @@ const STATUS_CONFIG = [
   {
     key: 'shipped',
     name: 'Shipped',
+    statusParam: 'shipped',
     color: '#f59e0b',
     track: 'bg-amber-100 dark:bg-amber-950/50',
     bar: 'bg-amber-500',
@@ -25,6 +28,7 @@ const STATUS_CONFIG = [
   {
     key: 'delivered',
     name: 'Delivery',
+    statusParam: 'delivered',
     color: '#10b981',
     track: 'bg-emerald-100 dark:bg-emerald-950/50',
     bar: 'bg-emerald-500',
@@ -32,6 +36,7 @@ const STATUS_CONFIG = [
   {
     key: 'cancelled',
     name: 'Cancel',
+    statusParam: 'cancelled',
     color: '#ef4444',
     track: 'bg-red-100 dark:bg-red-950/50',
     bar: 'bg-red-500',
@@ -82,6 +87,7 @@ const renderCalloutLabel = ({ cx, cy, midAngle, outerRadius, name, percent, fill
 }
 
 export default function OrderStatusAnalytics({ isDark }) {
+  const navigate = useNavigate()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -183,9 +189,14 @@ export default function OrderStatusAnalytics({ isDark }) {
     <div className="card w-full min-w-0 p-6 shadow-sm">
       <div className="mb-5 flex items-start justify-between">
         <div>
-          <h2 className="font-display text-lg font-bold text-app">
+          <button
+            type="button"
+            onClick={() => navigate('/admin/orders')}
+            className="font-display text-lg font-bold text-app hover:text-brand-500 transition-colors text-left"
+            title="View all orders"
+          >
             Order Status Analytics
-          </h2>
+          </button>
           <p className="mt-1 text-sm text-muted">
             {loading ? 'Syncing order records...' : `${total.toLocaleString()} live orders`}
           </p>
@@ -259,7 +270,15 @@ export default function OrderStatusAnalytics({ isDark }) {
 
       <div className="grid grid-cols-2 gap-4">
         {chartData.map((item) => (
-          <div key={item.key}>
+          <div
+            key={item.key}
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate(`/admin/orders?status=${item.statusParam}`)}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && navigate(`/admin/orders?status=${item.statusParam}`)}
+            aria-label={`View ${item.name} orders`}
+            className="cursor-pointer rounded-lg p-1 hover:bg-surface transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400/50"
+          >
             <div className="mb-2 flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />

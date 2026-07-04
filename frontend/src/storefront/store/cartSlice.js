@@ -23,7 +23,7 @@ function persist(items) {
 // A cart line is uniquely identified by productId + size + color
 function sameLine(a, b) {
   return (
-    String(a.productId) === String(b.productId) && a.size === b.size && a.color === b.color
+    a.productId === b.productId && a.size === b.size && a.color === b.color
   );
 }
 
@@ -157,12 +157,6 @@ export const selectShippingCost = createSelector(
     return subtotal >= SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING_FEE;
   },
 );
-
-// export const selectShippingCost = (state) => {
-//   const subtotal = selectCartSubtotal(state);
-//   if (subtotal === 0) return 0;
-//   return subtotal >= SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING_FEE;
-// };
 
 // GST-style flat tax rate applied to subtotal after discount
 export const TAX_RATE = 0.05;
