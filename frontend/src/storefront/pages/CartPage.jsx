@@ -2,7 +2,7 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { ShoppingBag } from 'lucide-react'
-import { CartItem, CartSummary } from '@/storefront/components/cart'
+import { CartItem, CartSummary } from '@/storefront/components/shoppingcart'
 
 export default function CartPage() {
   const items = useSelector((s) => s.cart.items)
@@ -19,9 +19,9 @@ export default function CartPage() {
         </p>
         <Link
           to="/products"
-          className="inline-flex items-center justify-center bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm px-6 py-3 rounded-full shadow-glow-sm transition-colors"
+          className="inline-flex items-center justify-center bg-brand-900 hover:bg-brand-600 text-white font-semibold text-sm px-6 py-3 rounded-full shadow-glow-sm transition-colors"
         >
-          Start Shopping
+          Start Shoppin
         </Link>
       </div>
     )

@@ -8,7 +8,7 @@ from app.modules.custom_products.router import router as custom_products_router
 from app.modules.customers.router import router as customers_router
 from app.modules.dashboard.router import router as dashboard_router
 from app.modules.delivery_zones.router import router as delivery_zones_router
-from app.modules.homepage_categories.router import router as homepage_categories_router
+from app.modules.categories.router import router as homepage_categories_router
 from app.modules.offers.router import router as offers_router
 from app.modules.orders.router import router as orders_router
 from app.modules.products.router import router as products_router
