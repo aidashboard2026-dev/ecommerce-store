@@ -20,10 +20,11 @@ export default function ProductGrid({
   loading,
   skeletonCount = 8,
   emptyMessage = "No products found.",
+  limit,
 }) {
   if (loading && (!products || products.length === 0)) {
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 w-full">
         {Array.from({ length: skeletonCount }).map((_, i) => (
           <ProductSkeleton key={i} />
         ))}
@@ -39,12 +40,14 @@ export default function ProductGrid({
     );
   }
 
+  const itemsToShow = limit ? products.slice(0, limit) : products;
+
   return (
-    <div className="">
+    <div className="w-full">
       <div
-        className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 justify-items-center"
+        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 w-full"
       >
-        {products.slice(0, 8).map((product) => (
+        {itemsToShow.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
 

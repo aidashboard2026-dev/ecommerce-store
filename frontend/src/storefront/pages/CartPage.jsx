@@ -2,7 +2,7 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { ShoppingBag } from 'lucide-react'
-import { CartItem, CartSummary } from '@/storefront/components/cart'
+import { CartItem, CartSummary } from '@/storefront/components/shoppingcart'
 
 export default function CartPage() {
   const items = useSelector((s) => s.cart.items)

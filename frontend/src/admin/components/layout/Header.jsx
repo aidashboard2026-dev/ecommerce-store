@@ -38,7 +38,7 @@ const navItems = [
   { to: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 
-export default function Header() {
+const HeaderComponent = function Header() {
   const { admin } = useAuth()
   const { isDark, toggle } = useTheme()
   const dispatch = useDispatch()
@@ -321,7 +321,7 @@ export default function Header() {
   )
 }
 
-function Logo({ compact = false, sidebarOpen = true }) {
+const Logo = React.memo(function Logo({ compact = false, sidebarOpen = true }) {
   const { settings } = useStoreSettings()
   const logoUrl = settings?.logo
   const storeName = settings?.store_name || 'AdminDash'
@@ -356,4 +356,8 @@ function Logo({ compact = false, sidebarOpen = true }) {
       </span>
     </div>
   )
-}
+})
+
+const Header = React.memo(HeaderComponent)
+export default Header
+

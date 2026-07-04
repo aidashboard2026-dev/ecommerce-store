@@ -35,7 +35,7 @@ const MOBILE_NAV_LINKS = [
   { label: 'Track Order', to: '/tracking' },
 ]
 
-export default function StoreHeader({
+const StoreHeaderComponent = function StoreHeader({
   toggleTheme,
   isDark,
   wishlistCount,
@@ -52,11 +52,22 @@ export default function StoreHeader({
   const location = useLocation();
   const searchRef = useRef(null);
 
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [scrolled, setScrolled] = useState(false);
   const [showSubProducts, setShowSubProducts] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+
+  // Sync search input with URL search param
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const searchVal = params.get("search") || "";
+    setSearchQuery(searchVal);
+    if (searchVal) {
+      setShowSearch(true);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     const closeMenu = () => setShowSubProducts(false);
@@ -74,13 +85,24 @@ export default function StoreHeader({
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setMobileMenuOpen(false);
+        setShowSearch(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -104,6 +126,7 @@ export default function StoreHeader({
       navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
+
 
   return (
     <>
@@ -167,6 +190,7 @@ export default function StoreHeader({
                 type="button"
                 onClick={() => setShowSearch(!showSearch)}
                 className="absolute z-10 p-2 rounded-full hover:bg-surface"
+                aria-label="Toggle search bar"
               >
                 <Search size={20} />
               </button>
@@ -175,6 +199,7 @@ export default function StoreHeader({
               type="button"
               onClick={() => setShowSearch(true)}
               className="p-2 rounded-full hover:bg-surface md:hidden"
+              aria-label="Open search bar"
             >
               <Search size={20} />
             </button>
@@ -272,20 +297,21 @@ export default function StoreHeader({
 
       {showSearch && (
         <div className="fixed h-fit inset-0 top-16 z-50 md:hidden bg-app">
-          <div className="p-4 border-b flex items-center gap-3">
+          <form onSubmit={handleSearchSubmit} className="p-4 border-b flex items-center gap-3">
             <input
               autoFocus
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search products..."
-              className="flex-1 bg-surface border-0 rounded-full py-2 px-5"
+              className="flex-1 bg-surface border border-app rounded-full py-2 px-5 text-app focus:outline-none"
+              aria-label="Search premium apparel"
             />
 
-            <button onClick={() => setShowSearch(false)}>
+            <button type="button" onClick={() => setShowSearch(false)} aria-label="Close search bar">
               <X size={22} />
             </button>
-          </div>
+          </form>
         </div>
       )}
 
@@ -301,7 +327,7 @@ export default function StoreHeader({
           <div className="fixed top-0 right-0 h-full w-72 bg-app border-l border-app z-50  shadow-xl flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-end p-4">
-              <button onClick={() => setMobileMenuOpen(false)}>
+              <button onClick={() => setMobileMenuOpen(false)} aria-label="Close navigation menu">
                 <X size={22} />
               </button>
             </div>
@@ -357,3 +383,6 @@ export default function StoreHeader({
     </>
   );
 }
+
+const StoreHeader = React.memo(StoreHeaderComponent);
+export default StoreHeader;

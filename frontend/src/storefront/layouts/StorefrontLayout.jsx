@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense, useCallback } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 
@@ -8,6 +8,7 @@ import { customerLogoutThunk } from "@/storefront/store/customerSlice";
 import StoreHeader from "@/storefront/components/storeindex/StoreHeader";
 import StoreFooter from "@/storefront/components/storeindex/StoreFooter";
 import { CartDrawer } from "@/storefront/components/shoppingcart";
+import { PageLoader } from "@/shared/components/common/Spinner";
 
 export default function StorefrontLayout() {
   const navigate = useNavigate();
@@ -20,10 +21,10 @@ export default function StorefrontLayout() {
   const { isDark, toggle: toggleTheme } = useTheme();
 
   // Track page scroll to toggle header background glassmorphism
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     dispatch(customerLogoutThunk());
     navigate("/");
-  };
+  }, [dispatch, navigate]);
 
   // Close mobile menu on route change
 
@@ -52,7 +53,9 @@ export default function StorefrontLayout() {
 
       {/* Main Page Layout Wrapper */}
       <main className="flex-1 w-full mt-5 p-2 relative">
-        <Outlet />
+        <Suspense fallback={<PageLoader />}>
+          <Outlet />
+        </Suspense>
       </main>
 
       <CartDrawer />

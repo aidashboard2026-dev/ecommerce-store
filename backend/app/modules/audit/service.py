@@ -161,7 +161,7 @@ class AuditService:
                 resource_type=resource_type,
                 resource_id=resource_id,
                 resource_label=resource_label,
-                changes=self._json_safe(changes),
+                changes=safe_changes,
                 ip_address=ip,
                 user_agent=ua,
                 status=status,

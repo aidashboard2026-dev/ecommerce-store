@@ -213,7 +213,7 @@ export default function DashboardPage() {
           <div className="flex gap-2 shrink-0 w-full sm:w-auto">
             <button
               type="button"
-              onClick={() => navigate("/settings")}
+              onClick={() => navigate("/admin/settings")}
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-zinc-100 text-zinc-950 text-xs font-bold transition-all active:scale-95 shadow-sm"
             >
               <svg
@@ -234,7 +234,7 @@ export default function DashboardPage() {
             </button>
             <button
               type="button"
-              onClick={() => navigate("/products")}
+              onClick={() => navigate("/admin/products")}
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition-all active:scale-95 border border-white/15 shadow-sm"
             >
               <Eye size={14} />
@@ -253,7 +253,7 @@ export default function DashboardPage() {
             change={stats.user_growth}
             icon={CustomersIcon}
             iconClassName="text-indigo-600 border-indigo-500/10 dark:text-indigo-400"
-            onClick={() => navigate("/customers")}
+            onClick={() => navigate("/admin/customers")}
           />
           <StatCard
             title="Total Products"
@@ -261,7 +261,7 @@ export default function DashboardPage() {
             change={stats.product_growth}
             icon={Package}
             iconClassName="text-violet-600 border-violet-500/10 dark:text-violet-400"
-            onClick={() => navigate("/products")}
+            onClick={() => navigate("/admin/products")}
           />
           <StatCard
             title="Published Items"
@@ -269,13 +269,13 @@ export default function DashboardPage() {
             change={stats.published_growth || 0}
             icon={Activity}
             iconClassName="text-emerald-600 border-emerald-500/10 dark:text-emerald-400"
-            onClick={() => navigate("/products")}
+            onClick={() => navigate("/admin/products")}
           />
           <LowStockProductsCard
             title="Low Stock Products"
             count={stats.low_stock_product_count}
             products={stats.low_stock_products}
-            onClick={() => navigate("/products")}
+            onClick={() => navigate("/admin/products?stock=low")}
           />
         </div>
       )}
@@ -311,7 +311,7 @@ export default function DashboardPage() {
             icon={DollarSign}
             iconClassName="text-emerald-600 border-emerald-500/10 dark:text-emerald-400"
             prefix={formatCurrency}
-            onClick={() => navigate("/orders")}
+            onClick={() => navigate("/admin/orders")}
           />
           <SettlementCard
             title="Cash Revenue"
@@ -320,7 +320,7 @@ export default function DashboardPage() {
             change={stats.cash_revenue_growth || 0}
             icon={Banknote}
             iconClassName="text-emerald-500"
-            onClick={() => navigate("/orders")}
+            onClick={() => navigate("/admin/orders")}
           />
           <SettlementCard
             title="UPI Revenue"
@@ -329,20 +329,24 @@ export default function DashboardPage() {
             change={stats.upi_revenue_growth || 0}
             icon={Smartphone}
             iconClassName="text-sky-500"
-            onClick={() => navigate("/orders")}
+            onClick={() => navigate("/admin/orders")}
           />
           <TopCategoriesCard
             title="Top Categories"
             categories={stats.top_categories}
-            onClick={() => navigate("/products")}
+            onClick={() => navigate("/admin/categories")}
           />
         </div>
       )}
       {/* Payment Activity */}
       {paymentActivity.length > 0 && (
         <div
-          onClick={() => navigate("/settings")}
-          className="cursor-pointer rounded-xl border border-amber-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-amber-900/40 dark:bg-zinc-900"
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate("/admin/settings")}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && navigate("/admin/settings")}
+          aria-label="Payment Activity — go to Settings"
+          className="cursor-pointer rounded-xl border border-amber-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-amber-900/40 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-amber-400/60"
         >
           <div className="mb-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -389,8 +393,12 @@ export default function DashboardPage() {
 
       {groupedNotifications.length > 0 && (
         <div
-          onClick={() => navigate("/settings")}
-          className="cursor-pointer rounded-xl border border-rose-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-rose-900/40 dark:bg-zinc-900"
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate("/admin/settings")}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && navigate("/admin/settings")}
+          aria-label="Notification Activity — go to Settings"
+          className="cursor-pointer rounded-xl border border-rose-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-rose-900/40 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-rose-400/60"
         >
           <div className="mb-5 flex items-center justify-between">
             <div className="flex items-center gap-3">

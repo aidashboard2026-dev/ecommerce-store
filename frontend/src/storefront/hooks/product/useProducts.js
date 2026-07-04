@@ -1,9 +1,12 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { storefrontAPI } from '@/shared/services/api'
 import {
   fetchProducts,
   fetchProductBySlug,
   fetchOffers,
   fetchBanners,
+  fetchCustomProducts,
+  fetchCustomProduct,
 } from '@/storefront/services/productsService'
 
 const PER_PAGE = 12

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import {
   BarChart3,
@@ -63,6 +64,7 @@ function ControlButton({ active, children, className, ...props }) {
 }
 
 export default function SalesDashboard({ isDark }) {
+  const navigate = useNavigate()
   const [period, setPeriod] = useState('weekly')
   const [chartType, setChartType] = useState('bar')
   const [anchorDate, setAnchorDate] = useState(todayISO())
@@ -143,7 +145,14 @@ export default function SalesDashboard({ isDark }) {
       <div className="flex justify-between mb-5">
         <div className="flex gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="font-display text-lg font-bold text-app">Sales Dashboard</h2>
+            <button
+              type="button"
+              onClick={() => navigate('/admin/orders')}
+              className="font-display text-lg font-bold text-app hover:text-brand-500 transition-colors text-left"
+              title="View Orders"
+            >
+              Sales Dashboard
+            </button>
             <p className="mt-1 text-sm text-muted">
               {sales.range_label || 'Live sales from order records'} - {formatCurrency(totalSales)}
             </p>

@@ -71,23 +71,27 @@ function ProductCard({ product }) {
     toast.success("Added to cart");
   };
 
+  const [imageError, setImageError] = React.useState(false);
+
   return (
     <Link
       to={`/products/${product.slug}`}
-      className="group relative flex flex-col w-full sm:w-56 justify-between overflow-hidden transition-all duration-300 hover:-translate-y-1"
+      className="group relative flex flex-col w-full justify-between overflow-hidden transition-all duration-300 hover:-translate-y-1"
     >
       {/* Image */}
       <div className="flex relative w-full aspect-[8/9] rounded-2xl bg-surface overflow-hidden">
-        {product.thumbnail ? (
+        {product.thumbnail && !imageError ? (
           <img
             src={getImageUrl(product.thumbnail)}
             alt={product.title}
             loading="lazy"
+            onError={() => setImageError(true)}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted text-xs">
-            No Image
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-950 text-zinc-400 p-4 text-center text-[10px] uppercase font-bold tracking-wider">
+            <ShoppingBag className="w-6 h-6 mb-1 text-zinc-500" />
+            <span className="line-clamp-2">{product.title}</span>
           </div>
         )}
 
@@ -111,6 +115,7 @@ function ProductCard({ product }) {
           <button
             onClick={handleWishlist}
             aria-label="Toggle wishlist"
+            aria-pressed={isWishlisted}
             className="p-2 rounded-full bg-app/80 backdrop-blur-sm hover:bg-gray-200/20 text-app transition-colors duration-200 shadow-sm"
           >
             <Heart
@@ -179,7 +184,7 @@ function ProductCard({ product }) {
         aria-label="Quick add to cart"
       >
         <ShoppingBag size={16} />
-        Add to Card
+        Add to Cart
       </button>
     </Link>
   );

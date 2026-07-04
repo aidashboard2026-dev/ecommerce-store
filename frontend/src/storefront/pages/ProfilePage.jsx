@@ -6,8 +6,21 @@ import { User, Phone, Mail, ClipboardList, Lock, Save, MapPin, Heart, Settings }
 import clsx from 'clsx'
 import { updateCustomerProfileThunk } from '@/storefront/store/customerSlice'
 import OrdersList from '@/storefront/components/OrdersList'
-import CheckoutForm from '@/storefront/components/order/components/CheckoutForm'
+import DeliveryAddress from '@/storefront/components/checkout/DeliveryAddress'
 import WishlistGrid from '@/storefront/components/WishlistGrid'
+
+const ADDRESS_FIELDS = ['full_name', 'phone', 'address_line1', 'address_line2', 'city', 'state', 'pincode']
+const EMPTY_ADDRESS_FORM = ADDRESS_FIELDS.reduce((acc, field) => ({ ...acc, [field]: '' }), {})
+
+// ─── Addresses tab — reuses the checkout address-book UI (add/select/remove
+// backed by checkoutStore) so saved addresses stay consistent between the
+// profile page and the checkout flow. ────────────────────────────────────
+function ManageAddressesSection() {
+  const [form, setForm] = useState(EMPTY_ADDRESS_FORM)
+  const update = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
+
+  return <DeliveryAddress form={form} setForm={setForm} update={update} />
+}
 
 // ─── Profile tab — account details form (unchanged from original) ──────────
 function AccountDetailsSection() {
@@ -137,7 +150,7 @@ export default function ProfilePage() {
       </div>
 
       {activeTab === 'orders' && <OrdersList />}
-      {activeTab === 'addresses' && <CheckoutForm />}
+      {activeTab === 'addresses' && <ManageAddressesSection />}
       {activeTab === 'wishlist' && <WishlistGrid />}
       {activeTab === 'settings' && <AccountSettingsSection />}
       {activeTab === 'profile' && <AccountDetailsSection />}

@@ -34,6 +34,7 @@ export default function CartItem({ item }) {
             <img
               src={getImageUrl(item.thumbnail)}
               alt={item.title}
+              loading="lazy"
               className="w-full h-full object-cover"
             />
           ) : (

@@ -14,7 +14,7 @@ import {
   setOrderError,
   setPlacingOrder,
 } from "@/storefront/store/checkoutStore";
-import { clearCart, selectCartTotals } from "@/storefront/store/cartSlice";
+import { clearCart, removeFromCart, selectCartTotals } from "@/storefront/store/cartSlice";
 import { useCreateOrder } from "@/storefront/hooks/useOrders";
 
 const EMPTY_CHECKOUT_FORM = {
@@ -108,8 +108,26 @@ export default function CheckoutPage() {
           cart_session_id: cartSessionId,
         };
 
-        const created = await createOrderMutation.mutateAsync(orderPayload);
+        let created;
+        try {
+          created = await createOrderMutation.mutateAsync(orderPayload);
+        } catch (itemErr) {
+          // Remove whatever already succeeded before this item failed, so a
+          // retry only re-attempts the item(s) that actually didn't go
+          // through instead of duplicating orders already placed.
+          if (createdOrders.length > 0) {
+            dispatch(setLastOrder({ orders: createdOrders, totals, paymentMethod }));
+          }
+          const detail =
+            itemErr?.response?.data?.detail ||
+            `Failed to order "${item.title}". Please try again.`;
+          throw Object.assign(new Error(detail), {
+            partialSuccessCount: createdOrders.length,
+            failedItemTitle: item.title,
+          });
+        }
         createdOrders.push(created);
+        dispatch(removeFromCart({ productId: item.productId, size: item.size, color: item.color }));
       }
 
       dispatch(setLastOrder({ orders: createdOrders, totals, paymentMethod }));
@@ -130,8 +148,10 @@ export default function CheckoutPage() {
       }
     } catch (err) {
       const detail =
-        err?.response?.data?.detail ||
-        "Failed to place order. Please try again.";
+        err?.partialSuccessCount > 0
+          ? `${err.message} The other ${err.partialSuccessCount} item(s) were ordered successfully and have been removed from your cart.`
+          : err?.response?.data?.detail ||
+            "Failed to place order. Please try again.";
       dispatch(setOrderError(detail));
       toast.error(detail);
     } finally {

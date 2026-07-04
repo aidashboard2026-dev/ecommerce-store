@@ -80,6 +80,7 @@ export default function HomePage() {
             products={featured}
             loading={loadingFeatured}
             skeletonCount={4}
+            limit={8}
           />
         </section>
       )}
@@ -94,6 +95,7 @@ export default function HomePage() {
           products={newArrivals}
           loading={loadingNew}
           skeletonCount={4}
+          limit={8}
         />
       </section>
 
@@ -108,6 +110,7 @@ export default function HomePage() {
             products={bestSellers}
             loading={loadingBest}
             skeletonCount={4}
+            limit={8}
           />
         </section>
       )}

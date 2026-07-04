@@ -41,6 +41,11 @@ export default function ProductDetails() {
   const [selectedColor, setSelectedColor] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [zoomed, setZoomed] = useState(false);
+  const [imageErrors, setImageErrors] = useState({});
+
+  const handleImageError = (index) => {
+    setImageErrors((prev) => ({ ...prev, [index]: true }));
+  };
 
   const [open, setOpen] = useState("");
 
@@ -191,7 +196,7 @@ export default function ProductDetails() {
         title: product.title,
         slug: product.slug,
         thumbnail: product.thumbnail,
-        min_price: product.min_price,
+        minPrice: product.min_price,
       }),
     );
     toast.success(isWishlisted ? "Removed from wishlist" : "Added to wishlist");
@@ -256,18 +261,20 @@ export default function ProductDetails() {
             )}
             onClick={() => setZoomed((z) => !z)}
           >
-            {images.length > 0 ? (
+            {images.length > 0 && !imageErrors[activeImage] ? (
               <img
                 src={getImageUrl(images[activeImage])}
                 alt={product.title}
+                onError={() => handleImageError(activeImage)}
                 className={clsx(
                   "w-full h-full object-cover transition-transform duration-300",
                   zoomed ? "scale-150" : "scale-100",
                 )}
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-muted text-sm">
-                No Image Available
+              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-950 text-zinc-400 p-8 text-center text-xs uppercase font-bold tracking-wider">
+                <ShoppingBag className="w-12 h-12 mb-2 text-zinc-500" />
+                <span>{product.title}</span>
               </div>
             )}
 
@@ -318,11 +325,18 @@ export default function ProductDetails() {
                     activeImage === i ? "border-brand-500" : "border-app",
                   )}
                 >
-                  <img
-                    src={getImageUrl(img)}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
+                  {!imageErrors[i] ? (
+                    <img
+                      src={getImageUrl(img)}
+                      alt=""
+                      onError={() => handleImageError(i)}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-zinc-500">
+                      <ShoppingBag size={16} />
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -378,6 +392,7 @@ export default function ProductDetails() {
                       setSelectedColor(null);
                       setQuantity(1);
                     }}
+                    aria-pressed={selectedSize === size}
                     className={clsx(
                       "min-w-[2rem] px-2 py-1 rounded-md border text-sm font-semibold transition-colors",
                       selectedSize === size
@@ -405,6 +420,8 @@ export default function ProductDetails() {
                       setQuantity(1);
                     }}
                     title={color}
+                    aria-label={`Color option: ${color}`}
+                    aria-pressed={selectedColor === color}
                     className={clsx(
                       "h-6 w-6 rounded-full border-0 transition-all",
                       selectedColor === color
@@ -443,6 +460,7 @@ export default function ProductDetails() {
             <div className="flex items-center border border-app rounded-lg overflow-hidden">
               <button
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                aria-label="Decrease quantity"
                 className="px-3 py-1.5 text-app hover:bg-surface"
               >
                 −
@@ -456,6 +474,7 @@ export default function ProductDetails() {
                     Math.min(q + 1, activeVariant?.stock_quantity ?? 1),
                   )
                 }
+                aria-label="Increase quantity"
                 className="px-3 py-1.5 text-app hover:bg-surface"
               >
                 +

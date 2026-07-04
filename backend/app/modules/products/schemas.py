@@ -367,6 +367,7 @@ class ProductBase(BaseModel):
     is_featured:    bool = False
     is_trending:    bool = False
     is_best_seller: bool = False
+    is_new_arrival: bool = False
     seo_title: Optional[str] = None
     seo_description: Optional[str] = None
 

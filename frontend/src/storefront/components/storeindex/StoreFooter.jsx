@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import useStoreSettings from "@/shared/hooks/useStoreSettings";
 
-export default function StoreFooter() {
+const StoreFooterComponent = function StoreFooter() {
   const { settings } = useStoreSettings();
   const logoUrl = settings?.logo;
   const storeName = settings?.store_name || "AuraStore";
@@ -251,3 +251,6 @@ export default function StoreFooter() {
     </footer>
   );
 }
+
+const StoreFooter = React.memo(StoreFooterComponent);
+export default StoreFooter;

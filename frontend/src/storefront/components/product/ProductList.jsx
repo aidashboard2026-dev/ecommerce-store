@@ -4,7 +4,6 @@ import { SlidersHorizontal } from 'lucide-react'
 import { useProductsInfinite, useCollections, useCategories } from '@/storefront/hooks/useProducts'
 
 import ProductGrid from '@/storefront/components/home/ProductGrid'
-import ProductFilters from '@/storefront/components/product/ProductFilters'
 import { useDebounce } from '@/shared/utils/productUtils'
 import SortDropdown from "@/storefront/components/filters/SortDropdown";
 import FilterDrawer from "@/storefront/components/filters/FilterDrawer";
@@ -21,7 +20,7 @@ import { useLocation } from "react-router-dom";
       rating:null,
       in_stock_only:false
   }
-export default function ProductsList() {
+export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog' } = {}) {
   const location = useLocation();
 
   const fromMenu = location.state?.fromMenu === true;
@@ -52,12 +51,6 @@ export default function ProductsList() {
     return categoriesData.filter(c => c.name !== "Custom Printing")
   }, [categoriesData])
 
-  const gendersList = useMemo(() => [
-    'Men',
-    'Women',
-    'Kids'
-  ], [])
-
   const queryFilters = useMemo(() => {
     const f = {
       sort_by: filters.sort_by,
@@ -69,9 +62,10 @@ export default function ProductsList() {
       genders: filters.gender ? [filters.gender] : undefined,
       min_price: filters.min_price || undefined,
       max_price: filters.max_price || undefined,
+      ...forcedFilters,
     }
     return f
-  }, [filters, debouncedSearch])
+  }, [filters, debouncedSearch, forcedFilters])
 
   const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } =
     useProductsInfinite(queryFilters)
@@ -263,7 +257,7 @@ export default function ProductsList() {
   return (
     <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       <div className="flex flex-col gap-2 mb-6">
-        <h1 className="font-display font-bold text-2xl sm:text-3xl text-black">Shop Catalog</h1>
+        <h1 className="font-display font-bold text-2xl sm:text-3xl text-black">{title}</h1>
         <p className="text-sm text-muted">
           {products.length > 0 ? `Showing ${products.length} products` : 'Browse our collection'}
         </p>

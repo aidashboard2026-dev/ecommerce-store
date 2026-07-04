@@ -291,13 +291,21 @@ def get_customer_analytics(db: Session) -> Dict[str, Any]:
     active = db.query(func.count(Customer.id)).filter(Customer.is_active.is_(True)).scalar() or 0
     inactive = total - active
 
-    # New customers this month
-    new_this_month = (
-        db.query(func.count(Customer.id))
-        .filter(func.date_trunc("month", Customer.created_at) == func.date_trunc("month", func.now()))
-        .scalar()
-        or 0
-    )
+    # New customers this month - dialect-aware for SQLite compatibility
+    if db.bind.dialect.name == "sqlite":
+        new_this_month = (
+            db.query(func.count(Customer.id))
+            .filter(func.strftime("%Y-%m", Customer.created_at) == func.strftime("%Y-%m", func.now()))
+            .scalar()
+            or 0
+        )
+    else:
+        new_this_month = (
+            db.query(func.count(Customer.id))
+            .filter(func.date_trunc("month", Customer.created_at) == func.date_trunc("month", func.now()))
+            .scalar()
+            or 0
+        )
 
     # Top spenders (email join)
     stats_sq = _build_order_stats_subquery(db)

@@ -29,17 +29,17 @@ export default {
       },
       colors: {
         brand: {
-          50:  '#f5f7ff',
-          100: '#ebf0ff',
-          200: '#d6e0ff',
-          300: '#b2c5ff',
-          400: '#85a0ff',
-          500: '#6366f1', // Premium Indigo
-          600: '#4f46e5',
-          700: '#4338ca',
-          800: '#3730a3',
-          900: '#312e81',
-          950: '#1e1b4b',
+          50:  '#fff1ecff',
+          100: '#fbb9e1ff',
+          200: '#f78bd5ff',
+          300: '#ef46c2ff',
+          400: '#db2fe8ff',
+          500: '#f15dc5ff', // Premium Indigo
+          600: '#e016b2ff',
+          700: '#a24b84ff',
+          800: '#744165ff',
+          900: '#4c2a3bff',
+          950: '#321e2bff',
         },
         // Mapped to CSS variables for dark/light mode
         app: 'var(--color-bg)',
@@ -69,8 +69,8 @@ export default {
         },
       },
       boxShadow: {
-        glow: '0 0 20px rgba(99, 102, 241, 0.15)',
-        'glow-sm': '0 0 10px rgba(99, 102, 241, 0.10)',
+        glow: '0 0 20px rgba(114, 114, 120, 0.15)',
+        'glow-sm': '0 0 10px rgba(161, 161, 174, 0.10)',
         'card': '0 1px 3px rgba(0, 0, 0, 0.02), 0 4px 12px rgba(0, 0, 0, 0.02)',
         'card-hover': '0 8px 24px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.02)',
         elevated: '0px 8px 30px rgba(0, 0, 0, 0.06), 0px 2px 8px rgba(0, 0, 0, 0.02)'

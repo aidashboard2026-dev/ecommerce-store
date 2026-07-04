@@ -29,7 +29,7 @@ const wishlistSlice = createSlice({
   reducers: {
     toggleWishlist(state, action) {
       const product = action.payload
-      const idx = state.items.findIndex((i) => i.productId === product.productId)
+      const idx = state.items.findIndex((i) => String(i.productId) === String(product.productId))
       if (idx >= 0) {
         state.items.splice(idx, 1)
       } else {
@@ -38,7 +38,7 @@ const wishlistSlice = createSlice({
       persist(state.items)
     },
     removeFromWishlist(state, action) {
-      state.items = state.items.filter((i) => i.productId !== action.payload)
+      state.items = state.items.filter((i) => String(i.productId) !== String(action.payload))
       persist(state.items)
     },
     clearWishlist(state) {
@@ -52,4 +52,4 @@ export const { toggleWishlist, removeFromWishlist, clearWishlist } = wishlistSli
 export default wishlistSlice.reducer
 
 export const selectIsWishlisted = (productId) => (state) =>
-  state.wishlist.items.some((i) => i.productId === productId)
+  state.wishlist.items.some((i) => String(i.productId) === String(productId))

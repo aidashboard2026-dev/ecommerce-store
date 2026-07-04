@@ -53,7 +53,7 @@ class Order(Base):
 
     # ── Customer ─────────────────────────────────────────────────────────────
     customer_name  = Column(String(255), nullable=False)
-    customer_email = Column(String(255))
+    customer_email = Column(String(255), index=True)
     customer_phone = Column(String(20))
 
     # ── Shipping address ─────────────────────────────────────────────────────
@@ -89,7 +89,7 @@ class Order(Base):
     # ── Dates ────────────────────────────────────────────────────────────────
     # timezone=True ensures TIMESTAMPTZ in PostgreSQL so comparisons
     # with timezone-aware Python datetimes never raise TypeError.
-    ordered_at             = Column(DateTime(timezone=True), default=_utcnow)
+    ordered_at             = Column(DateTime(timezone=True), default=_utcnow, index=True)
     created_at             = Column(DateTime(timezone=True), default=_utcnow)
     updated_at             = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
     delivery_days          = Column(Integer, default=5)

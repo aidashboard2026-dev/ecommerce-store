@@ -87,13 +87,13 @@ function ProductTypeGrid() {
 export default function CustomPage() {
   const { productType } = useParams()
   // const [searchParams] = useSearchParams()
+  const { data } = useCustomProducts()
 
   if (!productType) {
     return <ProductTypeGrid />
   }
 
   // const config = PRODUCT_TYPES.find((t) => t.key === productType)
-  const { data } = useCustomProducts()
 
   const product =
       data?.items?.find(

@@ -13,7 +13,7 @@ import { productsAPI as productsApi, categoriesAPI, collectionsAPI } from '@/sha
 
 function getNormalizedCollectionName(name) {
   if (!name) return null;
-  const val = name.trim().toLowerCase().replace(/[\s_\-'\"]+/g, '');
+  const val = name.trim().toLowerCase().replace(/[\s_\-'"]+/g, '');
   if (val.includes('women') || val.includes('female') || val.includes('girl') || val.includes('lady') || val.includes('ladies')) {
     return 'Women';
   }

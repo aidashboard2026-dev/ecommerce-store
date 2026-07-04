@@ -45,3 +45,31 @@ htmlcov/
 # Runtime uploads
 backend/uploads/products/*
 !backend/uploads/products/.gitkeep
+
+# Reports
+reports/
+*.md
+
+# Performance reports
+reports/performance/
+
+# Test reports
+coverage/
+htmlcov/
+.pytest_cache/
+
+# Tests
+tests/
+
+# Playwright
+playwright-report/
+test-results/
+
+#vitest
+.vitest
+
+#hyothesis
+.hyothesis
+
+#coverage
+coverage

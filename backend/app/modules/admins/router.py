@@ -15,7 +15,7 @@ router = APIRouter()
 
 # ── List all admins (admin-protected) ─────────────────────────────────────────
 
-@router.get("/admin/all", response_model=List[AdminResponse])
+@router.get("/", response_model=List[AdminResponse])
 def list_admins(
     skip: int = 0,
     limit: int = 100,
@@ -25,7 +25,7 @@ def list_admins(
     return get_admins(db, skip=skip, limit=limit)
 
 
-@router.get("/admin/count")
+@router.get("/count")
 def count_admins(
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_admin),
@@ -35,7 +35,7 @@ def count_admins(
 
 # ── Create admin (superadmin only — no public registration path) ──────────────
 
-@router.post("/admin", response_model=AdminResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=AdminResponse, status_code=status.HTTP_201_CREATED)
 def create_new_admin(
     admin_in: AdminCreate,
     db: Session = Depends(get_db),
@@ -53,7 +53,7 @@ def create_new_admin(
 
 # ── Per-admin operations ───────────────────────────────────────────────────────
 
-@router.get("/admin/{admin_id}", response_model=AdminResponse)
+@router.get("/{admin_id}", response_model=AdminResponse)
 def get_admin_by_id(
     admin_id: int,
     db: Session = Depends(get_db),
@@ -65,7 +65,7 @@ def get_admin_by_id(
     return admin
 
 
-@router.put("/admin/{admin_id}", response_model=AdminResponse)
+@router.put("/{admin_id}", response_model=AdminResponse)
 def update_admin_by_id(
     admin_id: int,
     admin_in: AdminUpdate,
@@ -81,7 +81,7 @@ def update_admin_by_id(
     return update_admin(db, admin, admin_in)
 
 
-@router.delete("/admin/{admin_id}")
+@router.delete("/{admin_id}")
 def delete_admin_by_id(
     admin_id: int,
     db: Session = Depends(get_db),
