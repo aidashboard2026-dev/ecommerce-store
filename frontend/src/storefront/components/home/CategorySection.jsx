@@ -49,7 +49,6 @@ export default function CategorySection() {
               <img
                 src={getImageUrl(cat.image)}
                 alt={cat.name}
-                loading="lazy"
                 className="h-48 md:h-40 lg:h-80 w-full object-cover transition-transform duration-500 group-hover:scale-110"
               />
 
