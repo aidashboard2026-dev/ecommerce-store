@@ -5,9 +5,9 @@ import toast from 'react-hot-toast'
 import { User, Phone, Mail, ClipboardList, Lock, Save, MapPin, Heart, Settings } from 'lucide-react'
 import clsx from 'clsx'
 import { updateCustomerProfileThunk } from '@/storefront/store/customerSlice'
-import OrdersList from '@/storefront/components/OrdersList'
+import OrdersList from '@/storefront/components/orders/OrdersList'
 import DeliveryAddress from '@/storefront/components/checkout/DeliveryAddress'
-import WishlistGrid from '@/storefront/components/WishlistGrid'
+import WishlistGrid from '@/storefront/components/storeheaders/WishlistGrid'
 
 const ADDRESS_FIELDS = ['full_name', 'phone', 'address_line1', 'address_line2', 'city', 'state', 'pincode']
 const EMPTY_ADDRESS_FORM = ADDRESS_FIELDS.reduce((acc, field) => ({ ...acc, [field]: '' }), {})

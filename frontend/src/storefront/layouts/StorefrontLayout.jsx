@@ -7,7 +7,7 @@ import { customerLogoutThunk } from "@/storefront/store/customerSlice";
 
 import StoreHeader from "@/storefront/components/storeindex/StoreHeader";
 import StoreFooter from "@/storefront/components/storeindex/StoreFooter";
-import { CartDrawer } from "@/storefront/components/shoppingcart";
+// import { CartSidebar } from "@/storefront/components/shoppingcart";
 
 export default function StorefrontLayout() {
   const navigate = useNavigate();
@@ -65,7 +65,7 @@ export default function StorefrontLayout() {
         </Suspense>
       </main>
 
-      <CartDrawer />
+      {/* <CartDrawer /> */}
 
       <StoreFooter />
     </div>

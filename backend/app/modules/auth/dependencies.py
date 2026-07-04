@@ -18,21 +18,30 @@ from app.modules.admins.models import Admin
 from app.modules.customers.models import Customer
 from app.shared.exceptions import AuthenticationError, AuthorizationError
 
-bearer_scheme = HTTPBearer()
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def get_current_admin(
+    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: Session = Depends(get_db),
-) -> Admin:
-    """
-    Validate a Bearer token and return the authenticated Admin.
+):
+    token = None
 
-    Raises AuthenticationError (→ HTTP 401) when:
-      - The token is invalid, expired, or not an admin token.
-      - The admin account no longer exists in the database.
-    """
-    token    = credentials.credentials
+    # Authorization Header
+    if credentials:
+        token = credentials.credentials if credentials else None
+
+    # Cookie
+    if not token:
+        token = request.cookies.get("admin_token")
+
+    if not token:
+        raise AuthenticationError(
+            "Authentication required.",
+            code="NO_TOKEN",
+        )
+
     admin_id = verify_token(token, expected_type="admin")
 
     if not admin_id:
@@ -45,12 +54,11 @@ def get_current_admin(
 
     if admin is None:
         raise AuthenticationError(
-            "Admin account not found or has been deleted.",
+            "Admin account not found.",
             code="ADMIN_NOT_FOUND",
         )
 
     return admin
-
 
 def get_current_superadmin(
     current_admin: Admin = Depends(get_current_admin),

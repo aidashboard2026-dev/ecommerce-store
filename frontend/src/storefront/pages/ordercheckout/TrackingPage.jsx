@@ -2,9 +2,9 @@ import React, { useState } from 'react'
 import { Search, MapPin } from 'lucide-react'
 import { useTrackOrder } from '@/storefront/hooks/useOrders'
 import { getImageUrl, formatPrice } from '@/shared/utils/productUtils'
-import OrderTimeline from '@/storefront/components/OrderTimeline'
+import OrderTimeline from '@/storefront/components/orders/OrderTimeline'
 
-export default function OrderTrackingLookup() {
+export default function TrackingPage() {
   const [input, setInput] = useState('')
   const [orderNumber, setOrderNumber] = useState(null)
   const { data: order, isLoading, isError } = useTrackOrder(orderNumber)

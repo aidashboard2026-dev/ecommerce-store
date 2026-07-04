@@ -19,11 +19,6 @@ import { CartBadge } from "@/storefront/components/shoppingcart";
 import { openCartDrawer } from "@/storefront/store/cartSlice";
 import useStoreSettings from '@/shared/hooks/useStoreSettings'
 
-// Static nav config — module scope so it isn't re-allocated every render.
-// `to` values must resolve against real routes/filters (see AppRoutes.jsx
-// CategoryRedirect + ProductsList.jsx searchParams contract). Do not point
-// these at "/sub-products" — that route is a dead catch-all redirect to
-// /products with no category context.
 const MOBILE_NAV_LINKS = [
   { label: 'Home', to: '/' },
   { label: "T-Shirts for Mens", to: "/products?category=t-shirts&gender=Men" },

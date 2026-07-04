@@ -24,7 +24,7 @@ export default function PaymentSection() {
   const paymentMethod = useSelector((s) => s.checkout.paymentMethod);
 
   return (
-    <div className="bg-app border border-app rounded-2xl p-5 sm:p-6">
+    <div className="">
       <h2 className="font-display font-bold text-lg text-app mb-4">
         Payment Method
       </h2>
@@ -71,7 +71,7 @@ export default function PaymentSection() {
       </div>
 
       {paymentMethod === "ONLINE" && (
-        <div className="mt-4 rounded-xl bg-surface border border-app p-4">
+        <div className="mt-4">
           <p className="text-xs text-muted">
             After clicking <strong>Place Order</strong>, you will be redirected
             to the secure <strong>Razorpay Checkout</strong> where you can pay
@@ -81,7 +81,7 @@ export default function PaymentSection() {
       )}
 
       {paymentMethod === "COD" && (
-        <div className="mt-4 rounded-xl bg-surface border border-app p-4">
+        <div className="mt-4">
           <p className="text-xs text-muted">
             Pay in cash when your order is delivered to your address.
           </p>

@@ -31,7 +31,7 @@ export default function CartFooter() {
         disabled={count === 0}
         className="mt-4 w-full rounded-full bg-brand-500 hover:bg-brand-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-3 text-sm font-semibold shadow-glow-sm transition-colors"
       >
-        Checkout - {formatPrice(totals.total)}
+        Checkout - {formatPrice(totals.subtotal)}
       </button>
     </div>
   )

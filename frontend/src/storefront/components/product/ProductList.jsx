@@ -272,9 +272,6 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
     search,
   ]);
 
-  console.log("Categories =>", categories);
-  console.log("Current Category =>", filters.category);
-  console.table(categories);
   const pageTitle = useMemo(() => {
       if (!filters.category) return title;
 
@@ -293,9 +290,7 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
   }, [categories, filters.category, filters.gender, title]);
 
   useEffect(() => {
-      console.log("Filters =>", filters);
-      console.log("Categories =>", categories);
-      console.log("Query Filters =>", queryFilters);
+     
   }, [filters, categories, queryFilters]);
   return (
     <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">

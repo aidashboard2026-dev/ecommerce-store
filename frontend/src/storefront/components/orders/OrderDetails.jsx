@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { useMyOrder } from '@/storefront/hooks/useOrders'
 import { getImageUrl, formatPrice } from '@/shared/utils/productUtils'
-import OrderTimeline from '@/storefront/components/OrderTimeline'
+import OrderTimeline from '@/storefront/components/orders/OrderTimeline'
 
 export default function OrderDetails() {
   const { id } = useParams()
