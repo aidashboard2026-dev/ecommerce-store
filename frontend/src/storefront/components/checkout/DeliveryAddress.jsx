@@ -71,7 +71,7 @@ export default function DeliveryAddress({ form, setForm, update }) {
   };
 
   return (
-    <div className="bg-app border border-app rounded-2xl p-5 sm:p-6 flex flex-col gap-5">
+    <div className="flex flex-col gap-5">
       <h2 className="font-display font-bold text-lg text-app flex items-center gap-2">
         <MapPin size={18} /> Delivery Address
       </h2>
@@ -101,7 +101,7 @@ export default function DeliveryAddress({ form, setForm, update }) {
                 )}
               >
                 {selectedAddress?.id === addr.id && (
-                  <span className="absolute top-3 right-3 h-5 w-5 rounded-full bg-brand-500 text-white flex items-center justify-center">
+                  <span className="absolute top-3 right-3 h-5 w-5 rounded-full bg-zinc-800 text-white flex items-center justify-center">
                     <Check size={12} />
                   </span>
                 )}
@@ -217,7 +217,7 @@ export default function DeliveryAddress({ form, setForm, update }) {
           <div className="flex gap-2 sm:col-span-2">
             <button
               type="submit"
-              className="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm py-2.5 rounded-full transition-colors"
+              className="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm py-2.5 rounded-lg transition-colors"
             >
               Save Address
             </button>
@@ -225,7 +225,7 @@ export default function DeliveryAddress({ form, setForm, update }) {
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="px-5 border border-app rounded-full text-sm font-semibold text-app hover:bg-surface"
+                className="px-5 border border-app rounded-lg text-sm font-semibold text-app hover:bg-red-500 hover:text-white transition-colors"
               >
                 Cancel
               </button>

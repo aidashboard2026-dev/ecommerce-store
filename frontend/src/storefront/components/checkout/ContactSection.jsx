@@ -7,7 +7,7 @@ export default function ContactSection({ form, update }) {
   const [newsletter, setNewsletter] = useState(false);
 
   return (
-    <div className="bg-app border border-app rounded-2xl p-5 sm:p-6">
+    <div className="">
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-lg font-semibold text-app">Contact</h2>
 

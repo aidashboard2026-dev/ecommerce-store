@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import OfferCard from "@/storefront/components/OfferCard";
+import OfferCard from "@/storefront/components/home/OfferCard";
 
 export default function OfferSection({ offers, scrollRef, handleWheel }) {
   if (!offers?.length) return null;

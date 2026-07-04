@@ -1,9 +1,9 @@
 import React from 'react'
 import { useParams, useLocation } from 'react-router-dom'
-import OrdersList from '@/storefront/components/OrdersList'
-import OrderDetails from '@/storefront/components/OrderDetails'
-import OrderSuccess from '@/storefront/components/OrderSuccess'
-import OrderTrackingLookup from '@/storefront/components/OrderTrackingLookup'
+import OrdersList from '@/storefront/components/orders/OrdersList'
+import OrderDetails from '@/storefront/components/orders/OrderDetails'
+import OrderSuccess from '@/storefront/components/checkout/OrderSuccess'
+import OrderTrackingLookup from '@/storefront/components/orders/OrderTrackingLookup'
 
 // Consolidated storefront orders page.
 //

@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import { User, Phone, Mail, ClipboardList, Lock, Save } from 'lucide-react'
 import clsx from 'clsx'
 import { updateCustomerProfileThunk } from '@/storefront/store/customerSlice'
-import OrdersPage from '@/storefront/pages/order/OrdersPage'
+import OrdersPage from '@/storefront/pages/ordercheckout/OrdersPage'
 
 function ProfileDetails() {
   const dispatch = useDispatch()

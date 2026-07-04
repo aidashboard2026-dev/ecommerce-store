@@ -14,16 +14,15 @@ const _persistedAdmin = (() => {
 // ── Thunks ────────────────────────────────────────────────────────────────────
 
 export const loginThunk = createAsyncThunk(
-  'auth/login',
-  async ({ email, password }, { rejectWithValue }) => {
-    try {
-      const res = await authAPI.login({ email, password })
-      return res.data
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.detail || 'Login failed')
-    }
+  "auth/login",
+  async (credentials) => {
+    const response = await authAPI.login(credentials);
+
+    localStorage.setItem("token", response.data.access_token);
+
+    return response.data;
   }
-)
+);
 
 export const fetchMeThunk = createAsyncThunk(
   'auth/fetchMe',

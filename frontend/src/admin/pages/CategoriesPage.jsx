@@ -5,6 +5,8 @@ import "react-toastify/dist/ReactToastify.css";
 
 import { homepageCategoriesAPI } from "@/shared/services/api";
 import { useTheme } from "@/shared/hooks/useAuth";
+import Select from "@/shared/components/ui/Select";
+import { STOREFRONT_ROUTES } from "@/shared/constants/storefrontRoutes";
 
 const BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "");
 
@@ -69,16 +71,16 @@ function CategoryModal({ category, onClose, onSaved }) {
       toast.error("Category name is required.");
       return false;
     }
-    if (!isEdit && !form.imageFile) {
+    if (!form.imageFile && !category?.image) {
       toast.error("Category image is required.");
       return false;
     }
-    if (!form.path.trim()) {
-      toast.error("Click path is required.");
+    if (!form.path) {
+      toast.error("Click path selection is required.");
       return false;
     }
-    if (!form.path.trim().startsWith("/")) {
-      toast.error("Click path must start with /.");
+    if (!STOREFRONT_ROUTES.some((route) => route.value === form.path)) {
+      toast.error("Please select a valid storefront page.");
       return false;
     }
     return true;
@@ -90,7 +92,7 @@ function CategoryModal({ category, onClose, onSaved }) {
 
     const formData = new FormData();
     formData.append("name", form.name.trim());
-    formData.append("path", form.path.trim());
+    formData.append("path", form.path);
     if (form.imageFile) formData.append("image", form.imageFile);
 
     setSaving(true);
@@ -173,17 +175,21 @@ function CategoryModal({ category, onClose, onSaved }) {
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-app" htmlFor="category-path">
-              Click Path *
-            </label>
-            <input
+            <Select
               id="category-path"
+              label="Select Page *"
               value={form.path}
               onChange={(event) => setField("path", event.target.value)}
-              className="input-field"
-              placeholder="/products/t-shirts"
-              maxLength={500}
-            />
+            >
+              <option value="">Select a store page</option>
+
+              {STOREFRONT_ROUTES.map((route) => (
+                <option key={route.value} value={route.value}>
+                  {route.label} 
+                  {/* ({route.value}) */}
+                </option>
+              ))}
+            </Select>
           </div>
         </div>
 
@@ -284,7 +290,7 @@ export default function CategoriesPage() {
           className="inline-flex items-center gap-2 rounded-lg border border-brand-600 bg-brand-500 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600"
         >
           <Plus size={15} />
-          + Add Category
+          Add Category
         </button>
       </div>
 

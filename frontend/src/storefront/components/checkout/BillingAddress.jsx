@@ -20,7 +20,7 @@ const INDIAN_STATES = [
 
 export default function BillingAddress({ form, update }) {
   return (
-    <div className="bg-app border border-app rounded-2xl p-5 sm:p-6 space-y-5">
+    <div className=" space-y-5">
       <h2 className="text-lg font-semibold text-app">Billing Address</h2>
 
       <div className="space-y-3">
