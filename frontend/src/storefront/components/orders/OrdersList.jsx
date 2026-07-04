@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Package, ChevronDown, ChevronUp, XCircle } from 'lucide-react'
 import clsx from 'clsx'
-import { useMyOrders, useCancelOrder } from '@/storefront/hooks/order/useOrders'
+import { useMyOrders, useCancelOrder } from '@/storefront/hooks/useOrders'
 import { getImageUrl, formatPrice } from '@/shared/utils/productUtils'
-import OrderTimeline from '@/storefront/components/order/components/OrderTimeline'
+import OrderTimeline from '@/storefront/components/orders/OrderTimeline'
 
 function OrderCard({ order }) {
   const [expanded, setExpanded] = useState(false)
@@ -104,7 +104,7 @@ function OrderCard({ order }) {
   )
 }
 
-export default function OrdersPage() {
+export default function OrdersList() {
   const { data: orders = [], isLoading } = useMyOrders()
 
   if (isLoading) {

@@ -10,12 +10,12 @@ from app.core.database import get_db
 from app.modules.admins.models import Admin
 from app.modules.audit.service import audit
 from app.modules.auth.dependencies import get_current_admin
-from app.modules.homepage_categories.schemas import (
+from app.modules.categories.schemas import (
     HomepageCategoryCreate,
     HomepageCategoryResponse,
     HomepageCategoryUpdate,
 )
-from app.modules.homepage_categories.service import (
+from app.modules.categories.service import (
     create_category,
     delete_category,
     list_categories,
@@ -132,7 +132,7 @@ def update_admin_category(
 
     old_image_path: Optional[str] = None
     if image and image.filename:
-        from app.modules.homepage_categories.service import get_category
+        from app.modules.categories.service import get_category
 
         existing = get_category(db, category_id)
         old_image_path = existing.image

@@ -7,7 +7,7 @@ import { customerLogoutThunk } from "@/storefront/store/customerSlice";
 
 import StoreHeader from "@/storefront/components/storeindex/StoreHeader";
 import StoreFooter from "@/storefront/components/storeindex/StoreFooter";
-import { CartDrawer } from "@/storefront/components/shoppingcart";
+import CartDrawer  from "@/storefront/components/storeheaders/CartDrawer.jsx";
 import { PageLoader } from "@/shared/components/common/Spinner";
 
 export default function StorefrontLayout() {

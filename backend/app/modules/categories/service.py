@@ -1,8 +1,8 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.modules.homepage_categories.models import HomepageCategory
-from app.modules.homepage_categories.schemas import (
+from app.modules.categories.models import HomepageCategory
+from app.modules.categories.schemas import (
     HomepageCategoryCreate,
     HomepageCategoryUpdate,
 )

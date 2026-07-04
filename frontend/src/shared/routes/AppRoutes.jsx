@@ -15,8 +15,13 @@ import MainLayout from "@/admin/layouts/MainLayout";
 // Storefront Layout
 import StorefrontLayout from "@/storefront/layouts/StorefrontLayout";
 import OrderSuccess from "@/storefront/components/checkout/OrderSuccess";
-import ReturnsPolicy from "@/storefront/pages/ReturnsPolicy";
-// import OrderTimelinePage from "@/storefront/components/order/components/OrderTimeline";
+import ReturnsPolicy from "@/storefront/pages/policys/ReturnsPolicy";
+
+const AboutPage = lazy(
+  () => import("@/storefront/components/storeindex/StoreFrontFooterPages/AboutPage")
+);
+// import OrderTimelinePage from "@/storefront/components/orders/OrderTimeline";
+
 
 // Lazy loaded pages/components to optimize bundle sizes
 const AdminLoginPage = lazy(() => import("@/admin/pages/LoginPage"));
@@ -28,34 +33,31 @@ const OffersPage = lazy(() => import("@/admin/pages/OffersPage"));
 const CustomersPage = lazy(() => import("@/admin/pages/CustomersPage"));
 const SettingsPage = lazy(() => import("@/admin/pages/SettingsPage"));
 const BannerPage = lazy(() => import("@/admin/pages/BannerPage"));
-const CustomProductsPage = lazy(
-  () => import("@/admin/pages/CustomProductsPage"),
-);
+const CustomProductsPage = lazy(() => import("@/admin/pages/CustomProductsPage"),);
 
 // Storefront Pages
-const HomePage = lazy(() => import("@/storefront/pages/HomePage"));
-const ProductsPage = lazy(() => import("@/storefront/pages/ProductsPage"));
+const HomePage = lazy(() => import("@/storefront/pages/main/HomePage"));
+const ProductsPage = lazy(() => import("@/storefront/pages/main/ProductsPage"));
 const CartPage = lazy(() => import("@/storefront/pages/CartPage"));
-const OrdersPage = lazy(() => import("@/storefront/pages/OrdersPage"));
-const ProfilePage = lazy(() => import("@/storefront/pages/ProfilePage"));
-const AuthPage = lazy(() => import("@/storefront/pages/AuthPage"));
+const CheckoutPage = lazy(() => import("@/storefront/pages/ordercheckout/CheckoutPage"),);
+const OrdersPage = lazy(() => import("@/storefront/pages/ordercheckout/OrdersPage"));
+const ProfilePage = lazy(() => import("@/storefront/pages/users/ProfilePage"));
+const AuthPage = lazy(() => import("@/storefront/pages/users/AuthPage"));
 const ResetPasswordPage = lazy(
-  () => import("@/storefront/pages/ResetPasswordPage"),
+  () => import("@/storefront/pages/users/ResetPasswordPage"),
 );
-const SupportPage = lazy(() => import("@/storefront/pages/SupportPage"));
-const CustomPage = lazy(() => import("@/storefront/pages/CustomPage"));
+const SupportPage = lazy(() => import("@/storefront/pages/policys/SupportPage"));
+const CustomPage = lazy(() => import("@/storefront/pages/main/CustomPage"));
 const StorefrontOffersPage = lazy(
-  () => import("@/storefront/pages/OffersPage"),
+  () => import("@/storefront/pages/main/OffersPage"),
 );
-const NotFoundPage = lazy(() => import("@/storefront/pages/NotFoundPage"));
+const NotFoundPage = lazy(() => import("@/storefront/pages/empty/NotFoundPage"));
 
 // Storefront components used directly as route elements
-const CheckoutPage = lazy(
-  () => import("@/storefront/components/checkout/CheckoutPage"),
-);
-const WishlistGrid = lazy(() => import("@/storefront/components/WishlistGrid"));
+
+const WishlistGrid = lazy(() => import("@/storefront/pages/main/WishlistPage"));
 const ProductDetailsPage = lazy(
-  () => import("@/storefront/pages/CustomProductDetailsPage"),
+  () => import("@/storefront/pages/main/CustomProductDetailsPage"),
 );
 
 const Spinner = () => (
@@ -259,6 +261,8 @@ export default function AppRoutes() {
           {/* Custom orders (new) */}
           <Route path="custom" element={<CustomPage />} />
           <Route path="custom/:productType" element={<CustomPage />} />
+          <Route path="custom-products" element={<CustomPage />} />
+          <Route path="custom-products/:productType" element={<CustomPage />} />
           <Route path="offers" element={<StorefrontOffersPage />} />
 
           {/* Support / info (new) */}
@@ -272,6 +276,8 @@ export default function AppRoutes() {
           {/* Orders, success/payment, and tracking — all consolidated into
               one page component that dispatches internally on the route */}
           <Route path="tracking" element={<OrdersPage />} />
+          <Route path="track-order" element={<OrdersPage />} />
+          <Route path="contact" element={<SupportPage />} />
           <Route path="wishlist" element={<WishlistGrid />} />
           <Route path="/product/:id" element={<ProductDetailsPage />} />
           {/* Customer Auth — login/register/forgot-password consolidated;

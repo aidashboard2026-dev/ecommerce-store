@@ -2,10 +2,10 @@ import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import clsx from 'clsx'
 import { closeCartDrawer, selectCartCount } from '@/storefront/store/cartSlice'
-import CartEmpty from './CartEmpty'
-import CartFooter from './CartFooter'
-import CartHeader from './CartHeader'
-import CartItem from './CartItem'
+import CartEmpty from '../shoppingcart/CartEmpty'
+import CartFooter from '../shoppingcart/CartFooter'
+import CartHeader from '../shoppingcart/CartHeader'
+import CartItem from '../shoppingcart/CartItem'
 
 export default function CartDrawer() {
   const dispatch = useDispatch()

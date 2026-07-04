@@ -4,11 +4,18 @@ import { Link } from "react-router-dom";
 
 import { storefrontAPI } from "@/shared/services/api";
 
-const BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "");
+const BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL || "").replace(
+  /\/$/,
+  "",
+);
 
 function getImageUrl(path) {
   if (!path) return "";
-  if (path.startsWith("blob:") || path.startsWith("http://") || path.startsWith("https://")) {
+  if (
+    path.startsWith("blob:") ||
+    path.startsWith("http://") ||
+    path.startsWith("https://")
+  ) {
     return path;
   }
   if (path.startsWith("/")) return `${BACKEND_ORIGIN}${path}`;
@@ -16,9 +23,14 @@ function getImageUrl(path) {
 }
 
 export default function CategorySection() {
-  const { data: categories = [], isLoading, isError } = useQuery({
+  const {
+    data: categories = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["homepage-categories", "public"],
-    queryFn: () => storefrontAPI.getHomepageCategories().then((res) => res.data),
+    queryFn: () =>
+      storefrontAPI.getHomepageCategories().then((res) => res.data),
     staleTime: 60_000,
     retry: 1,
   });

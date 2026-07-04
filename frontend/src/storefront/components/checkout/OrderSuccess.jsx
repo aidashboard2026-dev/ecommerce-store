@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Package,
   CreditCard,
+  Wallet ,
   MapPin,
   CalendarDays,
   ArrowRight,
@@ -18,9 +19,24 @@ export default function OrderSuccess() {
     return <Navigate to="/" replace />;
   }
 
-  const orders = state.orders;
-  const totals = state.totals || {
-    subtotal: 0,
+  const orders = state?.orders || [
+    {
+      id: "ORD-1001",
+      customer_name: "Bharath",
+      customer_phone: "9876543210",
+      address_line1: "12, AnnaNagar",
+      city: "Chennai",
+      state: "TamilNadu",
+      pincode: "600001",
+      product_name: "Nike Air Max",
+      product_image: "",
+      quantity: 1,
+      total_amount: 2999,
+    },
+  ];
+
+  const totals = state?.totals || {
+    subtotal: 2999,
     shipping: 0,
     tax: 0,
     total: 0,
@@ -38,46 +54,41 @@ export default function OrderSuccess() {
   deliveryDate.setDate(deliveryDate.getDate() + 3);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10">
+    <div className="">
       {/* Success Card */}
 
-      <div className="rounded-3xl border border-app bg-app shadow-sm overflow-hidden">
-        <div className="bg-green-50 border-b border-green-100 p-10 flex flex-col items-center text-center">
-          <div className="h-20 w-20 rounded-full bg-green-500 flex items-center justify-center shadow-lg">
-            <CheckCircle2 size={42} className="text-white" />
+      <div className="overflow-hidden">
+        <div className="flex flex-col items-center text-center mb-10">
+          <div className=" flex items-center justify-center">
+            <CheckCircle2 size={62} className="text-green-500" />
           </div>
 
-          <h1 className="mt-6 text-3xl font-bold text-app">
-            Order Confirmed 🎉
-          </h1>
+          <h1 className="mt-6 text-3xl font-bold text-app">Order Confirmed</h1>
 
-          <p className="mt-3 max-w-xl text-muted">
-            Thank you for shopping with us. Your order has been placed
+          <p className="mt-3 max-w-xl text-xs text-muted">
+            Your order has been placed
             successfully and is being processed.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-8">
+        <div className="">
           {/* Left */}
 
-          <div className="space-y-6">
-            <div className="rounded-2xl border border-app p-5">
-              <h2 className="font-semibold text-lg text-app">Order Details</h2>
+          <div className="flex flex-col gap-5 justify-center items-center">
+            {/* <h2 className="font-semibold text-lg text-app">Order Details</h2> */}
 
-              <div className="mt-5 space-y-4">
-                <div className="flex items-center gap-3">
-                  <Package size={18} className="text-brand-500" />
+          <div className="space-y-4 flex flex-col justify-center items-center">
+              <div className="flex items-center gap-3">
+                <Package size={18} className="text-zinc-500" />
 
-                  <div>
-                    <p className="text-xs text-muted">Order ID</p>
+                <p className="text-sm text-muted">Order ID :</p>
 
-                    <p className="font-semibold text-app">
-                      {firstOrder?.id || "N/A"}
-                    </p>
-                  </div>
-                </div>
+                <p className="font-semibold text-app">
+                  {firstOrder?.id || "N/A"}
+                </p>
+              </div>
 
-                <div className="flex items-center gap-3">
+              {/* <div className="flex items-center gap-3">
                   <CalendarDays size={18} className="text-brand-500" />
 
                   <div>
@@ -87,23 +98,28 @@ export default function OrderSuccess() {
                       {new Date().toLocaleDateString()}
                     </p>
                   </div>
-                </div>
+                </div> */}
 
-                <div className="flex items-center gap-3">
-                  <CreditCard size={18} className="text-brand-500" />
+              <div className="flex items-center gap-3">
+                <Wallet size={18} className="text-zinc-500" />
+                <span className="text-sm text-muted">Total Amount : </span>
 
-                  <div>
-                    <p className="text-xs text-muted">Payment Method</p>
+                <span className="font-semibold text-app">
+                  {formatPrice(totals?.total || 0)}
+                </span>
+              </div>
 
-                    <p className="font-semibold text-app">{paymentLabel}</p>
-                  </div>
-                </div>
+              <div className="flex items-center gap-3">
+                <CreditCard size={18} className="text-zinc-500" />
+
+                <p className="text-sm text-muted">Payment Method :</p>
+                <p className="font-semibold text-app">{paymentLabel}</p>
               </div>
             </div>
+          </div>
 
-            {/* Delivery */}
-
-            <div className="rounded-2xl border border-app p-5">
+          {/* Delivery */}
+          {/* <div className="rounded-2xl border border-app p-5">
               <h2 className="font-semibold text-lg text-app flex items-center gap-2">
                 <MapPin size={18} />
                 Delivery Address
@@ -130,12 +146,9 @@ export default function OrderSuccess() {
                   Phone : {firstOrder?.customer_phone}
                 </p>
               </div>
-            </div>
-          </div>
-
+            </div> */}
           {/* Right */}
-
-          <div>
+          {/* <div>
             <div className="rounded-2xl border border-app p-6">
               <h2 className="text-lg font-semibold text-app">Order Summary</h2>
 
@@ -166,16 +179,10 @@ export default function OrderSuccess() {
                   </span>
                 </div>
 
-                <div className="border-t border-app pt-4 flex justify-between">
-                  <span className="font-semibold text-app">Total</span>
-
-                  <span className="text-xl font-bold text-app">
-                    {formatPrice(totals?.total || 0)}
-                  </span>
-                </div>
+                
               </div>
 
-              {/* Ordered Products */}
+              Ordered Products
 
               <div className="mt-8">
                 <h3 className="text-lg font-semibold text-app mb-5">
@@ -225,7 +232,7 @@ export default function OrderSuccess() {
               </div>
             </div>
 
-            {/* Estimated Delivery */}
+            Estimated Delivery
 
             <div className="mt-8 rounded-2xl bg-brand-500/5 border border-brand-500/20 p-6">
               <h3 className="font-semibold text-app">Estimated Delivery</h3>
@@ -243,36 +250,40 @@ export default function OrderSuccess() {
                 been dispatched.
               </p>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Bottom Buttons */}
 
-        <div className="border-t border-app p-8">
+        <div className="flex flex-col justify-center items-center gap-2 mt-10 mb-6">
+          <p className="mt-3 max-w-xl ">
+            Thank you for shopping with us.
+          </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            
             <Link
               to="/products"
-              className="inline-flex items-center justify-center rounded-full bg-brand-500 hover:bg-brand-600 text-white font-semibold px-8 py-3 transition-colors"
+              className="inline-flex items-center justify-center bg-brand-500 hover:bg-brand-600 text-white font-semibold px-8 py-3 transition-colors"
             >
               Continue Shopping
-              <ArrowRight size={18} className="ml-2" />
+              {/* <ArrowRight size={18} className="ml-2" /> */}
             </Link>
 
-            <Link
+            {/* <Link
               to="/orders"
               state={{ justPlaced: true }}
               className="inline-flex items-center justify-center rounded-full border border-app hover:bg-surface text-app font-semibold px-8 py-3 transition-colors"
             >
               View My Orders
-            </Link>
+            </Link> */}
 
-            <Link
-              //   to={`/orders/${firstOrder?.id}/tracking`}
+            {/* <Link
+                to={`/orders/${firstOrder?.id}/tracking`}
               to="/orders"
               className="inline-flex items-center justify-center rounded-full border border-app hover:bg-surface text-app font-semibold px-8 py-3 transition-colors"
             >
               Track Order
-            </Link>
+            </Link> */}
           </div>
 
           <p className="text-center text-xs text-muted mt-6">
