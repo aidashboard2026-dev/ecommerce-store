@@ -1,159 +1,218 @@
-import React from "react";
+import React, { useState } from "react";
+import { FaWhatsapp } from "react-icons/fa";
 import { Link } from "react-router-dom";
-import { ArrowRight, Zap } from "lucide-react";
+import { Phone, Instagram, Facebook } from "lucide-react";
 import useStoreSettings from "@/shared/hooks/useStoreSettings";
 
-export default function StoreFooter() {
-  const { settings } = useStoreSettings()
-  const logoUrl = settings?.logo
-  const storeName = settings?.store_name || 'AuraStore'
-  const supportEmail = settings?.support_email || 'support@aurastore.com'
-  const supportPhone = settings?.support_phone || '+91 44 2817 9000'
-  const description = settings?.description || 'Curating premium, hand-crafted designer streetwear, high-performance athletic apparel, and timeless accessories.'
+import ContactModal from "../storefooter/ContactModal";
+
+const StoreFooterComponent = function StoreFooter() {
+  const { settings } = useStoreSettings();
+
+  const [openContact, setOpenContact] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    subject: "",
+    message: "",
+  });
+
+  const logoUrl = settings?.logo;
+  const storeName = settings?.store_name || "AuraStore";
+  const supportEmail = settings?.support_email || "aidashboard2026@gmail.com";
+  const supportPhone = settings?.support_phone || "+91 8778021610";
+
+  const whatsappNumber = "918778021610";
+
+  const message = encodeURIComponent(
+    "Hello! I would like to know more about your products.",
+  );
+
+  const instagramUrl = "https://instagram.com/my._.designers";
+  const facebookUrl = "https://facebook.com/your-page";
+
+  const description =
+    settings?.description ||
+    "Curating premium, hand-crafted designer streetwear, high-performance athletic apparel, and timeless accessories.";
+
+  const linkBase =
+    "text-[14px] leading-[1.6] text-[#555555] hover:text-black transition-all duration-300 ease-out inline-block hover:translate-x-[2px]";
+
+  const headingBase =
+    "text-[12px] font-semibold uppercase tracking-[3px] text-[#111111] whitespace-nowrap";
+
+  const openWhatsApp = () => {
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    const url = isMobile
+      ? `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${message}`
+      : `https://web.whatsapp.com/send?phone=${whatsappNumber}&text=${message}`;
+
+    window.location.href = url;
+  };
 
   return (
-    <footer className="bg-surface border-t border-app py-16 transition-colors duration-300">
-      <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-10">
-        {/* Logo & Description */}
-        <div className="space-y-4">
-          <Link to="/" className="flex items-center gap-2.5 group">
-            {logoUrl ? (
-              <img
-                src={logoUrl}
-                alt={storeName}
-                className="h-8 w-8 rounded-full object-cover"
-              />
-            ) : (
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-indigo-600 text-white">
-                <Zap size={14} strokeWidth={2.5} />
-              </div>
-            )}
+    <footer className="border-t border-app transition-colors duration-300">
+      <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-10 lg:px-12 py-5">
+        <div className="grid grid-cols-1 gap-3 md:gap-3 md:grid-cols-2 lg:grid-cols-4 justify-center items-start">
+          {/* ================= About ================= */}
 
-            <span className="font-display font-bold text-base text-app">
-              {logoUrl || settings?.store_name ? (
-                <span>{storeName}</span>
-              ) : (
-                <>
-                  Aura<span className="text-brand-500">Store</span>
-                </>
-              )}
-            </span>
-          </Link>
+          <div className="flex flex-col">
+            <h4 className={headingBase}>About {storeName}</h4>
 
-          <p className="text-xs text-muted leading-relaxed">
-            {description}
-          </p>
-        </div>
+            <p className="mt-7 max-w-[340px] text-[14px] leading-2 text-[#555555] font-light">
+              {description}
+            </p>
 
-        {/* Quick Links */}
-        <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-app">
-            Shop Catalog
-          </h4>
+            <div className="flex items-center gap-6 pt-8">
+              <a
+                href={`tel:${supportPhone}`}
+                aria-label="Call Us"
+                className="text-[#555555] hover:text-black transition-all duration-300 hover:scale-110"
+              >
+                <Phone size={18} strokeWidth={1.7} />
+              </a>
 
-          <div className="flex flex-col gap-2 text-xs">
-            <Link to="/products" className="text-muted hover:text-app">
-              All Products
-            </Link>
+              <a
+                href="#"
+                aria-label="WhatsApp"
+                onClick={(e) => {
+                  e.preventDefault();
+                  openWhatsApp();
+                }}
+                className="text-[#555555] hover:text-[#25D366] transition-all duration-300 hover:scale-110"
+              >
+                <FaWhatsapp size={19} />
+              </a>
 
-            <Link
-              to="/products?collection=Summer"
-              className="text-muted hover:text-app"
-            >
-              Summer Collection
-            </Link>
+              <a
+                href={facebookUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Facebook"
+                className="text-[#555555] hover:text-[#1877F2] transition-all duration-300 hover:scale-110"
+              >
+                <Facebook size={18} strokeWidth={1.7} />
+              </a>
 
-            <Link
-              to="/products?collection=Activewear"
-              className="text-muted hover:text-app"
-            >
-              Activewear
-            </Link>
-
-            <Link
-              to="/products?collection=Essentials"
-              className="text-muted hover:text-app"
-            >
-              Daily Essentials
-            </Link>
+              <a
+                href={instagramUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram"
+                className="text-[#555555] hover:text-[#E1306C] transition-all duration-300 hover:scale-110"
+              >
+                <Instagram size={18} strokeWidth={1.7} />
+              </a>
+            </div>
           </div>
         </div>
 
-        {/* Customer Support */}
-        <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-app">
-            Customer Services
-          </h4>
+          {/* ================= Quick Links ================= */}
 
-          <div className="flex flex-col gap-2 text-xs">
-            <Link to="/tracking" className="text-muted hover:text-app">
-              Track Your Order
+          <div className="flex flex-col items-start md:items-center gap-3.5">
+            <h4 className={headingBase}>Quick Links</h4>
+
+            <Link to="/" className={linkBase}>
+              Home
             </Link>
 
-            <Link to="/profile/orders" className="text-muted hover:text-app">
-              Return & Exchanges
+            <Link to="/products" className={linkBase}>
+              Shop
             </Link>
 
-            <a
-              href={`mailto:${supportEmail}`}
-              className="text-muted hover:text-app"
-            >
-              Contact Support
+            <Link to="/about" className={linkBase}>
+              About
+            </Link>
+
+            <Link to="/contact" className={linkBase}>
+              Contact
+            </Link>
+          </div>
+
+          {/* ================= Customer Care ================= */}
+
+          <div className="flex flex-col items-start md:items-center gap-3.5">
+            <h4 className={headingBase}>Customer Care</h4>
+
+            <Link to="/shipping-policy" className={linkBase}>
+              Shipping
+            </Link>
+
+            <Link to="/returns" className={linkBase}>
+              Returns
+            </Link>
+
+            <Link to="/privacy-policy" className={linkBase}>
+              Privacy Policy
+            </Link>
+
+            <Link to="/terms" className={linkBase}>
+              Terms & Conditions
+            </Link>
+          </div>
+          {/* ================= Contact ================= */}
+
+          <div className="flex flex-col items-start md:items-center gap-3.5">
+            <h4 className={headingBase}>Contact</h4>
+
+            <a href={`mailto:${supportEmail}`} className={linkBase}>
+              {supportEmail}
             </a>
 
-            <span className="text-muted">Phone: {supportPhone}</span>
-          </div>
-        </div>
-
-        {/* Newsletter */}
-        <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-app">
-            Join Aura List
-          </h4>
-
-          <p className="text-xs text-muted leading-relaxed">
-            Subscribe to get notifications about drops, exclusive discounts,
-            and active campaigns.
-          </p>
-
-          <div className="flex items-center gap-1.5 pt-1">
-            <input
-              type="email"
-              placeholder="your.email@gmail.com"
-              className="bg-app border border-app text-xs px-3 py-2 rounded-xl focus:outline-none w-full placeholder:text-muted"
-            />
-
-            <button className="bg-brand-500 hover:bg-brand-600 p-2 text-white rounded-xl transition-all">
-              <ArrowRight size={14} />
+            <button
+              onClick={() => setOpenContact(true)}
+              className="mt-6 rounded-lg bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
+            >
+              Contact Us
             </button>
-          </div>
-        </div>
-      </div>
 
-      {/* Bottom Footer */}
-      <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t border-app flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] text-muted">
-        <p>
-          © {new Date().getFullYear()} {storeName} Inc. All rights reserved.
-          Made for premium commerce.
+            <a href={`tel:${supportPhone}`} className={linkBase}>
+              {supportPhone}
+            </a>
+          </div>
+
+          <ContactModal
+            open={openContact}
+            onClose={() => setOpenContact(false)}
+            form={form}
+            setForm={setForm}
+            loading={loading}
+            onSubmit={(e) => {
+              e.preventDefault();
+
+              console.log(form);
+            }}
+          />
+        </div>
+      
+
+      {/* ================= Bottom Bar ================= */}
+
+      <div className="mx-auto flex w-full p-5 items-center justify-center">
+        <p className="text-[12px] md:text-[14px] text-nowrap text-[#555555]">
+          © {new Date().getFullYear()} {storeName}. All Rights Reserved.
         </p>
 
-        <div className="flex items-center gap-6">
-          <Link to="/support/privacy" className="hover:text-app">
-            Privacy Policy
-          </Link>
+        {/* Future Features */}
+        <div className="flex items-center gap-6 text-[13px] text-[#777777]">
+          {/* Payment Icons */}
+          {/* Visa • MasterCard • UPI */}
 
-          <Link to="/support/terms" className="hover:text-app">
-            Terms of Use
-          </Link>
+          {/* Social Media */}
 
-          <Link
-            to="/admin"
-            className="text-brand-500 font-semibold hover:text-brand-600"
-          >
-            Admin Dashboard
-          </Link>
+          {/* Newsletter */}
+
+          {/* Trust Badges */}
         </div>
       </div>
     </footer>
   );
-}
+};
+
+const StoreFooter = React.memo(StoreFooterComponent);
+
+export default StoreFooter;
