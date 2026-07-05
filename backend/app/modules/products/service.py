@@ -512,14 +512,12 @@ def _stock_having_clause(stock_status: str, threshold_col):
     Return a HAVING expression for the given stock_status string.
     threshold_col is the aggregated low_stock_threshold expression.
     """
-    total = sqla_func.coalesce(sqla_func.sum(ProductVariant.stock_quantity), 0)
     if stock_status == "out_of_stock":
-        return total == 0
+        return sqla_func.min(ProductVariant.stock_quantity) == 0
     if stock_status == "low_stock":
-        # 0 < total_stock <= threshold
-        return (total > 0) & (total <= threshold_col)
+        return sqla_func.min(ProductVariant.stock_quantity - ProductVariant.low_stock_threshold) <= 0
     if stock_status == "in_stock":
-        return total > threshold_col
+        return sqla_func.min(ProductVariant.stock_quantity - ProductVariant.low_stock_threshold) > 0
     return None
 
 
@@ -638,18 +636,28 @@ def _build_admin_filters(
             .exists()
         )
 
-    # ── Stock status (HAVING on aggregated variant stock) ────────────────────
+    # ── Stock status ─────────────────────────────────────────────────────────
     if stock_status and stock_status in _VALID_STOCK_STATUSES:
-        threshold_col = sqla_func.coalesce(sqla_func.min(ProductVariant.low_stock_threshold), 5)
-        stock_subq = (
-            db.query(ProductVariant.product_id)
-            .group_by(ProductVariant.product_id)
-        )
-        having_clause = _stock_having_clause(stock_status, threshold_col)
-        if having_clause is not None:
-            stock_subq = stock_subq.having(having_clause)
-        stock_subq = stock_subq.subquery()
-        conditions.append(Product.id.in_(stock_subq))
+        if stock_status == "out_of_stock":
+            conditions.append(
+                or_(
+                    ~Product.variants.any(),
+                    Product.variants.any(ProductVariant.stock_quantity == 0)
+                )
+            )
+        elif stock_status == "low_stock":
+            conditions.append(
+                or_(
+                    ~Product.variants.any(),
+                    Product.variants.any(ProductVariant.stock_quantity <= ProductVariant.low_stock_threshold)
+                )
+            )
+        elif stock_status == "in_stock":
+            conditions.append(
+                Product.variants.any(
+                    ProductVariant.stock_quantity > 0
+                )
+            )
 
     # ── Date range filters ───────────────────────────────────────────────────
     if created_after is not None:

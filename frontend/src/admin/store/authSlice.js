@@ -14,15 +14,16 @@ const _persistedAdmin = (() => {
 // ── Thunks ────────────────────────────────────────────────────────────────────
 
 export const loginThunk = createAsyncThunk(
-  "auth/login",
-  async (credentials) => {
-    const response = await authAPI.login(credentials);
-
-    localStorage.setItem("token", response.data.access_token);
-
-    return response.data;
+  'auth/login',
+  async ({ email, password }, { rejectWithValue }) => {
+    try {
+      const res = await authAPI.login({ email, password })
+      return res.data
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.detail || 'Login failed')
+    }
   }
-);
+)
 
 export const fetchMeThunk = createAsyncThunk(
   'auth/fetchMe',
@@ -31,7 +32,11 @@ export const fetchMeThunk = createAsyncThunk(
       const res = await authAPI.me()
       return res.data
     } catch (err) {
-      return rejectWithValue('Session expired')
+      const status = err.response?.status
+      // Only a real 401/403 means the token itself is invalid/expired.
+      // Anything else (network failure, timeout, 5xx) is transient and
+      // should not log the admin out of a session that may still be valid.
+      return rejectWithValue({ sessionExpired: status === 401 || status === 403 })
     }
   }
 )
@@ -85,13 +90,7 @@ const authSlice = createSlice({
   extraReducers: (builder) => {
     builder
       // ── Login ──────────────────────────────────────────────────────────────
-      .addCase(loginThunk.pending, (state) => {
-          state.loading = true
-          state.error = null
-      })
       .addCase(loginThunk.fulfilled,(state,action)=>{
-
-        
 
         state.loading=false
         state.error=null
@@ -120,13 +119,17 @@ const authSlice = createSlice({
         // Keep admin cache fresh in case name/role was updated server-side
         localStorage.setItem('admin', JSON.stringify(action.payload))
       })
-      .addCase(fetchMeThunk.rejected, (state) => {
-        // Token is invalid/expired — clear everything
-        state.token       = null
-        state.admin       = null
+      .addCase(fetchMeThunk.rejected, (state, action) => {
         state.initialized = true
-        localStorage.removeItem('token')
-        localStorage.removeItem('admin')
+        if (action.payload?.sessionExpired) {
+          // Token is genuinely invalid/expired — clear everything
+          state.token = null
+          state.admin = null
+          localStorage.removeItem('token')
+          localStorage.removeItem('admin')
+        }
+        // Otherwise (network/server error): keep the existing session as-is
+        // and let the next authenticated request retry naturally.
       })
 
       // ── Signup ─────────────────────────────────────────────────────────────

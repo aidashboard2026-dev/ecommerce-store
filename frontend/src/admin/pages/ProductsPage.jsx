@@ -807,7 +807,19 @@ export default function ProductsPage() {
             ) : (
               data?.items?.map(product => {
                 const v0 = (product.variants || [])[0]
-                const sizes = [...new Set((product.variants || []).map(v => v.size))].join(', ')
+                
+                // Filter variants based on active inventory filter
+                const filteredVariants = (product.variants || []).filter(v => {
+                  if (!stockStatus) return true
+                  if (stockStatus === 'in_stock') return v.stock_quantity > 0
+                  if (stockStatus === 'low_stock') return v.stock_quantity <= (v.low_stock_threshold ?? 5)
+                  if (stockStatus === 'out_of_stock') return v.stock_quantity === 0
+                  return true
+                })
+                
+                const displaySizes = [...new Set(filteredVariants.map(v => v.size))].join(', ')
+                const displayStocks = filteredVariants.map(v => v.stock_quantity).join(',')
+                
                 const discPct = v0?.discount_percentage ? `${parseFloat(v0.discount_percentage).toFixed(0)}%` : '—'
                 const statusMap = { published: 'success', draft: 'default', archived: 'warning' }
                 return (
@@ -865,10 +877,18 @@ export default function ProductsPage() {
                         className="cursor-pointer hover:opacity-70 transition-opacity focus:outline-none"
                         title="Filter by this stock status"
                       >
-                        <StockBadge stock={product.total_stock} />
+                        {stockStatus ? (
+                          <Badge
+                            label={displayStocks || '0'}
+                            variant={stockStatus === 'in_stock' ? 'success' : stockStatus === 'low_stock' ? 'warning' : 'danger'}
+                            dot={stockStatus !== 'in_stock'}
+                          />
+                        ) : (
+                          <StockBadge stock={product.total_stock} />
+                        )}
                       </button>
                     </TableCell>
-                    <TableCell className="text-muted">{sizes || '—'}</TableCell>
+                    <TableCell className="text-muted">{displaySizes || '—'}</TableCell>
                     {/* Clickable status badge — applies status filter for this product's status */}
                     <TableCell>
                       <button

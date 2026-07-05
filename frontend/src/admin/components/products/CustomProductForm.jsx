@@ -336,6 +336,21 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
         .filter(Boolean),
   })
 
+  // Mirrors the backend's cross-field rule (schemas.py model_validator on
+  // CustomProductCreate) so Create and Update enforce the identical business
+  // rule client-side, not just on the server.
+  const validatePriceRanges = (data) => {
+    if (data.original_price_min > data.original_price_max) {
+      toast.error('Original price minimum cannot exceed the maximum')
+      return false
+    }
+    if (data.selling_price_min > data.selling_price_max) {
+      toast.error('Selling price minimum cannot exceed the maximum')
+      return false
+    }
+    return true
+  }
+
   // ─── Edit mutations ───────────────────────────────────────────────────────────
 
   const editMutation = useMutation({
@@ -382,6 +397,10 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
 
     if (data.title.length < 2) {
       toast.error('Product title must be at least 2 characters')
+      isSavingRef.current = false
+      return
+    }
+    if (!validatePriceRanges(data)) {
       isSavingRef.current = false
       return
     }
@@ -607,7 +626,11 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
           onSubmit={e => {
             e.preventDefault()
             if (isSavingRef.current || editMutation.isPending || editPubMutation.isPending) return
-            if (isEdit) editMutation.mutate(payload())
+            if (isEdit) {
+              const data = payload()
+              if (!validatePriceRanges(data)) return
+              editMutation.mutate(data)
+            }
             else batchSave()
           }}>
 
@@ -1012,7 +1035,11 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
                 disabled={isBatchSaving || editPubMutation.isPending}
                 onClick={() => {
                   if (isSavingRef.current || editPubMutation.isPending) return
-                  if (isEdit) editPubMutation.mutate(payload())
+                  if (isEdit) {
+                    const data = payload()
+                    if (!validatePriceRanges(data)) return
+                    editPubMutation.mutate(data)
+                  }
                   else batchSave('published')
                 }}>
                 {(isBatchSaving || editPubMutation.isPending)

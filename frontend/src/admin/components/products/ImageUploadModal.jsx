@@ -4,7 +4,12 @@
  *   Thumbnail | Front | Back | Size Chart | Gallery
  *
  * Preserves all existing thumbnail upload/delete behaviour.
- * New image types use the updated productsAPI.uploadImage(productId, file, imageType).
+ *
+ * Generic across product types: the caller injects which API service to use
+ * (productsAPI for Products, customProductsAPI for Custom Products) and which
+ * React Query key prefixes to invalidate after a mutation, so this component
+ * has no hard dependency on either module. Defaults preserve the exact
+ * original behaviour for existing Products callers.
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
@@ -309,7 +314,12 @@ function DropZone({ preview, onFile, fileRef, label, disabled }) {
 
 // ─── Main Modal ───────────────────────────────────────────────────────────────
 
-export default function ImageUploadModal({ isOpen, onClose, product }) {
+export default function ImageUploadModal({
+  isOpen, onClose, product,
+  api = productsApi,
+  queryKeyPrefix = 'products',
+  detailQueryKey = 'product',
+}) {
   const qc = useQueryClient()
   const fileRef = useRef(null)
   const { limits, isLoading: limitsLoading, error: limitsError, refetch: refetchLimits } = useBusinessLimits()
@@ -369,12 +379,12 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
   // ── Upload mutation ──────────────────────────────────────────────────────────
 
   const uploadMutation = useMutation({
-    mutationFn: () => productsApi.uploadImage(product.id, file, activeTab),
+    mutationFn: () => api.uploadImage(product.id, file, activeTab),
     onSuccess: () => {
       toast.success(`${IMAGE_TABS.find(t => t.key === activeTab)?.label || 'Image'} uploaded successfully.`)
-      qc.invalidateQueries({ queryKey: ['products'] })
-      qc.invalidateQueries({ queryKey: ['products', product.id] })
-      qc.invalidateQueries({ queryKey: ['product'] })
+      qc.invalidateQueries({ queryKey: [queryKeyPrefix] })
+      qc.invalidateQueries({ queryKey: [queryKeyPrefix, product.id] })
+      qc.invalidateQueries({ queryKey: [detailQueryKey] })
       clearSelection()
       if (activeTab !== 'gallery') {
         // Stay open so user can upload other types
@@ -386,12 +396,12 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
   // ── Delete single image mutation ──────────────────────────────────────────────
 
   const deleteMutation = useMutation({
-    mutationFn: () => productsApi.deleteImage(product.id, activeTab),
+    mutationFn: () => api.deleteImage(product.id, activeTab),
     onSuccess: () => {
       toast.success('Image removed successfully.')
-      qc.invalidateQueries({ queryKey: ['products'] })
-      qc.invalidateQueries({ queryKey: ['products', product.id] })
-      qc.invalidateQueries({ queryKey: ['product'] })
+      qc.invalidateQueries({ queryKey: [queryKeyPrefix] })
+      qc.invalidateQueries({ queryKey: [queryKeyPrefix, product.id] })
+      qc.invalidateQueries({ queryKey: [detailQueryKey] })
     },
     onError: () => toast.error('Failed to remove image'),
   })
@@ -399,14 +409,14 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
   // ── Delete gallery image mutation ─────────────────────────────────────────────
 
   const deleteGalleryMutation = useMutation({
-    mutationFn: (index) => productsApi.deleteGalleryImage(product.id, index),
+    mutationFn: (index) => api.deleteGalleryImage(product.id, index),
     onMutate:  (index) => setDeletingIndex(index),
     onSettled: ()      => setDeletingIndex(null),
     onSuccess: () => {
       toast.success('Gallery image removed successfully.')
-      qc.invalidateQueries({ queryKey: ['products'] })
-      qc.invalidateQueries({ queryKey: ['products', product.id] })
-      qc.invalidateQueries({ queryKey: ['product'] })
+      qc.invalidateQueries({ queryKey: [queryKeyPrefix] })
+      qc.invalidateQueries({ queryKey: [queryKeyPrefix, product.id] })
+      qc.invalidateQueries({ queryKey: [detailQueryKey] })
     },
     onError: () => toast.error('Failed to remove gallery image'),
   })
@@ -428,7 +438,7 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
 
       for (const galleryFile of files) {
         try {
-          await productsApi.uploadImage(product.id, galleryFile, 'gallery')
+          await api.uploadImage(product.id, galleryFile, 'gallery')
           succeeded += 1
         } catch (err) {
           // Never surface raw backend/network errors to the user — log
@@ -439,9 +449,9 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
           setGalleryProgress(prev => ({ ...prev, done: prev.done + 1 }))
           // Refresh after each file so the UI reflects partial progress
           // ("2/4" -> "3/4" -> "4/4") rather than jumping at the very end.
-          await qc.invalidateQueries({ queryKey: ['products', product.id] })
-          await qc.invalidateQueries({ queryKey: ['product'] })
-          await qc.invalidateQueries({ queryKey: ['products'] })
+          await qc.invalidateQueries({ queryKey: [queryKeyPrefix, product.id] })
+          await qc.invalidateQueries({ queryKey: [detailQueryKey] })
+          await qc.invalidateQueries({ queryKey: [queryKeyPrefix] })
         }
       }
 

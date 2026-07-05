@@ -1,12 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ImagePlus, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import toast from "react-hot-toast";
 
 import { homepageCategoriesAPI } from "@/shared/services/api";
-import { useTheme } from "@/shared/hooks/useAuth";
-import Select from "@/shared/components/ui/Select";
-import { STOREFRONT_ROUTES } from "@/shared/constants/storefrontRoutes";
 
 const BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "");
 
@@ -22,7 +18,7 @@ function getImageUrl(path) {
     return path;
   }
   if (path.startsWith("/")) return `${BACKEND_ORIGIN}${path}`;
-  return `${BACKEND_ORIGIN}/uploads/categories/${path}`;
+  return `${BACKEND_ORIGIN}/assets/categories/${path}`;
 }
 
 function CategoryModal({ category, onClose, onSaved }) {
@@ -71,16 +67,16 @@ function CategoryModal({ category, onClose, onSaved }) {
       toast.error("Category name is required.");
       return false;
     }
-    if (!form.imageFile && !category?.image) {
+    if (!isEdit && !form.imageFile) {
       toast.error("Category image is required.");
       return false;
     }
-    if (!form.path) {
-      toast.error("Click path selection is required.");
+    if (!form.path.trim()) {
+      toast.error("Click path is required.");
       return false;
     }
-    if (!STOREFRONT_ROUTES.some((route) => route.value === form.path)) {
-      toast.error("Please select a valid storefront page.");
+    if (!form.path.trim().startsWith("/")) {
+      toast.error("Click path must start with /.");
       return false;
     }
     return true;
@@ -92,7 +88,7 @@ function CategoryModal({ category, onClose, onSaved }) {
 
     const formData = new FormData();
     formData.append("name", form.name.trim());
-    formData.append("path", form.path);
+    formData.append("path", form.path.trim());
     if (form.imageFile) formData.append("image", form.imageFile);
 
     setSaving(true);
@@ -175,21 +171,17 @@ function CategoryModal({ category, onClose, onSaved }) {
           </div>
 
           <div className="space-y-1.5">
-            <Select
+            <label className="block text-xs font-semibold text-app" htmlFor="category-path">
+              Click Path *
+            </label>
+            <input
               id="category-path"
-              label="Select Page *"
               value={form.path}
               onChange={(event) => setField("path", event.target.value)}
-            >
-              <option value="">Select a store page</option>
-
-              {STOREFRONT_ROUTES.map((route) => (
-                <option key={route.value} value={route.value}>
-                  {route.label} 
-                  {/* ({route.value}) */}
-                </option>
-              ))}
-            </Select>
+              className="input-field"
+              placeholder="/products/t-shirts"
+              maxLength={500}
+            />
           </div>
         </div>
 
@@ -217,7 +209,6 @@ function CategoryModal({ category, onClose, onSaved }) {
 }
 
 export default function CategoriesPage() {
-  const { isDark } = useTheme();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalCategory, setModalCategory] = useState(null);
@@ -273,12 +264,6 @@ export default function CategoriesPage() {
 
   return (
     <div className="min-h-screen bg-app px-0 py-2">
-      <ToastContainer
-        position="top-right"
-        autoClose={2500}
-        theme={isDark ? "dark" : "light"}
-      />
-
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-app">Categories</h1>
@@ -290,7 +275,7 @@ export default function CategoriesPage() {
           className="inline-flex items-center gap-2 rounded-lg border border-brand-600 bg-brand-500 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600"
         >
           <Plus size={15} />
-          Add Category
+          + Add Category
         </button>
       </div>
 

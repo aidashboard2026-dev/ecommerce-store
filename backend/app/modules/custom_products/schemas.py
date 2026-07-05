@@ -217,6 +217,26 @@ class CustomProductUpdate(BaseModel):
             return v
         return Decimal(str(v)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
+    # Same business rule enforced on CustomProductCreate (see model_validator
+    # above). Fields here are Optional since this is a partial-update schema,
+    # so the check only applies when a given pair is actually present in this
+    # request — it does not compare against values already stored in the DB.
+    @model_validator(mode="after")
+    def validate_price_range(self):
+        if (
+            self.original_price_min is not None
+            and self.original_price_max is not None
+            and self.original_price_min > self.original_price_max
+        ):
+            raise ValueError("original_price_min cannot exceed original_price_max")
+        if (
+            self.selling_price_min is not None
+            and self.selling_price_max is not None
+            and self.selling_price_min > self.selling_price_max
+        ):
+            raise ValueError("selling_price_min cannot exceed selling_price_max")
+        return self
+
 
 class CustomProductResponse(BaseModel):
     id:               int

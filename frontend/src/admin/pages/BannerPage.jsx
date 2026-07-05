@@ -3,8 +3,7 @@ import api from "@/shared/services/api";
 import useBusinessLimits from "@/shared/hooks/useBusinessLimits";
 
 import { ImagePlus, Plus, Search, X, Pencil, Eye, EyeOff, AlertTriangle, Loader2 } from "lucide-react";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import toast from "react-hot-toast";
 import { useTheme } from "@/shared/hooks/useAuth";
 
 // ─── Image helper (no localhost dependency) ─────────────────────────────────
@@ -408,7 +407,6 @@ export default function BannerPage() {
 
   return (
     <div style={{ padding: "24px 28px", background: s.bg, minHeight: "100vh", transition: "background .3s ease" }}>
-      <ToastContainer position="top-right" autoClose={2500} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover theme={isDark ? "dark" : "light"} style={{ zIndex: 99999 }} />
 
       {limitsError && (
         <div style={{
