@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from app.schemas.contact import ContactRequest
-from app.services.email_service import send_contact_email
+from app.modules.contact.email_service import send_contact_email
+from app.modules.contact.contact import ContactRequest
 
 router = APIRouter()
 

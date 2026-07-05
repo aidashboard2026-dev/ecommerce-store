@@ -13,24 +13,21 @@ from app.modules.offers.router import router as offers_router
 from app.modules.orders.router import router as orders_router
 from app.modules.products.router import router as products_router
 from app.modules.settings.router import router as settings_router
-from app.api.v1.contact import router as contact_router
+from app.modules.contact.router import router as contact_router
 
 api_router = APIRouter()
 
-api_router.include_router(auth.router,            prefix="/auth",            tags=["Authentication"])
-api_router.include_router(
-    homepage_categories,
-    tags=["Homepage Categories"],
-)
-api_router.include_router(admins_router,           prefix="/admins",          tags=["Admins"])
-api_router.include_router(dashboard_router,        prefix="/dashboard",       tags=["Dashboard"])
-api_router.include_router(products_router,         prefix="/products",        tags=["Products"])
-api_router.include_router(orders_router,           prefix="/orders",          tags=["Orders"])
-api_router.include_router(offers_router,           prefix="/offers",          tags=["Offers"])
-api_router.include_router(banners_router,          prefix="/banners",         tags=["Banners"])
-api_router.include_router(customers_router,        prefix="/customers",       tags=["Customers"])
-api_router.include_router(custom_products_router,  prefix="/custom-products", tags=["Custom Products"])
-api_router.include_router(settings_router,         prefix="/settings",        tags=["Settings"])
-api_router.include_router(delivery_zones_router,   prefix="/delivery-zones",  tags=["Delivery Zones"])
-api_router.include_router(audit_router,            prefix="/audit",           tags=["Audit"])
+api_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
+api_router.include_router(homepage_categories_router, tags=["Homepage Categories"])
+api_router.include_router(admins_router, prefix="/admins", tags=["Admins"])
+api_router.include_router(dashboard_router, prefix="/dashboard", tags=["Dashboard"])
+api_router.include_router(products_router, prefix="/products", tags=["Products"])
+api_router.include_router(orders_router, prefix="/orders", tags=["Orders"])
+api_router.include_router(offers_router, prefix="/offers", tags=["Offers"])
+api_router.include_router(banners_router, prefix="/banners", tags=["Banners"])
+api_router.include_router(customers_router, prefix="/customers", tags=["Customers"])
+api_router.include_router(custom_products_router, prefix="/custom-products", tags=["Custom Products"])
+api_router.include_router(settings_router, prefix="/settings", tags=["Settings"])
+api_router.include_router(delivery_zones_router, prefix="/delivery-zones", tags=["Delivery Zones"])
+api_router.include_router(audit_router, prefix="/audit", tags=["Audit"])
 api_router.include_router(contact_router, tags=["Contact"])

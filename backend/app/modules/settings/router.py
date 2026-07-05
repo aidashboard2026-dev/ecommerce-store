@@ -579,6 +579,7 @@ def read_business_limits():
         # ── Standard Product Domain ──────────────────────────────────────────
         "max_categories": constants.MAX_CATEGORIES,
         "max_collections": constants.MAX_COLLECTIONS,
+        "max_homepage_categories": constants.MAX_HOMEPAGE_CATEGORIES,
         # ── Custom Printing Domain ───────────────────────────────────────────
         "max_custom_categories": constants.MAX_CUSTOM_CATEGORIES,
         # ── Operational Limits ───────────────────────────────────────────────

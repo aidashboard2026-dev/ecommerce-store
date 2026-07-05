@@ -264,6 +264,7 @@ class CustomProductResponse(BaseModel):
     image_back:        Optional[str] = None
     image_size_chart:  Optional[str] = None
     gallery_images:    List[Any] = Field(default_factory=list)
+    images:            List[Any] = Field(default_factory=list)  # legacy alias/consolidated list
     whatsapp_message:  Optional[str] = None
     view_count:        int = 0
     orders_count:      int = 0
@@ -273,6 +274,58 @@ class CustomProductResponse(BaseModel):
     low_stock_threshold: int = 5
     created_at:        datetime
     updated_at:        Optional[datetime] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def resolve_image_urls(cls, data: Any) -> Any:
+        from app.shared.storage.supabase_storage import get_custom_product_image_url
+
+        if isinstance(data, dict):
+            # Resolve image URLs
+            data["thumbnail"] = get_custom_product_image_url(data.get("thumbnail"))
+            data["image_front"] = get_custom_product_image_url(data.get("image_front"))
+            data["image_back"] = get_custom_product_image_url(data.get("image_back"))
+            data["image_size_chart"] = get_custom_product_image_url(data.get("image_size_chart"))
+            
+            gallery = data.get("gallery_images") or []
+            resolved_gallery = [get_custom_product_image_url(img) for img in gallery]
+            data["gallery_images"] = resolved_gallery
+
+            # Populate legacy/consolidated images list
+            all_imgs = []
+            for img in [data["thumbnail"], data["image_front"], data["image_back"], data["image_size_chart"]] + resolved_gallery:
+                if img and not img.endswith("placeholder-product.png"):
+                    all_imgs.append(img)
+            data["images"] = all_imgs
+        else:
+            d = {}
+            for field in cls.model_fields.keys():
+                if hasattr(data, field):
+                    d[field] = getattr(data, field)
+            
+            for extra in ["custom_category_name", "view_count", "orders_count", "sales_count"]:
+                if hasattr(data, extra):
+                    d[extra] = getattr(data, extra)
+            
+            d["thumbnail"] = get_custom_product_image_url(d.get("thumbnail"))
+            d["image_front"] = get_custom_product_image_url(d.get("image_front"))
+            d["image_back"] = get_custom_product_image_url(d.get("image_back"))
+            d["image_size_chart"] = get_custom_product_image_url(d.get("image_size_chart"))
+            
+            gallery = d.get("gallery_images") or []
+            resolved_gallery = [get_custom_product_image_url(img) for img in gallery]
+            d["gallery_images"] = resolved_gallery
+
+            # Populate legacy/consolidated images list
+            all_imgs = []
+            for img in [d["thumbnail"], d["image_front"], d["image_back"], d["image_size_chart"]] + resolved_gallery:
+                if img and not img.endswith("placeholder-product.png"):
+                    all_imgs.append(img)
+            d["images"] = all_imgs
+            
+            return d
+            
+        return data
 
     @field_validator("status", mode="before")
     @classmethod

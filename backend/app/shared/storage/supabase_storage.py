@@ -281,6 +281,39 @@ def delete_product_image(image_url: Optional[str]) -> None:
 # Never call upload_product_image() for custom products — use these instead.
 # ─────────────────────────────────────────────────────────────
 
+def get_custom_product_image_url(object_path_or_url: Optional[str]) -> Optional[str]:
+    """Generates the Supabase Public URL dynamically or returns the fallback placeholder."""
+    ensure_placeholder_image()
+    placeholder_url = "/uploads/placeholder-product.png"
+
+    if not object_path_or_url:
+        return placeholder_url
+
+    # If it is a full URL
+    if object_path_or_url.startswith("http://") or object_path_or_url.startswith("https://"):
+        if is_supabase_configured():
+            path = _object_path_from_public_url(object_path_or_url, settings.SUPABASE_CUSTOM_PRODUCT_BUCKET)
+            if path:
+                return get_public_url(settings.SUPABASE_CUSTOM_PRODUCT_BUCKET, path)
+        return object_path_or_url
+
+    # If it is a local fallback path
+    if object_path_or_url.startswith("/uploads/"):
+        return object_path_or_url
+
+    # It's an object path! If Supabase is configured, return the public URL.
+    if is_supabase_configured():
+        return get_public_url(settings.SUPABASE_CUSTOM_PRODUCT_BUCKET, object_path_or_url)
+
+    # Local fallback for the object path
+    local_path = f"/uploads/custom_products/{object_path_or_url}"
+    full_local_path = os.path.join(settings.UPLOAD_DIR, "custom_products", object_path_or_url.replace("/", os.sep))
+    if os.path.exists(full_local_path):
+        return local_path
+
+    return placeholder_url
+
+
 def upload_custom_product_image(
     contents: bytes,
     original_filename: str,

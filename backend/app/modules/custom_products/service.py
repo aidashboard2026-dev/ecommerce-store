@@ -298,7 +298,8 @@ def get_custom_products(
     status_filter: Optional[str] = None,
 ) -> CustomProductListResponse:
     """Return a paginated list of custom products (admin view — all statuses)."""
-    per_page = min(max(per_page, 1), 100)
+    from app.core.constants import MAX_PAGE_SIZE
+    per_page = min(max(per_page, 1), MAX_PAGE_SIZE)
 
     query = db.query(CustomProduct).filter(CustomProduct.deleted_at.is_(None))
 
@@ -341,7 +342,8 @@ def get_public_custom_products(
     custom_category_id: Optional[int] = None,
 ) -> CustomProductListResponse:
     """Return a paginated list of published custom products (storefront view)."""
-    per_page = min(max(per_page, 1), 100)
+    from app.core.constants import MAX_PAGE_SIZE
+    per_page = min(max(per_page, 1), MAX_PAGE_SIZE)
 
     query = (
         db.query(CustomProduct)

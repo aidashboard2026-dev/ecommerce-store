@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.constants import MAX_HOMEPAGE_CATEGORIES
 from app.modules.categories.models import HomepageCategory
 from app.modules.categories.schemas import (
     HomepageCategoryCreate,
@@ -20,6 +21,12 @@ def get_category(db: Session, category_id: int) -> HomepageCategory:
 
 
 def create_category(db: Session, data: HomepageCategoryCreate) -> HomepageCategory:
+    current_homepage_categories = db.query(HomepageCategory).count()
+    if current_homepage_categories >= MAX_HOMEPAGE_CATEGORIES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Maximum of {MAX_HOMEPAGE_CATEGORIES} homepage categories are allowed."
+        )
     category = HomepageCategory(**data.model_dump())
     db.add(category)
     db.flush()
