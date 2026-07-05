@@ -107,7 +107,8 @@ function safeParseStorage(key, fallback = []) {
 
 const FormInput = React.forwardRef(
   ({ label, error, endAdornment, id, ...props }, ref) => {
-    const inputId = id || React.useId();
+    const generatedId = React.useId();
+    const inputId = id || generatedId;
     return (
       <label htmlFor={inputId} className="block space-y-1.5">
         <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">
@@ -143,7 +144,8 @@ FormInput.displayName = "FormInput";
 
 const FormTextarea = React.forwardRef(
   ({ label, error, id, ...props }, ref) => {
-    const inputId = id || React.useId();
+    const generatedId = React.useId();
+    const inputId = id || generatedId;
     return (
       <label htmlFor={inputId} className="block space-y-1.5">
         <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">
@@ -172,7 +174,8 @@ FormTextarea.displayName = "FormTextarea";
 
 const SelectInput = React.forwardRef(
   ({ label, error, options, id, ...props }, ref) => {
-    const inputId = id || React.useId();
+    const generatedId = React.useId();
+    const inputId = id || generatedId;
     return (
       <label htmlFor={inputId} className="block space-y-1.5">
         <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">
@@ -988,7 +991,7 @@ export default function SettingsPage() {
                   validate: (val) => {
                     if (!val) return true;
                     if (!val.trim()) return "Phone number cannot be whitespace-only";
-                    const cleaned = val.replace(/[\s\-\(\)]/g, "");
+                    const cleaned = val.replace(/[\s\-()]/g, "");
                     return /^\+?\d+$/.test(cleaned) || "Phone must contain only digits, spaces, +, -, or ()";
                   }
                 })}

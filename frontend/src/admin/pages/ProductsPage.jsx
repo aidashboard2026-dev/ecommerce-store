@@ -4,7 +4,8 @@
  * Adds bulk actions UI. Preserves existing UI/UX completely.
  */
 
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { useSearchParams, useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Search, Edit, Eye, EyeOff, Package,
@@ -266,7 +267,7 @@ function BulkActionsBar({ selectedIds, onAction, categories, collections, onClea
               ))}
             </select>
           ) : (
-            <select value={targetCollectionId} onChange={e => setCollectionId(e.target.value)}
+            <select value={targetCollectionId} onChange={e => setTargetCollectionId(e.target.value)}
               className="input-field py-1 text-xs">
               <option value="">Select collection…</option>
               {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -308,14 +309,30 @@ function BulkActionsBar({ selectedIds, onAction, categories, collections, onClea
 
 export default function ProductsPage() {
   const qc = useQueryClient()
+  const [searchParams] = useSearchParams()
+  const { id: urlProductId } = useParams()          // /admin/products/:id/edit
+  const urlVariantId = searchParams.get('variant')
+  const navigate = useNavigate()
+  // Track whether the modal was auto-opened from URL so we can close via back-nav
+  const urlOpenedRef = useRef(false)
+
+  // ── URL-seeded initial filter values ─────────────────────────────────────────
+  const urlStock  = searchParams.get('stock') || ''   // e.g. 'low', 'out'
+  const urlStatus = searchParams.get('status') || ''  // e.g. 'published', 'draft'
+
+  // Map URL stock param to internal stock_status enum values
+  const initialStockStatus = (() => {
+    const map = { low: 'low_stock', out: 'out_of_stock', in: 'in_stock' }
+    return map[urlStock] || ''
+  })()
 
   // ── Filter state ─────────────────────────────────────────────────────────────
   const [search, setSearch]             = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState(urlStatus)
   const [categoryId, setCategoryId]     = useState('')
   const [collectionId, setCollectionId] = useState('')
   const [genderFilter, setGenderFilter] = useState('')
-  const [stockStatus, setStockStatus]   = useState('')
+  const [stockStatus, setStockStatus]   = useState(initialStockStatus)
   const [flagFilters, setFlagFilters]   = useState({})
   const [sortBy, setSortBy]             = useState('')
   const [page, setPage]                 = useState(1)
@@ -325,10 +342,16 @@ export default function ProductsPage() {
 
   // ── Modals ──────────────────────────────────────────────────────────────────
   const [formModal,      setFormModal]      = useState({ open: false, product: null })
-  const [variantModal,   setVariantModal]   = useState({ open: false, productId: null })
+  const [variantModal,   setVariantModal]   = useState({ open: false, productId: null, product: null, editingVariantId: null })
   const [imageModal,     setImageModal]     = useState({ open: false, product: null })
   const [quickEditModal, setQuickEditModal] = useState({ open: false, product: null })
   const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false)
+
+  // ── URL-param driven: auto-open edit modal for /admin/products/:id/edit ─────
+  // NOTE: This effect references `data` which is declared below — it is
+  // intentionally placed here but the effect body only reads data?.items,
+  // which will be undefined on first render and cause a harmless no-op.
+  // The effect will re-run once `data` becomes available after the query resolves.
 
   // Stable key derived from flagFilters — avoids JSON.stringify inside deps array
   // which produces a new string reference every render even when flags haven't changed.
@@ -336,7 +359,6 @@ export default function ProductsPage() {
 
   // Reset page on any filter change
   React.useEffect(() => { setPage(1); setSelectedIds(new Set()) },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [debouncedSearch, statusFilter, categoryId, collectionId, genderFilter, stockStatus, flagKey, sortBy])
 
   // ── Data queries ─────────────────────────────────────────────────────────────
@@ -382,12 +404,67 @@ export default function ProductsPage() {
     return collections.filter(c => String(c.category_id) === String(categoryId))
   }, [collections, categoryId])
 
+  // ── URL-param driven: auto-open edit modal for /admin/products/:id/edit ─────
+  // Placed AFTER data query so the closure correctly captures data.
+  // We only auto-open once (urlOpenedRef guards against re-triggering).
+  useEffect(() => {
+    if (!urlProductId || urlOpenedRef.current) return
+    if (urlProductId === 'new') {
+      urlOpenedRef.current = true
+      setFormModal({ open: true, product: null })
+      return
+    }
+    if (!data?.items) return
+    const found = data.items.find(p => String(p.id) === String(urlProductId))
+    if (found) {
+      urlOpenedRef.current = true
+      setFormModal({ open: true, product: found })
+    }
+  }, [urlProductId, data?.items])
+
+  // Auto-open/close variant modal from URL
+  useEffect(() => {
+    if (!urlProductId || !data?.items) return
+
+    if (urlVariantId) {
+      const foundProduct = data.items.find(p => String(p.id) === String(urlProductId))
+      if (foundProduct) {
+        const foundVariant = foundProduct.variants?.find(v => String(v.id) === String(urlVariantId))
+        if (foundVariant) {
+          setVariantModal(prev => {
+            if (prev.open && String(prev.editingVariantId) === String(urlVariantId)) return prev
+            return {
+              open: true,
+              productId: foundProduct.id,
+              product: foundProduct,
+              editingVariantId: Number(urlVariantId)
+            }
+          })
+        }
+      }
+    } else {
+      setVariantModal(prev => {
+        if (prev.open && prev.editingVariantId) {
+          return { open: false, productId: null, product: null, editingVariantId: null }
+        }
+        return prev
+      })
+    }
+  }, [urlProductId, urlVariantId, data?.items])
+
+
   // ── Mutations ────────────────────────────────────────────────────────────────
 
   // Use prefix-only invalidation so this callback stays stable across filter
   // changes and mutation closures never capture a stale queryParams snapshot.
+  // Invalidates both the admin list ('products') and the storefront detail
+  // query ('product', singular) - two distinct key namespaces that must both
+  // be busted whenever a product's data changes.
   const invalidate = useCallback(
-    () => qc.invalidateQueries({ queryKey: ['products'] }),
+    () => {
+      qc.invalidateQueries({ queryKey: ['products'] })
+      qc.invalidateQueries({ queryKey: ['product'] })
+    },
     [qc]
   )
 
@@ -440,9 +517,40 @@ export default function ProductsPage() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
-  const openEdit      = useCallback(p => setFormModal({ open: true, product: p }), [])
+  // Open edit modal AND push a deep-link URL so browser Back/Forward works
+  const openEdit = useCallback(p => {
+    if (p?.id) {
+      navigate(`/admin/products/${p.id}/edit`, { replace: false })
+    } else {
+      navigate('/admin/products/new', { replace: false })
+    }
+    setFormModal({ open: true, product: p })
+  }, [navigate])
+
+  // Close form modal and return to /admin/products listing
+  const closeFormModal = useCallback(() => {
+    setFormModal({ open: false, product: null })
+    urlOpenedRef.current = false
+    if (urlProductId) {
+      navigate('/admin/products', { replace: true })
+    }
+  }, [navigate, urlProductId])
+
   const openImage     = useCallback(p => setImageModal({ open: true, product: p }), [])
-  const openVariant   = useCallback(p => setVariantModal({ open: true, productId: p.id, product: p }), [])
+  const openVariant   = useCallback((p, variantId) => {
+    if (variantId) {
+      navigate(`/admin/products/${p.id}/edit?variant=${variantId}`, { replace: false })
+      setVariantModal({ open: true, productId: p.id, product: p, editingVariantId: variantId })
+    } else {
+      setVariantModal({ open: true, productId: p.id, product: p, editingVariantId: null })
+    }
+  }, [navigate])
+  const closeVariantModal = useCallback(() => {
+    setVariantModal({ open: false, productId: null, product: null, editingVariantId: null })
+    if (urlVariantId) {
+      navigate(`/admin/products/${urlProductId}/edit`, { replace: true })
+    }
+  }, [navigate, urlProductId, urlVariantId])
   const openQuickEdit = useCallback(p => setQuickEditModal({ open: true, product: p }), [])
   const doToggle      = useCallback(p => toggleStatus.mutate({ id: p.id, status: p.status === 'published' ? 'draft' : 'published' }), [toggleStatus])
   const doDelete      = useCallback(p => deleteProduct.mutate(p.id), [deleteProduct])
@@ -473,12 +581,12 @@ export default function ProductsPage() {
       <Package size={36} className="mx-auto mb-3 text-muted opacity-40" />
       <p className="text-sm text-muted">No products found</p>
       {!hasFilters && !search && (
-        <button onClick={() => setFormModal({ open: true, product: null })} className="mt-4 btn-primary text-sm">
+        <button onClick={() => openEdit(null)} className="mt-4 btn-primary text-sm">
           Create your first product
         </button>
       )}
     </div>
-  ), [hasFilters, search])
+  ), [hasFilters, search, openEdit])
 
   const errorState = useMemo(() => (
     <div className="py-20 text-center">
@@ -510,7 +618,7 @@ export default function ProductsPage() {
             <Button onClick={() => setIsCatalogModalOpen(true)} variant="secondary" icon={Settings2}>
               Manage Catalog
             </Button>
-            <Button onClick={() => setFormModal({ open: true, product: null })} icon={Plus}>
+            <Button onClick={() => openEdit(null)} icon={Plus}>
               Add Product
             </Button>
           </div>
@@ -711,11 +819,17 @@ export default function ProductsPage() {
                         className="w-3.5 h-3.5 accent-brand-500" />
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-3">
+                      {/* Clicking title/image opens the edit form with URL update */}
+                      <button
+                        type="button"
+                        onClick={() => openEdit(product)}
+                        className="flex items-center gap-3 text-left group w-full hover:opacity-80 transition-opacity"
+                        title={`Edit ${product.title}`}
+                      >
                         <ImageStrip thumbnail={product.thumbnail} />
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <p className="text-xs font-semibold text-app truncate max-w-[140px]">{product.title}</p>
+                            <p className="text-xs font-semibold text-app truncate max-w-[140px] group-hover:text-brand-500 transition-colors">{product.title}</p>
                             {product.is_featured    && <Star size={9} className="text-amber-500 flex-shrink-0" />}
                             {product.is_trending    && <TrendingUp size={9} className="text-blue-500 flex-shrink-0" />}
                             {product.is_best_seller && <Zap size={9} className="text-purple-500 flex-shrink-0" />}
@@ -725,7 +839,7 @@ export default function ProductsPage() {
                             {product.collection_name || product.collection || product.slug}
                           </p>
                         </div>
-                      </div>
+                      </button>
                     </TableCell>
                     <TableCell>
                       <span className="text-[10px] text-muted">
@@ -740,10 +854,31 @@ export default function ProductsPage() {
                     <TableCell className="font-medium text-app">{formatPrice(v0?.original_price ?? product.min_price)}</TableCell>
                     <TableCell className="font-semibold text-emerald-600 dark:text-emerald-400">{formatPrice(v0?.selling_price)}</TableCell>
                     <TableCell className="font-medium text-amber-600">{discPct}</TableCell>
-                    <TableCell><StockBadge stock={product.total_stock} /></TableCell>
-                    <TableCell className="text-muted">{sizes || '—'}</TableCell>
+                    {/* Clickable stock badge — filters listing by stock status */}
                     <TableCell>
-                      <Badge label={product.status} variant={statusMap[product.status] || 'default'} />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const s = product.total_stock === 0 ? 'out_of_stock' : product.total_stock <= 5 ? 'low_stock' : 'in_stock'
+                          setStockStatus(prev => prev === s ? '' : s)
+                        }}
+                        className="cursor-pointer hover:opacity-70 transition-opacity focus:outline-none"
+                        title="Filter by this stock status"
+                      >
+                        <StockBadge stock={product.total_stock} />
+                      </button>
+                    </TableCell>
+                    <TableCell className="text-muted">{sizes || '—'}</TableCell>
+                    {/* Clickable status badge — applies status filter for this product's status */}
+                    <TableCell>
+                      <button
+                        type="button"
+                        onClick={() => setStatusFilter(prev => prev === product.status ? '' : product.status)}
+                        className="cursor-pointer hover:opacity-70 transition-opacity focus:outline-none"
+                        title={`Filter by ${product.status}`}
+                      >
+                        <Badge label={product.status} variant={statusMap[product.status] || 'default'} />
+                      </button>
                     </TableCell>
                     <TableCell>
                       <button onClick={() => openEdit(product)} title="Edit" className="btn-tbl-edit">
@@ -786,8 +921,8 @@ export default function ProductsPage() {
               <ProductErrorBoundary title="Product form error">
                 <InlineProductForm
                   product={formModal.product}
-                  onClose={() => setFormModal({ open: false, product: null })}
-                  onOpenVariant={p => setVariantModal({ open: true, productId: p.id, product: p })}
+                  onClose={closeFormModal}
+                  onOpenVariant={(p, vId) => openVariant(p, vId)}
                   onOpenImage={p => setImageModal({ open: true, product: p })}
                 />
               </ProductErrorBoundary>
@@ -800,9 +935,10 @@ export default function ProductsPage() {
       <ProductErrorBoundary title="Variant form error">
         <VariantFormModal
           isOpen={variantModal.open}
-          onClose={() => setVariantModal({ open: false, productId: null, product: null })}
+          onClose={closeVariantModal}
           productId={variantModal.productId}
-          product={data?.items?.find(p => p.id === variantModal.productId) || variantModal.product}
+          product={variantModal.product || data?.items?.find(p => p.id === variantModal.productId)}
+          editingVariantId={variantModal.editingVariantId}
         />
       </ProductErrorBoundary>
       <ProductErrorBoundary title="Image manager error">

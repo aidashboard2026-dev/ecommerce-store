@@ -493,13 +493,13 @@ export default function OffersPage() {
                     {/* Actions buttons */}
                     <div className="flex justify-end gap-2 pt-1">
                       {offer.status === "saved" && (
-                        <button
+                        <Button
                           onClick={() => publishOffer(offer.id)}
                           variant="addvariant"
                           className="px-3 py-1.5 rounded-l text-white font-bold text-[11px] transition-all"
                         >
                           Publish
-                        </button>
+                        </Button>
                       )}
                       <Button
                         onClick={() => handleEdit(offer)}

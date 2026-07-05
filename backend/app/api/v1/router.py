@@ -17,10 +17,10 @@ from app.api.v1.contact import router as contact_router
 
 api_router = APIRouter()
 
-api_router.include_router(auth_router,             prefix="/auth",            tags=["Authentication"])
+api_router.include_router(auth.router,            prefix="/auth",            tags=["Authentication"])
 api_router.include_router(
-    homepage_categories_router,
-    tags=["Homepage Categories"]
+    homepage_categories,
+    tags=["Homepage Categories"],
 )
 api_router.include_router(admins_router,           prefix="/admins",          tags=["Admins"])
 api_router.include_router(dashboard_router,        prefix="/dashboard",       tags=["Dashboard"])

@@ -6,7 +6,21 @@ import { User, Phone, Mail, ClipboardList, Lock, Save, MapPin, Heart, Settings }
 import clsx from 'clsx'
 import { updateCustomerProfileThunk } from '@/storefront/store/customerSlice'
 import OrdersList from '@/storefront/components/orders/OrdersList'
+import DeliveryAddress from '@/storefront/components/checkout/DeliveryAddress'
 import WishlistGrid from '@/storefront/components/storeheaders/WishlistGrid'
+
+const ADDRESS_FIELDS = ['full_name', 'phone', 'address_line1', 'address_line2', 'city', 'state', 'pincode']
+const EMPTY_ADDRESS_FORM = ADDRESS_FIELDS.reduce((acc, field) => ({ ...acc, [field]: '' }), {})
+
+// ─── Addresses tab — reuses the checkout address-book UI (add/select/remove
+// backed by checkoutStore) so saved addresses stay consistent between the
+// profile page and the checkout flow. ────────────────────────────────────
+function ManageAddressesSection() {
+  const [form, setForm] = useState(EMPTY_ADDRESS_FORM)
+  const update = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
+
+  return <DeliveryAddress form={form} setForm={setForm} update={update} />
+}
 
 // ─── Profile tab — account details form (unchanged from original) ──────────
 function AccountDetailsSection() {
@@ -40,7 +54,6 @@ function AccountDetailsSection() {
             value={form.first_name}
             onChange={update('first_name')}
             placeholder="First name"
-            aria-label="First name"
             className="w-full bg-surface border border-app rounded-xl py-2.5 pl-11 pr-4 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
           />
         </div>
@@ -50,7 +63,6 @@ function AccountDetailsSection() {
             value={form.last_name}
             onChange={update('last_name')}
             placeholder="Last name"
-            aria-label="Last name"
             className="w-full bg-surface border border-app rounded-xl py-2.5 pl-11 pr-4 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
           />
         </div>
@@ -59,7 +71,6 @@ function AccountDetailsSection() {
           <input
             value={customer?.email || ''}
             disabled
-            aria-label="Email address (cannot be changed)"
             className="w-full bg-surface border border-app rounded-xl py-2.5 pl-11 pr-4 text-sm text-muted cursor-not-allowed"
           />
         </div>
@@ -69,7 +80,6 @@ function AccountDetailsSection() {
             value={form.phone}
             onChange={update('phone')}
             placeholder="Phone number"
-            aria-label="Phone number"
             className="w-full bg-surface border border-app rounded-xl py-2.5 pl-11 pr-4 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
           />
         </div>
@@ -140,7 +150,7 @@ export default function ProfilePage() {
       </div>
 
       {activeTab === 'orders' && <OrdersList />}
-      {activeTab === 'addresses' && <CheckoutForm />}
+      {activeTab === 'addresses' && <ManageAddressesSection />}
       {activeTab === 'wishlist' && <WishlistGrid />}
       {activeTab === 'settings' && <AccountSettingsSection />}
       {activeTab === 'profile' && <AccountDetailsSection />}

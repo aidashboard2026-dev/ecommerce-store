@@ -125,9 +125,11 @@ class OrderTrackingResponse(BaseModel):
     """
     order_number:           str
     product_name:           str
+    product_image:          Optional[str] = None
     quantity:               int
     size:                   Optional[str] = None
     color:                  Optional[str] = None
+    total_amount:           float
     tracking_status:        str
     tracking_note:          Optional[str] = None
     logistics:              Optional[str] = None

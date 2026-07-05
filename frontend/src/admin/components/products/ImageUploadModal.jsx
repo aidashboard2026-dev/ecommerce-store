@@ -374,6 +374,7 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
       toast.success(`${IMAGE_TABS.find(t => t.key === activeTab)?.label || 'Image'} uploaded successfully.`)
       qc.invalidateQueries({ queryKey: ['products'] })
       qc.invalidateQueries({ queryKey: ['products', product.id] })
+      qc.invalidateQueries({ queryKey: ['product'] })
       clearSelection()
       if (activeTab !== 'gallery') {
         // Stay open so user can upload other types
@@ -390,6 +391,7 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
       toast.success('Image removed successfully.')
       qc.invalidateQueries({ queryKey: ['products'] })
       qc.invalidateQueries({ queryKey: ['products', product.id] })
+      qc.invalidateQueries({ queryKey: ['product'] })
     },
     onError: () => toast.error('Failed to remove image'),
   })
@@ -404,6 +406,7 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
       toast.success('Gallery image removed successfully.')
       qc.invalidateQueries({ queryKey: ['products'] })
       qc.invalidateQueries({ queryKey: ['products', product.id] })
+      qc.invalidateQueries({ queryKey: ['product'] })
     },
     onError: () => toast.error('Failed to remove gallery image'),
   })
@@ -437,6 +440,7 @@ export default function ImageUploadModal({ isOpen, onClose, product }) {
           // Refresh after each file so the UI reflects partial progress
           // ("2/4" -> "3/4" -> "4/4") rather than jumping at the very end.
           await qc.invalidateQueries({ queryKey: ['products', product.id] })
+          await qc.invalidateQueries({ queryKey: ['product'] })
           await qc.invalidateQueries({ queryKey: ['products'] })
         }
       }

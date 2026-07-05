@@ -109,6 +109,7 @@ const StoreFooterComponent = function StoreFooter() {
               </a>
             </div>
           </div>
+        </div>
 
           {/* ================= Quick Links ================= */}
 
@@ -187,7 +188,7 @@ const StoreFooterComponent = function StoreFooter() {
             }}
           />
         </div>
-      </div>
+      
 
       {/* ================= Bottom Bar ================= */}
 

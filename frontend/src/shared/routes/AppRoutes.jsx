@@ -207,8 +207,12 @@ export default function AppRoutes() {
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="custom-products" element={<CustomProductsPage />} />
           <Route path="orders" element={<AdminOrdersPage />} />
+          <Route path="orders/:id" element={<AdminOrdersPage />} />
           <Route path="offers" element={<OffersPage />} />
+          <Route path="offers/new" element={<OffersPage />} />
           <Route path="customers" element={<CustomersPage />} />
+          <Route path="customers/new" element={<CustomersPage />} />
+          <Route path="customers/:id" element={<CustomersPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="banners" element={<BannerPage />} />
         </Route>
@@ -223,11 +227,9 @@ export default function AppRoutes() {
           <Route path="products/:slug" element={<ProductsPage />} />
           {/* <Route path="about" element={<AboutPage />} />   */}
 
-          <Route path="returns-policy" element={<ReturnsPolicy />} />
+          {/* <Route path="returns-policy" element={<ReturnsPolicy />} /> */}
           <Route path="order-success" element={<OrderSuccess />} />
           {/* <Route path="ordertimeline" element={<OrderTimelinePage />} /> */}
-
-
           <Route
             path="sub-products"
             element={<Navigate to="/products" replace />}
@@ -235,10 +237,7 @@ export default function AppRoutes() {
           <Route path="category/:slug" element={<CategoryRedirect />} />
 
           <Route path="cart" element={<CartPage />} />
-          
-          {/* store front footer inside paages  */}
 
-          
           {/* Custom orders (new) */}
           <Route path="custom" element={<CustomPage />} />
           <Route path="custom/:productType" element={<CustomPage />} />
