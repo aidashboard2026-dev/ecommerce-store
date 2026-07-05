@@ -148,7 +148,7 @@ const StoreHeaderComponent = function StoreHeader({
                 <span>{storeName}</span>
               ) : (
                 <>
-                  Aura<span className="text-brand-500">Store</span>
+                  My<span className="text-brand-500">Store</span>
                 </>
               )}
             </span>
@@ -232,18 +232,16 @@ const StoreHeaderComponent = function StoreHeader({
 
             {/* Account / Login */}
             {token && customer ? (
-              <div className="relative hidden md:block group/profile hover:bg-slate-400">
+              <div className="relative hidden md:block group/profile">
                 <Link
                   to="/profile"
                   className="flex items-center gap-2 p-1.5 rounded-full hover:bg-surface text-app transition-colors duration-200"
                 >
                   <div className="h-7 w-7 rounded-full bg-brand-500 flex items-center justify-center text-white font-bold text-xs">
-                    {customer.first_name[0].toUpperCase()}
+                    {customer.first_name.toUpperCase()}
                   </div>
-                  <span className="hidden sm:inline text-xs font-semibold max-w-[80px] truncate">
-                    {customer.first_name}
-                  </span>
                 </Link>
+                
                 {/* Profile Hover Dropdown */}
                 <div className="absolute right-0 mt-1.5 w-48 bg-app border border-app rounded-xl shadow-lg py-2 hidden group-hover/profile:block animate-fade-in z-50">
                   <Link
@@ -279,7 +277,7 @@ const StoreHeaderComponent = function StoreHeader({
             {/* Mobile Menu Toggle */}
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="p-2 rounded-full hover:bg-surface text-app transition-colors duration-200"
+              className=" rounded-full hover:bg-surface text-app transition-colors duration-200"
               aria-label="Open Navigation Menu"
             >
               <Menu size={22} />
