@@ -21,7 +21,7 @@ import { useLocation } from "react-router-dom";
       rating:null,
       in_stock_only:false
   }
-export default function ProductsList() {
+export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog' } = {}) {
   const location = useLocation();
 
   const fromMenu = location.state?.fromMenu === true;
@@ -52,26 +52,26 @@ export default function ProductsList() {
     return categoriesData.filter(c => c.name !== "Custom Printing")
   }, [categoriesData])
 
-  const gendersList = useMemo(() => [
-    'Men',
-    'Women',
-    'Kids'
-  ], [])
-
   const queryFilters = useMemo(() => {
     const f = {
       sort_by: filters.sort_by,
       search: debouncedSearch || undefined,
       collection_id: filters.collection_id || undefined,
       category_id: filters.category_id || undefined,
-      category: filters.category || undefined,
+      category:
+        filters.category_id
+            ? categories.find(
+                  c => String(c.id) === String(filters.category_id)
+              )?.slug
+            : filters.category || undefined,
       collection: filters.collection || undefined,
       genders: filters.gender ? [filters.gender] : undefined,
       min_price: filters.min_price || undefined,
       max_price: filters.max_price || undefined,
+      ...forcedFilters,
     }
     return f
-  }, [filters, debouncedSearch])
+  }, [filters, debouncedSearch, forcedFilters])
 
   const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } =
     useProductsInfinite(queryFilters)
@@ -92,7 +92,8 @@ export default function ProductsList() {
     
     if (filters.category_id) {
       const catObj = categories.find(c => String(c.id) === String(filters.category_id))
-      if (catObj) params.category = catObj.name
+      console.log("Matched Category", catObj);
+      if (catObj) params.category = catObj.slug
     } else if (filters.category) {
       params.category = filters.category
     }
@@ -133,7 +134,11 @@ export default function ProductsList() {
 
       let newCatId = ''
       if (newCat && categories.length > 0) {
-        const catObj = categories.find(c => c.name.toLowerCase() === newCat.toLowerCase())
+        const catObj = categories.find(
+          (c) =>
+            c.slug?.toLowerCase() === newCat.toLowerCase() ||
+            c.name?.toLowerCase() === newCat.toLowerCase()
+        );
         if (catObj) newCatId = String(catObj.id)
       }
 
@@ -171,27 +176,20 @@ export default function ProductsList() {
 
   // Infinite scroll sentinel
   const sentinelRef = useRef(null)
-  const loadMoreRef = useRef()
-  loadMoreRef.current = () => {
-    if (hasNextPage && !isFetchingNextPage) {
-      fetchNextPage()
-    }
-  }
-
   useEffect(() => {
     const el = sentinelRef.current
     if (!el) return
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) {
-          loadMoreRef.current()
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage()
         }
       },
       { rootMargin: '400px' }
     )
     observer.observe(el)
     return () => observer.disconnect()
-  }, [])
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
  const products = useMemo(() => {
 
@@ -216,39 +214,45 @@ export default function ProductsList() {
    filters.in_stock_only
 ]);
   
-  // const handleReset = () => {
-  //   setSearch("");
-
-  //   setFilters((prev) => ({
-  //     ...prev,
-  //     sort_by: "newest",
-  //     min_price: "",
-  //     max_price: "",
-  //     rating: null,
-  //     in_stock_only: false,
-  //   }));
-  // };
-
   const handleReset = () => {
-
-    if(
-        !hasActiveFilters
-    ){
-        return;
-    }
-
     setSearch("");
 
-    setFilters(DEFAULT_FILTERS);
+    setFilters((prev) => ({
+      ...prev,
+      sort_by: "newest",
+      min_price: "",
+      max_price: "",
+      rating: null,
+      in_stock_only: false,
+    }));
+  };
 
-    setSearchParams(
-        {},
-        {
-          replace:true
-        }
-    );
+  // const handleReset = () => {
 
-  }
+  //   if(
+  //       !hasActiveFilters
+  //   ){
+  //       return;
+  //   }
+
+  //   setSearch("");
+
+  //   setFilters({
+  //       ...DEFAULT_FILTERS,
+  //       category: "",
+  //       category_id: "",
+  //       collection: "",
+  //       collection_id: "",
+  //   });
+
+  //   setSearchParams(
+  //       {},
+  //       {
+  //         replace:true
+  //       }
+  //   );
+
+  // }
   const hasActiveFilters = useMemo(() => {
     const drawerFilters =
       filters.sort_by !== "newest" ||
@@ -267,12 +271,37 @@ export default function ProductsList() {
     filters.in_stock_only,
     search,
   ]);
+
+  const pageTitle = useMemo(() => {
+      if (!filters.category) return title;
+
+      const cat = categories.find(
+          (c) =>
+              c.slug?.toLowerCase() === filters.category.toLowerCase()
+      );
+
+      if (!cat) return title;
+
+      const gender = filters.gender || "";
+
+      return gender
+          ? `${cat.name} For ${gender}`
+          : cat.name;
+  }, [categories, filters.category, filters.gender, title]);
+
+  useEffect(() => {
+     
+  }, [filters, categories, queryFilters]);
   return (
     <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       <div className="flex flex-col gap-2 mb-6">
-        <h1 className="font-display font-bold text-2xl sm:text-3xl text-black">Shop Catalog</h1>
+        <h1 className="font-display font-bold text-2xl sm:text-3xl text-black">
+            {pageTitle}
+        </h1>
         <p className="text-sm text-muted">
-          {products.length > 0 ? `Showing ${products.length} products` : 'Browse our collection'}
+            {products.length > 0
+                ? `${products.length} Products Available`
+                : `Browse ${pageTitle}`}
         </p>
       </div>
 
@@ -406,7 +435,7 @@ export default function ProductsList() {
             filters={filters}
             setFilters={setFilters}
         />
-
+    
         <div className="flex-1">
           <ProductGrid products={products} loading={isLoading || isFetchingNextPage} />
           <div ref={sentinelRef} className="h-1" />

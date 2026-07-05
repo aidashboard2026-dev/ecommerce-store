@@ -25,9 +25,12 @@ export function TopCategoriesCard({ categories = [], onClick, title = 'Top Categ
     <div 
       className={clsx(
         "card p-3 hover:border-orange-500/50 hover:shadow-card-hover hover:translate-y-[-1px] flex flex-col justify-between min-h-[150px]",
-        onClick ? 'cursor-pointer' : ''
+        onClick ? 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-400/50' : ''
       )} 
       onClick={onClick}
+      tabIndex={onClick ? 0 : undefined}
+      role={onClick ? 'button' : undefined}
+      onKeyDown={onClick ? (e) => (e.key === 'Enter' || e.key === ' ') && onClick() : undefined}
     >
       <div className="flex flex-col items-start justify-between w-full gap-2">
         <div className="flex justify-between items-center min-w-0 w-full">
@@ -69,9 +72,12 @@ export function LowStockProductsCard({ count = 0, products = [], onClick, title 
     <div
       className={clsx(
         'card p-5 hover:border-red-500/50 hover:shadow-card-hover hover:translate-y-[-1px] flex flex-col justify-between min-h-[150px] w-full',
-        onClick && 'cursor-pointer'
+        onClick && 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-400/50'
       )}
       onClick={onClick}
+      tabIndex={onClick ? 0 : undefined}
+      role={onClick ? 'button' : undefined}
+      onKeyDown={onClick ? (e) => (e.key === 'Enter' || e.key === ' ') && onClick() : undefined}
     >
       <div className="flex h-full w-full flex-col justify-between">
         <div className="flex w-full items-start justify-between gap-3">
@@ -110,9 +116,12 @@ export function SettlementCard({ title, value, description, change = 0, onClick,
     <div 
       className={clsx(
         "card p-5 hover:border-brand-500/50 hover:shadow-card-hover hover:translate-y-[-1px] flex flex-col justify-between min-h-[150px]",
-        onClick ? 'cursor-pointer' : ''
+        onClick ? 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-400/50' : ''
       )} 
       onClick={onClick}
+      tabIndex={onClick ? 0 : undefined}
+      role={onClick ? 'button' : undefined}
+      onKeyDown={onClick ? (e) => (e.key === 'Enter' || e.key === ' ') && onClick() : undefined}
     >
       <div className="flex-1 flex items-start justify-between">
         <div className="flex-1 flex flex-col h-full justify-between min-w-0">
@@ -158,10 +167,13 @@ export default function StatCard({ title, value, change, icon: Icon, iconClassNa
     <div
       className={clsx(
         'card p-5 hover:border-brand-500/50 hover:shadow-card-hover hover:translate-y-[-1px] flex justify-between min-h-[150px]',
-        onClick && 'cursor-pointer',
+        onClick && 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-400/50',
         className
       )}
       onClick={onClick}
+      tabIndex={onClick ? 0 : undefined}
+      role={onClick ? 'button' : undefined}
+      onKeyDown={onClick ? (e) => (e.key === 'Enter' || e.key === ' ') && onClick() : undefined}
     >
       <div className="flex flex-col justify-between">
         <div className="flex items-start justify-between gap-3">

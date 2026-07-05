@@ -1441,6 +1441,12 @@ def get_products_public(
             Product.created_at.desc(),
         ]
 
+    elif sort_by == "new_arrival":
+        order_by = [
+            Product.is_new_arrival.desc(),
+            Product.created_at.desc(),
+        ]
+
     elif sort_by == "newest":
         order_by = [
             Product.created_at.desc(),

@@ -16,12 +16,8 @@ import MainLayout from "@/admin/layouts/MainLayout";
 import StorefrontLayout from "@/storefront/layouts/StorefrontLayout";
 import ProductDetails from "@/storefront/components/product/ProductDetails";
 import OrderSuccess from "@/storefront/components/checkout/OrderSuccess";
-import ReturnsPolicy from "@/storefront/pages/policys/ReturnsPolicy";
-
-const AboutPage = lazy(
-  () => import("@/storefront/components/storeindex/StoreFrontFooterPages/AboutPage")
-);
-// import OrderTimelinePage from "@/storefront/components/orders/OrderTimeline";
+// import ReturnsPolicy from "@/storefront/pages/ReturnsPolicy";
+// import OrderTimelinePage from "@/storefront/components/order/components/OrderTimeline";
 
 // Lazy loaded pages/components to optimize bundle sizes
 const AdminLoginPage = lazy(() => import("@/admin/pages/LoginPage"));
@@ -209,8 +205,12 @@ export default function AppRoutes() {
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="custom-products" element={<CustomProductsPage />} />
           <Route path="orders" element={<AdminOrdersPage />} />
+          <Route path="orders/:id" element={<AdminOrdersPage />} />
           <Route path="offers" element={<OffersPage />} />
+          <Route path="offers/new" element={<OffersPage />} />
           <Route path="customers" element={<CustomersPage />} />
+          <Route path="customers/new" element={<CustomersPage />} />
+          <Route path="customers/:id" element={<CustomersPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="banners" element={<BannerPage />} />
         </Route>
@@ -223,13 +223,10 @@ export default function AppRoutes() {
               a single consolidated page component */}
           <Route path="products" element={<ProductsPage />} />
           <Route path="products/:slug" element={<ProductsPage />} />
-          <Route path="about" element={<AboutPage />} />
 
-          <Route path="returns-policy" element={<ReturnsPolicy />} />
+          {/* <Route path="returns-policy" element={<ReturnsPolicy />} /> */}
           <Route path="order-success" element={<OrderSuccess />} />
           {/* <Route path="ordertimeline" element={<OrderTimelinePage />} /> */}
-
-
           <Route
             path="sub-products"
             element={<Navigate to="/products" replace />}
@@ -237,10 +234,7 @@ export default function AppRoutes() {
           <Route path="category/:slug" element={<CategoryRedirect />} />
 
           <Route path="cart" element={<CartPage />} />
-          
-          {/* store front footer inside paages  */}
 
-          
           {/* Custom orders (new) */}
           <Route path="custom" element={<CustomPage />} />
           <Route path="custom/:productType" element={<CustomPage />} />

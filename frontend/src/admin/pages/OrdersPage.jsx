@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Download, ClipboardList, Ban, CheckCircle, Package, Clock, Calendar as CalendarIcon, Loader2 } from "lucide-react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
@@ -20,6 +21,23 @@ import {
 import { useDebounce } from "@/shared/utils/productUtils";
 
 export default function OrdersPage() {
+  const [searchParams] = useSearchParams();
+
+  // Map URL ?status= param to internal tracking_status search prefix
+  const initialSearch = (() => {
+    const s = searchParams.get('status')
+    if (!s) return ''
+    // Map friendly URL values to internal status labels used in search
+    const map = {
+      pending:    'PLACED',
+      processing: 'PROCESSING',
+      shipped:    'SHIPPED',
+      delivered:  'DELIVERED',
+      cancelled:  'CANCELLED',
+    }
+    return map[s.toLowerCase()] || s.toUpperCase()
+  })()
+
   const emptyOrderForm = {
     logistics: "",
     tracking_id: "",
@@ -31,7 +49,8 @@ export default function OrdersPage() {
   const [totalOrders, setTotalOrders] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [date, setDate]             = useState(new Date());
-  const [search, setSearch]         = useState("");
+  // Pre-populate search from URL ?status= param so dashboard nav pre-filters
+  const [search, setSearch]         = useState(initialSearch);
   const [loading, setLoading]       = useState(true);
   const [orderDrafts, setOrderDrafts] = useState({});
 

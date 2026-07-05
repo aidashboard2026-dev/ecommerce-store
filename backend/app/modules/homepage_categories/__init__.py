@@ -1,0 +1,2 @@
+"""Homepage category cards module."""
+

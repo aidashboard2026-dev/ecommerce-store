@@ -22,10 +22,10 @@ const isMainCategory = (name, defaults) => {
 
 const isMainCollection = (name, defaults) => {
   if (!name) return false;
-  const norm = name.trim().toLowerCase().replace(/[\s_\-\'\"]+/g, '');
+  const norm = name.trim().toLowerCase().replace(/[\s_\-'"]+/g, '');
   const defaultList = defaults || ['men', 'women', 'kids'];
   return defaultList.some(d => {
-    const normD = d.trim().toLowerCase().replace(/[\s_\-\'\"]+/g, '');
+    const normD = d.trim().toLowerCase().replace(/[\s_\-'"]+/g, '');
     return norm === normD || normD.includes(norm) || norm.includes(normD);
   });
 }

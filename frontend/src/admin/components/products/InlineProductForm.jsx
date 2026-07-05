@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Plus, X, Camera, Layers, ImageIcon, Trash2,
+  Plus, X, Camera, Layers, ImageIcon, Trash2, Edit,
   AlertTriangle, CheckCircle, Loader2,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -38,6 +38,22 @@ const BLANK_VARIANT_FORM = {
   original_price: '', selling_price: '', discount_percentage: '',
   stock_quantity: '', low_stock_threshold: 5,
 }
+
+const getErrorMessage = (err) => {
+    const detail = err?.response?.data?.detail;
+
+    if (typeof detail === "string") {
+        return detail;
+    }
+
+    if (Array.isArray(detail)) {
+        return detail
+            .map((item) => item.msg)
+            .join(", ");
+    }
+
+    return "Something went wrong";
+};
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
@@ -290,7 +306,7 @@ function LocalVariantForm({ onAdd, existingVariants = [], limits }) {
 
 function getNormalizedCollectionName(name) {
   if (!name) return null;
-  const val = name.trim().toLowerCase().replace(/[\s_\-'\"]+/g, '');
+  const val = name.trim().toLowerCase().replace(/[\s_\-'"]+/g, '');
   if (val.includes('women') || val.includes('female') || val.includes('girl') || val.includes('lady') || val.includes('ladies')) {
     return 'Women';
   }
@@ -457,13 +473,13 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
 
   const editMutation = useMutation({
     mutationFn: data => productsApi.update(product.id, data),
-    onSuccess: () => { toast.success('Product updated successfully.'); qc.invalidateQueries({ queryKey: ['products'] }); onClose() },
+    onSuccess: () => { toast.success('Product updated successfully.'); qc.invalidateQueries({ queryKey: ['products'] }); qc.invalidateQueries({ queryKey: ['product'] }); onClose() },
     onError: e => toast.error(e.response?.data?.detail || 'Something went wrong'),
   })
 
   const editPubMutation = useMutation({
     mutationFn: data => productsApi.update(product.id, { ...data, status: 'published' }),
-    onSuccess: () => { toast.success('Product published successfully.'); qc.invalidateQueries({ queryKey: ['products'] }); onClose() },
+    onSuccess: () => { toast.success('Product published successfully.'); qc.invalidateQueries({ queryKey: ['products'] }); qc.invalidateQueries({ queryKey: ['product'] }); onClose() },
     onError: e => toast.error(e.response?.data?.detail || 'Something went wrong'),
   })
 
@@ -475,7 +491,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
     onSettled: (_, __, variantId) => setDeletingVariantIds(prev => {
       const s = new Set(prev); s.delete(variantId); return s
     }),
-    onSuccess: () => { toast.success('Variant deleted successfully.'); qc.invalidateQueries({ queryKey: ['products'] }) },
+    onSuccess: () => { toast.success('Variant deleted successfully.'); qc.invalidateQueries({ queryKey: ['products'] }); qc.invalidateQueries({ queryKey: ['product'] }) },
     onError: e => toast.error(e.response?.data?.detail || 'Failed to delete variant'),
   })
 
@@ -910,7 +926,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                       <TableHead>Discount Price</TableHead>
                       <TableHead>% off</TableHead>
                       <TableHead>Stock</TableHead>
-                      <TableHead>Delete</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -928,17 +944,27 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                         </TableCell>
                         <TableCell>
                           {isEdit ? (
-                            <button
-                              type="button"
-                              className="rounded-md flex items-center justify-center border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white"
-                              style={{ width: 24, height: 24 }}
-                              disabled={deletingVariantIds.has(v.id)}
-                              onClick={() => deleteVariantMutation.mutate(v.id)}
-                              aria-label="Delete variant">
-                              {deletingVariantIds.has(v.id)
-                                ? <Loader2 size={12} className="animate-spin" />
-                                : <Trash2 size={12} />}
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                className="rounded-md flex items-center justify-center border-brand-500/20 bg-brand-500/5 text-brand-500 hover:bg-brand-500 hover:text-white transition-colors"
+                                style={{ width: 24, height: 24 }}
+                                onClick={() => onOpenVariant(product, v.id)}
+                                aria-label="Edit variant">
+                                <Edit size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded-md flex items-center justify-center border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white"
+                                style={{ width: 24, height: 24 }}
+                                disabled={deletingVariantIds.has(v.id)}
+                                onClick={() => deleteVariantMutation.mutate(v.id)}
+                                aria-label="Delete variant">
+                                {deletingVariantIds.has(v.id)
+                                  ? <Loader2 size={12} className="animate-spin" />
+                                  : <Trash2 size={12} />}
+                              </button>
+                            </div>
                           ) : (
                             <button type="button"
                               className="btn-secondary rounded-lg flex items-center justify-center border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white"
