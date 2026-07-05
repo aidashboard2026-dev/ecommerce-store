@@ -8,28 +8,39 @@ import {
   toggleWishlist,
   selectIsWishlisted,
 } from "@/storefront/store/wishlistSlice";
-import { addToCart } from "@/storefront/store/cartSlice";
+
 import toast from "react-hot-toast";
 
-function ProductCard({ product }) {
+function CustomProductCard({ product }) {
   const dispatch = useDispatch();
   const isWishlisted = useSelector(selectIsWishlisted(product.id));
 
-  const variants = product.variants || [];
-  const inStock = (product.total_stock ?? 0) > 0;
-  const minPrice = product.min_price;
-  const firstVariant = variants[0];
+
+  const minPrice = product.selling_price_min;
+  const maxPrice = product.selling_price_max;
+
+  const originalMin = product.original_price_min;
+  const originalMax = product.original_price_max;
+
   const hasDiscount =
-    firstVariant &&
-    Number(firstVariant.original_price) > Number(firstVariant.selling_price);
-  const discountPct = hasDiscount
-    ? Math.round(
-        ((Number(firstVariant.original_price) -
-          Number(firstVariant.selling_price)) /
-          Number(firstVariant.original_price)) *
-          100,
-      )
-    : 0;
+  Number(originalMin) > Number(minPrice);
+
+  const discountPct = product.discount_percentage;
+
+//   const discountPct =
+//     product.discount_percentage ??
+//     product.discount ??
+//     (
+//         hasDiscount
+//         ? Math.round(
+//             ((Number(originalMin) - Number(minPrice)) /
+//                 Number(originalMin)) *
+//                 100
+//             )
+//         : 0
+//     );
+  
+  
 
   const handleWishlist = (e) => {
     e.preventDefault();
@@ -40,42 +51,24 @@ function ProductCard({ product }) {
         title: product.title,
         slug: product.slug,
         thumbnail: product.thumbnail,
-        minPrice: product.selling_price_min,
+        minPrice: product.selling_price_min
       }),
     );
     toast.success(isWishlisted ? "Removed from wishlist" : "Added to wishlist");
   };
 
-  const handleQuickAdd = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!inStock || !firstVariant) {
-      toast.error("Out of stock");
-      return;
-    }
-    dispatch(
-      addToCart({
-        productId: product.id,
-        slug: product.slug,
-        title: product.title,
-        thumbnail: product.thumbnail,
-        size: firstVariant.size,
-        color: firstVariant.color || null,
-        colorHex: firstVariant.color_hex || null,
-        sellingPrice: Number(firstVariant.selling_price),
-        originalPrice: Number(firstVariant.original_price),
-        stockQuantity: firstVariant.stock_quantity,
-        quantity: 1,
-      }),
-    );
-    toast.success("Added to cart");
-  };
+
 
   const [imageError, setImageError] = React.useState(false);
+  console.log(product);
+  console.log("Discount %:", product.discount_percentage);
+  console.log("Discount:", product.discount);
+  console.log("Original Min:", product.original_price_min);
+  console.log("Selling Min:", product.selling_price_min);
 
   return (
     <Link
-      to={`/products/${product.slug}`}
+      to={`/custom/${product.id}`}
       className="group relative flex flex-col w-full justify-between overflow-hidden transition-all duration-300 hover:-translate-y-1"
     >
       {/* Image */}
@@ -104,11 +97,7 @@ function ProductCard({ product }) {
               </span>
             )}
 
-            {!inStock && (
-              <span className="bg-gray-700/20 text-white text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full">
-                Out of Stock
-              </span>
-            )}
+            
           </div>
 
           {/* Wishlist */}
@@ -148,59 +137,118 @@ function ProductCard({ product }) {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between">
-          {minPrice != null ? (
-            <>
-              <span className="text-xl font-bold text-app">
-                {formatPrice(minPrice)}
-              </span>
-              {hasDiscount && (
-                <span className="text-xs text-muted line-through">
-                  {formatPrice(firstVariant.original_price)}
+        <div className="flex items-start justify-between">
+
+            {minPrice != null ? (
+
+                <>
+
+                    <div className="flex flex-col gap-1">
+
+                        <span className="text-xl font-bold text-app">
+
+                            {formatPrice(minPrice)}
+
+                            {maxPrice &&
+                                ` - ${formatPrice(maxPrice)}`}
+
+                        </span>
+
+                        {hasDiscount && (
+
+                            <span className="text-xs line-through text-muted">
+
+                                {formatPrice(originalMin)}
+
+                                {originalMax &&
+                                    ` - ${formatPrice(originalMax)}`}
+
+                            </span>
+
+                        )}
+
+                    </div>
+
+                    {hasDiscount && (
+
+                        <span className="text-red-500 text-sm font-semibold">
+
+                            {discountPct}% OFF
+
+                        </span>
+
+                    )}
+
+                </>
+
+            ) : (
+
+                <span className="text-xs text-muted">
+
+                    Price unavailable
+
                 </span>
-              )}
-            </>
-          ) : (
-            <span className="text-xs text-muted">Price unavailable</span>
-          )}
-          {hasDiscount && (
-            <span className="text-red-500 w-fit text-[13px] font-extralight uppercase tracking-wide px-2 py-1 rounded-full">
-              {discountPct}%
-            </span>
-          )}
+
+            )}
+
         </div>
       </div>
           {/* Quick add */}
+
+      
       <button
-        onClick={handleQuickAdd}
-        disabled={!inStock}
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          window.open(
+            `https://api.whatsapp.com/send?phone=918778021610&text=${encodeURIComponent(
+              `Hi, I want to customize "${product.title}".`
+            )}`,
+            "_blank"
+          );
+        }}
         className={clsx(
-          "absolute bottom-0 right-0 p-2.5 w-full text-sm  uppercase flex flex-row gap-3 items-center bg-zinc-950 dark:bg-zinc-900 text-white justify-center rounded-md duration-300",
-          "translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100",
-          // inStock
-          //   ? "bg-brand-500 hover:bg-brand-600 text-white"
-          //   : "bg-gray-500/65 text-white cursor-not-allowed",
+          "absolute bottom-0 right-0 w-full p-2.5",
+          "flex items-center justify-center gap-3",
+          "bg-green-600 text-white",
+          "uppercase text-sm rounded-md",
+          "translate-y-12 opacity-0",
+          "group-hover:translate-y-0",
+          "group-hover:opacity-100",
+          "duration-300"
         )}
-        aria-label="Quick add to cart"
       >
         <ShoppingBag size={16} />
-        Add to Cart
+        Chat on WhatsApp
       </button>
     </Link>
   );
 }
 
-export default memo(ProductCard, (prev, next) => {
-  const a = prev.product;
-  const b = next.product;
+export default memo(CustomProductCard,(prev,next)=>{
 
-  return (
-    a.id === b.id &&
-    a.slug === b.slug &&
-    a.title === b.title &&
-    a.thumbnail === b.thumbnail &&
-    a.min_price === b.min_price &&
-    a.total_stock === b.total_stock &&
-    a.is_featured === b.is_featured
-  );
+const a=prev.product;
+const b=next.product;
+
+return(
+
+a.id===b.id &&
+
+a.title===b.title &&
+
+a.thumbnail===b.thumbnail &&
+
+a.selling_price_min===b.selling_price_min &&
+
+a.selling_price_max===b.selling_price_max &&
+
+a.original_price_min===b.original_price_min &&
+
+a.original_price_max===b.original_price_max
+
+);
+
 });
+

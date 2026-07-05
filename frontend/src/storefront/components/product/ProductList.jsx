@@ -312,7 +312,7 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
       {/* Left Side */}
       <div className="flex flex-1 items-center px-5 py-2">
 
-        {/* Search */}
+        {/* Search
         <input
           type="text"
           value={search}
@@ -329,7 +329,7 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
             outline-none
             focus:border-black
           "
-        />
+        /> */}
 
         {/* Clear Filters */}
         {hasActiveFilters && (
