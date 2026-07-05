@@ -4,6 +4,7 @@ import { SlidersHorizontal } from 'lucide-react'
 import { useProductsInfinite, useCollections, useCategories } from '@/storefront/hooks/useProducts'
 
 import ProductGrid from '@/storefront/components/home/ProductGrid'
+import ProductFilters from '@/storefront/components/product/ProductFilters'
 import { useDebounce } from '@/shared/utils/productUtils'
 import SortDropdown from "@/storefront/components/filters/SortDropdown";
 import FilterDrawer from "@/storefront/components/filters/FilterDrawer";
@@ -57,7 +58,12 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
       search: debouncedSearch || undefined,
       collection_id: filters.collection_id || undefined,
       category_id: filters.category_id || undefined,
-      category: filters.category || undefined,
+      category:
+        filters.category_id
+            ? categories.find(
+                  c => String(c.id) === String(filters.category_id)
+              )?.slug
+            : filters.category || undefined,
       collection: filters.collection || undefined,
       genders: filters.gender ? [filters.gender] : undefined,
       min_price: filters.min_price || undefined,
@@ -86,7 +92,8 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
     
     if (filters.category_id) {
       const catObj = categories.find(c => String(c.id) === String(filters.category_id))
-      if (catObj) params.category = catObj.name
+      console.log("Matched Category", catObj);
+      if (catObj) params.category = catObj.slug
     } else if (filters.category) {
       params.category = filters.category
     }
@@ -127,7 +134,11 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
 
       let newCatId = ''
       if (newCat && categories.length > 0) {
-        const catObj = categories.find(c => c.name.toLowerCase() === newCat.toLowerCase())
+        const catObj = categories.find(
+          (c) =>
+            c.slug?.toLowerCase() === newCat.toLowerCase() ||
+            c.name?.toLowerCase() === newCat.toLowerCase()
+        );
         if (catObj) newCatId = String(catObj.id)
       }
 
@@ -161,7 +172,7 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
     if (search !== newSearch) {
       setSearch(newSearch)
     }
-  }, [searchParams])
+  }, [searchParams, collections, categories])
 
   // Infinite scroll sentinel
   const sentinelRef = useRef(null)
@@ -203,39 +214,45 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
    filters.in_stock_only
 ]);
   
-  // const handleReset = () => {
-  //   setSearch("");
-
-  //   setFilters((prev) => ({
-  //     ...prev,
-  //     sort_by: "newest",
-  //     min_price: "",
-  //     max_price: "",
-  //     rating: null,
-  //     in_stock_only: false,
-  //   }));
-  // };
-
   const handleReset = () => {
-
-    if(
-        !hasActiveFilters
-    ){
-        return;
-    }
-
     setSearch("");
 
-    setFilters(DEFAULT_FILTERS);
+    setFilters((prev) => ({
+      ...prev,
+      sort_by: "newest",
+      min_price: "",
+      max_price: "",
+      rating: null,
+      in_stock_only: false,
+    }));
+  };
 
-    setSearchParams(
-        {},
-        {
-          replace:true
-        }
-    );
+  // const handleReset = () => {
 
-  }
+  //   if(
+  //       !hasActiveFilters
+  //   ){
+  //       return;
+  //   }
+
+  //   setSearch("");
+
+  //   setFilters({
+  //       ...DEFAULT_FILTERS,
+  //       category: "",
+  //       category_id: "",
+  //       collection: "",
+  //       collection_id: "",
+  //   });
+
+  //   setSearchParams(
+  //       {},
+  //       {
+  //         replace:true
+  //       }
+  //   );
+
+  // }
   const hasActiveFilters = useMemo(() => {
     const drawerFilters =
       filters.sort_by !== "newest" ||
@@ -254,12 +271,37 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
     filters.in_stock_only,
     search,
   ]);
+
+  const pageTitle = useMemo(() => {
+      if (!filters.category) return title;
+
+      const cat = categories.find(
+          (c) =>
+              c.slug?.toLowerCase() === filters.category.toLowerCase()
+      );
+
+      if (!cat) return title;
+
+      const gender = filters.gender || "";
+
+      return gender
+          ? `${cat.name} For ${gender}`
+          : cat.name;
+  }, [categories, filters.category, filters.gender, title]);
+
+  useEffect(() => {
+     
+  }, [filters, categories, queryFilters]);
   return (
     <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       <div className="flex flex-col gap-2 mb-6">
-        <h1 className="font-display font-bold text-2xl sm:text-3xl text-black">{title}</h1>
+        <h1 className="font-display font-bold text-2xl sm:text-3xl text-black">
+            {pageTitle}
+        </h1>
         <p className="text-sm text-muted">
-          {products.length > 0 ? `Showing ${products.length} products` : 'Browse our collection'}
+            {products.length > 0
+                ? `${products.length} Products Available`
+                : `Browse ${pageTitle}`}
         </p>
       </div>
 
@@ -270,7 +312,7 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
       {/* Left Side */}
       <div className="flex flex-1 items-center px-5 py-2">
 
-        {/* Search */}
+        {/* Search
         <input
           type="text"
           value={search}
@@ -287,7 +329,7 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
             outline-none
             focus:border-black
           "
-        />
+        /> */}
 
         {/* Clear Filters */}
         {hasActiveFilters && (
@@ -393,7 +435,7 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
             filters={filters}
             setFilters={setFilters}
         />
-
+    
         <div className="flex-1">
           <ProductGrid products={products} loading={isLoading || isFetchingNextPage} />
           <div ref={sentinelRef} className="h-1" />

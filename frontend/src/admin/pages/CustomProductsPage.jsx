@@ -801,8 +801,8 @@ export default function ProductsPage() {
                     product={formModal.product}
                     onClose={() =>
                         setFormModal({
-                        open: false,
-                        product: null
+                            open: false,
+                            product: null
                         })
                     }
                     onOpenImage={openImage}

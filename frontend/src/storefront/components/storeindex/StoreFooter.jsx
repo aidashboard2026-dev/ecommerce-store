@@ -1,256 +1,159 @@
 import React from "react";
-import { FaWhatsapp } from "react-icons/fa";
 import { Link } from "react-router-dom";
-import {
-  Phone,
-  MessageCircle,
-  Instagram,
-  Zap,
-} from "lucide-react";
+import { ArrowRight, Zap } from "lucide-react";
 import useStoreSettings from "@/shared/hooks/useStoreSettings";
 
-const StoreFooterComponent = function StoreFooter() {
-  const { settings } = useStoreSettings();
-  const logoUrl = settings?.logo;
-  const storeName = settings?.store_name || "AuraStore";
-  const supportEmail = settings?.support_email || "mydesigners303@gmail.com";
-  const supportPhone = settings?.support_phone || "+91 8778021610";
-  const whatsappNumber = "918778021610"; // + illa, spaces illa
-  const message = encodeURIComponent(
-    "Hello! I would like to know more about your products."
-  );
-  const instagramUrl = "https://instagram.com/my._.designers";
-  const description =
-    settings?.description ||
-    "Curating premium, hand-crafted designer streetwear, high-performance athletic apparel, and timeless accessories.";
-
-  const linkBase =
-    "text-[14px] leading-[1.6] text-[#555555] hover:text-black transition-all duration-300 ease-out inline-block hover:translate-x-[2px]";
-
-  const headingBase =
-    "text-[12px] font-semibold uppercase tracking-[3px] text-[#111111] mb-8 whitespace-nowrap";
-
-  const customProducts = [
-    "Embroidery Design T-Shirt",
-    "Gifts & Printing",
-    "Glass",
-    "Glass Ware",
-    "Graphic Printed T-Shirt",
-    "Jersey",
-    "Magic Mug Print",
-    "Metal Frames",
-    "Mouse Pads",
-    "Personal Gifts",
-    "Photo Frames",
-    "Skinny Tumblers",
-    "Sublimation Products",
-    "Water Bottles",
-    "White Mug",
-  ];
-
-  const openWhatsApp = () => {
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-  const url = isMobile
-      ? `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${message}`
-      : `https://web.whatsapp.com/send?phone=${whatsappNumber}&text=${message}`;
-
-    window.location.href = url;
-  };
+export default function StoreFooter() {
+  const { settings } = useStoreSettings()
+  const logoUrl = settings?.logo
+  const storeName = settings?.store_name || 'AuraStore'
+  const supportEmail = settings?.support_email || 'support@aurastore.com'
+  const supportPhone = settings?.support_phone || '+91 44 2817 9000'
+  const description = settings?.description || 'Curating premium, hand-crafted designer streetwear, high-performance athletic apparel, and timeless accessories.'
 
   return (
-    <footer className="bg-[#F6F6F4] border-t border-[#DDDDDD] transition-colors duration-300">
-      {/* Main footer — single row, 6 equal columns */}
-      <div className="mx-auto w-full max-w-[1440px] px-6 sm:px-10 lg:px-12 py-24 lg:py-24">
-        <div
-          className="
-            grid
-            grid-cols-1
-            md:grid-cols-[400px_140px_140px_160px_160px]
-            gap-x-16
-            gap-y-16
-            items-start
-          "
-        >
-          {/* Column 1 — About */}
-          <div className="w-[430px]">
-            {/* <Link
-              to="/"
-              className="flex items-center gap-3 group w-fit mb-2"
-            >
-              {logoUrl ? (
-                <img
-                  src={logoUrl}
-                  alt={storeName}
-                  className="h-9 w-9 rounded-full object-cover shrink-0"
-                />
+    <footer className="bg-surface border-t border-app py-16 transition-colors duration-300">
+      <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-10">
+        {/* Logo & Description */}
+        <div className="space-y-4">
+          <Link to="/" className="flex items-center gap-2.5 group">
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={storeName}
+                className="h-8 w-8 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-indigo-600 text-white">
+                <Zap size={14} strokeWidth={2.5} />
+              </div>
+            )}
+
+            <span className="font-display font-bold text-base text-app">
+              {logoUrl || settings?.store_name ? (
+                <span>{storeName}</span>
               ) : (
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#111111] text-white shrink-0">
-                  <Zap size={14} strokeWidth={2.5} />
-                </div>
+                <>
+                  Aura<span className="text-brand-500">Store</span>
+                </>
               )}
-              <span className="font-medium text-[17px] tracking-wide text-[#111111]">
-                {logoUrl || settings?.store_name ? (
-                  <span>{storeName}</span>
-                ) : (
-                  <>
-                    Aura<span className="text-[#555555]">Store</span>
-                  </>
-                )}
-              </span>
-            </Link> */}
-            <h4 className={headingBase}>About My Designers</h4>
-       
-            <p
-            className="
-            mt-7
-            w-[340px]
-            text-[15px]
-            leading-9
-            text-[#555555]
-            font-light
-            "
+            </span>
+          </Link>
+
+          <p className="text-xs text-muted leading-relaxed">
+            {description}
+          </p>
+        </div>
+
+        {/* Quick Links */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-app">
+            Shop Catalog
+          </h4>
+
+          <div className="flex flex-col gap-2 text-xs">
+            <Link to="/products" className="text-muted hover:text-app">
+              All Products
+            </Link>
+
+            <Link
+              to="/products?collection=Summer"
+              className="text-muted hover:text-app"
             >
-              {description}
-            </p>
+              Summer Collection
+            </Link>
 
-            <div className="flex items-center gap-6 pt-3">
+            <Link
+              to="/products?collection=Activewear"
+              className="text-muted hover:text-app"
+            >
+              Activewear
+            </Link>
 
-              {/* Phone */}
-              <a
-                href={`tel:${supportPhone}`}
-                aria-label="Call Us"
-                className="text-[#555555] hover:text-black transition-all duration-300 hover:scale-110"
-              >
-                <Phone size={18} strokeWidth={1.7} />
-              </a>
-
-              {/* WhatsApp */}
-              
-
-              <a
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  openWhatsApp();
-                }}
-                aria-label="WhatsApp"
-                className="text-[#555555] hover:text-[#25D366] transition-all duration-300 hover:scale-110"
-              >
-                <FaWhatsapp size={19} />
-              </a>
-
-              {/* Instagram */}
-              <a
-                href={instagramUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Instagram"
-                className="text-[#555555] hover:text-[#E1306C] transition-all duration-300 hover:scale-110"
-              >
-                <Instagram size={18} strokeWidth={1.7} />
-              </a>
-
-            </div>
-
-            <p className="text-[14px] text-[#555555] pt-6">
-              © {new Date().getFullYear()} {storeName}
-            </p>
+            <Link
+              to="/products?collection=Essentials"
+              className="text-muted hover:text-app"
+            >
+              Daily Essentials
+            </Link>
           </div>
+        </div>
 
-          {/* Column 2 — Useful Links */}
-          <div className="ml-6">
-            <h4 className={headingBase}>Useful Links</h4>
-            <div className="flex flex-col gap-3.5">
-              <Link to="/about" className={linkBase}>
-                About Us
-              </Link>
-              <Link to="/contact" className={linkBase}>
-                Contact
-              </Link>
-              <Link to="/faqs" className={linkBase}>
-                FAQs
-              </Link>
-              <Link to="/login" className={linkBase}>
-                Login
-              </Link>
-              <Link to="/register" className={linkBase}>
-                Register
-              </Link>
-            </div>
+        {/* Customer Support */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-app">
+            Customer Services
+          </h4>
+
+          <div className="flex flex-col gap-2 text-xs">
+            <Link to="/tracking" className="text-muted hover:text-app">
+              Track Your Order
+            </Link>
+
+            <Link to="/profile/orders" className="text-muted hover:text-app">
+              Return & Exchanges
+            </Link>
+
+            <a
+              href={`mailto:${supportEmail}`}
+              className="text-muted hover:text-app"
+            >
+              Contact Support
+            </a>
+
+            <span className="text-muted">Phone: {supportPhone}</span>
           </div>
+        </div>
 
-          {/* Column 3 — Main Products */}
-          <div>
-            <h4 className={headingBase}>Main Products</h4>
-            <div className="flex flex-col gap-3.5">
-              <Link to="/products?category=T-Shirt" className={linkBase}>
-                T-Shirt
-              </Link>
-              <Link to="/products?category=Shirt" className={linkBase}>
-                Shirt
-              </Link>
-              <Link to="/products?category=Trousers" className={linkBase}>
-                Trousers
-              </Link>
-              <Link to="/products?category=Track+Pants" className={linkBase}>
-                Track Pants
-              </Link>
-              <Link to="/products?category=Jersey" className={linkBase}>
-                Jersey
-              </Link>
-            </div>
+        {/* Newsletter */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-app">
+            Join Aura List
+          </h4>
+
+          <p className="text-xs text-muted leading-relaxed">
+            Subscribe to get notifications about drops, exclusive discounts,
+            and active campaigns.
+          </p>
+
+          <div className="flex items-center gap-1.5 pt-1">
+            <input
+              type="email"
+              placeholder="your.email@gmail.com"
+              className="bg-app border border-app text-xs px-3 py-2 rounded-xl focus:outline-none w-full placeholder:text-muted"
+            />
+
+            <button className="bg-brand-500 hover:bg-brand-600 p-2 text-white rounded-xl transition-all">
+              <ArrowRight size={14} />
+            </button>
           </div>
-
-          {/* Column 4 — Custom Products */}
-            <div>
-              <h4 className={headingBase}>Custom Products</h4>
-              <div className="flex flex-col gap-3.5">
-                {customProducts.map((item) => (
-                  <Link
-                    key={item}
-                    to={`/products?category=${encodeURIComponent(item)}`}
-                    className={linkBase}
-                  >
-                    {item}
-                  </Link>
-                ))}
-            </div>
-          </div>
-
-          {/* Column 5 — Store Policies */}
-          <div>
-            <h4 className={headingBase}>Store Policies</h4>
-            <div className="flex flex-col gap-3.5">
-              <Link to="/tracking" className={linkBase}>
-                Create Return | Exchange
-              </Link>
-              <Link to="/profile/orders" className={linkBase}>
-                Return Policy
-              </Link>
-              <a href={`mailto:${supportEmail}`} className={linkBase}>
-                Shipping Policy
-              </a>
-              <Link to="/support/privacy" className={linkBase}>
-                Privacy Policy
-              </Link>
-              <Link to="/support/terms" className={linkBase}>
-                Terms of Service
-              </Link>
-              <span className="text-[14px] leading-[1.6] text-[#555555] pt-1">
-                Phone: {supportPhone}
-              </span>
-            </div>
-          </div>
-
-         
         </div>
       </div>
 
-      
+      {/* Bottom Footer */}
+      <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 mt-12 pt-8 border-t border-app flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] text-muted">
+        <p>
+          © {new Date().getFullYear()} {storeName} Inc. All rights reserved.
+          Made for premium commerce.
+        </p>
+
+        <div className="flex items-center gap-6">
+          <Link to="/support/privacy" className="hover:text-app">
+            Privacy Policy
+          </Link>
+
+          <Link to="/support/terms" className="hover:text-app">
+            Terms of Use
+          </Link>
+
+          <Link
+            to="/admin"
+            className="text-brand-500 font-semibold hover:text-brand-600"
+          >
+            Admin Dashboard
+          </Link>
+        </div>
+      </div>
     </footer>
   );
 }
-
-const StoreFooter = React.memo(StoreFooterComponent);
-export default StoreFooter;

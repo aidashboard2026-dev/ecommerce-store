@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
-import UploadDesign from '@/storefront/components/UploadDesign'
-import DesignPreview from '@/storefront/components/DesignPreview'
-import QuoteRequest from '@/storefront/components/QuoteRequest'
-import { revokeObjectURLs } from '@/shared/utils/productUtils'
+// import UploadDesign from '@/storefront/components/UploadDesign'
+// import DesignPreview from '@/storefront/components/DesignPreview'
+// import QuoteRequest from '@/storefront/components/QuoteRequest'
+// import { revokeObjectURLs } from '@/shared/utils/productUtils'
 
 export default function CustomProductForm({ product }) {
   // style/color/placement/size selection UI is not currently offered for

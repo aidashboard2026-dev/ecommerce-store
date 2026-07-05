@@ -2,8 +2,9 @@ import React from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
-import CustomProductForm from "@/storefront/components/CustomProductForm";
+import CustomProductDetailsPage from "@/storefront/components/Customproduct/CustomProductDetailsPage";
 import { useCustomProducts } from "@/storefront/hooks/useProducts";
+import CustomProductCard from "@/storefront/components/Customproduct/custom_product_card";
 
 // Index cards shown at /custom. Cup Printing is offered as two distinct
 // cards (Magic Cup / White Cup) per the brief's 9-section list, even though
@@ -34,44 +35,12 @@ function ProductTypeGrid() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
         {products.map((product) => (
-          <Link
+          <CustomProductCard
             key={product.id}
-            to={`/custom/${product.id}`}
-            className="group flex flex-col items-center justify-center gap-3 rounded-2xl border border-app bg-surface p-6 sm:p-8 text-center hover:border-brand-500 hover:shadow-card dark:hover:shadow-card-dark transition-all duration-300"
-          > 
-            <p className="text-xs uppercase text-muted">
-
-              {product.category?.name}
-
-            </p>
-            <img
-                src={product.thumbnail}
-                alt={product.title}
-                className="w-20 h-20 rounded-xl object-cover"
-            />
-            <span className="text-sm font-semibold text-app">{product.title}</span>
-
-            <p className="text-xs text-muted line-clamp-2">
-                {product.short_description || product.description}
-            </p>
-
-            <p className="text-brand-600 font-bold">
-              ₹{product.selling_price_min}
-              {product.selling_price_max &&
-                  ` - ₹${product.selling_price_max}`}
-            </p>
-
-            <p className="text-xs line-through text-muted">
-              ₹{product.original_price_min}
-              {product.original_price_max &&
-                  ` - ₹${product.original_price_max}`}
-            </p>
-
-
-          </Link>
-          
+            product={product}
+          />
         ))}
       </div>
 
@@ -111,13 +80,20 @@ export default function CustomPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[800px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      <Link to="/custom" className="inline-flex items-center gap-2 text-sm text-muted hover:text-app mb-6">
-        <ArrowLeft size={16} /> Back to Custom Orders
+    <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <Link
+        to="/custom"
+        className="inline-flex items-center gap-2 text-sm text-muted hover:text-app mb-6"
+      >
+        <ArrowLeft size={16} />
+        Back to Custom Orders
       </Link>
-      <CustomProductForm
+
+      <CustomProductDetailsPage
         product={product}
       />
     </div>
-  )
+  );
+
+  
 }

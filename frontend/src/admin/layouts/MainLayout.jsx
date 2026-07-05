@@ -10,12 +10,7 @@ import { PageLoader } from '@/shared/components/common/Spinner'
 const pageTitles = {
   '/admin': 'Dashboard',
   '/admin/products': 'Products',
-  '/admin/products/new': 'Add Product',
   '/admin/categories': 'Categories',
-  '/admin/categories/new': 'Add Category',
-  '/admin/collections': 'Collections',
-  '/admin/collections/new': 'Add Collection',
-  '/admin/inventory': 'Inventory',
   '/admin/orders': 'Orders',
   '/admin/offers': 'Offers',
   '/admin/offers/new': 'Add Offer',
@@ -103,4 +98,3 @@ export default function MainLayout() {
     </div>
   )
 }
-

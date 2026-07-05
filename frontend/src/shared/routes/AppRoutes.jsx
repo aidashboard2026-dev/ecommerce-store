@@ -14,14 +14,10 @@ import MainLayout from "@/admin/layouts/MainLayout";
 
 // Storefront Layout
 import StorefrontLayout from "@/storefront/layouts/StorefrontLayout";
+import ProductDetails from "@/storefront/components/product/ProductDetails";
 import OrderSuccess from "@/storefront/components/checkout/OrderSuccess";
-import ReturnsPolicy from "@/storefront/pages/policys/ReturnsPolicy";
-
-const AboutPage = lazy(
-  () => import("@/storefront/components/storeindex/StoreFrontFooterPages/AboutPage")
-);
-// import OrderTimelinePage from "@/storefront/components/orders/OrderTimeline";
-
+// import ReturnsPolicy from "@/storefront/pages/ReturnsPolicy";
+// import OrderTimelinePage from "@/storefront/components/order/components/OrderTimeline";
 
 // Lazy loaded pages/components to optimize bundle sizes
 const AdminLoginPage = lazy(() => import("@/admin/pages/LoginPage"));
@@ -206,26 +202,7 @@ export default function AppRoutes() {
         >
           <Route index element={<DashboardPage />} />
           <Route path="products" element={<AdminProductsPage />} />
-          <Route path="products/new" element={<AdminProductsPage />} />
-          <Route path="products/:id/edit" element={<AdminProductsPage />} />
           <Route path="categories" element={<CategoriesPage />} />
-          <Route path="categories/new" element={<CategoriesPage />} />
-          {/* Collections — no dedicated page yet; redirect to categories */}
-          <Route path="collections" element={<Navigate to="/admin/categories" replace />} />
-          <Route path="collections/new" element={<Navigate to="/admin/categories" replace />} />
-          {/* Inventory — filter view of products */}
-          <Route path="inventory" element={<AdminProductsPage />} />
-          {/* Analytics — order analytics view */}
-          <Route path="analytics" element={<AdminOrdersPage />} />
-          {/* Reports */}
-          <Route path="reports" element={<AdminOrdersPage />} />
-          <Route path="reports/sales" element={<AdminOrdersPage />} />
-          {/* Reviews — no dedicated page; redirect to customers */}
-          <Route path="reviews" element={<Navigate to="/admin/customers" replace />} />
-          <Route path="reviews/:id" element={<Navigate to="/admin/customers" replace />} />
-          {/* Payments — redirect to orders */}
-          <Route path="payments" element={<Navigate to="/admin/orders" replace />} />
-          <Route path="payments/:id" element={<Navigate to="/admin/orders" replace />} />
           <Route path="custom-products" element={<CustomProductsPage />} />
           <Route path="orders" element={<AdminOrdersPage />} />
           <Route path="orders/:id" element={<AdminOrdersPage />} />
@@ -247,7 +224,7 @@ export default function AppRoutes() {
           <Route path="products" element={<ProductsPage />} />
           <Route path="products/:slug" element={<ProductsPage />} />
 
-          <Route path="returns-policy" element={<ReturnsPolicy />} />
+          {/* <Route path="returns-policy" element={<ReturnsPolicy />} /> */}
           <Route path="order-success" element={<OrderSuccess />} />
           {/* <Route path="ordertimeline" element={<OrderTimelinePage />} /> */}
           <Route

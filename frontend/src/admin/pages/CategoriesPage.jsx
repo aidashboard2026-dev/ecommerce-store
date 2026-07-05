@@ -3,6 +3,7 @@ import { ImagePlus, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { homepageCategoriesAPI } from "@/shared/services/api";
+import { useTheme } from "@/shared/hooks/useAuth";
 
 const BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "");
 

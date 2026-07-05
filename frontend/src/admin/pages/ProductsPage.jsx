@@ -1,9 +1,3 @@
-/**
- * src/pages/AdminPage/ProductsPage.jsx
- * Enhanced with category, collection, stock status, and merchandising flag filters.
- * Adds bulk actions UI. Preserves existing UI/UX completely.
- */
-
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useSearchParams, useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -92,9 +86,25 @@ const ImageStrip = React.memo(function ImageStrip({ thumbnail }) {
   )
 })
 
-function StockBadge({ stock }) {
-  if (stock === 0) return <Badge label="Out" variant="danger" dot />
-  if (stock <= 5)  return <Badge label={`${stock} Low`} variant="warning" dot />
+// Mirrors the backend's low-stock rule exactly (service.py _stock_having_clause):
+// threshold = min(variant.low_stock_threshold) across a product's variants, default 5.
+// out_of_stock: total === 0 | low_stock: 0 < total <= threshold | in_stock: total > threshold
+function getEffectiveLowStockThreshold(product) {
+  const thresholds = (product?.variants || [])
+    .map(v => v?.low_stock_threshold)
+    .filter(t => typeof t === 'number')
+  return thresholds.length ? Math.min(...thresholds) : 5
+}
+
+function getStockStatusKey(product) {
+  const stock = product?.total_stock ?? 0
+  if (stock === 0) return 'out_of_stock'
+  return stock <= getEffectiveLowStockThreshold(product) ? 'low_stock' : 'in_stock'
+}
+
+function StockBadge({ stock, threshold = 5 }) {
+  if (stock === 0)        return <Badge label="Out" variant="danger" dot />
+  if (stock <= threshold) return <Badge label={`${stock} Low`} variant="warning" dot />
   return <Badge label={`${stock} stock`} variant="success" />
 }
 
@@ -498,9 +508,13 @@ export default function ProductsPage() {
     onSettled: (_, __, id) => setDeletingIds(prev => { const s = new Set(prev); s.delete(id); return s }),
     onSuccess: () => {
       toast.success('Product deleted successfully.')
+      // Invalidate first, unconditionally, so every cached page (not just the
+      // one we might navigate away from) is marked stale — otherwise a page
+      // visited earlier keeps serving the deleted product from cache for the
+      // remainder of its staleTime window.
+      invalidate()
       const isLastOnPage = (data?.items?.length ?? 0) === 1
       if (isLastOnPage && page > 1) setPage(p => p - 1)
-      else invalidate()
     },
     onError: e => toast.error(e.response?.data?.detail || 'Delete failed'),
   })
@@ -626,9 +640,6 @@ export default function ProductsPage() {
       />
 
       {/* ── Filters ── */}
-      {/* HEAD structure: space-y-3 wrapper + all 3 rows. Branch collapsed this to
-          a single row and dropped category/collection/stock/flag filters + BulkActionsBar.
-          Cherry-picked from branch: hover:bg-surface-hover on status pills. */}
       <div className="space-y-3">
 
         {/* Row 1: Search + Status pills */}
@@ -647,7 +658,7 @@ export default function ProductsPage() {
                   'px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all whitespace-nowrap',
                   statusFilter === s
                     ? 'bg-brand-500 text-white border-brand-500'
-                    : 'border-app text-muted hover:text-app hover:bg-surface-hover' // branch: surface-hover
+                    : 'border-app text-muted hover:text-app hover:bg-surface-hover'
                 )}>
                 {s ? s.charAt(0).toUpperCase() + s.slice(1) : 'All'}
               </button>
@@ -807,19 +818,22 @@ export default function ProductsPage() {
             ) : (
               data?.items?.map(product => {
                 const v0 = (product.variants || [])[0]
-                
-                // Filter variants based on active inventory filter
+
+                // Filter variants based on the active inventory (stock) filter pill.
+                // When a stock filter is active, the Stock/Size columns should reflect
+                // only the matching variants — e.g. clicking "Low Stock" shows just the
+                // low-stock variant's size and quantity, not the product's full set.
                 const filteredVariants = (product.variants || []).filter(v => {
                   if (!stockStatus) return true
-                  if (stockStatus === 'in_stock') return v.stock_quantity > 0
-                  if (stockStatus === 'low_stock') return v.stock_quantity <= (v.low_stock_threshold ?? 5)
+                  if (stockStatus === 'in_stock')     return v.stock_quantity > (v.low_stock_threshold ?? 5)
+                  if (stockStatus === 'low_stock')    return v.stock_quantity > 0 && v.stock_quantity <= (v.low_stock_threshold ?? 5)
                   if (stockStatus === 'out_of_stock') return v.stock_quantity === 0
                   return true
                 })
-                
-                const displaySizes = [...new Set(filteredVariants.map(v => v.size))].join(', ')
+
+                const displaySizes  = [...new Set(filteredVariants.map(v => v.size))].join(', ')
                 const displayStocks = filteredVariants.map(v => v.stock_quantity).join(',')
-                
+
                 const discPct = v0?.discount_percentage ? `${parseFloat(v0.discount_percentage).toFixed(0)}%` : '—'
                 const statusMap = { published: 'success', draft: 'default', archived: 'warning' }
                 return (
@@ -866,12 +880,14 @@ export default function ProductsPage() {
                     <TableCell className="font-medium text-app">{formatPrice(v0?.original_price ?? product.min_price)}</TableCell>
                     <TableCell className="font-semibold text-emerald-600 dark:text-emerald-400">{formatPrice(v0?.selling_price)}</TableCell>
                     <TableCell className="font-medium text-amber-600">{discPct}</TableCell>
-                    {/* Clickable stock badge — filters listing by stock status */}
+                    {/* Clickable stock badge — filters listing by stock status.
+                        Uses getStockStatusKey() so the click target matches the backend's
+                        actual low-stock threshold rule rather than a hardcoded "<= 5". */}
                     <TableCell>
                       <button
                         type="button"
                         onClick={() => {
-                          const s = product.total_stock === 0 ? 'out_of_stock' : product.total_stock <= 5 ? 'low_stock' : 'in_stock'
+                          const s = getStockStatusKey(product)
                           setStockStatus(prev => prev === s ? '' : s)
                         }}
                         className="cursor-pointer hover:opacity-70 transition-opacity focus:outline-none"
@@ -884,7 +900,7 @@ export default function ProductsPage() {
                             dot={stockStatus !== 'in_stock'}
                           />
                         ) : (
-                          <StockBadge stock={product.total_stock} />
+                          <StockBadge stock={product.total_stock} threshold={getEffectiveLowStockThreshold(product)} />
                         )}
                       </button>
                     </TableCell>

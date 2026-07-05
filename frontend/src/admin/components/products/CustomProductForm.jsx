@@ -670,7 +670,7 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
                 <>
                   <div
                     className="w-full max-w-[180px] sm:max-w-[220px] md:max-w-none h-40 sm:h-52 md:aspect-square border-2 border-dashed border-brand-500/50 hover:border-brand-500 rounded-2xl bg-app overflow-hidden cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01] mx-auto"
-                    onClick={() => onOpenImage(product)}
+                    onClick={() => onOpenImage(productRef.current)}
                     title="Click to manage images"
                   >
                     {thumbnailUrl

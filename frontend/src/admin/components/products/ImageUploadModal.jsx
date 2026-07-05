@@ -1,22 +1,8 @@
-/**
- * ImageUploadModal.jsx
- * Extended image manager with tabbed support for:
- *   Thumbnail | Front | Back | Size Chart | Gallery
- *
- * Preserves all existing thumbnail upload/delete behaviour.
- *
- * Generic across product types: the caller injects which API service to use
- * (productsAPI for Products, customProductsAPI for Custom Products) and which
- * React Query key prefixes to invalidate after a mutation, so this component
- * has no hard dependency on either module. Defaults preserve the exact
- * original behaviour for existing Products callers.
- */
-
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Upload, X, Trash2, AlertTriangle, Package,
-  Loader2, Image, ImagePlus, LayoutGrid,
+  Loader2, ImagePlus, LayoutGrid,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Modal from '@/shared/components/ui/Modal'
@@ -24,9 +10,21 @@ import { productsAPI as productsApi } from '@/shared/services/api'
 import { getImageUrl } from '@/shared/utils/productUtils'
 import useBusinessLimits from '@/shared/hooks/useBusinessLimits'
 
-const MAX_FILE_SIZE    = 10 * 1024 * 1024
-const ALLOWED_TYPES    = ['image/jpeg', 'image/png', 'image/webp']
-const ALLOWED_ACCEPT   = 'image/jpeg,image/png,image/webp'
+/**
+ * Contract required of any `api` prop passed to ImageUploadModal.
+ * Both productsAPI and any future entity-specific API module (e.g.
+ * customProductsAPI) MUST implement this shape. Enforced only by
+ * convention/JSDoc today — if this codebase moves to TypeScript, promote
+ * this to a real interface.
+ *
+ * @typedef {Object} ImageUploadAPI
+ * @property {(entityId: number|string, file: File, imageType: string) => Promise<any>} uploadImage
+ * @property {(entityId: number|string, imageType: string) => Promise<any>} deleteImage
+ * @property {(entityId: number|string, index: number) => Promise<any>} deleteGalleryImage
+ */
+
+const ALLOWED_TYPES  = ['image/jpeg', 'image/png', 'image/webp']
+const ALLOWED_ACCEPT = 'image/jpeg,image/png,image/webp'
 
 // ─── Gallery-specific rules ────────────────────────────────────────────────────
 // Gallery images follow a dedicated, fixed business rule (max 4 images, max
@@ -34,28 +32,22 @@ const ALLOWED_ACCEPT   = 'image/jpeg,image/png,image/webp'
 // limits used by the other single-image slots (thumbnail/front/back/size
 // chart). Keeping these as standalone constants avoids coupling the fixed
 // product requirement to configuration that may change per store.
-const GALLERY_MAX_IMAGES          = 4
-const GALLERY_MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024 // 4 MB
-const GALLERY_MAX_FILE_SIZE_LABEL = '4 MB'
+const GALLERY_MAX_IMAGES            = 4
+const GALLERY_MAX_FILE_SIZE_BYTES   = 4 * 1024 * 1024 // 4 MB
+const GALLERY_MAX_FILE_SIZE_LABEL   = '4 MB'
 const GALLERY_ALLOWED_FORMATS_LABEL = 'JPG, PNG, WEBP'
 
 // ─── Tab configuration ────────────────────────────────────────────────────────
 
 const IMAGE_TABS = [
-  { key: 'thumbnail',   label: 'Thumbnail',   field: 'thumbnail',        description: 'Primary image shown in all product cards and listings.' },
-  { key: 'front',       label: 'Front',        field: 'image_front',      description: 'Front view of the product.' },
-  { key: 'back',        label: 'Back',         field: 'image_back',       description: 'Back view of the product.' },
-  { key: 'size_chart',  label: 'Size Chart',   field: 'image_size_chart', description: 'Size guide image shown on the product detail page.' },
-  { key: 'gallery',     label: 'Gallery',      field: 'gallery_images',   description: 'Additional product images. Shown in image carousel.' },
+  { key: 'thumbnail',  label: 'Thumbnail',  field: 'thumbnail',        description: 'Primary image shown in all product cards and listings.' },
+  { key: 'front',      label: 'Front',      field: 'image_front',      description: 'Front view of the product.' },
+  { key: 'back',       label: 'Back',       field: 'image_back',       description: 'Back view of the product.' },
+  { key: 'size_chart', label: 'Size Chart', field: 'image_size_chart', description: 'Size guide image shown on the product detail page.' },
+  { key: 'gallery',    label: 'Gallery',    field: 'gallery_images',   description: 'Additional product images. Shown in image carousel.' },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function validateFile(f) {
-  if (!ALLOWED_TYPES.includes(f.type)) return 'Only JPG, PNG, WebP allowed.'
-  if (f.size > MAX_FILE_SIZE) return `File must be under ${MAX_FILE_SIZE / (1024 * 1024)} MB.`
-  return null
-}
 
 /**
  * Renders a titled, multi-line toast using the app's existing react-hot-toast
@@ -282,7 +274,7 @@ function GalleryDropZone({ onFilesSelected, disabled, uploading, remainingSlots,
   )
 }
 
-// ─── Drop zone (shared) ───────────────────────────────────────────────────────
+// ─── Drop zone (shared, single-image slots) ────────────────────────────────────
 
 function DropZone({ preview, onFile, fileRef, label, disabled }) {
   const [dragging, setDragging] = useState(false)
@@ -314,6 +306,15 @@ function DropZone({ preview, onFile, fileRef, label, disabled }) {
 
 // ─── Main Modal ───────────────────────────────────────────────────────────────
 
+/**
+ * @param {Object} props
+ * @param {boolean} props.isOpen
+ * @param {() => void} props.onClose
+ * @param {Object} props.product - the entity being edited (must expose `id` plus the image fields in IMAGE_TABS)
+ * @param {ImageUploadAPI} [props.api=productsApi] - injected API module; defaults preserve original Products-only behaviour
+ * @param {string} [props.queryKeyPrefix='products'] - React Query list-key prefix to invalidate after mutations
+ * @param {string} [props.detailQueryKey='product'] - React Query detail-key to invalidate after mutations
+ */
 export default function ImageUploadModal({
   isOpen, onClose, product,
   api = productsApi,
@@ -376,19 +377,25 @@ export default function ImageUploadModal({
     if (fileRef.current) fileRef.current.value = ''
   }
 
+  // ── Cache invalidation ────────────────────────────────────────────────────────
+  // React Query prefix-matches queryKey arrays, so invalidating [queryKeyPrefix]
+  // already covers [queryKeyPrefix, product.id] — invalidating both separately
+  // is redundant. We invalidate the list prefix and the distinct detail-key
+  // namespace (e.g. storefront's ['product', slug] vs admin's ['products']),
+  // matching the two-namespace cache-busting rule established in ProductsPage.
+  const invalidateEntityQueries = useCallback(() => {
+    qc.invalidateQueries({ queryKey: [queryKeyPrefix] })
+    qc.invalidateQueries({ queryKey: [detailQueryKey] })
+  }, [qc, queryKeyPrefix, detailQueryKey])
+
   // ── Upload mutation ──────────────────────────────────────────────────────────
 
   const uploadMutation = useMutation({
     mutationFn: () => api.uploadImage(product.id, file, activeTab),
     onSuccess: () => {
       toast.success(`${IMAGE_TABS.find(t => t.key === activeTab)?.label || 'Image'} uploaded successfully.`)
-      qc.invalidateQueries({ queryKey: [queryKeyPrefix] })
-      qc.invalidateQueries({ queryKey: [queryKeyPrefix, product.id] })
-      qc.invalidateQueries({ queryKey: [detailQueryKey] })
+      invalidateEntityQueries()
       clearSelection()
-      if (activeTab !== 'gallery') {
-        // Stay open so user can upload other types
-      }
     },
     onError: e => toast.error(e.response?.data?.detail || 'Upload failed'),
   })
@@ -399,9 +406,7 @@ export default function ImageUploadModal({
     mutationFn: () => api.deleteImage(product.id, activeTab),
     onSuccess: () => {
       toast.success('Image removed successfully.')
-      qc.invalidateQueries({ queryKey: [queryKeyPrefix] })
-      qc.invalidateQueries({ queryKey: [queryKeyPrefix, product.id] })
-      qc.invalidateQueries({ queryKey: [detailQueryKey] })
+      invalidateEntityQueries()
     },
     onError: () => toast.error('Failed to remove image'),
   })
@@ -414,9 +419,7 @@ export default function ImageUploadModal({
     onSettled: ()      => setDeletingIndex(null),
     onSuccess: () => {
       toast.success('Gallery image removed successfully.')
-      qc.invalidateQueries({ queryKey: [queryKeyPrefix] })
-      qc.invalidateQueries({ queryKey: [queryKeyPrefix, product.id] })
-      qc.invalidateQueries({ queryKey: [detailQueryKey] })
+      invalidateEntityQueries()
     },
     onError: () => toast.error('Failed to remove gallery image'),
   })
@@ -424,9 +427,9 @@ export default function ImageUploadModal({
   // ── Gallery batch upload mutation ─────────────────────────────────────────────
   // The upload endpoint only accepts one file per request (existing
   // architecture, unchanged), so a multi-file selection is uploaded
-  // sequentially. The gallery cache is invalidated after every individual
-  // file so the grid + "n/4 Images" counter update immediately as each
-  // upload lands, instead of waiting for the whole batch to finish.
+  // sequentially. The cache is invalidated after every individual file so the
+  // grid + "n/4 Images" counter update immediately as each upload lands,
+  // instead of waiting for the whole batch to finish.
 
   const [galleryProgress, setGalleryProgress] = useState({ done: 0, total: 0 })
 
@@ -449,9 +452,8 @@ export default function ImageUploadModal({
           setGalleryProgress(prev => ({ ...prev, done: prev.done + 1 }))
           // Refresh after each file so the UI reflects partial progress
           // ("2/4" -> "3/4" -> "4/4") rather than jumping at the very end.
-          await qc.invalidateQueries({ queryKey: [queryKeyPrefix, product.id] })
-          await qc.invalidateQueries({ queryKey: [detailQueryKey] })
           await qc.invalidateQueries({ queryKey: [queryKeyPrefix] })
+          await qc.invalidateQueries({ queryKey: [detailQueryKey] })
         }
       }
 
@@ -516,22 +518,21 @@ export default function ImageUploadModal({
   const currentImageUrl = product?.[currentTab?.field]
   const galleryImages   = product?.gallery_images || []
 
-  const isGallery  = activeTab === 'gallery'
-  const isThumbnail = activeTab === 'thumbnail'
+  const isGallery = activeTab === 'gallery'
 
   // Gallery uses its own fixed 4-image cap, independent of the dynamic
   // per-store business limits used by the single-image slots above.
   const galleryRemainingSlots = Math.max(0, GALLERY_MAX_IMAGES - galleryImages.length)
   const isGalleryFull = galleryImages.length >= GALLERY_MAX_IMAGES
 
-  const currentCount = (product?.thumbnail ? 1 : 0) + 
-                       (product?.image_front ? 1 : 0) + 
-                       (product?.image_back ? 1 : 0) + 
-                       (product?.image_size_chart ? 1 : 0) + 
-                       (product?.gallery_images || []).length;
+  const currentCount = (product?.thumbnail ? 1 : 0) +
+                       (product?.image_front ? 1 : 0) +
+                       (product?.image_back ? 1 : 0) +
+                       (product?.image_size_chart ? 1 : 0) +
+                       (product?.gallery_images || []).length
 
-  const willIncrease = activeTab === 'gallery' ? true : (currentTab?.field ? !product?.[currentTab.field] : false);
-  const isLimitReached = limits ? currentCount >= limits.max_product_images && willIncrease : true;
+  const willIncrease = activeTab === 'gallery' ? true : (currentTab?.field ? !product?.[currentTab.field] : false)
+  const isLimitReached = limits ? currentCount >= limits.max_product_images && willIncrease : true
 
   const handleUploadClick = () => {
     if (!file) return
@@ -547,7 +548,7 @@ export default function ImageUploadModal({
             You have reached the maximum allowed limit of {limits.max_product_images} images for this product.{"\n"}Please delete an existing image before uploading another.
           </div>
         </div>
-      );
+      )
       return
     }
     uploadMutation.mutate()

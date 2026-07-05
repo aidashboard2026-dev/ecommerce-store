@@ -39,6 +39,22 @@ const BLANK_VARIANT_FORM = {
   stock_quantity: '', low_stock_threshold: 5,
 }
 
+const getErrorMessage = (err) => {
+    const detail = err?.response?.data?.detail;
+
+    if (typeof detail === "string") {
+        return detail;
+    }
+
+    if (Array.isArray(detail)) {
+        return detail
+            .map((item) => item.msg)
+            .join(", ");
+    }
+
+    return "Something went wrong";
+};
+
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
 function FormField({ label, required, hint, htmlFor, children }) {
