@@ -1,25 +1,39 @@
-import React from "react";
+import React, { useState } from "react";
 import { FaWhatsapp } from "react-icons/fa";
 import { Link } from "react-router-dom";
-import {
-  Phone,
-  MessageCircle,
-  Instagram,
-  Zap,
-} from "lucide-react";
+import { Phone, Instagram, Facebook } from "lucide-react";
 import useStoreSettings from "@/shared/hooks/useStoreSettings";
+
+import ContactModal from "../storefooter/ContactModal";
 
 const StoreFooterComponent = function StoreFooter() {
   const { settings } = useStoreSettings();
+
+  const [openContact, setOpenContact] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    subject: "",
+    message: "",
+  });
+
   const logoUrl = settings?.logo;
   const storeName = settings?.store_name || "AuraStore";
-  const supportEmail = settings?.support_email || "mydesigners303@gmail.com";
+  const supportEmail = settings?.support_email || "aidashboard2026@gmail.com";
   const supportPhone = settings?.support_phone || "+91 8778021610";
-  const whatsappNumber = "918778021610"; // + illa, spaces illa
+
+  const whatsappNumber = "918778021610";
+
   const message = encodeURIComponent(
-    "Hello! I would like to know more about your products."
+    "Hello! I would like to know more about your products.",
   );
+
   const instagramUrl = "https://instagram.com/my._.designers";
+  const facebookUrl = "https://facebook.com/your-page";
+
   const description =
     settings?.description ||
     "Curating premium, hand-crafted designer streetwear, high-performance athletic apparel, and timeless accessories.";
@@ -28,30 +42,12 @@ const StoreFooterComponent = function StoreFooter() {
     "text-[14px] leading-[1.6] text-[#555555] hover:text-black transition-all duration-300 ease-out inline-block hover:translate-x-[2px]";
 
   const headingBase =
-    "text-[12px] font-semibold uppercase tracking-[3px] text-[#111111] mb-8 whitespace-nowrap";
-
-  const customProducts = [
-    "Embroidery Design T-Shirt",
-    "Gifts & Printing",
-    "Glass",
-    "Glass Ware",
-    "Graphic Printed T-Shirt",
-    "Jersey",
-    "Magic Mug Print",
-    "Metal Frames",
-    "Mouse Pads",
-    "Personal Gifts",
-    "Photo Frames",
-    "Skinny Tumblers",
-    "Sublimation Products",
-    "Water Bottles",
-    "White Mug",
-  ];
+    "text-[12px] font-semibold uppercase tracking-[3px] text-[#111111] whitespace-nowrap";
 
   const openWhatsApp = () => {
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-  const url = isMobile
+    const url = isMobile
       ? `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${message}`
       : `https://web.whatsapp.com/send?phone=${whatsappNumber}&text=${message}`;
 
@@ -59,64 +55,19 @@ const StoreFooterComponent = function StoreFooter() {
   };
 
   return (
-    <footer className="bg-[#F6F6F4] border-t border-[#DDDDDD] transition-colors duration-300">
-      {/* Main footer — single row, 6 equal columns */}
-      <div className="mx-auto w-full max-w-[1440px] px-6 sm:px-10 lg:px-12 py-24 lg:py-24">
-        <div
-          className="
-            grid
-            grid-cols-1
-            md:grid-cols-[400px_140px_140px_160px_160px]
-            gap-x-16
-            gap-y-16
-            items-start
-          "
-        >
-          {/* Column 1 — About */}
-          <div className="w-[430px]">
-            {/* <Link
-              to="/"
-              className="flex items-center gap-3 group w-fit mb-2"
-            >
-              {logoUrl ? (
-                <img
-                  src={logoUrl}
-                  alt={storeName}
-                  className="h-9 w-9 rounded-full object-cover shrink-0"
-                />
-              ) : (
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#111111] text-white shrink-0">
-                  <Zap size={14} strokeWidth={2.5} />
-                </div>
-              )}
-              <span className="font-medium text-[17px] tracking-wide text-[#111111]">
-                {logoUrl || settings?.store_name ? (
-                  <span>{storeName}</span>
-                ) : (
-                  <>
-                    Aura<span className="text-[#555555]">Store</span>
-                  </>
-                )}
-              </span>
-            </Link> */}
-            <h4 className={headingBase}>About My Designers</h4>
-       
-            <p
-            className="
-            mt-7
-            w-[340px]
-            text-[15px]
-            leading-9
-            text-[#555555]
-            font-light
-            "
-            >
+    <footer className="border-t border-app transition-colors duration-300">
+      <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-10 lg:px-12 py-5">
+        <div className="grid grid-cols-1 gap-3 md:gap-3 md:grid-cols-2 lg:grid-cols-4 justify-center items-start">
+          {/* ================= About ================= */}
+
+          <div className="flex flex-col">
+            <h4 className={headingBase}>About {storeName}</h4>
+
+            <p className="mt-7 max-w-[340px] text-[14px] leading-2 text-[#555555] font-light">
               {description}
             </p>
 
-            <div className="flex items-center gap-6 pt-3">
-
-              {/* Phone */}
+            <div className="flex items-center gap-6 pt-8">
               <a
                 href={`tel:${supportPhone}`}
                 aria-label="Call Us"
@@ -125,22 +76,28 @@ const StoreFooterComponent = function StoreFooter() {
                 <Phone size={18} strokeWidth={1.7} />
               </a>
 
-              {/* WhatsApp */}
-              
-
               <a
                 href="#"
+                aria-label="WhatsApp"
                 onClick={(e) => {
                   e.preventDefault();
                   openWhatsApp();
                 }}
-                aria-label="WhatsApp"
                 className="text-[#555555] hover:text-[#25D366] transition-all duration-300 hover:scale-110"
               >
                 <FaWhatsapp size={19} />
               </a>
 
-              {/* Instagram */}
+              <a
+                href={facebookUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Facebook"
+                className="text-[#555555] hover:text-[#1877F2] transition-all duration-300 hover:scale-110"
+              >
+                <Facebook size={18} strokeWidth={1.7} />
+              </a>
+
               <a
                 href={instagramUrl}
                 target="_blank"
@@ -150,107 +107,111 @@ const StoreFooterComponent = function StoreFooter() {
               >
                 <Instagram size={18} strokeWidth={1.7} />
               </a>
-
-            </div>
-
-            <p className="text-[14px] text-[#555555] pt-6">
-              © {new Date().getFullYear()} {storeName}
-            </p>
-          </div>
-
-          {/* Column 2 — Useful Links */}
-          <div className="ml-6">
-            <h4 className={headingBase}>Useful Links</h4>
-            <div className="flex flex-col gap-3.5">
-              <Link to="/about" className={linkBase}>
-                About Us
-              </Link>
-              <Link to="/contact" className={linkBase}>
-                Contact
-              </Link>
-              <Link to="/faqs" className={linkBase}>
-                FAQs
-              </Link>
-              <Link to="/login" className={linkBase}>
-                Login
-              </Link>
-              <Link to="/register" className={linkBase}>
-                Register
-              </Link>
             </div>
           </div>
 
-          {/* Column 3 — Main Products */}
-          <div>
-            <h4 className={headingBase}>Main Products</h4>
-            <div className="flex flex-col gap-3.5">
-              <Link to="/products?category=T-Shirt" className={linkBase}>
-                T-Shirt
-              </Link>
-              <Link to="/products?category=Shirt" className={linkBase}>
-                Shirt
-              </Link>
-              <Link to="/products?category=Trousers" className={linkBase}>
-                Trousers
-              </Link>
-              <Link to="/products?category=Track+Pants" className={linkBase}>
-                Track Pants
-              </Link>
-              <Link to="/products?category=Jersey" className={linkBase}>
-                Jersey
-              </Link>
-            </div>
+          {/* ================= Quick Links ================= */}
+
+          <div className="flex flex-col items-start md:items-center gap-3.5">
+            <h4 className={headingBase}>Quick Links</h4>
+
+            <Link to="/" className={linkBase}>
+              Home
+            </Link>
+
+            <Link to="/products" className={linkBase}>
+              Shop
+            </Link>
+
+            <Link to="/about" className={linkBase}>
+              About
+            </Link>
+
+            <Link to="/contact" className={linkBase}>
+              Contact
+            </Link>
           </div>
 
-          {/* Column 4 — Custom Products */}
-            <div>
-              <h4 className={headingBase}>Custom Products</h4>
-              <div className="flex flex-col gap-3.5">
-                {customProducts.map((item) => (
-                  <Link
-                    key={item}
-                    to={`/products?category=${encodeURIComponent(item)}`}
-                    className={linkBase}
-                  >
-                    {item}
-                  </Link>
-                ))}
-            </div>
+          {/* ================= Customer Care ================= */}
+
+          <div className="flex flex-col items-start md:items-center gap-3.5">
+            <h4 className={headingBase}>Customer Care</h4>
+
+            <Link to="/shipping-policy" className={linkBase}>
+              Shipping
+            </Link>
+
+            <Link to="/returns" className={linkBase}>
+              Returns
+            </Link>
+
+            <Link to="/privacy-policy" className={linkBase}>
+              Privacy Policy
+            </Link>
+
+            <Link to="/terms" className={linkBase}>
+              Terms & Conditions
+            </Link>
+          </div>
+          {/* ================= Contact ================= */}
+
+          <div className="flex flex-col items-start md:items-center gap-3.5">
+            <h4 className={headingBase}>Contact</h4>
+
+            <a href={`mailto:${supportEmail}`} className={linkBase}>
+              {supportEmail}
+            </a>
+
+            <button
+              onClick={() => setOpenContact(true)}
+              className="mt-6 rounded-lg bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
+            >
+              Contact Us
+            </button>
+
+            <a href={`tel:${supportPhone}`} className={linkBase}>
+              {supportPhone}
+            </a>
           </div>
 
-          {/* Column 5 — Store Policies */}
-          <div>
-            <h4 className={headingBase}>Store Policies</h4>
-            <div className="flex flex-col gap-3.5">
-              <Link to="/tracking" className={linkBase}>
-                Create Return | Exchange
-              </Link>
-              <Link to="/profile/orders" className={linkBase}>
-                Return Policy
-              </Link>
-              <a href={`mailto:${supportEmail}`} className={linkBase}>
-                Shipping Policy
-              </a>
-              <Link to="/support/privacy" className={linkBase}>
-                Privacy Policy
-              </Link>
-              <Link to="/support/terms" className={linkBase}>
-                Terms of Service
-              </Link>
-              <span className="text-[14px] leading-[1.6] text-[#555555] pt-1">
-                Phone: {supportPhone}
-              </span>
-            </div>
-          </div>
+          <ContactModal
+            open={openContact}
+            onClose={() => setOpenContact(false)}
+            form={form}
+            setForm={setForm}
+            loading={loading}
+            onSubmit={(e) => {
+              e.preventDefault();
 
-         
+              console.log(form);
+            }}
+          />
         </div>
       </div>
 
-      
+      {/* ================= Bottom Bar ================= */}
+
+      <div className="mx-auto flex w-full p-5 items-center justify-center">
+        <p className="text-[12px] md:text-[14px] text-nowrap text-[#555555]">
+          © {new Date().getFullYear()} {storeName}. All Rights Reserved.
+        </p>
+
+        {/* Future Features */}
+        <div className="flex items-center gap-6 text-[13px] text-[#777777]">
+          {/* Payment Icons */}
+          {/* Visa • MasterCard • UPI */}
+
+          {/* Social Media */}
+
+          {/* Newsletter */}
+
+          {/* Trust Badges */}
+        </div>
+      </div>
     </footer>
   );
-}
+};
 
 const StoreFooter = React.memo(StoreFooterComponent);
+
 export default StoreFooter;

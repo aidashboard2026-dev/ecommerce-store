@@ -79,7 +79,7 @@ function ProductCard({ product }) {
       className="group relative flex flex-col w-full justify-between overflow-hidden transition-all duration-300 hover:-translate-y-1"
     >
       {/* Image */}
-      <div className="flex relative w-full aspect-[8/9] rounded-2xl bg-surface overflow-hidden">
+      <div className="flex relative w-full aspect-[8/9] rounded-0 bg-surface overflow-hidden">
         {product.thumbnail && !imageError ? (
           <img
             src={getImageUrl(product.thumbnail)}
@@ -98,11 +98,6 @@ function ProductCard({ product }) {
         <div className="absolute flex flex-wrap flex-row w-full items-center justify-between mt-2 px-2">
           {/* Badges */}
           <div className="flex flex-col gap-1.5">
-            {product.is_featured && (
-              <span className="bg-brand-500 text-white text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full">
-                Featured
-              </span>
-            )}
 
             {!inStock && (
               <span className="bg-gray-700/20 text-white text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full">

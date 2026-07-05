@@ -98,43 +98,13 @@ function StaticHero() {
         <div className="flex flex-wrap gap-3 mt-2">
           <Link
             to="/products"
-            className="
-            inline-flex
-            items-center
-            gap-2
-            bg-black
-            text-white
-            font-medium
-            uppercase
-            tracking-widest
-            text-xs
-            px-8
-            py-4
-            hover:bg-neutral-800
-            transition
-            "
+            className=" inline-flex items-center gap-2 bg-black text-white font-medium uppercase tracking-widest text-xs px-8 py-4 hover:bg-neutral-800 transition "
           >
             Shop Now <ArrowRight size={16} />
           </Link>
           <Link
             to="/products?collection=New Arrivals"
-            className="
-            inline-flex
-            items-center
-            gap-2
-            border
-            border-black
-            text-black
-            font-medium
-            uppercase
-            tracking-widest
-            text-xs
-            px-8
-            py-4
-            hover:bg-black
-            hover:text-white
-            transition
-            "
+            className=" inline-flex items-center gap-2 border border-black text-black font-medium uppercase tracking-widest text-xs px-8 py-4 hover:bg-black hover:text-white transition "
           >
             New Arrivals
           </Link>

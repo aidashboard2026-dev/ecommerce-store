@@ -18,9 +18,7 @@ import ProductDetails from "@/storefront/components/product/ProductDetails";
 import OrderSuccess from "@/storefront/components/checkout/OrderSuccess";
 import ReturnsPolicy from "@/storefront/pages/policys/ReturnsPolicy";
 
-const AboutPage = lazy(
-  () => import("@/storefront/components/storeindex/StoreFrontFooterPages/AboutPage")
-);
+// const AboutPage = lazy(() => import("@/storefront/components/storeindex/StoreFrontFooterPages/AboutPage"));
 // import OrderTimelinePage from "@/storefront/components/orders/OrderTimeline";
 
 // Lazy loaded pages/components to optimize bundle sizes
@@ -223,7 +221,7 @@ export default function AppRoutes() {
               a single consolidated page component */}
           <Route path="products" element={<ProductsPage />} />
           <Route path="products/:slug" element={<ProductsPage />} />
-          <Route path="about" element={<AboutPage />} />
+          {/* <Route path="about" element={<AboutPage />} />   */}
 
           <Route path="returns-policy" element={<ReturnsPolicy />} />
           <Route path="order-success" element={<OrderSuccess />} />
