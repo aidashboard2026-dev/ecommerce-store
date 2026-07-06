@@ -1,8 +1,7 @@
-from pydantic import BaseModel, EmailStr
+# This file is deprecated. Use schemas.py instead.
+# Kept for backward compatibility during migration.
 
+from app.modules.contact.schemas import ContactMessageCreate as ContactRequest
 
-class ContactRequest(BaseModel):
-    name: str
-    email: EmailStr
-    subject: str
-    message: str
+__all__ = ["ContactRequest"]
+

@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { storefrontAPI } from "@/shared/services/api";
+import { toast } from "react-hot-toast";
 import { FaWhatsapp } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import { Phone, Instagram, Facebook } from "lucide-react";
@@ -54,24 +56,53 @@ const StoreFooterComponent = function StoreFooter() {
     window.location.href = url;
   };
 
+  const handleContactSubmit = async (e) => {
+  e.preventDefault();
+
+  try {
+    setLoading(true);
+
+    await storefrontAPI.contact(form);
+
+    toast.success("Message sent successfully!");
+
+    setForm({
+      name: "",
+      email: "",
+      subject: "",
+      message: "",
+    });
+
+    setOpenContact(false);
+  } catch (error) {
+    console.error(error);
+
+    toast.error(
+      error?.response?.data?.message || "Failed to send message."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
+
   return (
     <footer className="border-t border-app transition-colors duration-300">
       <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-10 lg:px-12 py-5">
-        <div className="grid grid-cols-1 gap-3 md:gap-3 md:grid-cols-2 lg:grid-cols-4 justify-center items-start">
+        <div className="grid grid-cols-1 gap-5 md:gap-5 md:grid-cols-2 lg:grid-cols-4 justify-center md:items-start">
           {/* ================= About ================= */}
 
-          <div className="flex flex-col">
+          <div className="flex flex-col justify-between items-start h-full">
             <h4 className={headingBase}>About {storeName}</h4>
 
-            <p className="mt-7 max-w-[340px] text-[14px] leading-2 text-[#555555] font-light">
+            <p className="max-w-[340px] text-[14px] leading-2 text-[#555555] font-light">
               {description}
             </p>
 
-            <div className="flex items-center gap-6 pt-8">
+            <div className="flex items-center gap-6">
               <a
                 href={`tel:${supportPhone}`}
                 aria-label="Call Us"
-                className="text-[#555555] hover:text-black transition-all duration-300 hover:scale-110"
+                className="text-[#555555] hover:text-orange-500 transition-all duration-300 hover:scale-110"
               >
                 <Phone size={18} strokeWidth={1.7} />
               </a>
@@ -109,11 +140,10 @@ const StoreFooterComponent = function StoreFooter() {
               </a>
             </div>
           </div>
-        </div>
 
           {/* ================= Quick Links ================= */}
 
-          <div className="flex flex-col items-start md:items-center gap-3.5">
+          <div className="flex flex-col items-start lg:items-center h-full mt-5 md:mt-0 gap-3">
             <h4 className={headingBase}>Quick Links</h4>
 
             <Link to="/" className={linkBase}>
@@ -135,7 +165,7 @@ const StoreFooterComponent = function StoreFooter() {
 
           {/* ================= Customer Care ================= */}
 
-          <div className="flex flex-col items-start md:items-center gap-3.5">
+          <div className="flex flex-col items-start lg:items-center h-full mt-5 md:mt-5 lg:mt-0 gap-3">
             <h4 className={headingBase}>Customer Care</h4>
 
             <Link to="/shipping-policy" className={linkBase}>
@@ -156,7 +186,7 @@ const StoreFooterComponent = function StoreFooter() {
           </div>
           {/* ================= Contact ================= */}
 
-          <div className="flex flex-col items-start md:items-center gap-3.5">
+          <div className="flex flex-col items-start lg:items-center h-full mt-5 md:mt-5 lg:mt-0 gap-3">
             <h4 className={headingBase}>Contact</h4>
 
             <a href={`mailto:${supportEmail}`} className={linkBase}>
@@ -165,14 +195,14 @@ const StoreFooterComponent = function StoreFooter() {
 
             <button
               onClick={() => setOpenContact(true)}
-              className="mt-6 rounded-lg bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
+              className="rounded-lg bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
             >
               Contact Us
             </button>
 
-            <a href={`tel:${supportPhone}`} className={linkBase}>
+            {/* <a href={`tel:${supportPhone}`} className={linkBase}>
               {supportPhone}
-            </a>
+            </a> */}
           </div>
 
           <ContactModal
@@ -181,14 +211,10 @@ const StoreFooterComponent = function StoreFooter() {
             form={form}
             setForm={setForm}
             loading={loading}
-            onSubmit={(e) => {
-              e.preventDefault();
-
-              console.log(form);
-            }}
+            onSubmit={handleContactSubmit}
           />
         </div>
-      
+      </div>
 
       {/* ================= Bottom Bar ================= */}
 

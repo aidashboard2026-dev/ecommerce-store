@@ -30,4 +30,4 @@ api_router.include_router(custom_products_router, prefix="/custom-products", tag
 api_router.include_router(settings_router, prefix="/settings", tags=["Settings"])
 api_router.include_router(delivery_zones_router, prefix="/delivery-zones", tags=["Delivery Zones"])
 api_router.include_router(audit_router, prefix="/audit", tags=["Audit"])
-api_router.include_router(contact_router, tags=["Contact"])
+api_router.include_router(contact_router, prefix="/contact", tags=["Contact"])
