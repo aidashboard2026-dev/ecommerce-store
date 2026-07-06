@@ -11,13 +11,8 @@ import {
 import toast from "react-hot-toast";
 
 import { homepageCategoriesAPI } from "@/shared/services/api";
-import { useTheme } from "@/shared/hooks/useAuth";
 import useBusinessLimits from "@/shared/hooks/useBusinessLimits";
-
-const BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL || "").replace(
-  /\/$/,
-  "",
-);
+import { getImageUrl } from "@/shared/utils/productUtils";
 
 const emptyForm = {
   name: "",
@@ -60,19 +55,6 @@ const pageOptions = [
   },
 ];
 
-
-function getImageUrl(path) {
-  if (!path) return "";
-  if (
-    path.startsWith("blob:") ||
-    path.startsWith("http://") ||
-    path.startsWith("https://")
-  ) {
-    return path;
-  }
-  if (path.startsWith("/")) return `${BACKEND_ORIGIN}${path}`;
-  return `${BACKEND_ORIGIN}/assets/categories/${path}`;
-}
 
 function CategoryModal({ category, onClose, onSaved }) {
   const isEdit = Boolean(category?.id);

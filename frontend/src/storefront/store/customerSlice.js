@@ -30,9 +30,29 @@ export const customerSignupThunk = createAsyncThunk(
       const res = await authAPI.signup(data)
       return res.data
     } catch (err) {
-      return rejectWithValue(err.response?.data?.detail || 'Signup failed')
+
+        console.log("Signup Error Full");
+        console.log(JSON.stringify(err.response?.data, null, 2));
+        console.log(err.response?.data?.detail);
+        console.table(err.response?.data?.detail);
+
+        const detail = err.response?.data?.detail;
+
+        if (Array.isArray(detail)) {
+
+            return rejectWithValue(detail[0].msg);
+
+        }
+
+        if (typeof detail === "string") {
+
+            return rejectWithValue(detail);
+
+        }
+
+        return rejectWithValue("Signup failed");
     }
-  }
+      }
 )
 
 export const fetchCustomerMeThunk = createAsyncThunk(

@@ -21,6 +21,10 @@ from app.modules.settings.schemas import (
     SettingsBundleResponse,
     StoreSettingsResponse,
     StoreSettingsUpdate,
+    SUPPORTED_COUNTRIES,
+    SUPPORTED_CURRENCIES,
+    SUPPORTED_TIMEZONES,
+    SUPPORTED_WEIGHT_UNITS,
 )
 from app.modules.settings.service import (
     ensure_notification_settings,
@@ -628,26 +632,10 @@ def read_public_payment_methods(db: Session = Depends(get_db)):
 def read_regional_options():
     """Retrieve lists of valid regional options (countries, currencies, timezones, weight units)."""
     return {
-        "countries": [
-            "India",
-            "United States",
-            "United Kingdom",
-            "Canada",
-            "Australia",
-            "Singapore",
-            "United Arab Emirates",
-        ],
-        "currencies": ["INR", "USD", "GBP", "CAD", "AUD", "SGD", "AED"],
-        "timezones": [
-            "Asia/Kolkata",
-            "UTC",
-            "America/New_York",
-            "America/Los_Angeles",
-            "Europe/London",
-            "Asia/Singapore",
-            "Asia/Dubai",
-        ],
-        "weight_units": ["kg", "g", "lb", "oz"],
+        "countries": SUPPORTED_COUNTRIES,
+        "currencies": SUPPORTED_CURRENCIES,
+        "timezones": SUPPORTED_TIMEZONES,
+        "weight_units": SUPPORTED_WEIGHT_UNITS,
     }
 
 

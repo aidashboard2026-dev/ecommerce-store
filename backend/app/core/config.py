@@ -178,6 +178,7 @@ class Settings(BaseSettings):
     SUPABASE_PRODUCT_BUCKET: str = "product-images"
     SUPABASE_CUSTOM_PRODUCT_BUCKET: str = "custom-product-images"
     SUPABASE_BANNER_BUCKET: str = "banners"
+    SUPABASE_CATEGORY_BUCKET: str = "category-images"
 
     @field_validator("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", mode="after")
     @classmethod

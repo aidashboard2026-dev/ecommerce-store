@@ -5,15 +5,7 @@ import useBusinessLimits from "@/shared/hooks/useBusinessLimits";
 import { ImagePlus, Plus, Search, X, Pencil, Eye, EyeOff, AlertTriangle, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTheme } from "@/shared/hooks/useAuth";
-
-// ─── Image helper (no localhost dependency) ─────────────────────────────────
-const _BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL || "http://localhost:8000").replace(/\/$/, "");
-function getImageUrl(path) {
-  if (!path) return null;
-  if (path.startsWith("blob:") || path.startsWith("http://") || path.startsWith("https://")) return path;
-  if (path.startsWith("/")) return `${_BACKEND_ORIGIN}${path}`;
-  return `${_BACKEND_ORIGIN}/uploads/banners/${path}`;
-}
+import { getImageUrl } from "@/shared/utils/productUtils";
 
 // ─── Placement options ───────────────────────────────────────────────────────
 const PLACEMENTS = [

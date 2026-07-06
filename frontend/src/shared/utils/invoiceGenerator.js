@@ -56,8 +56,20 @@ function gray(pdf, size = 7) {
   pdf.setTextColor(...GRAY);
 }
 
+const CURRENCY_SYMBOLS = {
+  INR: '₹',
+  USD: '$',
+  GBP: '£',
+  CAD: 'CA$',
+  AUD: 'A$',
+  SGD: 'S$',
+  AED: 'د.إ',
+};
+
 function money(value) {
-  return Number(value || 0).toLocaleString("en-IN", {
+  const currency = localStorage.getItem('store_currency') || 'INR';
+  const locale = currency === 'INR' ? 'en-IN' : 'en-US';
+  return Number(value || 0).toLocaleString(locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
@@ -74,8 +86,11 @@ function drawAmount(pdf, amount, x, y, size = 7, boldText = false) {
 
   pdf.setTextColor(...BLACK);
 
+  const currency = localStorage.getItem('store_currency') || 'INR';
+  const symbol = CURRENCY_SYMBOLS[currency] || '₹';
+
   pdf.text(
-    "₹",
+    symbol,
     x - 18,
     y,
     {
@@ -152,10 +167,13 @@ export async function generateInvoice(order) {
      COMPANY (TOP LEFT)
   ======================================================== */
 
+  const storeName = localStorage.getItem('store_name') || "MY DESIGN PRIVATE LIMITED";
+  const storeCountry = localStorage.getItem('store_country') || "India";
+
   bold(pdf,10);
 
   pdf.text(
-    "Sold By : MY DESIGN PRIVATE LIMITED",
+    `Sold By : ${storeName.toUpperCase()}`,
     10,
     12
   );
@@ -169,13 +187,14 @@ export async function generateInvoice(order) {
   );
 
   pdf.text(
-    "No.12 Anna Salai, Chennai - 600001",
+    "Thipaati, Pennagaram Main Road Dharmapuri,",
     32,
     17
   );
 
   pdf.text(
-    "Tamil Nadu, India",
+    storeCountry,
+    "Pincode-636813,Tamil Nadu, India",
     10,
     21
   );
@@ -232,8 +251,9 @@ export async function generateInvoice(order) {
      QR CODE
   ======================================================== */
 
+  const storeUrl = localStorage.getItem('store_url') || window.location.origin;
   const qr = await QRCode.toDataURL(
-    `https://mydesign.com/orders/${safe(order.order_number)}`
+    `${storeUrl}/orders/${safe(order.order_number)}`
   );
 
   pdf.addImage(
@@ -383,8 +403,12 @@ export async function generateInvoice(order) {
 
   normal(pdf, 7);
 
+  const storeNameShip = localStorage.getItem('store_name') || "MY DESIGN PRIVATE LIMITED";
+  const storeCountryShip = localStorage.getItem('store_country') || "India";
+  const storePhoneShip = localStorage.getItem('store_phone') || "+91 9876543210";
+
   pdf.text(
-    "MY DESIGN PRIVATE LIMITED",
+    storeNameShip.toUpperCase(),
     COL3,
     currentY + 7,
     {
@@ -393,13 +417,13 @@ export async function generateInvoice(order) {
   );
 
   pdf.text(
-    "No.12 Anna Salai",
+    "Thipaati",
     COL3,
     currentY + 13
   );
 
   pdf.text(
-    "Chennai",
+    "Dharmapuri",
     COL3,
     currentY + 19
   );
@@ -411,19 +435,19 @@ export async function generateInvoice(order) {
   );
 
   pdf.text(
-    "India",
+    storeCountryShip,
     COL3,
     currentY + 31
   );
 
   pdf.text(
-    "600001",
+    "636813",
     COL3,
     currentY + 37
   );
 
   pdf.text(
-    "Phone : +91 9876543210",
+    `Phone : ${storePhoneShip}`,
     COL3,
     currentY + 43
   );

@@ -95,7 +95,7 @@ const HeaderComponent = function Header() {
 
   const handleLogout = () => {
     dispatch(logout())
-    navigate('/login')
+    navigate('/admin/login')
   }
 
   const closeAndLogout = () => {
@@ -156,6 +156,7 @@ const HeaderComponent = function Header() {
         {/* profile and theme toggle */}
         <div ref={profileRef} className="relative w-full p-4 border-t border-app">
           <div
+            onClick={() => setProfileOpen((prev) => !prev)}
             className="flex items-center gap-3.5 cursor-pointer p-1.5 rounded-lg hover:bg-app transition-colors"
           >
             <Avatar size="sm" firstName={firstName} lastName={lastName} />

@@ -79,6 +79,7 @@ services:
     environment:
       - VITE_API_URL=/api/v1
       - VITE_BACKEND_URL=
+      - DOCKER=true
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
     ports:

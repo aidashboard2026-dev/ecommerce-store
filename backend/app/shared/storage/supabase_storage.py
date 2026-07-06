@@ -482,3 +482,91 @@ def delete_store_logo() -> None:
         return
     _delete_object("branding", "logos/store-logo.png")
 
+
+# ─────────────────────────────────────────────────────────────
+# Public API — homepage category images
+# ─────────────────────────────────────────────────────────────
+
+def get_category_image_url(object_path_or_url: Optional[str]) -> Optional[str]:
+    """Generates the Supabase Public URL dynamically or returns the fallback local path."""
+    if not object_path_or_url:
+        return ""
+
+    # If it is a full URL
+    if object_path_or_url.startswith("http://") or object_path_or_url.startswith("https://"):
+        if is_supabase_configured():
+            path = _object_path_from_public_url(object_path_or_url, settings.SUPABASE_CATEGORY_BUCKET)
+            if path:
+                return get_public_url(settings.SUPABASE_CATEGORY_BUCKET, path)
+        return object_path_or_url
+
+    # If it is a local fallback path
+    if object_path_or_url.startswith("/uploads/"):
+        return object_path_or_url
+
+    # It's an object path! If Supabase is configured, return the public URL.
+    if is_supabase_configured():
+        return get_public_url(settings.SUPABASE_CATEGORY_BUCKET, object_path_or_url)
+
+    # Local fallback for the object path
+    local_path = f"/uploads/categories/{object_path_or_url}"
+    full_local_path = os.path.join(settings.UPLOAD_DIR, "categories", object_path_or_url.replace("/", os.sep))
+    if os.path.exists(full_local_path):
+        return local_path
+
+    return f"/uploads/categories/{object_path_or_url}"
+
+
+def upload_category_image(
+    contents: bytes,
+    original_filename: str,
+    content_type: str,
+) -> str:
+    """Uploads a homepage category image and returns the stored relative path or local fallback path."""
+    ext = os.path.splitext(original_filename or "")[1].lower() or ".jpg"
+
+    if not is_supabase_configured():
+        logger.warning("Supabase Storage not configured. Falling back to local disk storage.")
+        filename = f"{uuid.uuid4().hex[:12]}{ext}"
+        target_dir = os.path.join(settings.UPLOAD_DIR, "categories")
+        os.makedirs(target_dir, exist_ok=True)
+        file_path = os.path.join(target_dir, filename)
+        with open(file_path, "wb") as f:
+            f.write(contents)
+        return f"/uploads/categories/{filename}"
+
+    object_path = _generate_unique_filename(original_filename)
+    _upload_object(settings.SUPABASE_CATEGORY_BUCKET, object_path, contents, content_type)
+    return object_path
+
+
+def delete_category_image(image_url: Optional[str]) -> None:
+    """Deletes a homepage category image from Supabase or local storage given its stored path or URL."""
+    if not image_url:
+        return
+
+    # Check for local fallback path
+    if image_url.startswith("/uploads/"):
+        filename = os.path.basename(image_url)
+        if filename:
+            file_path = os.path.normpath(os.path.join(settings.UPLOAD_DIR, "categories", filename))
+            safe_prefix = os.path.normpath(os.path.join(settings.UPLOAD_DIR, "categories")) + os.sep
+            if file_path.startswith(safe_prefix) and os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except OSError:
+                    pass
+        return
+
+    if not is_supabase_configured():
+        return
+
+    if image_url.startswith("http://") or image_url.startswith("https://"):
+        object_path = _object_path_from_public_url(image_url, settings.SUPABASE_CATEGORY_BUCKET)
+    else:
+        object_path = image_url
+
+    if object_path:
+        _delete_object(settings.SUPABASE_CATEGORY_BUCKET, object_path)
+
+

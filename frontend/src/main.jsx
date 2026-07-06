@@ -6,8 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { store } from '@/shared/store/store'
 import App from '@/App'
 
-import './index.css'
-
+import "./index.css";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

@@ -1,5 +1,3 @@
-import os
-import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
@@ -21,41 +19,28 @@ from app.modules.categories.service import (
     list_categories,
     update_category,
 )
+from app.shared.storage import supabase_storage
 from app.shared.utils.image import validate_and_read_image
 
 router = APIRouter()
 
 
-def _category_upload_dir() -> str:
-    target_dir = os.path.join(settings.UPLOAD_DIR, "categories")
-    os.makedirs(target_dir, exist_ok=True)
-    return target_dir
-
-
 def _save_category_image(file: UploadFile) -> str:
     contents = validate_and_read_image(file)
-    ext = os.path.splitext(file.filename or "")[1].lower() or ".jpg"
-    filename = f"{uuid.uuid4().hex[:12]}{ext}"
-    file_path = os.path.join(_category_upload_dir(), filename)
-    with open(file_path, "wb") as image_file:
-        image_file.write(contents)
-    return f"/uploads/categories/{filename}"
+    return supabase_storage.upload_category_image(
+        contents=contents,
+        original_filename=file.filename or "category.jpg",
+        content_type=file.content_type or "image/jpeg",
+    )
 
 
 def _delete_category_image(image_path: Optional[str]) -> None:
-    if not image_path or not image_path.startswith("/uploads/categories/"):
+    if not image_path:
         return
-
-    filename = os.path.basename(image_path)
-    target_dir = os.path.normpath(_category_upload_dir())
-    file_path = os.path.normpath(os.path.join(target_dir, filename))
-    safe_prefix = target_dir + os.sep
-
-    if file_path.startswith(safe_prefix) and os.path.exists(file_path):
-        try:
-            os.remove(file_path)
-        except OSError:
-            pass
+    try:
+        supabase_storage.delete_category_image(image_path)
+    except Exception:
+        pass
 
 
 @router.get("/categories", response_model=list[HomepageCategoryResponse])

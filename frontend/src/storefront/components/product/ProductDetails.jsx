@@ -168,6 +168,10 @@ export default function ProductDetails() {
   });
 
   const handleAddToCart = () => {
+    console.log("Variant :", activeVariant);
+    console.log("Stock :", activeVariant?.stock_quantity);
+    console.log("In Stock :", inStock);
+
     if (!activeVariant) return;
     if (!inStock) {
       toast.error("This variant is out of stock");

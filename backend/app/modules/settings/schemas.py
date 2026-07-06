@@ -4,6 +4,27 @@ from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field, HttpUrl, field_validator, model_validator
 
+SUPPORTED_COUNTRIES = [
+    "India",
+    "United States",
+    "United Kingdom",
+    "Canada",
+    "Australia",
+    "Singapore",
+    "United Arab Emirates",
+]
+SUPPORTED_CURRENCIES = ["INR", "USD", "GBP", "CAD", "AUD", "SGD", "AED"]
+SUPPORTED_TIMEZONES = [
+    "Asia/Kolkata",
+    "UTC",
+    "America/New_York",
+    "America/Los_Angeles",
+    "Europe/London",
+    "Asia/Singapore",
+    "Asia/Dubai",
+]
+SUPPORTED_WEIGHT_UNITS = ["kg", "g", "lb", "oz"]
+
 
 class StoreSettingsBase(BaseModel):
     store_name: str = Field(..., min_length=2, max_length=150)
@@ -30,11 +51,42 @@ class StoreSettingsBase(BaseModel):
     @field_validator("support_phone")
     @classmethod
     def validate_phone(cls, value: Optional[str]) -> Optional[str]:
-        if not value:
+        if value is None:
             return value
-        cleaned = value.replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+        stripped = value.strip()
+        if not stripped:
+            return None
+        cleaned = stripped.replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
         if not cleaned.lstrip("+").isdigit():
             raise ValueError("Support phone must contain only digits, spaces, +, -, or parentheses.")
+        return stripped
+
+    @field_validator("country")
+    @classmethod
+    def validate_country(cls, value: str) -> str:
+        if value not in SUPPORTED_COUNTRIES:
+            raise ValueError(f"Country must be one of: {', '.join(SUPPORTED_COUNTRIES)}")
+        return value
+
+    @field_validator("currency")
+    @classmethod
+    def validate_currency(cls, value: str) -> str:
+        if value not in SUPPORTED_CURRENCIES:
+            raise ValueError(f"Currency must be one of: {', '.join(SUPPORTED_CURRENCIES)}")
+        return value
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value: str) -> str:
+        if value not in SUPPORTED_TIMEZONES:
+            raise ValueError(f"Timezone must be one of: {', '.join(SUPPORTED_TIMEZONES)}")
+        return value
+
+    @field_validator("weight_unit")
+    @classmethod
+    def validate_weight_unit(cls, value: str) -> str:
+        if value not in SUPPORTED_WEIGHT_UNITS:
+            raise ValueError(f"Weight unit must be one of: {', '.join(SUPPORTED_WEIGHT_UNITS)}")
         return value
 
 
@@ -67,6 +119,42 @@ class StoreSettingsUpdate(BaseModel):
     def validate_phone(cls, value: Optional[str]) -> Optional[str]:
         return StoreSettingsBase.validate_phone(value)
 
+    @field_validator("country")
+    @classmethod
+    def validate_country(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        if value not in SUPPORTED_COUNTRIES:
+            raise ValueError(f"Country must be one of: {', '.join(SUPPORTED_COUNTRIES)}")
+        return value
+
+    @field_validator("currency")
+    @classmethod
+    def validate_currency(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        if value not in SUPPORTED_CURRENCIES:
+            raise ValueError(f"Currency must be one of: {', '.join(SUPPORTED_CURRENCIES)}")
+        return value
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        if value not in SUPPORTED_TIMEZONES:
+            raise ValueError(f"Timezone must be one of: {', '.join(SUPPORTED_TIMEZONES)}")
+        return value
+
+    @field_validator("weight_unit")
+    @classmethod
+    def validate_weight_unit(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        if value not in SUPPORTED_WEIGHT_UNITS:
+            raise ValueError(f"Weight unit must be one of: {', '.join(SUPPORTED_WEIGHT_UNITS)}")
+        return value
+
 
 class StoreSettingsResponse(StoreSettingsBase):
     id: int
@@ -90,6 +178,7 @@ class AdminSecurityUpdate(BaseModel):
     username: Optional[str] = Field(default=None, min_length=2, max_length=100)
     email: Optional[EmailStr] = None
     two_factor_enabled: Optional[bool] = None
+    current_password: Optional[str] = None
 
     @field_validator("username", mode="before")
     @classmethod
@@ -140,6 +229,7 @@ class PasswordUpdate(BaseModel):
 
 
 class PaymentMethodUpdate(BaseModel):
+    description: Optional[str] = Field(default=None, max_length=500)
     fee: Optional[Decimal] = None
     is_active: Optional[bool] = None
 

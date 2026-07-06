@@ -1,32 +1,16 @@
 import { useState, useEffect } from 'react'
-
-// ─── Image URL helper ─────────────────────────────────────────────────────────
-//
-// Product/banner images now live in Supabase Storage. The DB stores the full
-// public URL (https://PROJECT.supabase.co/storage/v1/object/public/<bucket>/
-// <file>), so for current uploads this function just returns that URL as-is.
-//
-// Backward compatibility: any product not yet processed by
-// migrate_images_to_supabase.py may still have a legacy root-relative path
-// (e.g. /uploads/products/<filename>) from the old local-disk storage. For
-// those, VITE_BACKEND_URL controls how the path resolves:
-//   - In Docker dev (Vite running on :5173):
-//       VITE_BACKEND_URL is NOT set (or '')
-//       → image src = '/uploads/products/…'
-//       → Vite dev server proxies /uploads → http://backend:8000  (vite.config.js)
-//   - In production:
-//       Set VITE_BACKEND_URL=https://api.mystore.com in .env
-//       → image src = 'https://api.mystore.com/uploads/products/…'
-//
-// NOTE: VITE_BACKEND_URL must be set in production. No localhost fallback is used
-// here so that misconfigured deployments produce visible broken-image errors
-// (easy to diagnose) rather than silently resolving to a dev server.
 const _BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL || '').replace(/\/$/, '')
 
 export function getImageUrl(thumbnail) {
   if (!thumbnail) return null
-  // Supabase Storage URL (current case) or any other absolute URL — return as-is
-  if (thumbnail.startsWith('http://') || thumbnail.startsWith('https://')) return thumbnail
+  // Blob URL, Supabase Storage URL, or any other absolute URL — return as-is
+  if (
+    thumbnail.startsWith('blob:') ||
+    thumbnail.startsWith('http://') ||
+    thumbnail.startsWith('https://')
+  ) {
+    return thumbnail
+  }
   // Legacy root-relative path from before the Supabase migration (e.g. /uploads/products/1_abc.png)
   if (thumbnail.startsWith('/')) return `${_BACKEND_ORIGIN}${thumbnail}`
   // Legacy bare filename — prefix with the products upload path
@@ -59,12 +43,25 @@ export function isDuplicateFile(file, existingItems) {
   )
 }
 
-/** Format a numeric price as ₹1,234.56 */
+const CURRENCY_SYMBOLS = {
+  INR: '₹',
+  USD: '$',
+  GBP: '£',
+  CAD: 'CA$',
+  AUD: 'A$',
+  SGD: 'S$',
+  AED: 'د.إ',
+}
+
+/** Format a numeric price based on store currency */
 export function formatPrice(value) {
   if (value == null) return '—'
   const num = parseFloat(value)
   if (isNaN(num)) return '—'
-  return `₹${num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const currency = localStorage.getItem('store_currency') || 'INR'
+  const symbol = CURRENCY_SYMBOLS[currency] || '₹'
+  const locale = currency === 'INR' ? 'en-IN' : 'en-US'
+  return `${symbol}${num.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 /** Debounce a value — returns the debounced value after `delay` ms of silence */

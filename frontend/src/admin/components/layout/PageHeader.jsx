@@ -42,7 +42,7 @@ export default function PageHeader({ title }) {
 
   const handleLogout = () => {
     dispatch(logout())
-    navigate('/login')
+    navigate('/admin/login')
   }
 
   const goToSettings = () => {
