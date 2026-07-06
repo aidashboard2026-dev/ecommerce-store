@@ -1,12 +1,23 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ImagePlus, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ImagePlus,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import toast from "react-hot-toast";
 
 import { homepageCategoriesAPI } from "@/shared/services/api";
 import { useTheme } from "@/shared/hooks/useAuth";
 import useBusinessLimits from "@/shared/hooks/useBusinessLimits";
 
-const BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "");
+const BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL || "").replace(
+  /\/$/,
+  "",
+);
 
 const emptyForm = {
   name: "",
@@ -14,9 +25,49 @@ const emptyForm = {
   imageFile: null,
 };
 
+const pageOptions = [
+  {
+    name: "HOME",
+    path: "/",
+  },
+  {
+    name: "T-SHIRTS FOR MENS",
+    path: "/t-shirts",
+  },
+  {
+    name: "TRACK PANTS FOR MENS",
+    path: "/track-pants",
+  },
+  {
+    name: "TROUSERS FOR MENS",
+    path: "/trousers",
+  },
+  {
+    name: "SHIRTS FOR MENS",
+    path: "/shirts",
+  },
+  {
+    name: "CUSTOM PRODUCT",
+    path: "/custom-product",
+  },
+  {
+    name: "OFFERS",
+    path: "/offers",
+  },
+  {
+    name: "TRACK ORDER",
+    path: "/track-order",
+  },
+];
+
+
 function getImageUrl(path) {
   if (!path) return "";
-  if (path.startsWith("blob:") || path.startsWith("http://") || path.startsWith("https://")) {
+  if (
+    path.startsWith("blob:") ||
+    path.startsWith("http://") ||
+    path.startsWith("https://")
+  ) {
     return path;
   }
   if (path.startsWith("/")) return `${BACKEND_ORIGIN}${path}`;
@@ -26,15 +77,18 @@ function getImageUrl(path) {
 function CategoryModal({ category, onClose, onSaved }) {
   const isEdit = Boolean(category?.id);
   const [form, setForm] = useState({
-    name: category?.name || "",
-    path: category?.path || "",
-    imageFile: null,
-  });
+  name: category?.name || "",
+  path: category?.path || "",
+  imageFile: null,
+});
   const [previewUrl, setPreviewUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const blobRef = useRef(null);
 
-  const currentImageUrl = useMemo(() => getImageUrl(category?.image), [category?.image]);
+  const currentImageUrl = useMemo(
+    () => getImageUrl(category?.image),
+    [category?.image],
+  );
   const displayImage = previewUrl || currentImageUrl;
 
   useEffect(() => {
@@ -42,6 +96,16 @@ function CategoryModal({ category, onClose, onSaved }) {
       if (blobRef.current) URL.revokeObjectURL(blobRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (form.page && form.page !== "products") {
+      setForm((prev) => ({
+        ...prev,
+
+        path: form.page,
+      }));
+    }
+  }, [form.page]);
 
   const setField = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -133,7 +197,10 @@ function CategoryModal({ category, onClose, onSaved }) {
 
         <div className="space-y-4 px-5 py-5">
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-app" htmlFor="category-name">
+            <label
+              className="block text-xs font-semibold text-app"
+              htmlFor="category-name"
+            >
               Category Name *
             </label>
             <input
@@ -173,18 +240,27 @@ function CategoryModal({ category, onClose, onSaved }) {
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-app" htmlFor="category-path">
-              Click Path *
-            </label>
-            <input
-              id="category-path"
-              value={form.path}
-              onChange={(event) => setField("path", event.target.value)}
-              className="input-field"
-              placeholder="/products/t-shirts"
-              maxLength={500}
-            />
-          </div>
+  <label className="block text-xs font-semibold text-app">
+    Page Path *
+  </label>
+
+  <select
+    value={form.path}
+    onChange={(e) => setField("path", e.target.value)}
+    className="input-field"
+  >
+    <option value="">Select Page</option>
+
+    {pageOptions.map((item) => (
+      <option
+        key={item.path}
+        value={item.path}
+      >
+        {item.name}
+      </option>
+    ))}
+  </select>
+</div>
         </div>
 
         <div className="flex justify-end gap-2 border-t border-app px-5 py-4">
@@ -211,7 +287,12 @@ function CategoryModal({ category, onClose, onSaved }) {
 }
 
 export default function CategoriesPage() {
-  const { limits, isLoading: limitsLoading, error: limitsError, refetch: refetchLimits } = useBusinessLimits();
+  const {
+    limits,
+    isLoading: limitsLoading,
+    error: limitsError,
+    refetch: refetchLimits,
+  } = useBusinessLimits();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalCategory, setModalCategory] = useState(null);
@@ -224,7 +305,9 @@ export default function CategoriesPage() {
       const response = await homepageCategoriesAPI.list();
       setCategories(response.data);
     } catch (error) {
-      toast.error(error?.response?.data?.detail || "Failed to load categories.");
+      toast.error(
+        error?.response?.data?.detail || "Failed to load categories.",
+      );
     } finally {
       setLoading(false);
     }
@@ -236,7 +319,9 @@ export default function CategoriesPage() {
 
   const openCreate = () => {
     if (limits && categories.length >= limits.max_homepage_categories) {
-      toast.error(`You have reached the maximum allowed limit of ${limits.max_homepage_categories} homepage categories.`);
+      toast.error(
+        `You have reached the maximum allowed limit of ${limits.max_homepage_categories} homepage categories.`,
+      );
       return;
     }
     setModalCategory(emptyForm);
@@ -263,7 +348,9 @@ export default function CategoriesPage() {
       toast.success("Category deleted.");
       loadCategories();
     } catch (error) {
-      toast.error(error?.response?.data?.detail || "Failed to delete category.");
+      toast.error(
+        error?.response?.data?.detail || "Failed to delete category.",
+      );
     } finally {
       setDeletingId(null);
     }
@@ -275,7 +362,10 @@ export default function CategoriesPage() {
         <div className="mb-4 flex items-center justify-between rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-600">
           <div className="flex items-center gap-2">
             <AlertTriangle size={16} />
-            <span>Unable to load store configuration. Please refresh the page or try again.</span>
+            <span>
+              Unable to load store configuration. Please refresh the page or try
+              again.
+            </span>
           </div>
           <button
             onClick={() => refetchLimits()}
@@ -290,8 +380,9 @@ export default function CategoriesPage() {
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3 text-xs text-yellow-600">
           <AlertTriangle size={16} />
           <span>
-            You have reached the maximum allowed limit of {limits.max_homepage_categories} homepage categories.
-            Please delete an existing homepage category before adding a new one.
+            You have reached the maximum allowed limit of{" "}
+            {limits.max_homepage_categories} homepage categories. Please delete
+            an existing homepage category before adding a new one.
           </span>
         </div>
       )}
@@ -304,20 +395,30 @@ export default function CategoriesPage() {
         <button
           type="button"
           onClick={openCreate}
-          disabled={limitsLoading || !!limitsError || (limits && categories.length >= limits.max_homepage_categories)}
+          disabled={
+            limitsLoading ||
+            !!limitsError ||
+            (limits && categories.length >= limits.max_homepage_categories)
+          }
           title={
             limitsLoading
               ? "Loading store configuration..."
               : limitsError
-              ? "Unable to load configuration"
-              : limits && categories.length >= limits.max_homepage_categories
-              ? `Maximum limit reached.\nDelete an existing homepage category to continue.`
-              : ""
+                ? "Unable to load configuration"
+                : limits && categories.length >= limits.max_homepage_categories
+                  ? `Maximum limit reached.\nDelete an existing homepage category to continue.`
+                  : ""
           }
           className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-semibold text-white transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
           style={{
-            background: limits && categories.length >= limits.max_homepage_categories ? "#4b5563" : "#2563eb",
-            borderColor: limits && categories.length >= limits.max_homepage_categories ? "#4b5563" : "#2563eb",
+            background:
+              limits && categories.length >= limits.max_homepage_categories
+                ? "#4b5563"
+                : "#2563eb",
+            borderColor:
+              limits && categories.length >= limits.max_homepage_categories
+                ? "#4b5563"
+                : "#2563eb",
           }}
         >
           {limitsLoading ? (
@@ -325,7 +426,7 @@ export default function CategoriesPage() {
           ) : (
             <Plus size={15} />
           )}
-          + Add Category
+          Add Category
         </button>
       </div>
 
@@ -334,16 +435,27 @@ export default function CategoriesPage() {
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-app">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-bold text-muted">Image</th>
-                <th className="px-4 py-3 text-left text-xs font-bold text-muted">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-bold text-muted">Click Path</th>
-                <th className="px-4 py-3 text-right text-xs font-bold text-muted">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-muted">
+                  Image
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-muted">
+                  Name
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-muted">
+                  Click Path
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-bold text-muted">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {loading && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-12 text-center text-sm text-muted">
+                  <td
+                    colSpan={4}
+                    className="px-4 py-12 text-center text-sm text-muted"
+                  >
                     Loading categories...
                   </td>
                 </tr>
@@ -351,7 +463,10 @@ export default function CategoriesPage() {
 
               {!loading && categories.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-12 text-center text-sm text-muted">
+                  <td
+                    colSpan={4}
+                    className="px-4 py-12 text-center text-sm text-muted"
+                  >
                     No categories yet.
                   </td>
                 </tr>

@@ -86,7 +86,7 @@ const StoreFooterComponent = function StoreFooter() {
 };
 
   return (
-    <footer className="border-t border-app transition-colors duration-300">
+    <footer className="border-t border-app mt-16 transition-colors duration-300">
       <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-10 lg:px-12 py-5">
         <div className="grid grid-cols-1 gap-5 md:gap-5 md:grid-cols-2 lg:grid-cols-4 justify-center md:items-start">
           {/* ================= About ================= */}
