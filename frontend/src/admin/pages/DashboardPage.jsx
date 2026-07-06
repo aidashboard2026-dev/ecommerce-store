@@ -15,6 +15,9 @@ import {
   Eye,
   Menu,
   ShoppingBag,
+  Mail,
+  MessageSquare,
+  CheckCircle,
 } from "lucide-react";
 
 import { dashboardAPI } from "@/shared/services/api";
@@ -338,6 +341,77 @@ export default function DashboardPage() {
           />
         </div>
       )}
+
+      {/* Contact Inbox Metrics */}
+      {stats && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            title="Today's Messages"
+            value={stats.today_messages}
+            change={0}
+            icon={Mail}
+            iconClassName="text-indigo-600 border-indigo-500/10 dark:text-indigo-400"
+            onClick={() => navigate('/admin/contact')}
+          />
+          <StatCard
+            title="Weekly Messages"
+            value={stats.week_messages}
+            change={0}
+            icon={MessageSquare}
+            iconClassName="text-sky-600 border-sky-500/10 dark:text-sky-400"
+            onClick={() => navigate('/admin/contact')}
+          />
+          <StatCard
+            title="Pending Tickets"
+            value={stats.pending_messages}
+            change={0}
+            icon={Clock}
+            iconClassName="text-yellow-600 border-yellow-500/10 dark:text-yellow-400"
+            onClick={() => navigate('/admin/contact')}
+          />
+          <StatCard
+            title="Closed Tickets"
+            value={stats.closed_messages}
+            change={0}
+            icon={CheckCircle}
+            iconClassName="text-emerald-600 border-emerald-500/10 dark:text-emerald-400"
+            onClick={() => navigate('/admin/contact')}
+          />
+        </div>
+      )}
+
+      {/* Recent Contact Messages */}
+      {stats && stats.recent_contact_messages?.length > 0 && (
+        <div className="card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-wider text-muted font-semibold">Recent Contact Messages</p>
+              <h3 className="text-xl font-semibold text-app">Latest customer inquiries</h3>
+            </div>
+            <button
+              onClick={() => navigate('/admin/contact')}
+              className="rounded-lg border border-app bg-surface px-3 py-2 text-sm font-semibold text-app hover:bg-app/90 hover:text-white transition"
+            >
+              View all
+            </button>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {stats.recent_contact_messages.slice(0, 4).map((message) => (
+              <div key={message.id} className="rounded-2xl border border-app p-4 bg-white shadow-sm">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <p className="text-sm font-semibold text-app truncate">{message.subject}</p>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                    {message.status}
+                  </span>
+                </div>
+                <p className="text-xs text-muted mb-2">{message.name} · {new Date(message.created_at).toLocaleDateString()}</p>
+                <p className="text-sm text-gray-600 line-clamp-3">{message.message}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Payment Activity */}
       {paymentActivity.length > 0 && (
         <div

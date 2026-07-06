@@ -255,7 +255,8 @@ export const storefrontAPI = {
 
   // ── Customer profile ──────────────────────────────────────────────────────
   updateProfile:    (data)        => storefrontClient.put('/customers/profile/update', data),
-
+  
+  contact: (data) => storefrontClient.post("/contact", data),
   // ── Customer orders ───────────────────────────────────────────────────────
   createOrder:      (data)        => storefrontClient.post('/orders/customer', data),
   getOrders:        ()            => storefrontClient.get('/orders/customer/all'),
@@ -343,6 +344,15 @@ export const dashboardAPI = {
     }),
 
   recentActivity: () => api.get('/dashboard/recent-activity'),
+
+  // ── Contact Messages ────────────────────────────────────────────────────────
+
+  getContactMessages: (params = {}) => api.get('/contact', { params }),
+  getContactMessage: (id) => api.get(`/contact/${id}`),
+  replyToContactMessage: (id, data) => api.post(`/contact/${id}/reply`, data),
+  updateContactMessageStatus: (id, status) => api.put(`/contact/${id}`, { status }),
+  deleteContactMessage: (id) => api.delete(`/contact/${id}`),
+  getContactStats: () => api.get('/contact/admin/stats'),
 }
 
 // ─── Offers ───────────────────────────────────────────────────────────────────

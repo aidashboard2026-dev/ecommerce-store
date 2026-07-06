@@ -16,7 +16,8 @@ import {
   Zap,
   Image,
   Grid2X2,
-  Bell
+  Bell,
+  MessageSquare,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuth, useTheme } from '@/shared/hooks/useAuth'
@@ -35,6 +36,7 @@ const navItems = [
   { to: '/admin/offers', label: 'Offers', icon: Tags },
   { to: '/admin/banners', label: 'Banners', icon: Image },
   { to: '/admin/customers', label: 'Customers', icon: UserRound },
+  { to: '/admin/contact', label: 'Contact', icon: MessageSquare },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 

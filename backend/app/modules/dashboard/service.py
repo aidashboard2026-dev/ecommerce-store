@@ -30,6 +30,7 @@ from app.modules.dashboard.constants import (
     UPI_PAYMENT_METHODS,
     WEEKDAY_LABELS,
 )
+from app.modules.contact.service import ContactService
 from app.modules.dashboard.repository import DashboardRepository
 from app.modules.dashboard.schemas import (
     ActivityItem,
@@ -127,12 +128,21 @@ def get_stats(db: Session) -> DashboardStatsResponse:
     top_cats                  = repo.top_categories()
     low_stock_count, low_stock= repo.low_stock_summary()
 
+    contact_stats = ContactService.get_stats(db)
+    recent_contact_messages = ContactService.get_recent_messages(db, limit=5)
+
     return DashboardStatsResponse(
         total_users=total_users,
         total_products=total_products,
         total_revenue=total_revenue,
         total_orders=total_orders,
         published_products=published,
+        total_messages=contact_stats.get("total_messages", 0),
+        today_messages=contact_stats.get("today_messages", 0),
+        week_messages=contact_stats.get("week_messages", 0),
+        month_messages=contact_stats.get("month_messages", 0),
+        pending_messages=contact_stats.get("pending_count", 0),
+        closed_messages=contact_stats.get("closed_count", 0),
 
         revenue_growth=_growth(cur_revenue, prev_revenue),
         user_growth=_growth(cur_admins, prev_admins),
@@ -151,6 +161,7 @@ def get_stats(db: Session) -> DashboardStatsResponse:
         top_categories=[CategoryStat(**c) for c in top_cats],
         low_stock_products=[LowStockProduct(**p) for p in low_stock],
         low_stock_product_count=low_stock_count,
+        recent_contact_messages=recent_contact_messages,
     )
 
 
