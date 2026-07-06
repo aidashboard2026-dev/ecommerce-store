@@ -1,0 +1,461 @@
+/**
+ * frontend/src/admin/pages/ContactMessagesPage.jsx
+ * 
+ * Admin page for managing contact messages.
+ * Displays table with pagination, search, filtering, sorting, and actions.
+ * Integrates with details drawer and reply modal.
+ */
+
+import React, { useState, useEffect } from 'react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Filter,
+  Eye,
+  Trash2,
+  Download,
+  RefreshCw,
+  MessageSquare,
+  Loader,
+} from 'lucide-react';
+import api, { dashboardAPI } from '@/shared/services/api';
+import ContactDetailsDrawer from '@/admin/components/contact/ContactDetailsDrawer';
+import ReplyModal from '@/admin/components/contact/ReplyModal';
+
+const STATUSES = ['All', 'New', 'Pending', 'Replied', 'Closed'];
+
+const StatusBadge = ({ status }) => {
+  const statusConfig = {
+    New: { bg: 'bg-blue-100', text: 'text-blue-800', label: '🆕' },
+    Pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: '⏳' },
+    Replied: { bg: 'bg-green-100', text: 'text-green-800', label: '✓' },
+    Closed: { bg: 'bg-gray-100', text: 'text-gray-800', label: '✓' },
+  };
+
+  const config = statusConfig[status] || statusConfig.New;
+
+  return (
+    <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${config.bg} ${config.text}`}>
+      {config.label} {status}
+    </span>
+  );
+};
+
+const TableSkeleton = () => (
+  <div className="space-y-2">
+    {[...Array(5)].map((_, i) => (
+      <div key={i} className="h-12 bg-gray-200 rounded animate-pulse" />
+    ))}
+  </div>
+);
+
+export default function ContactMessagesPage() {
+  // State
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [totalMessages, setTotalMessages] = useState(0);
+  const [contactStats, setContactStats] = useState({
+    total_messages: 0,
+    today_messages: 0,
+    week_messages: 0,
+    month_messages: 0,
+    pending_count: 0,
+    closed_count: 0,
+  });
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
+  // Filters & Search
+  const [search, setSearch] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('All');
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState('desc');
+
+  // Modals
+  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [replyModalOpen, setReplyModalOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // Toast
+  const [toast, setToast] = useState(null);
+
+  // Fetch messages
+  const fetchMessages = async () => {
+    try {
+      setLoading(true);
+      const [messagesResponse, statsResponse] = await Promise.all([
+        dashboardAPI.getContactMessages({
+          skip: (page - 1) * pageSize,
+          limit: pageSize,
+          search: search || undefined,
+          status: selectedStatus === 'All' ? undefined : selectedStatus,
+          sort_by: sortBy,
+          sort_order: sortOrder,
+        }),
+        dashboardAPI.getContactStats(),
+      ]);
+
+      setMessages(messagesResponse.data.items);
+      setTotalMessages(messagesResponse.data.total);
+      setContactStats(statsResponse.data);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      showToast('Error loading messages', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Refresh data when filters change
+  useEffect(() => {
+    setPage(1); // Reset to first page when filters change
+  }, [search, selectedStatus, sortBy, sortOrder, pageSize]);
+
+  useEffect(() => {
+    fetchMessages();
+  }, [page, pageSize, search, selectedStatus, sortBy, sortOrder]);
+
+  // Toast handler
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // Handlers
+  const handleViewDetails = (message) => {
+    setSelectedMessage(message);
+    setDrawerOpen(true);
+  };
+
+  const handleReply = () => {
+    setDrawerOpen(false);
+    setReplyModalOpen(true);
+  };
+
+  const handleSendReply = async (replyText) => {
+    try {
+      setActionLoading(true);
+      await dashboardAPI.replyToContactMessage(selectedMessage.id, {
+        reply_message: replyText,
+      });
+      showToast('Reply sent successfully!', 'success');
+      setReplyModalOpen(false);
+      fetchMessages();
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      showToast('Failed to send reply', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this message?')) return;
+
+    try {
+      setActionLoading(true);
+      await dashboardAPI.deleteContactMessage(selectedMessage.id);
+      showToast('Message deleted successfully', 'success');
+      setDrawerOpen(false);
+      fetchMessages();
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      showToast('Failed to delete message', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleExport = async (format) => {
+    try {
+      showToast(`Exporting ${format.toUpperCase()}...`, 'info');
+      
+      const response = await api.get('/contact/export', {
+        params: {
+          format,
+          search: search || undefined,
+          status: selectedStatus === 'All' ? undefined : selectedStatus,
+          sort_by: sortBy,
+          sort_order: sortOrder,
+        },
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([response.data], {
+        type: format === 'xlsx'
+          ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          : 'text/csv',
+      });
+
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `contact-messages-${new Date().toISOString().split('T')[0]}.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+
+      showToast(`${format.toUpperCase()} exported successfully`, 'success');
+    } catch (error) {
+      console.error(`Error exporting to ${format}:`, error);
+      showToast(`Failed to export ${format.toUpperCase()}`, 'error');
+    }
+  };
+
+  const totalPages = Math.ceil(totalMessages / pageSize);
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Contact Messages</h1>
+              <p className="text-gray-600 mt-1">Manage customer inquiries and support messages</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={fetchMessages}
+                disabled={loading}
+                className="p-2 hover:bg-gray-200 rounded-lg transition disabled:opacity-50"
+              >
+                <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+              </button>
+            </div>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard label="Total Messages" value={contactStats.total_messages} icon="📧" />
+            <StatCard label="Today's Messages" value={contactStats.today_messages} icon="☀️" />
+            <StatCard label="Pending Tickets" value={contactStats.pending_count} icon="⏳" />
+            <StatCard label="Closed Tickets" value={contactStats.closed_count} icon="✓" />
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            {/* Search */}
+            <div className="relative">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by name, email..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+            >
+              {STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {status === 'All' ? 'All Statuses' : status}
+                </option>
+              ))}
+            </select>
+
+            {/* Sort By */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+            >
+              <option value="created_at">Sort by Date</option>
+              <option value="name">Sort by Name</option>
+              <option value="status">Sort by Status</option>
+            </select>
+
+            {/* Sort Order */}
+            <button
+              onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+            >
+              {sortOrder === 'desc' ? '↓ Newest' : '↑ Oldest'}
+            </button>
+          </div>
+
+          {/* Export Buttons */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleExport('csv')}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+            >
+              <Download size={16} />
+              Export CSV
+            </button>
+            <button
+              onClick={() => handleExport('xlsx')}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200 transition"
+            >
+              <Download size={16} />
+              Export Excel
+            </button>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          {loading ? (
+            <div className="p-6">
+              <TableSkeleton />
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="p-12 text-center">
+              <MessageSquare size={48} className="mx-auto text-gray-300 mb-4" />
+              <p className="text-gray-500 text-lg">No contact messages found</p>
+              <p className="text-gray-400 text-sm mt-1">Messages will appear here when customers submit the contact form</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Subject</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {messages.map((message) => (
+                    <tr key={message.id} className="hover:bg-gray-50 transition">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <p className="text-sm font-medium text-gray-900">{message.name}</p>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <p className="text-sm text-gray-600">{message.email}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-sm text-gray-700 line-clamp-1">{message.subject}</p>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <StatusBadge status={message.status} />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {new Date(message.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <button
+                          onClick={() => handleViewDetails(message)}
+                          className="inline-flex items-center justify-center p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                          title="View Details"
+                        >
+                          <Eye size={18} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {!loading && messages.length > 0 && (
+            <div className="px-6 py-4 border-t flex items-center justify-between bg-gray-50">
+              <div className="text-sm text-gray-600">
+                Showing {Math.min((page - 1) * pageSize + 1, totalMessages)} to{' '}
+                {Math.min(page * pageSize, totalMessages)} of {totalMessages} messages
+              </div>
+
+              <div className="flex items-center gap-2">
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  className="px-2 py-1 text-sm border border-gray-300 rounded"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="p-2 hover:bg-gray-200 rounded disabled:opacity-50"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+
+                <span className="text-sm font-medium">
+                  Page {page} of {totalPages}
+                </span>
+
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="p-2 hover:bg-gray-200 rounded disabled:opacity-50"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Toast */}
+        {toast && (
+          <div
+            className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg shadow-lg text-white ${
+              toast.type === 'success'
+                ? 'bg-green-500'
+                : toast.type === 'error'
+                ? 'bg-red-500'
+                : 'bg-blue-500'
+            } animate-in fade-in slide-in-from-bottom-4`}
+          >
+            {toast.message}
+          </div>
+        )}
+      </div>
+
+      {/* Drawers & Modals */}
+      <ContactDetailsDrawer
+        open={drawerOpen}
+        onClose={() => {
+          setDrawerOpen(false);
+          setSelectedMessage(null);
+        }}
+        message={selectedMessage}
+        onReply={handleReply}
+        onDelete={handleDelete}
+        loading={actionLoading}
+      />
+
+      <ReplyModal
+        open={replyModalOpen}
+        onClose={() => {
+          setReplyModalOpen(false);
+          setDrawerOpen(true);
+        }}
+        message={selectedMessage}
+        onSend={handleSendReply}
+        loading={actionLoading}
+      />
+    </div>
+  );
+}
+
+function StatCard({ label, value, icon }) {
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <p className="text-2xl font-bold text-gray-900">{value}</p>
+      <p className="text-sm text-gray-600 mt-1">{icon} {label}</p>
+    </div>
+  );
+}

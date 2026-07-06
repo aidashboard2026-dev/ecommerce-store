@@ -29,6 +29,7 @@ const CategoriesPage = lazy(() => import("@/admin/pages/CategoriesPage"));
 const AdminOrdersPage = lazy(() => import("@/admin/pages/OrdersPage"));
 const OffersPage = lazy(() => import("@/admin/pages/OffersPage"));
 const CustomersPage = lazy(() => import("@/admin/pages/CustomersPage"));
+const ContactMessagesPage = lazy(() => import("@/admin/pages/ContactMessagesPage"));
 const SettingsPage = lazy(() => import("@/admin/pages/SettingsPage"));
 const BannerPage = lazy(() => import("@/admin/pages/BannerPage"));
 const CustomProductsPage = lazy(() => import("@/admin/pages/CustomProductsPage"),);
@@ -204,6 +205,7 @@ export default function AppRoutes() {
           <Route path="customers" element={<CustomersPage />} />
           <Route path="customers/new" element={<CustomersPage />} />
           <Route path="customers/:id" element={<CustomersPage />} />
+          <Route path="contact" element={<ContactMessagesPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="banners" element={<BannerPage />} />
         </Route>

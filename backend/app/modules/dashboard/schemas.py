@@ -14,6 +14,8 @@ from __future__ import annotations
 from typing import List, Optional
 from pydantic import BaseModel
 
+from app.modules.contact.schemas import ContactMessageResponse
+
 
 # ── /stats ────────────────────────────────────────────────────────────────────
 
@@ -36,6 +38,12 @@ class DashboardStatsResponse(BaseModel):
     total_revenue:   float
     total_orders:    int
     published_products: int
+    total_messages:  int
+    today_messages:  int
+    week_messages:   int
+    month_messages:  int
+    pending_messages: int
+    closed_messages: int
 
     # Growth (30-day window vs prior 30-day window)
     revenue_growth: float
@@ -58,7 +66,7 @@ class DashboardStatsResponse(BaseModel):
     top_categories:          List[CategoryStat]
     low_stock_products:      List[LowStockProduct]
     low_stock_product_count: int
-
+    recent_contact_messages: List[ContactMessageResponse]
 
 # ── /chart-data ───────────────────────────────────────────────────────────────
 

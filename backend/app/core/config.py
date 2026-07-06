@@ -127,6 +127,10 @@ class Settings(BaseSettings):
     SMTP_FROM_NAME: str = "AuraStore"
     SMTP_TLS: bool = True
 
+    # Optional Google reCAPTCHA support for public forms.
+    RECAPTCHA_SECRET_KEY: str = ""
+    RECAPTCHA_MIN_SCORE: float = 0.5
+
     # URL of the frontend — used to build password-reset links in emails.
     # For local dev: http://localhost:5173
     # For production: https://yourdomain.com

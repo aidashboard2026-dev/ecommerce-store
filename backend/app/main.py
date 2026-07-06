@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from sqlalchemy.exc import IntegrityError
 from app.core.config import settings
-from app.api.router import api_router
+from app.api.v1.router import api_router
 from fastapi.middleware.gzip import GZipMiddleware
 # Domain exception hierarchy — handlers registered below
 from app.shared.exceptions import (
