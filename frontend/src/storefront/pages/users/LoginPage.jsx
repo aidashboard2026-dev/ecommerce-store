@@ -3,11 +3,16 @@ import { useDispatch, useSelector } from 'react-redux'
 import { loginThunk, clearError } from '../../store/authSlice'
 import { useTheme } from '../../hooks/useAuth'
 import { Eye, EyeOff, Zap, Sun, Moon } from 'lucide-react'
+import useStoreSettings from '@/shared/hooks/useStoreSettings'
 
 export default function LoginPage() {
   const dispatch = useDispatch()
   const { loading, error } = useSelector((s) => s.auth)
   const { isDark, toggle } = useTheme()
+  const { settings } = useStoreSettings()
+
+  const logoUrl = settings?.logo
+  const storeName = settings?.store_name || "AuraStore"
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -57,11 +62,19 @@ export default function LoginPage() {
       <div className="w-full max-w-[400px] relative animate-slide-up">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-glow mb-4">
-            <Zap size={24} className="text-white" strokeWidth={2.5} />
-          </div>
-          <h1 className="font-display font-bold text-2xl text-app tracking-tight">
-            Admin<span className="text-brand-500">Dash</span> Pro
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={`${storeName} Logo`}
+              className="w-14 h-14 rounded-2xl object-cover shadow-glow mb-4"
+            />
+          ) : (
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-glow mb-4">
+              <Zap size={24} className="text-white" strokeWidth={2.5} />
+            </div>
+          )}
+          <h1 className="font-display font-bold text-2xl text-app tracking-tight text-center">
+            {logoUrl ? storeName : <>Admin<span className="text-brand-500">Dash</span> Pro</>}
           </h1>
           <p className="text-muted text-sm mt-1">Sign in to your dashboard</p>
         </div>

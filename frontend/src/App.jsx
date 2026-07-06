@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast'
 import { fetchMeThunk } from '@/admin/store/authSlice'
 import { fetchCustomerMeThunk } from '@/storefront/store/customerSlice'
 import AppRoutes from '@/shared/routes/AppRoutes'
+import useStoreSettings from '@/shared/hooks/useStoreSettings'
 
 
 function App() {
@@ -13,6 +14,39 @@ function App() {
   const initialized        = useSelector((s) => s.auth.initialized)
   const customerToken      = useSelector((s) => s.customer.token)
   const customerInitialized = useSelector((s) => s.customer.initialized)
+  
+  const { settings } = useStoreSettings()
+
+  useEffect(() => {
+    if (settings) {
+      if (settings.store_name) {
+        document.title = settings.store_name
+        localStorage.setItem('store_name', settings.store_name)
+      }
+      if (settings.logo) {
+        const link = document.querySelector("link[rel~='icon']")
+        if (link) {
+          link.href = settings.logo
+        }
+        localStorage.setItem('store_logo', settings.logo)
+      }
+      if (settings.currency) {
+        localStorage.setItem('store_currency', settings.currency)
+      }
+      if (settings.support_email) {
+        localStorage.setItem('store_email', settings.support_email)
+      }
+      if (settings.support_phone) {
+        localStorage.setItem('store_phone', settings.support_phone)
+      }
+      if (settings.country) {
+        localStorage.setItem('store_country', settings.country)
+      }
+      if (settings.store_url) {
+        localStorage.setItem('store_url', settings.store_url)
+      }
+    }
+  }, [settings])
 
   useEffect(() => {
     if (token) {

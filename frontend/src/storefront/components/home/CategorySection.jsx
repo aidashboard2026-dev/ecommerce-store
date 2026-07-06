@@ -3,17 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { storefrontAPI } from "@/shared/services/api";
-
-const BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "");
-
-function getImageUrl(path) {
-  if (!path) return "";
-  if (path.startsWith("blob:") || path.startsWith("http://") || path.startsWith("https://")) {
-    return path;
-  }
-  if (path.startsWith("/")) return `${BACKEND_ORIGIN}${path}`;
-  return `${BACKEND_ORIGIN}/uploads/categories/${path}`;
-}
+import { getImageUrl } from "@/shared/utils/productUtils";
 
 export default function CategorySection() {
   const { data: categories = [], isLoading, isError } = useQuery({

@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Any
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 
 class HomepageCategoryBase(BaseModel):
@@ -93,6 +94,22 @@ class HomepageCategoryResponse(HomepageCategoryBase):
     id: int
     created_at: datetime
     updated_at: datetime | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def resolve_image_url(cls, data: Any) -> Any:
+        from app.shared.storage.supabase_storage import get_category_image_url
+
+        if isinstance(data, dict):
+            data["image"] = get_category_image_url(data.get("image"))
+        else:
+            d = {}
+            for field in cls.model_fields.keys():
+                if hasattr(data, field):
+                    d[field] = getattr(data, field)
+            d["image"] = get_category_image_url(d.get("image"))
+            return d
+        return data
 
     class Config:
         from_attributes = True

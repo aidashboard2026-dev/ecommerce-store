@@ -109,6 +109,21 @@ def update_admin_security(db: Session, admin: Admin, payload: AdminSecurityUpdat
     update_data = payload.model_dump(exclude_unset=True)
 
     email = update_data.get("email")
+    username = update_data.get("username")
+
+    if email or username:
+        current_password = update_data.get("current_password")
+        if not current_password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is required to update username or email."
+            )
+        if not verify_password(current_password, admin.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect."
+            )
+
     if email and email != admin.email:
         existing_admin = db.query(Admin).filter(Admin.email == email, Admin.id != admin.id).first()
         if existing_admin:
@@ -117,7 +132,6 @@ def update_admin_security(db: Session, admin: Admin, payload: AdminSecurityUpdat
         security_row.email = email
         security_row.email_verified = False
 
-    username = update_data.get("username")
     if username:
         admin.name = username
         security_row.username = username

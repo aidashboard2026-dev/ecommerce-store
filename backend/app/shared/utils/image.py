@@ -1,28 +1,3 @@
-"""
-app/shared/utils/image.py
-
-Centralized image upload validation.
-
-Previously copy-pasted into five separate routers:
-    products/router.py
-    custom_products/router.py
-    offers/router.py
-    banners/router.py
-    settings/router.py
-
-Usage:
-    from app.shared.utils.image import validate_and_read_image
-
-    contents = validate_and_read_image(file)   # in sync endpoints
-    # or from async endpoints:
-    await file.seek(0)   # reset if already read
-    contents = validate_and_read_image(file)
-
-Returns the raw bytes of the validated image.
-Raises HTTPException (422 / 413) on any validation failure so callers
-don't need additional try/except wrapping.
-"""
-
 import os
 from typing import Optional
 

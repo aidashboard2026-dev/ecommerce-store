@@ -196,6 +196,8 @@ export default function AppRoutes() {
         >
           <Route index element={<DashboardPage />} />
           <Route path="products" element={<AdminProductsPage />} />
+          <Route path="products/:id" element={<AdminProductsPage />} />
+          <Route path="products/:id/edit" element={<AdminProductsPage />} />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="custom-products" element={<CustomProductsPage />} />
           <Route path="orders" element={<AdminOrdersPage />} />
