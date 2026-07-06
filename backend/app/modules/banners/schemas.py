@@ -11,6 +11,8 @@ class BannerCreate(BaseModel):
 
     cta_text: Optional[str] = None
     cta_link: Optional[str] = None
+    destination_type: Optional[str] = None
+    destination_id: Optional[int] = None
 
     placement: str = "hero"
     sort_order: int = 0
@@ -36,6 +38,8 @@ class BannerUpdate(BaseModel):
 
     cta_text: Optional[str] = None
     cta_link: Optional[str] = None
+    destination_type: Optional[str] = None
+    destination_id: Optional[int] = None
 
     placement: Optional[str] = None
     sort_order: Optional[int] = None
@@ -61,6 +65,8 @@ class BannerResponse(BaseModel):
 
     cta_text: Optional[str] = None
     cta_link: Optional[str] = None
+    destination_type: Optional[str] = None
+    destination_id: Optional[int] = None
 
     placement: str
     sort_order: int

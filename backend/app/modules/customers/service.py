@@ -62,22 +62,45 @@ def _build_order_stats_subquery(db: Session):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def create_customer(db: Session, data: CustomerCreate) -> Customer:
-    existing = db.query(Customer).filter(Customer.email == data.email.lower()).first()
+    from app.shared.normalization import normalize_email, normalize_name
+    norm_email = normalize_email(data.email)
+    existing = db.query(Customer).filter(Customer.email == norm_email).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Customer with email '{data.email}' already exists.",
         )
 
+    norm_city = None
+    if data.city:
+        try:
+            norm_city = normalize_name(data.city).canonical_name
+        except Exception:
+            norm_city = data.city.strip()
+
+    norm_state = None
+    if data.state:
+        try:
+            norm_state = normalize_name(data.state).canonical_name
+        except Exception:
+            norm_state = data.state.strip()
+
+    norm_country = None
+    if data.country:
+        try:
+            norm_country = normalize_name(data.country).canonical_name
+        except Exception:
+            norm_country = data.country.strip()
+
     customer = Customer(
         first_name=data.first_name.strip(),
         last_name=data.last_name.strip(),
-        email=data.email.lower(),
+        email=norm_email,
         phone=data.phone,
         dob=data.dob,
-        city=data.city,
-        state=data.state,
-        country=data.country,
+        city=norm_city,
+        state=norm_state,
+        country=norm_country,
         tags=_tags_to_str(data.tags),
         notes=data.notes,
         is_active=True,
@@ -112,6 +135,31 @@ def update_customer(db: Session, customer_id: int, data: CustomerUpdate) -> Cust
 
     if "tags" in update_data:
         update_data["tags"] = _tags_to_str(update_data["tags"])
+
+    from app.shared.normalization import normalize_name
+    
+    if "first_name" in update_data and update_data["first_name"]:
+        update_data["first_name"] = update_data["first_name"].strip()
+    if "last_name" in update_data and update_data["last_name"]:
+        update_data["last_name"] = update_data["last_name"].strip()
+
+    if "city" in update_data and update_data["city"]:
+        try:
+            update_data["city"] = normalize_name(update_data["city"]).canonical_name
+        except Exception:
+            update_data["city"] = update_data["city"].strip()
+
+    if "state" in update_data and update_data["state"]:
+        try:
+            update_data["state"] = normalize_name(update_data["state"]).canonical_name
+        except Exception:
+            update_data["state"] = update_data["state"].strip()
+
+    if "country" in update_data and update_data["country"]:
+        try:
+            update_data["country"] = normalize_name(update_data["country"]).canonical_name
+        except Exception:
+            update_data["country"] = update_data["country"].strip()
 
     for field, value in update_data.items():
         setattr(customer, field, value)
@@ -342,3 +390,47 @@ def get_customer_analytics(db: Session) -> Dict[str, Any]:
             for r in top_spenders
         ],
     }
+
+
+def update_customer_profile(db: Session, customer: Customer, data: CustomerUpdate) -> Customer:
+    """
+    Update customer's own profile details.
+    Normalizes city, state, country, names and phone.
+    """
+    from app.shared.normalization import normalize_name
+    
+    update_data = data.model_dump(exclude_unset=True)
+    # Remove read-only / admin-only fields for safety
+    admin_only = {"is_active", "tags", "notes"}
+    for f in admin_only:
+        update_data.pop(f, None)
+        
+    if "first_name" in update_data and update_data["first_name"]:
+        update_data["first_name"] = update_data["first_name"].strip()
+    if "last_name" in update_data and update_data["last_name"]:
+        update_data["last_name"] = update_data["last_name"].strip()
+        
+    if "city" in update_data and update_data["city"]:
+        try:
+            update_data["city"] = normalize_name(update_data["city"]).canonical_name
+        except Exception:
+            update_data["city"] = update_data["city"].strip()
+            
+    if "state" in update_data and update_data["state"]:
+        try:
+            update_data["state"] = normalize_name(update_data["state"]).canonical_name
+        except Exception:
+            update_data["state"] = update_data["state"].strip()
+            
+    if "country" in update_data and update_data["country"]:
+        try:
+            update_data["country"] = normalize_name(update_data["country"]).canonical_name
+        except Exception:
+            update_data["country"] = update_data["country"].strip()
+            
+    for field, value in update_data.items():
+        setattr(customer, field, value)
+        
+    db.commit()
+    db.refresh(customer)
+    return customer

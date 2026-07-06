@@ -35,6 +35,8 @@ def create_banner(
 
         cta_text=banner.cta_text,
         cta_link=banner.cta_link,
+        destination_type=banner.destination_type,
+        destination_id=banner.destination_id,
 
         placement=banner.placement,
         sort_order=banner.sort_order,

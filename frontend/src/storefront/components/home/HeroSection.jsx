@@ -3,29 +3,34 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react'
 import { getImageUrl } from '@/shared/utils/productUtils'
 
+import { useDestinationResolver } from '@/storefront/routing/DestinationResolver'
+
 const AUTO_ROTATE_MS = 6000
 
 // ─── CTA button — works for internal routes and external links alike ────────
 function HeroCta({ banner }) {
+  const { resolve } = useDestinationResolver()
   if (!banner.cta_text) return null
 
   const className =
     'inline-flex items-center gap-2 bg-white text-brand-600 font-semibold text-sm px-6 py-3 rounded-full hover:bg-white/90 transition-all duration-200 shadow-lg'
 
-  if (!banner.cta_link) {
+  const resolvedLink = resolve(banner.destination_type, banner.destination_id, banner.cta_link)
+
+  if (!resolvedLink) {
     return <span className={className}>{banner.cta_text}</span>
   }
 
-  if (banner.cta_link.startsWith('http://') || banner.cta_link.startsWith('https://')) {
+  if (resolvedLink.startsWith('http://') || resolvedLink.startsWith('https://')) {
     return (
-      <a href={banner.cta_link} target="_blank" rel="noopener noreferrer" className={className}>
+      <a href={resolvedLink} target="_blank" rel="noopener noreferrer" className={className}>
         {banner.cta_text} <ArrowRight size={16} />
       </a>
     )
   }
 
   return (
-    <Link to={banner.cta_link} className={className}>
+    <Link to={resolvedLink} className={className}>
       {banner.cta_text} <ArrowRight size={16} />
     </Link>
   )

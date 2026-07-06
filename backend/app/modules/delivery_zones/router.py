@@ -33,14 +33,20 @@ def get_delivery_estimate(
     Falls back to the default (5 days) when no zone record is found.
     Called by the storefront CheckoutPage to show estimated delivery date.
     """
+    from app.shared.normalization import normalize_name
+    try:
+        norm_city = normalize_name(city).canonical_name
+    except Exception:
+        norm_city = city.strip()
+
     zone = (
         db.query(DeliveryZone)
-        .filter(DeliveryZone.city.ilike(city.strip()))
+        .filter(DeliveryZone.city == norm_city)
         .first()
     )
     days = zone.delivery_days if zone else _DEFAULT_DELIVERY_DAYS
     return DeliveryEstimateResponse(
-        city=city.strip(),
+        city=norm_city,
         delivery_days=days,
         message=f"Estimated delivery in {days} business day{'s' if days != 1 else ''}",
     )
@@ -62,7 +68,13 @@ def create_delivery_zone(
     db: Session = Depends(get_db),
     _: Admin = Depends(get_current_admin),
 ):
-    zone = DeliveryZone(city=payload.city.strip(), delivery_days=payload.delivery_days)
+    from app.shared.normalization import normalize_name
+    try:
+        norm_city = normalize_name(payload.city).canonical_name
+    except Exception:
+        norm_city = payload.city.strip()
+
+    zone = DeliveryZone(city=norm_city, delivery_days=payload.delivery_days)
     db.add(zone)
     try:
         db.commit()
@@ -70,7 +82,7 @@ def create_delivery_zone(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"A delivery zone for '{payload.city}' already exists.",
+            detail=f"A delivery zone for '{norm_city}' already exists.",
         )
     db.refresh(zone)
     return zone
@@ -87,8 +99,12 @@ def update_delivery_zone(
     if not zone:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone not found")
 
+    from app.shared.normalization import normalize_name
     if payload.city is not None:
-        zone.city = payload.city.strip()
+        try:
+            zone.city = normalize_name(payload.city).canonical_name
+        except Exception:
+            zone.city = payload.city.strip()
     if payload.delivery_days is not None:
         zone.delivery_days = payload.delivery_days
 
@@ -98,7 +114,7 @@ def update_delivery_zone(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"A delivery zone for '{payload.city}' already exists.",
+            detail=f"A delivery zone for '{zone.city}' already exists.",
         )
     db.refresh(zone)
     return zone

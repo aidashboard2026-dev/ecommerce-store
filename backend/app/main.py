@@ -120,6 +120,29 @@ _IS_PRODUCTION = os.getenv("ENVIRONMENT", "development").lower() == "production"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # ── Programmatic Alembic Upgrade ──
+    try:
+        import alembic.config
+        import alembic.command
+        ini_path = "alembic.ini"
+        if not os.path.exists(ini_path) and os.path.exists("backend/alembic.ini"):
+            ini_path = "backend/alembic.ini"
+        alembic_cfg = alembic.config.Config(ini_path)
+        alembic.command.upgrade(alembic_cfg, "head")
+        logger.info("Alembic upgrade completed successfully on lifespan startup.")
+    except Exception as e:
+        logger.error(f"Failed to run alembic upgrade on startup: {e}")
+
+    # ── Bootstrap Normalization Registry ──
+    from app.shared.normalization.rules.aliases import default_registry
+    from app.core.normalization import AURASTORE_COMPOUND_MAPPINGS, validate_aurastore_aliases
+
+    
+    # Run lightweight startup check (validates mappings integrity)
+    validate_aurastore_aliases(AURASTORE_COMPOUND_MAPPINGS)
+    
+    default_registry.initialize_aliases(AURASTORE_COMPOUND_MAPPINGS)
+
     # ── Fix 8: Fail loudly if Supabase credentials are absent in production ──
     if _IS_PRODUCTION and not (settings.SUPABASE_URL and settings.SUPABASE_SERVICE_ROLE_KEY):
         raise RuntimeError(

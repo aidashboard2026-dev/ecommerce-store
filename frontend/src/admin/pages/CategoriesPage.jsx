@@ -13,6 +13,7 @@ import toast from "react-hot-toast";
 import { homepageCategoriesAPI } from "@/shared/services/api";
 import useBusinessLimits from "@/shared/hooks/useBusinessLimits";
 import { getImageUrl } from "@/shared/utils/productUtils";
+import RoutePicker from "@/shared/components/ui/RoutePicker";
 
 const emptyForm = {
   name: "",
@@ -20,49 +21,17 @@ const emptyForm = {
   imageFile: null,
 };
 
-const pageOptions = [
-  {
-    name: "HOME",
-    path: "/",
-  },
-  {
-    name: "T-SHIRTS FOR MENS",
-    path: "/t-shirts",
-  },
-  {
-    name: "TRACK PANTS FOR MENS",
-    path: "/track-pants",
-  },
-  {
-    name: "TROUSERS FOR MENS",
-    path: "/trousers",
-  },
-  {
-    name: "SHIRTS FOR MENS",
-    path: "/shirts",
-  },
-  {
-    name: "CUSTOM PRODUCT",
-    path: "/custom-product",
-  },
-  {
-    name: "OFFERS",
-    path: "/offers",
-  },
-  {
-    name: "TRACK ORDER",
-    path: "/track-order",
-  },
-];
 
 
 function CategoryModal({ category, onClose, onSaved }) {
   const isEdit = Boolean(category?.id);
   const [form, setForm] = useState({
-  name: category?.name || "",
-  path: category?.path || "",
-  imageFile: null,
-});
+    name: category?.name || "",
+    path: category?.path || "",
+    destinationType: category?.destination_type || "",
+    destinationId: category?.destination_id || "",
+    imageFile: null,
+  });
   const [previewUrl, setPreviewUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const blobRef = useRef(null);
@@ -78,16 +47,6 @@ function CategoryModal({ category, onClose, onSaved }) {
       if (blobRef.current) URL.revokeObjectURL(blobRef.current);
     };
   }, []);
-
-  useEffect(() => {
-    if (form.page && form.page !== "products") {
-      setForm((prev) => ({
-        ...prev,
-
-        path: form.page,
-      }));
-    }
-  }, [form.page]);
 
   const setField = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -119,11 +78,11 @@ function CategoryModal({ category, onClose, onSaved }) {
       toast.error("Category image is required.");
       return false;
     }
-    if (!form.path.trim()) {
-      toast.error("Click path is required.");
+    if (!form.destinationType && !form.path.trim()) {
+      toast.error("Either click path or destination is required.");
       return false;
     }
-    if (!form.path.trim().startsWith("/")) {
+    if (form.path.trim() && !form.path.trim().startsWith("/")) {
       toast.error("Click path must start with /.");
       return false;
     }
@@ -137,6 +96,8 @@ function CategoryModal({ category, onClose, onSaved }) {
     const formData = new FormData();
     formData.append("name", form.name.trim());
     formData.append("path", form.path.trim());
+    formData.append("destination_type", form.destinationType || "");
+    formData.append("destination_id", form.destinationId ? String(form.destinationId) : "");
     if (form.imageFile) formData.append("image", form.imageFile);
 
     setSaving(true);
@@ -221,28 +182,19 @@ function CategoryModal({ category, onClose, onSaved }) {
             </label>
           </div>
 
-          <div className="space-y-1.5">
-  <label className="block text-xs font-semibold text-app">
-    Page Path *
-  </label>
-
-  <select
-    value={form.path}
-    onChange={(e) => setField("path", e.target.value)}
-    className="input-field"
-  >
-    <option value="">Select Page</option>
-
-    {pageOptions.map((item) => (
-      <option
-        key={item.path}
-        value={item.path}
-      >
-        {item.name}
-      </option>
-    ))}
-  </select>
-</div>
+          <RoutePicker
+            label="Page Path *"
+            value={form.path}
+            onChange={(route, opt) => {
+              setForm((prev) => ({
+                ...prev,
+                path: route,
+                destinationType: opt ? opt.type : "",
+                destinationId: opt ? opt.id : "",
+              }));
+            }}
+            placeholder="Search category or homepage..."
+          />
         </div>
 
         <div className="flex justify-end gap-2 border-t border-app px-5 py-4">

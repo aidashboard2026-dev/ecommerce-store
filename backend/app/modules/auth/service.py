@@ -15,11 +15,14 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+from app.shared.normalization import normalize_email
+
 
 # ── Admin auth ────────────────────────────────────────────────────────────────
 
 def authenticate_admin(db: Session, email: str, password: str):
-    admin = db.query(Admin).filter(Admin.email == email).first()
+    norm_email = normalize_email(email)
+    admin = db.query(Admin).filter(Admin.email == norm_email).first()
 
     if not admin:
         logger.debug("Admin login failed: email not found (email=%s)", email)
@@ -89,9 +92,10 @@ def register_customer(db: Session, signup_data: SignupRequest) -> Customer:
     never persisted.
     """
     # Fast-path duplicate check — avoids a bcrypt hash call on already-known dupes.
+    norm_email = normalize_email(signup_data.email)
     existing = (
         db.query(Customer.id)
-        .filter(Customer.email == signup_data.email)
+        .filter(Customer.email == norm_email)
         .first()
     )
     if existing:
@@ -103,7 +107,7 @@ def register_customer(db: Session, signup_data: SignupRequest) -> Customer:
     customer = Customer(
         first_name=signup_data.first_name.strip(),
         last_name=signup_data.last_name.strip(),
-        email=signup_data.email,
+        email=norm_email,
         phone=signup_data.phone,
         dob=signup_data.dob,
         password_hash=get_password_hash(signup_data.password),
@@ -135,7 +139,8 @@ def login_customer(db: Session, email: str, password: str):
     Returns a dict with access_token (type='customer') and the customer object,
     or None if credentials are invalid.
     """
-    customer = db.query(Customer).filter(Customer.email == email).first()
+    norm_email = normalize_email(email)
+    customer = db.query(Customer).filter(Customer.email == norm_email).first()
     if not customer:
         return None
 
@@ -196,7 +201,8 @@ def request_password_reset(db: Session, email: str) -> str | None:
       - Expires after settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES (default 60)
       - Invalidated (nulled) on use or replaced on re-request
     """
-    customer = db.query(Customer).filter(Customer.email == email).first()
+    norm_email = normalize_email(email)
+    customer = db.query(Customer).filter(Customer.email == norm_email).first()
     if not customer or not customer.password_hash:
         # No account, or an admin-created account with no password — silently return None.
         # The endpoint always returns 200, preventing email enumeration (SEC-08 mitigation).

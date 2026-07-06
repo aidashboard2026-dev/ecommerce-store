@@ -14,6 +14,7 @@ from app.modules.orders.router import router as orders_router
 from app.modules.products.router import router as products_router
 from app.modules.settings.router import router as settings_router
 from app.modules.contact.router import router as contact_router
+from app.shared.routing.router import router as routes_router
 
 api_router = APIRouter()
 
@@ -31,3 +32,5 @@ api_router.include_router(settings_router, prefix="/settings", tags=["Settings"]
 api_router.include_router(delivery_zones_router, prefix="/delivery-zones", tags=["Delivery Zones"])
 api_router.include_router(audit_router, prefix="/audit", tags=["Audit"])
 api_router.include_router(contact_router, prefix="/contact", tags=["Contact"])
+api_router.include_router(routes_router, prefix="/admin/routes", tags=["Route Picker"])
+

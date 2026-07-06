@@ -68,7 +68,15 @@ def _calculate_delivery(city: Optional[str], ordered_at: datetime) -> Tuple[int,
     Return (delivery_days, expected_delivery_date) for the given city.
     Falls back to DEFAULT_DELIVERY_DAYS when city is unknown.
     """
-    days     = DELIVERY_DAYS_MAP.get(city or "", DEFAULT_DELIVERY_DAYS)
+    cleaned_city = ""
+    if city:
+        try:
+            from app.shared.normalization import normalize_name
+            cleaned_city = normalize_name(city).canonical_name
+        except Exception:
+            cleaned_city = city.strip()
+            
+    days     = DELIVERY_DAYS_MAP.get(cleaned_city, DEFAULT_DELIVERY_DAYS)
     due_date = ordered_at + timedelta(days=days)
     return days, due_date
 
@@ -196,6 +204,30 @@ def _build_and_persist_order(
         data["customer_name"]  = f"{customer.first_name} {customer.last_name}"
         data["customer_email"] = customer.email
         data["customer_phone"] = customer.phone or order_in.customer_phone
+
+    # Apply email and address normalization
+    from app.shared.normalization import normalize_email, normalize_name
+    
+    if "customer_email" in data and data["customer_email"]:
+        data["customer_email"] = normalize_email(data["customer_email"])
+        
+    if "city" in data and data["city"]:
+        try:
+            data["city"] = normalize_name(data["city"]).canonical_name
+        except Exception:
+            data["city"] = data["city"].strip()
+            
+    if "state" in data and data["state"]:
+        try:
+            data["state"] = normalize_name(data["state"]).canonical_name
+        except Exception:
+            data["state"] = data["state"].strip()
+            
+    if "country" in data and data["country"]:
+        try:
+            data["country"] = normalize_name(data["country"]).canonical_name
+        except Exception:
+            data["country"] = data["country"].strip()
 
     data["delivery_days"]          = delivery_days
     data["expected_delivery_date"] = expected_date
@@ -386,6 +418,29 @@ def update_order(db: Session, order_id: int, payload: OrderUpdate) -> OrderRespo
     old_tracking_status = order.tracking_status
     old_payment_status = order.payment_status
     update = payload.model_dump(exclude_unset=True)
+
+    from app.shared.normalization import normalize_email, normalize_name
+    
+    if "customer_email" in update and update["customer_email"]:
+        update["customer_email"] = normalize_email(update["customer_email"])
+        
+    if "city" in update and update["city"]:
+        try:
+            update["city"] = normalize_name(update["city"]).canonical_name
+        except Exception:
+            update["city"] = update["city"].strip()
+            
+    if "state" in update and update["state"]:
+        try:
+            update["state"] = normalize_name(update["state"]).canonical_name
+        except Exception:
+            update["state"] = update["state"].strip()
+            
+    if "country" in update and update["country"]:
+        try:
+            update["country"] = normalize_name(update["country"]).canonical_name
+        except Exception:
+            update["country"] = update["country"].strip()
 
     new_status = update.get("tracking_status")
     if new_status is not None:

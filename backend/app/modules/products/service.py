@@ -5,7 +5,14 @@ import uuid
 from datetime import datetime
 from typing import Optional, List
 from fastapi import HTTPException, status
-from app.shared.utils.normalization import normalize_name, check_duplicate_catalog_item, get_search_terms
+from app.shared.normalization import (
+    normalize_name,
+    generate_slug,
+    get_search_terms,
+    ValidationError as NormalizationValidationError,
+    ReservedWordError as NormalizationReservedWordError,
+    AliasConflictError as NormalizationAliasConflictError,
+)
 from app.shared.exceptions import (
     NotFoundError, ConflictError, BusinessRuleError,
     ValidationError as DomainValidationError,
@@ -37,18 +44,44 @@ MAX_PER_PAGE = 100
 logger = logging.getLogger(__name__)
 
 
+def _check_duplicate_catalog_item(
+    query: Session.query,
+    name_to_check: str,
+    name_attr: str = "name",
+    id_attr: str = "id",
+    exclude_id: Optional[int] = None,
+    item_type: str = "Category"
+) -> None:
+    """
+    Validates duplicates using the centralized normalization engine.
+    """
+    entity = normalize_name(name_to_check)
+    norm_new = entity.canonical_name
+    if not norm_new:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{item_type} name cannot be empty or whitespace only."
+        )
+        
+    if exclude_id is not None:
+        model_class = query.column_descriptions[0]['expr']
+        query = query.filter(getattr(model_class, id_attr) != exclude_id)
+        
+    for item in query.all():
+        item_name = getattr(item, name_attr)
+        if normalize_name(item_name).canonical_name.lower() == norm_new.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"{item_type} already exists."
+            )
+
+
 
 
 
 # ─────────────────────────────────────────────────────────────
-# Slug helpers
+# Slug helpers (legacy _slugify removed; generate_slug used directly)
 # ─────────────────────────────────────────────────────────────
-
-def _slugify(text: str) -> str:
-    slug = text.lower().strip()
-    slug = re.sub(r"[^\w\s-]", "", slug)
-    slug = re.sub(r"[\s_]+", "-", slug)
-    return re.sub(r"-+", "-", slug).strip("-")
 
 
 def _unique_slug(db: Session, model, base_slug: str, exclude_id: Optional[int] = None) -> str:
@@ -220,7 +253,7 @@ def get_category(db: Session, category_id: int) -> Category:
 
 
 def check_duplicate_category(db: Session, name: str, exclude_id: int = None):
-    check_duplicate_catalog_item(
+    _check_duplicate_catalog_item(
         query=db.query(Category),
         name_to_check=name,
         name_attr="name",
@@ -239,18 +272,19 @@ def create_category(db: Session, data: CategoryCreate) -> CategoryResponse:
             detail="Your current store configuration has reached the maximum allowed limit. Please contact the system administrator if you need additional categories or collections."
         )
 
-    norm_name = normalize_name(data.name)
-    if not norm_name:
+    try:
+        entity = normalize_name(data.name)
+    except (NormalizationValidationError, NormalizationReservedWordError, NormalizationAliasConflictError) as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Category name cannot be empty or whitespace only."
+            detail=str(e)
         )
 
-    check_duplicate_category(db, norm_name)
+    check_duplicate_category(db, entity.canonical_name)
 
-    slug = _unique_slug(db, Category, _slugify(norm_name))
+    slug = _unique_slug(db, Category, entity.slug)
     cat = Category(
-        name=norm_name,
+        name=entity.canonical_name,
         slug=slug,
         description=data.description,
         status=data.status,
@@ -272,15 +306,16 @@ def update_category(db: Session, category_id: int, data: CategoryUpdate) -> Cate
     patch = data.model_dump(exclude_unset=True)
 
     if "name" in patch:
-        norm_name = normalize_name(patch["name"])
-        if not norm_name:
+        try:
+            entity = normalize_name(patch["name"])
+        except (NormalizationValidationError, NormalizationReservedWordError, NormalizationAliasConflictError) as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Category name cannot be empty or whitespace only."
+                detail=str(e)
             )
-        check_duplicate_category(db, norm_name, exclude_id=category_id)
-        patch["name"] = norm_name
-        patch["slug"] = _unique_slug(db, Category, _slugify(norm_name), exclude_id=category_id)
+        check_duplicate_category(db, entity.canonical_name, exclude_id=category_id)
+        patch["name"] = entity.canonical_name
+        patch["slug"] = _unique_slug(db, Category, entity.slug, exclude_id=category_id)
 
     for k, v in patch.items():
         setattr(cat, k, v)
@@ -370,7 +405,7 @@ def get_collection(db: Session, collection_id: int) -> Collection:
 
 
 def check_duplicate_collection(db: Session, name: str, exclude_id: int = None):
-    check_duplicate_catalog_item(
+    _check_duplicate_catalog_item(
         query=db.query(Collection),
         name_to_check=name,
         name_attr="name",
@@ -389,20 +424,21 @@ def create_collection(db: Session, data: CollectionCreate) -> CollectionResponse
             detail="Your current store configuration has reached the maximum allowed limit. Please contact the system administrator if you need additional categories or collections."
         )
 
-    norm_name = normalize_name(data.name)
-    if not norm_name:
+    try:
+        entity = normalize_name(data.name)
+    except (NormalizationValidationError, NormalizationReservedWordError, NormalizationAliasConflictError) as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Collection name cannot be empty or whitespace only."
+            detail=str(e)
         )
 
-    check_duplicate_collection(db, norm_name)
+    check_duplicate_collection(db, entity.canonical_name)
 
     if data.category_id:
         get_category(db, data.category_id)
-    slug = _unique_slug(db, Collection, _slugify(norm_name))
+    slug = _unique_slug(db, Collection, entity.slug)
     col = Collection(
-        name=norm_name,
+        name=entity.canonical_name,
         slug=slug,
         description=data.description,
         status=data.status,
@@ -436,15 +472,16 @@ def update_collection(db: Session, collection_id: int, data: CollectionUpdate) -
     if "category_id" in patch and patch["category_id"]:
         get_category(db, patch["category_id"])
     if "name" in patch:
-        norm_name = normalize_name(patch["name"])
-        if not norm_name:
+        try:
+            entity = normalize_name(patch["name"])
+        except (NormalizationValidationError, NormalizationReservedWordError, NormalizationAliasConflictError) as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Collection name cannot be empty or whitespace only."
+                detail=str(e)
             )
-        check_duplicate_collection(db, norm_name, exclude_id=collection_id)
-        patch["name"] = norm_name
-        patch["slug"] = _unique_slug(db, Collection, _slugify(norm_name), exclude_id=collection_id)
+        check_duplicate_collection(db, entity.canonical_name, exclude_id=collection_id)
+        patch["name"] = entity.canonical_name
+        patch["slug"] = _unique_slug(db, Collection, entity.slug, exclude_id=collection_id)
 
     for k, v in patch.items():
         setattr(col, k, v)
@@ -835,7 +872,13 @@ def create_product(db: Session, product_in: ProductCreate) -> ProductResponse:
             detail=f"Maximum product limit reached. You can only maintain up to {MAX_PRODUCTS} products. Please delete an existing product before adding a new one."
         )
 
-    base_slug = _slugify(product_in.title)
+    try:
+        base_slug = generate_slug(product_in.title)
+    except (NormalizationValidationError, NormalizationReservedWordError, NormalizationAliasConflictError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
     slug = _ensure_unique_slug(db, base_slug)
 
     product = Product(
@@ -932,7 +975,13 @@ def update_product(db: Session, product_id: int, product_in: ProductUpdate) -> P
             patch[img_field] = normalize_img(patch[img_field])
 
     if "title" in patch and patch["title"]:
-        base_slug = _slugify(patch["title"])
+        try:
+            base_slug = generate_slug(patch["title"])
+        except (NormalizationValidationError, NormalizationReservedWordError, NormalizationAliasConflictError) as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
         patch["slug"] = _ensure_unique_slug(db, base_slug, exclude_id=product_id)
 
     if "status" in patch and patch["status"]:
@@ -1329,9 +1378,16 @@ def get_products_public(
                 Product.collection_id.in_(col_subq),
             ))
     if collection:
-        norm_col = normalize_name(collection)
-        # Try name match first, then slug as fallback (robust to any stored naming convention)
-        col_slug = _slugify(norm_col)
+        try:
+            entity = normalize_name(collection)
+            norm_col = entity.canonical_name
+            col_slug = entity.slug
+        except Exception:
+            norm_col = collection
+            try:
+                col_slug = generate_slug(collection)
+            except Exception:
+                col_slug = ""
         col_db = (
             db.query(Collection.id)
             .filter(or_(Collection.name.ilike(norm_col), Collection.slug == col_slug))
@@ -1350,9 +1406,16 @@ def get_products_public(
             gender_subq = db.query(ProductGender.product_id).filter(ProductGender.gender.in_(normalized_genders)).subquery()
             base_filters.append(Product.id.in_(select(gender_subq.c.product_id)))
     if category:
-        norm_cat = normalize_name(category)
-        # Try name match first, then slug as fallback (robust to any stored naming convention)
-        cat_slug = _slugify(norm_cat)
+        try:
+            entity = normalize_name(category)
+            norm_cat = entity.canonical_name
+            cat_slug = entity.slug
+        except Exception:
+            norm_cat = category
+            try:
+                cat_slug = generate_slug(category)
+            except Exception:
+                cat_slug = ""
         cat_db = (
             db.query(Category.id)
             .filter(or_(Category.name.ilike(norm_cat), Category.slug == cat_slug))
@@ -1521,11 +1584,17 @@ def get_products_public(
 
 
 def get_product_by_slug(db: Session, slug: str) -> ProductResponse:
+    try:
+        from app.shared.normalization import normalize_name
+        norm_slug = normalize_name(slug).slug
+    except Exception:
+        norm_slug = slug
+
     product = (
         db.query(Product)
         .options(selectinload(Product.variants), selectinload(Product.genders_rel))
         .filter(
-            Product.slug == slug,
+            Product.slug == norm_slug,
             Product.deleted_at.is_(None),
             Product.status == ProductStatus.published,
         )

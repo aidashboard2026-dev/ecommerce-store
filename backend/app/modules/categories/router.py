@@ -64,7 +64,9 @@ def list_admin_categories(
 def create_admin_category(
     request: Request,
     name: str = Form(...),
-    path: str = Form(...),
+    path: Optional[str] = Form(None),
+    destination_type: Optional[str] = Form(None),
+    destination_id: Optional[int] = Form(None),
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_admin),
@@ -72,8 +74,35 @@ def create_admin_category(
     if not image or not image.filename:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Category image is required.")
 
+    from app.shared.routing.utils import is_valid_route, is_valid_destination
+
+    if destination_type and destination_type.strip():
+        dst_type = destination_type.strip()
+        if not is_valid_destination(db, dst_type, destination_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Destination '{dst_type}' with ID {destination_id} is not valid or active."
+            )
+    elif path and path.strip():
+        if not is_valid_route(db, path.strip()):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Route '{path}' is not a valid destination."
+            )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Either path or destination_type must be provided."
+        )
+
     image_path = _save_category_image(image)
-    data = HomepageCategoryCreate(name=name, image=image_path, path=path)
+    data = HomepageCategoryCreate(
+        name=name,
+        image=image_path,
+        path=path or None,
+        destination_type=destination_type,
+        destination_id=destination_id
+    )
 
     try:
         result = create_category(db, data)
@@ -107,19 +136,61 @@ def update_admin_category(
     category_id: int,
     request: Request,
     name: str = Form(...),
-    path: str = Form(...),
+    path: Optional[str] = Form(None),
+    destination_type: Optional[str] = Form(None),
+    destination_id: Optional[int] = Form(None),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_admin),
 ):
-    update_fields = {"name": name, "path": path}
-    new_image_path: Optional[str] = None
+    from app.modules.categories.service import get_category
+    from app.shared.routing.utils import is_valid_route, is_valid_destination
 
+    existing = get_category(db, category_id)
+
+    update_fields = {"name": name}
+
+    if destination_type is not None:
+        val = destination_type.strip()
+        if not val or val.lower() in ("none", "null", "undefined"):
+            update_fields["destination_type"] = None
+            update_fields["destination_id"] = None
+        else:
+            update_fields["destination_type"] = val
+            if destination_id is not None:
+                update_fields["destination_id"] = destination_id
+    elif destination_id is not None:
+        update_fields["destination_id"] = destination_id
+
+    if path is not None:
+        update_fields["path"] = path.strip() if path.strip() else None
+
+    effective_type = update_fields.get("destination_type", existing.destination_type)
+    effective_id = update_fields.get("destination_id", existing.destination_id)
+    effective_path = update_fields.get("path", existing.path)
+
+    if effective_type:
+        if not is_valid_destination(db, effective_type, effective_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Destination '{effective_type}' with ID {effective_id} is not valid or active."
+            )
+    elif effective_path:
+        if effective_path != existing.path:
+            if not is_valid_route(db, effective_path):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Route '{effective_path}' is not a valid destination."
+                )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Either path or destination_type must be provided."
+        )
+
+    new_image_path: Optional[str] = None
     old_image_path: Optional[str] = None
     if image and image.filename:
-        from app.modules.categories.service import get_category
-
-        existing = get_category(db, category_id)
         old_image_path = existing.image
         new_image_path = _save_category_image(image)
         update_fields["image"] = new_image_path
@@ -155,6 +226,7 @@ def update_admin_category(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             "Unable to update homepage category. Please try again.",
         ) from exc
+
 
 
 @router.delete("/admin/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)

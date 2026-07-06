@@ -26,6 +26,10 @@ class Banner(Base):
 
     cta_link = Column(String(500))
 
+    destination_type = Column(String(50), nullable=True)
+
+    destination_id = Column(Integer, nullable=True)
+
     placement = Column(String(50), nullable=False, default="hero", index=True)
 
     sort_order = Column(Integer, default=0)

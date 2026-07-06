@@ -38,6 +38,15 @@ from app.modules.custom_products.schemas import (
     CustomProductResponse,
     CustomProductBulkActionPayload,
 )
+from app.shared.normalization import (
+    normalize_name,
+    generate_slug,
+)
+from app.shared.normalization.exceptions import (
+    ValidationError as NormalizationValidationError,
+    ReservedWordError as NormalizationReservedWordError,
+    AliasConflictError as NormalizationAliasConflictError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,12 +55,8 @@ logger = logging.getLogger(__name__)
 # Slug helpers (local to this module — no shared dependency with products)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _slugify(text: str) -> str:
-    """Convert text to a URL-safe slug."""
-    slug = text.lower().strip()
-    slug = re.sub(r"[^\w\s-]", "", slug)
-    slug = re.sub(r"[\s_]+", "-", slug)
-    return re.sub(r"-+", "-", slug).strip("-")
+# (legacy _slugify removed; generate_slug used directly)
+
 
 
 def _unique_category_slug(db: Session, base_slug: str, exclude_id: Optional[int] = None) -> str:
@@ -132,9 +137,16 @@ def create_custom_category(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Your current store configuration has reached the maximum allowed limit. Please contact the system administrator if you need additional categories or collections."
         )
-    slug = _unique_category_slug(db, _slugify(data.name))
+    try:
+        entity = normalize_name(data.name)
+    except (NormalizationValidationError, NormalizationReservedWordError, NormalizationAliasConflictError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    slug = _unique_category_slug(db, entity.slug)
     cat = CustomCategory(
-        name=data.name.strip(),
+        name=entity.canonical_name,
         slug=slug,
         description=data.description,
         status=data.status,
@@ -148,7 +160,7 @@ def create_custom_category(
         db.rollback()
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            f"Custom category name '{data.name}' already exists.",
+            f"Custom category name '{entity.canonical_name}' already exists.",
         )
     logger.info("Custom category created: id=%s name=%s", cat.id, cat.name)
     return CustomCategoryResponse.model_validate(cat)
@@ -164,8 +176,16 @@ def update_custom_category(
     patch = data.model_dump(exclude_unset=True)
 
     if "name" in patch and patch["name"]:
+        try:
+            entity = normalize_name(patch["name"])
+        except (NormalizationValidationError, NormalizationReservedWordError, NormalizationAliasConflictError) as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
+        patch["name"] = entity.canonical_name
         patch["slug"] = _unique_category_slug(
-            db, _slugify(patch["name"]), exclude_id=custom_category_id
+            db, entity.slug, exclude_id=custom_category_id
         )
 
     for k, v in patch.items():
@@ -182,6 +202,7 @@ def update_custom_category(
         )
     logger.info("Custom category updated: id=%s", cat.id)
     return CustomCategoryResponse.model_validate(cat)
+
 
 
 def delete_custom_category(db: Session, custom_category_id: int) -> None:
@@ -304,8 +325,11 @@ def get_custom_products(
     query = db.query(CustomProduct).filter(CustomProduct.deleted_at.is_(None))
 
     if search:
-        term = f"%{search.strip()}%"
-        query = query.filter(CustomProduct.title.ilike(term))
+        from app.shared.normalization import get_search_terms
+        search_terms = get_search_terms(search)
+        for term in search_terms:
+            w_term = f"%{term}%"
+            query = query.filter(CustomProduct.title.ilike(w_term))
 
     if custom_category_id:
         query = query.filter(CustomProduct.custom_category_id == custom_category_id)
@@ -354,8 +378,11 @@ def get_public_custom_products(
     )
 
     if search:
-        term = f"%{search.strip()}%"
-        query = query.filter(CustomProduct.title.ilike(term))
+        from app.shared.normalization import get_search_terms
+        search_terms = get_search_terms(search)
+        for term in search_terms:
+            w_term = f"%{term}%"
+            query = query.filter(CustomProduct.title.ilike(w_term))
 
     if custom_category_id:
         query = query.filter(CustomProduct.custom_category_id == custom_category_id)
@@ -390,7 +417,13 @@ def create_custom_product(
     if data.custom_category_id is not None:
         get_custom_category(db, data.custom_category_id)
 
-    base_slug = _slugify(data.title)
+    try:
+        base_slug = generate_slug(data.title)
+    except (NormalizationValidationError, NormalizationReservedWordError, NormalizationAliasConflictError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
     slug = _unique_product_slug(db, base_slug)
 
     product = CustomProduct(
@@ -467,7 +500,13 @@ def update_custom_product(
 
     # Regenerate slug if title changes
     if "title" in patch and patch["title"]:
-        base_slug = _slugify(patch["title"])
+        try:
+            base_slug = generate_slug(patch["title"])
+        except (NormalizationValidationError, NormalizationReservedWordError, NormalizationAliasConflictError) as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
         patch["slug"] = _unique_product_slug(db, base_slug, exclude_id=product_id)
 
     # Coerce status to enum

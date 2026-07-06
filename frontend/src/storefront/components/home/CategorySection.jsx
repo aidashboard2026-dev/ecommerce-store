@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 
 import { storefrontAPI } from "@/shared/services/api";
 import { getImageUrl } from "@/shared/utils/productUtils";
+import { useDestinationResolver } from "@/storefront/routing/DestinationResolver";
 
 export default function CategorySection() {
   const { data: categories = [], isLoading, isError } = useQuery({
@@ -12,6 +13,8 @@ export default function CategorySection() {
     staleTime: 60_000,
     retry: 1,
   });
+
+  const { resolve } = useDestinationResolver();
 
   if (isError || (!isLoading && categories.length === 0)) return null;
 
@@ -33,7 +36,7 @@ export default function CategorySection() {
           categories.map((cat) => (
             <Link
               key={cat.id}
-              to={cat.path}
+              to={resolve(cat.destination_type, cat.destination_id, cat.path)}
               className="group relative overflow-hidden rounded-2xl"
             >
               <img

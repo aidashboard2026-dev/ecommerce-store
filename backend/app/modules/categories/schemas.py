@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, field_validator, model_validator
 
@@ -7,7 +7,9 @@ from pydantic import BaseModel, field_validator, model_validator
 class HomepageCategoryBase(BaseModel):
     name: str
     image: str
-    path: str
+    path: Optional[str] = None
+    destination_type: Optional[str] = None
+    destination_id: Optional[int] = None
 
     @field_validator("name")
     @classmethod
@@ -31,10 +33,12 @@ class HomepageCategoryBase(BaseModel):
 
     @field_validator("path")
     @classmethod
-    def path_required(cls, value: str) -> str:
-        value = (value or "").strip()
+    def path_required(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        value = value.strip()
         if not value:
-            raise ValueError("Click path is required")
+            return None
         if not value.startswith("/"):
             raise ValueError("Click path must start with /")
         if len(value) > 500:
@@ -50,6 +54,8 @@ class HomepageCategoryUpdate(BaseModel):
     name: str | None = None
     image: str | None = None
     path: str | None = None
+    destination_type: str | None = None
+    destination_id: int | None = None
 
     @field_validator("name")
     @classmethod
@@ -82,7 +88,7 @@ class HomepageCategoryUpdate(BaseModel):
             return value
         value = value.strip()
         if not value:
-            raise ValueError("Click path is required")
+            return None
         if not value.startswith("/"):
             raise ValueError("Click path must start with /")
         if len(value) > 500:

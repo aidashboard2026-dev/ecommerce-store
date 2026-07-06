@@ -27,6 +27,7 @@ from app.modules.customers.service import (
     update_customer,
     update_customer_notes,
     update_customer_tags,
+    update_customer_profile,
 )
 
 router = APIRouter()
@@ -168,15 +169,4 @@ def update_profile(
     current_customer: Customer = Depends(get_current_customer),
 ):
     """Update customer's own profile details."""
-    allowed_fields = ["first_name", "last_name", "phone", "dob", "city", "state", "country"]
-    update_data = profile_data.model_dump(exclude_unset=True)
-    
-    for field in allowed_fields:
-        if field in update_data:
-            setattr(current_customer, field, update_data[field])
-            
-    db.commit()
-    db.refresh(current_customer)
-    
-    # Return with empty analytics fields to satisfy CustomerResponse
-    return current_customer
+    return update_customer_profile(db, current_customer, profile_data)

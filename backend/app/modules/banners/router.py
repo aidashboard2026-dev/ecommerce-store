@@ -70,6 +70,8 @@ async def create_new_banner(
     subtitle:     str                  = Form(""),
     cta_text:     str                  = Form(""),
     cta_link:     str                  = Form(""),
+    destination_type: Optional[str]    = Form(None),
+    destination_id:   Optional[int]    = Form(None),
     placement:    str                  = Form("hero"),
     sort_order:   int                  = Form(0),
     is_active:    bool                 = Form(True),
@@ -96,10 +98,31 @@ async def create_new_banner(
     if banner_image and banner_image.filename:
         image_path = _upload_banner_image(banner_image)
 
+    from app.shared.routing.utils import is_valid_route, is_valid_destination
+
+    if destination_type and destination_type.strip():
+        dst_type = destination_type.strip()
+        if not is_valid_destination(db, dst_type, destination_id):
+            if image_path:
+                supabase_storage.delete_banner_image(image_path)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Destination '{dst_type}' with ID {destination_id} is not valid or active."
+            )
+    elif cta_link and cta_link.strip():
+        if not is_valid_route(db, cta_link.strip()):
+            if image_path:
+                supabase_storage.delete_banner_image(image_path)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Route '{cta_link}' is not a valid destination."
+            )
+
     banner_data = BannerCreate(
         title=title, subtitle=subtitle or None,
         banner_image=image_path,
         cta_text=cta_text or None, cta_link=cta_link or None,
+        destination_type=destination_type, destination_id=destination_id,
         placement=placement, sort_order=sort_order, is_active=is_active,
     )
 
@@ -172,6 +195,8 @@ async def edit_banner(
     subtitle:     Optional[str]        = Form(None),
     cta_text:     Optional[str]        = Form(None),
     cta_link:     Optional[str]        = Form(None),
+    destination_type: Optional[str]    = Form(None),
+    destination_id:   Optional[int]    = Form(None),
     placement:    Optional[str]        = Form(None),
     sort_order:   Optional[int]        = Form(None),
     is_active:    Optional[bool]       = Form(None),
@@ -199,6 +224,38 @@ async def edit_banner(
     ]:
         if value is not None:
             update_fields[field] = value
+
+    if destination_type is not None:
+        val = destination_type.strip()
+        if not val or val.lower() in ("none", "null", "undefined"):
+            update_fields["destination_type"] = None
+            update_fields["destination_id"] = None
+        else:
+            update_fields["destination_type"] = val
+            if destination_id is not None:
+                update_fields["destination_id"] = destination_id
+    elif destination_id is not None:
+        update_fields["destination_id"] = destination_id
+
+    from app.shared.routing.utils import is_valid_route, is_valid_destination
+
+    effective_type = update_fields.get("destination_type", banner.destination_type)
+    effective_id = update_fields.get("destination_id", banner.destination_id)
+
+    if effective_type:
+        if not is_valid_destination(db, effective_type, effective_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Destination '{effective_type}' with ID {effective_id} is not valid or active."
+            )
+    elif cta_link is not None:
+        cta_link_stripped = cta_link.strip()
+        if cta_link_stripped and cta_link_stripped != banner.cta_link:
+            if not is_valid_route(db, cta_link_stripped):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Route '{cta_link_stripped}' is not a valid destination."
+                )
 
     # Upload new image before clearing old — never lose an image on DB error
     old_image: Optional[str] = None

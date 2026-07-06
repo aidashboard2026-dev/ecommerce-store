@@ -6,6 +6,7 @@ import { ImagePlus, Plus, Search, X, Pencil, Eye, EyeOff, AlertTriangle, Loader2
 import toast from "react-hot-toast";
 import { useTheme } from "@/shared/hooks/useAuth";
 import { getImageUrl } from "@/shared/utils/productUtils";
+import RoutePicker from "@/shared/components/ui/RoutePicker";
 
 // ─── Placement options ───────────────────────────────────────────────────────
 const PLACEMENTS = [
@@ -52,6 +53,8 @@ function BannerFormModal({ initial, onClose, onSaved, isDark }) {
   const [subtitle, setSubtitle] = useState(initial?.subtitle ?? "");
   const [ctaText, setCtaText] = useState(initial?.cta_text ?? "");
   const [ctaLink, setCtaLink] = useState(initial?.cta_link ?? "");
+  const [destinationType, setDestinationType] = useState(initial?.destination_type ?? "");
+  const [destinationId, setDestinationId] = useState(initial?.destination_id ?? "");
   const [placement, setPlacement] = useState(initial?.placement ?? "hero");
   const [sortOrder, setSortOrder] = useState(initial?.sort_order ?? 0);
   const [isActive, setIsActive] = useState(initial?.is_active ?? true);
@@ -92,6 +95,8 @@ function BannerFormModal({ initial, onClose, onSaved, isDark }) {
       fd.append("subtitle", subtitle.trim());
       fd.append("cta_text", ctaText.trim());
       fd.append("cta_link", ctaLink.trim());
+      fd.append("destination_type", destinationType || "");
+      fd.append("destination_id", destinationId ? String(destinationId) : "");
       fd.append("placement", placement);
       fd.append("sort_order", String(Number(sortOrder) || 0));
       fd.append("is_active", String(isActive));
@@ -172,8 +177,22 @@ function BannerFormModal({ initial, onClose, onSaved, isDark }) {
               <input placeholder="Shop Now" value={ctaText} onChange={e => setCtaText(e.target.value)} style={s.inputStyle} />
             </div>
             <div>
-              <label style={{ fontSize: 11, color: s.textLabel, display: "block", marginBottom: 4 }}>CTA Link</label>
-              <input placeholder="/collections/summer" value={ctaLink} onChange={e => setCtaLink(e.target.value)} style={s.inputStyle} />
+              <RoutePicker
+                label="CTA Link"
+                value={ctaLink}
+                onChange={(route, opt) => {
+                  setCtaLink(route);
+                  if (opt) {
+                    setDestinationType(opt.type);
+                    setDestinationId(opt.id);
+                  } else {
+                    setDestinationType("");
+                    setDestinationId("");
+                  }
+                }}
+                isDark={isDark}
+                placeholder="Search category or homepage..."
+              />
             </div>
           </div>
 

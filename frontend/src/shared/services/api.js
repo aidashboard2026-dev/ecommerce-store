@@ -386,3 +386,8 @@ export const adminsAPI = {
   delete: (id)        => api.delete(`/admins/${id}`),
   count:  ()          => api.get('/admins/count'),
 }
+
+export const routesAPI = {
+  search: (q) => api.get('/admin/routes/search', { params: { q } }),
+}
+
