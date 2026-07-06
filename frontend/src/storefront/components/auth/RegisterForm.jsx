@@ -28,6 +28,16 @@ export default function RegisterForm() {
     e.preventDefault()
     dispatch(clearCustomerError())
 
+    if (form.first_name.trim().length < 2) {
+      toast.error("First name must be at least 2 characters");
+      return;
+    }
+
+    if (form.last_name.trim().length < 2) {
+      toast.error("Last name must be at least 2 characters");
+      return;
+    }
+
     if (form.password.length < 8) {
       toast.error('Password must be at least 8 characters')
       return
@@ -165,7 +175,13 @@ export default function RegisterForm() {
             </button>
           </div>
 
-          {error && <p className="text-xs text-red-500">{error}</p>}
+          {error && (
+              <p className="text-xs text-red-500">
+                  {typeof error === "string"
+                      ? error
+                      : JSON.stringify(error)}
+              </p>
+          )}
 
           <button
             type="submit"
