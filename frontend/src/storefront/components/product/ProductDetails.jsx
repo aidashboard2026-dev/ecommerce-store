@@ -168,6 +168,10 @@ export default function ProductDetails() {
   });
 
   const handleAddToCart = () => {
+    console.log("Variant :", activeVariant);
+    console.log("Stock :", activeVariant?.stock_quantity);
+    console.log("In Stock :", inStock);
+
     if (!activeVariant) return;
     if (!inStock) {
       toast.error("This variant is out of stock");
@@ -203,9 +207,9 @@ export default function ProductDetails() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <div className="mx-auto w-full max-w-[1400px] p-5 ">
       {/* Breadcrumb */}
-      <div className="mb-6 flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+      <div className="mb-5 flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
         <Link to="/" className="transition-colors hover:text-app">
           Home
         </Link>
@@ -252,12 +256,13 @@ export default function ProductDetails() {
         </span>
       </div>
 
-      <div className="flex flex-col md:flex-row justify-between gap-8">
+    
+       <div className="flex flex-col md:flex-row  justify-between gap-10">
         {/* Gallery */}
         <div className="flex flex-1 flex-col gap-3">
           <div
             className={clsx(
-              "relative aspect-[4/4] w-full bg-surface rounded-2xl overflow-hidden border border-app cursor-zoom-in",
+              "relative aspect-square w-full bg-surface rounded-2xl overflow-hidden border border-app cursor-zoom-in",
             )}
             onClick={() => setZoomed((z) => !z)}
           >
@@ -644,6 +649,7 @@ export default function ProductDetails() {
           </section>
         </div>
       </div>
+     
 
       {/* Related products */}
       {relatedProducts.length > 0 && (

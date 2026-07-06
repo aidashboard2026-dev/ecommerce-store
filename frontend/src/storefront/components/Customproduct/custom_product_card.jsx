@@ -197,31 +197,48 @@ function CustomProductCard({ product }) {
 
       
       <button
-        type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
 
-          window.open(
-            `https://api.whatsapp.com/send?phone=918778021610&text=${encodeURIComponent(
-              `Hi, I want to customize "${product.title}".`
-            )}`,
-            "_blank"
-          );
-        }}
-        className={clsx(
-          "absolute bottom-0 right-0 w-full p-2.5",
-          "flex items-center justify-center gap-3",
-          "bg-green-600 text-white",
-          "uppercase text-sm rounded-md",
-          "translate-y-12 opacity-0",
-          "group-hover:translate-y-0",
-          "group-hover:opacity-100",
-          "duration-300"
-        )}
-      >
-        <ShoppingBag size={16} />
-        Chat on WhatsApp
+            const message = `Hi, I want to customize "${product.title}".
+
+        Price: ₹${product.selling_price_min}${
+              product.selling_price_max
+                ? ` - ₹${product.selling_price_max}`
+                : ""
+            }
+
+        Product:
+        ${window.location.href}`;
+
+            const isMobile =
+              /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+            if (isMobile) {
+              // Mobile → WhatsApp App / wa.me
+              window.location.href =
+                `https://wa.me/918778021610?text=${encodeURIComponent(message)}`;
+            } else {
+              // Desktop → WhatsApp Web
+              window.location.href =
+                `https://web.whatsapp.com/send?phone=918778021610&text=${encodeURIComponent(message)}`;
+            }
+          }}
+          className={clsx(
+            "absolute bottom-0 right-0 w-full p-2.5",
+            "flex items-center justify-center gap-3",
+            "bg-green-600 hover:bg-green-700 text-white",
+            "uppercase text-sm rounded-md",
+            "translate-y-12 opacity-0",
+            "group-hover:translate-y-0",
+            "group-hover:opacity-100",
+            "duration-300"
+          )}
+        >
+          <ShoppingBag size={16} />
+          Chat on WhatsApp
       </button>
     </Link>
   );

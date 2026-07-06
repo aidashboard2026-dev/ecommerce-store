@@ -187,13 +187,14 @@ export async function generateInvoice(order) {
   );
 
   pdf.text(
-    "No.12 Anna Salai, Chennai - 600001",
+    "Thipaati, Pennagaram Main Road Dharmapuri,",
     32,
     17
   );
 
   pdf.text(
     storeCountry,
+    "Pincode-636813,Tamil Nadu, India",
     10,
     21
   );
@@ -416,13 +417,13 @@ export async function generateInvoice(order) {
   );
 
   pdf.text(
-    "No.12 Anna Salai",
+    "Thipaati",
     COL3,
     currentY + 13
   );
 
   pdf.text(
-    "Chennai",
+    "Dharmapuri",
     COL3,
     currentY + 19
   );
@@ -440,7 +441,7 @@ export async function generateInvoice(order) {
   );
 
   pdf.text(
-    "600001",
+    "636813",
     COL3,
     currentY + 37
   );

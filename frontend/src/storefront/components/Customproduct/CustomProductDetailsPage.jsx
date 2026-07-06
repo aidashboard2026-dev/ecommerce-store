@@ -123,26 +123,31 @@ export default function CustomProductDetailsPage({ product }) {
         )
         : 0;
 
-  const handleWhatsApp = () => {
+    const handleWhatsApp = () => {
+        const price =
+            product.selling_price_max &&
+            Number(product.selling_price_max) > Number(product.selling_price_min)
+            ? `₹${product.selling_price_min} - ₹${product.selling_price_max} (Based on Size)`
+            : `₹${product.selling_price_min}`;
 
-  const message =
-    `Hi, I want to customize "${product.title}".
+        const message = `Hi, I want to customize "${product.title}".
 
-    Price :
-    ₹${product.selling_price_min}
+        Price: ${price}
 
-    Product:
-    ${window.location.href}`;
+        Product:
+        ${window.location.href}`;
 
-    window.open(
+        const isMobile =
+            /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-    `https://wa.me/918778021610?text=${encodeURIComponent(message)}`,
-
-    "_self"
-
-    );
-
-    }
+        if (isMobile) {
+            window.location.href =
+            `https://wa.me/918778021610?text=${encodeURIComponent(message)}`;
+        } else {
+            window.location.href =
+            `https://web.whatsapp.com/send?phone=918778021610&text=${encodeURIComponent(message)}`;
+        }
+    };
   const handleWishlist = () => {
     dispatch(
       toggleWishlist({
@@ -390,18 +395,27 @@ export default function CustomProductDetailsPage({ product }) {
             
           
             <div className="flex flex-wrap gap-3 mt-6">
-
                 <button
                     onClick={handleWhatsApp}
                     disabled={!inStock}
-                    className="flex-1 p-2.5 w-full text-xl flex items-center justify-center gap-3 bg-zinc-950 text-white rounded-md"
+                    className={`
+                    flex-1 w-full
+                    flex items-center justify-center gap-3
+                    rounded-xl
+                    bg-[#1EBE5B]
+                    hover:bg-[#25D366]
+                    active:scale-[0.98]
+                    transition-all duration-300
+                    text-white
+                    text-xl font-semibold
+                    py-3
+                    shadow-lg hover:shadow-xl
+                    disabled:bg-gray-400 disabled:cursor-not-allowed
+                    `}
                 >
                     <ShoppingBag size={22} />
-
                     Chat on WhatsApp
-
                 </button>
-
             </div>
 
 
