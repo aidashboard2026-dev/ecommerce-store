@@ -18,6 +18,7 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 
+from app.core.constants import MAX_PAGE_SIZE
 from app.core.database import get_db
 from app.modules.admins.models import Admin
 from app.modules.audit.service import audit
@@ -306,7 +307,7 @@ def list_products_admin(
     # ── Sorting ─────────────────────────────────────────────────────────────
     sort_by:        Optional[str]          = None,   # newest|oldest|alpha_asc|updated
     page:    int = Query(1,  ge=1),
-    per_page:int = Query(15, ge=1, le=100),
+    per_page:int = Query(15, ge=1, le=MAX_PAGE_SIZE),
     db: Session = Depends(get_db),
     _:  Admin   = Depends(get_current_admin),
 ):
@@ -755,7 +756,7 @@ def list_products_public(
     on_offer:       Optional[bool] = None,
     sort_by:        str            = "newest",
     page:    int = Query(1,  ge=1),
-    per_page:int = Query(12, ge=1, le=100),
+    per_page:int = Query(12, ge=1, le=MAX_PAGE_SIZE),
     db: Session = Depends(get_db),
 ):
     return get_products_public(

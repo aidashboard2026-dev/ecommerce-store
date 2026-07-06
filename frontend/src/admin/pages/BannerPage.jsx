@@ -3,8 +3,7 @@ import api from "@/shared/services/api";
 import useBusinessLimits from "@/shared/hooks/useBusinessLimits";
 
 import { ImagePlus, Plus, Search, X, Pencil, Eye, EyeOff, AlertTriangle, Loader2 } from "lucide-react";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import toast from "react-hot-toast";
 import { useTheme } from "@/shared/hooks/useAuth";
 
 // ─── Image helper (no localhost dependency) ─────────────────────────────────
@@ -229,20 +228,36 @@ function BannerFormModal({ initial, onClose, onSaved, isDark }) {
 }
 
 // ─── Preview Modal ───────────────────────────────────────────────────────────
-function BannerPreviewModal({ banner, onClose, isDark }) {
+export function BannerPreviewModal({ banner, onClose, isDark, type = "banner", resolvedImageUrl }) {
   const s = getStyles(isDark);
-  const imgUrl = getImageUrl(banner.banner_image);
+  const imgUrl = resolvedImageUrl || getImageUrl(banner.banner_image);
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.9)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10001, padding: 20 }} onClick={onClose}>
       <div style={{ maxWidth: 900, width: "100%", background: isDark ? "#0f172a" : "#ffffff", borderRadius: 12, overflow: "hidden", border: `1px solid ${s.border}` }} onClick={e => e.stopPropagation()}>
         {imgUrl ? (
           <div style={{ position: "relative" }}>
-            <img src={imgUrl} alt={banner.title} style={{ width: "100%", display: "block", maxHeight: 500, objectFit: "cover" }} />
+            <img src={imgUrl} alt={banner.title || "Preview"} style={{ width: "100%", display: "block", maxHeight: 500, objectFit: "cover" }} />
             {/* Overlay text (simulates storefront) */}
             <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "40px 32px 32px", background: "linear-gradient(transparent, rgba(0,0,0,.8))" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
+                {type === "offer" && banner.percentage && (
+                  <span style={{ background: "#ef4444", color: "#fff", padding: "4px 10px", borderRadius: 6, fontSize: 13, fontWeight: 800 }}>
+                    {banner.percentage}% OFF
+                  </span>
+                )}
+                {type === "offer" && banner.status && (
+                  <span style={{ background: banner.status === "published" ? "#16a34a" : "#d97706", color: "#fff", padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>
+                    {banner.status}
+                  </span>
+                )}
+              </div>
               <h2 style={{ margin: 0, color: "#fff", fontSize: 28, fontWeight: 800, textShadow: "0 2px 8px rgba(0,0,0,.5)" }}>{banner.title}</h2>
-              {banner.subtitle && <p style={{ margin: "6px 0 0", color: "#e2e8f0", fontSize: 16 }}>{banner.subtitle}</p>}
-              {banner.cta_text && (
+              {type === "offer" ? (
+                banner.description && <p style={{ margin: "8px 0 0", color: "#e2e8f0", fontSize: 15, textShadow: "0 1px 4px rgba(0,0,0,.5)" }}>{banner.description}</p>
+              ) : (
+                banner.subtitle && <p style={{ margin: "6px 0 0", color: "#e2e8f0", fontSize: 16 }}>{banner.subtitle}</p>
+              )}
+              {type === "banner" && banner.cta_text && (
                 <div style={{ marginTop: 16, display: "inline-block", padding: "10px 24px", background: "#2563eb", borderRadius: 8, color: "#fff", fontWeight: 700, fontSize: 14 }}>
                   {banner.cta_text}
                 </div>
@@ -252,9 +267,22 @@ function BannerPreviewModal({ banner, onClose, isDark }) {
         ) : (
           <div style={{ height: 300, display: "flex", alignItems: "center", justifyContent: "center", color: s.textMuted }}>No image uploaded</div>
         )}
-        <div style={{ padding: "16px 24px", display: "flex", gap: 16, color: s.textLabel, fontSize: 13 }}>
-          <span>Placement: <strong style={{ color: s.textPrimary }}>{PLACEMENTS.find(p => p.value === banner.placement)?.label ?? banner.placement}</strong></span>
-          <span>Sort order: <strong style={{ color: s.textPrimary }}>#{banner.sort_order}</strong></span>
+        <div style={{ padding: "16px 24px", display: "flex", gap: 16, color: s.textLabel, fontSize: 13, flexWrap: "wrap" }}>
+          {type === "offer" ? (
+            <>
+              {banner.start_date && (
+                <span>Starts: <strong style={{ color: s.textPrimary }}>{banner.start_date} {banner.start_time || ""}</strong></span>
+              )}
+              {banner.end_date && (
+                <span>Ends: <strong style={{ color: s.textPrimary }}>{banner.end_date} {banner.end_time || ""}</strong></span>
+              )}
+            </>
+          ) : (
+            <>
+              <span>Placement: <strong style={{ color: s.textPrimary }}>{PLACEMENTS.find(p => p.value === banner.placement)?.label ?? banner.placement}</strong></span>
+              <span>Sort order: <strong style={{ color: s.textPrimary }}>#{banner.sort_order}</strong></span>
+            </>
+          )}
           <span style={{ marginLeft: "auto" }}><button onClick={onClose} style={{ ...btn.base, padding: "0 16px", background: isDark ? "#374151" : "#e5e7eb", color: s.textPrimary }}>Close Preview</button></span>
         </div>
       </div>
@@ -408,7 +436,6 @@ export default function BannerPage() {
 
   return (
     <div style={{ padding: "24px 28px", background: s.bg, minHeight: "100vh", transition: "background .3s ease" }}>
-      <ToastContainer position="top-right" autoClose={2500} hideProgressBar={false} newestOnTop closeOnClick pauseOnHover theme={isDark ? "dark" : "light"} style={{ zIndex: 99999 }} />
 
       {limitsError && (
         <div style={{

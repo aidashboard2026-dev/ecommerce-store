@@ -19,6 +19,11 @@ import { CartBadge } from "@/storefront/components/shoppingcart";
 import { openCartDrawer } from "@/storefront/store/cartSlice";
 import useStoreSettings from '@/shared/hooks/useStoreSettings'
 
+// Static nav config — module scope so it isn't re-allocated every render.
+// `to` values must resolve against real routes/filters (see AppRoutes.jsx
+// CategoryRedirect + ProductsList.jsx searchParams contract). Do not point
+// these at "/sub-products" — that route is a dead catch-all redirect to
+// /products with no category context.
 const MOBILE_NAV_LINKS = [
   { label: 'Home', to: '/' },
   { label: "T-Shirts for Mens", to: "/products?category=t-shirts&gender=Men" },
@@ -47,6 +52,10 @@ const StoreHeaderComponent = function StoreHeader({
   const location = useLocation();
   const searchRef = useRef(null);
 
+  useEffect(() => {
+    console.log("=== StoreHeader MOUNTED ===");
+    return () => console.log("=== StoreHeader UNMOUNTED ===");
+  }, []);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -80,24 +89,13 @@ const StoreHeaderComponent = function StoreHeader({
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };
-    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape") {
-        setMobileMenuOpen(false);
-        setShowSearch(false);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -150,7 +148,7 @@ const StoreHeaderComponent = function StoreHeader({
                 <span>{storeName}</span>
               ) : (
                 <>
-                  Aura<span className="text-brand-500">Store</span>
+                  My<span className="text-brand-500">Store</span>
                 </>
               )}
             </span>
@@ -185,7 +183,7 @@ const StoreHeaderComponent = function StoreHeader({
                 type="button"
                 onClick={() => setShowSearch(!showSearch)}
                 className="absolute z-10 p-2 rounded-full hover:bg-surface"
-                aria-label="Toggle search bar"
+                aria-label="Toggle search"
               >
                 <Search size={20} />
               </button>
@@ -194,7 +192,7 @@ const StoreHeaderComponent = function StoreHeader({
               type="button"
               onClick={() => setShowSearch(true)}
               className="p-2 rounded-full hover:bg-surface md:hidden"
-              aria-label="Open search bar"
+              aria-label="Open search"
             >
               <Search size={20} />
             </button>
@@ -234,18 +232,16 @@ const StoreHeaderComponent = function StoreHeader({
 
             {/* Account / Login */}
             {token && customer ? (
-              <div className="relative hidden md:block group/profile hover:bg-slate-400">
+              <div className="relative hidden md:block group/profile">
                 <Link
                   to="/profile"
                   className="flex items-center gap-2 p-1.5 rounded-full hover:bg-surface text-app transition-colors duration-200"
                 >
                   <div className="h-7 w-7 rounded-full bg-brand-500 flex items-center justify-center text-white font-bold text-xs">
-                    {customer.first_name[0].toUpperCase()}
+                    {customer.first_name.toUpperCase()}
                   </div>
-                  <span className="hidden sm:inline text-xs font-semibold max-w-[80px] truncate">
-                    {customer.first_name}
-                  </span>
                 </Link>
+                
                 {/* Profile Hover Dropdown */}
                 <div className="absolute right-0 mt-1.5 w-48 bg-app border border-app rounded-xl shadow-lg py-2 hidden group-hover/profile:block animate-fade-in z-50">
                   <Link
@@ -273,7 +269,7 @@ const StoreHeaderComponent = function StoreHeader({
                 </div>
               </div>
             ) : (
-              <Link to="/auth/login" className="hidden md:block">
+              <Link to="/auth/login" className="hidden md:block" aria-label="Log in">
                 <User size={22} />
               </Link>
             )}
@@ -281,7 +277,7 @@ const StoreHeaderComponent = function StoreHeader({
             {/* Mobile Menu Toggle */}
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="p-2 rounded-full hover:bg-surface text-app transition-colors duration-200"
+              className=" rounded-full hover:bg-surface text-app transition-colors duration-200"
               aria-label="Open Navigation Menu"
             >
               <Menu size={22} />
@@ -292,21 +288,20 @@ const StoreHeaderComponent = function StoreHeader({
 
       {showSearch && (
         <div className="fixed h-fit inset-0 top-16 z-50 md:hidden bg-app">
-          <form onSubmit={handleSearchSubmit} className="p-4 border-b flex items-center gap-3">
+          <div className="p-4 border-b flex items-center gap-3">
             <input
               autoFocus
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search products..."
-              className="flex-1 bg-surface border border-app rounded-full py-2 px-5 text-app focus:outline-none"
-              aria-label="Search premium apparel"
+              className="flex-1 bg-surface border-0 rounded-full py-2 px-5"
             />
 
-            <button type="button" onClick={() => setShowSearch(false)} aria-label="Close search bar">
+            <button onClick={() => setShowSearch(false)} aria-label="Close search">
               <X size={22} />
             </button>
-          </form>
+          </div>
         </div>
       )}
 

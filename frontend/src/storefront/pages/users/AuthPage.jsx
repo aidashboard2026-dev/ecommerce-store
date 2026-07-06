@@ -40,8 +40,12 @@ function ForgotPasswordForm() {
           </div>
           <h1 className="font-display font-bold text-2xl text-app mb-2">Check your inbox</h1>
           <p className="text-sm text-muted mb-6">
-            If an account with <strong className="text-app">{email}</strong> exists, we've sent a
-            password-reset link. Check your spam folder if you don't see it within a few minutes.
+            We've received your password reset request.
+
+            If an account is registered with{" "}
+            <strong className="text-app">{email}</strong>, you'll receive an email containing
+            instructions to reset your password.
+            If you don't receive it within a few minutes, please check your spam or junk folder
           </p>
           <Link
             to="/auth/login"

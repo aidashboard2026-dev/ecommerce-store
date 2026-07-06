@@ -16,8 +16,10 @@ import MainLayout from "@/admin/layouts/MainLayout";
 import StorefrontLayout from "@/storefront/layouts/StorefrontLayout";
 import ProductDetails from "@/storefront/components/product/ProductDetails";
 import OrderSuccess from "@/storefront/components/checkout/OrderSuccess";
-// import ReturnsPolicy from "@/storefront/pages/ReturnsPolicy";
-// import OrderTimelinePage from "@/storefront/components/order/components/OrderTimeline";
+import ReturnsPolicy from "@/storefront/pages/policys/ReturnsPolicy";
+
+// const AboutPage = lazy(() => import("@/storefront/components/storeindex/StoreFrontFooterPages/AboutPage"));
+// import OrderTimelinePage from "@/storefront/components/orders/OrderTimeline";
 
 // Lazy loaded pages/components to optimize bundle sizes
 const AdminLoginPage = lazy(() => import("@/admin/pages/LoginPage"));
@@ -39,22 +41,13 @@ const CheckoutPage = lazy(() => import("@/storefront/pages/ordercheckout/Checkou
 const OrdersPage = lazy(() => import("@/storefront/pages/ordercheckout/OrdersPage"));
 const ProfilePage = lazy(() => import("@/storefront/pages/users/ProfilePage"));
 const AuthPage = lazy(() => import("@/storefront/pages/users/AuthPage"));
-const ResetPasswordPage = lazy(
-  () => import("@/storefront/pages/users/ResetPasswordPage"),
-);
+const ResetPasswordPage = lazy(() => import("@/storefront/pages/users/ResetPasswordPage"));
 const SupportPage = lazy(() => import("@/storefront/pages/policys/SupportPage"));
 const CustomPage = lazy(() => import("@/storefront/pages/main/CustomPage"));
-const StorefrontOffersPage = lazy(
-  () => import("@/storefront/pages/main/OffersPage"),
-);
+const StorefrontOffersPage = lazy(() => import("@/storefront/pages/main/OffersPage"));
 const NotFoundPage = lazy(() => import("@/storefront/pages/empty/NotFoundPage"));
-
-// Storefront components used directly as route elements
-
 const WishlistGrid = lazy(() => import("@/storefront/pages/main/WishlistPage"));
-const ProductDetailsPage = lazy(
-  () => import("@/storefront/pages/main/CustomProductDetailsPage"),
-);
+const ProductDetailsPage = lazy(() => import("@/storefront/components/Customproduct/CustomProductDetailsPage"));
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-app">
@@ -223,6 +216,7 @@ export default function AppRoutes() {
               a single consolidated page component */}
           <Route path="products" element={<ProductsPage />} />
           <Route path="products/:slug" element={<ProductsPage />} />
+          {/* <Route path="about" element={<AboutPage />} />   */}
 
           {/* <Route path="returns-policy" element={<ReturnsPolicy />} /> */}
           <Route path="order-success" element={<OrderSuccess />} />

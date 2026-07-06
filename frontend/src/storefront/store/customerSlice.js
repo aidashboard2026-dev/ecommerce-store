@@ -42,7 +42,8 @@ export const fetchCustomerMeThunk = createAsyncThunk(
       const res = await customerAuthAPI.me()
       return res.data
     } catch (err) {
-      return rejectWithValue('Session expired')
+      const status = err.response?.status
+      return rejectWithValue({ sessionExpired: status === 401 || status === 403 })
     }
   }
 )
@@ -119,12 +120,14 @@ const customerSlice = createSlice({
         state.initialized = true
         localStorage.setItem(CUSTOMER_KEY, JSON.stringify(action.payload))
       })
-      .addCase(fetchCustomerMeThunk.rejected, (state) => {
-        state.token = null
-        state.customer = null
+      .addCase(fetchCustomerMeThunk.rejected, (state, action) => {
         state.initialized = true
-        localStorage.removeItem(TOKEN_KEY)
-        localStorage.removeItem(CUSTOMER_KEY)
+        if (action.payload?.sessionExpired) {
+          state.token = null
+          state.customer = null
+          localStorage.removeItem(TOKEN_KEY)
+          localStorage.removeItem(CUSTOMER_KEY)
+        }
       })
 
       .addCase(updateCustomerProfileThunk.fulfilled, (state, action) => {

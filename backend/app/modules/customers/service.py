@@ -8,6 +8,7 @@ from sqlalchemy import Integer, cast, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.modules.customers.models import Customer
 from app.modules.orders.models import Order
 from app.modules.customers.schemas import (
@@ -20,7 +21,7 @@ from app.modules.customers.schemas import (
     CustomerUpdate,
 )
 
-MAX_PER_PAGE = 100
+MAX_PER_PAGE = MAX_PAGE_SIZE
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -151,7 +152,7 @@ def update_customer_tags(db: Session, customer_id: int, tags: List[str]) -> Cust
 def get_customers_paginated(
     db: Session,
     page: int = 1,
-    per_page: int = 20,
+    per_page: int = DEFAULT_PAGE_SIZE,
     search: Optional[str] = None,
     status_filter: Optional[str] = None,   # "active" | "inactive"
     tag_filter: Optional[str] = None,       # single tag string

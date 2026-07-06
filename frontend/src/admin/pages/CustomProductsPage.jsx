@@ -21,7 +21,12 @@ import {
 } from '@/shared/services/api'
 import { formatPrice, getImageUrl, useDebounce } from '@/shared/utils/productUtils'
 import CustomProductForm from '@/admin/components/products/CustomProductForm'
-// import ImageUploadModal from '@/admin/components/products/ImageUploadModal'
+import ImageUploadModal from '@/admin/components/products/ImageUploadModal'
+// VariantFormModal intentionally not wired here — Custom Products are
+// production-based, not variant-based (see backend models.py); there is no
+// /custom-products/admin/{id}/variants endpoint to connect this to, and the
+// "Variants" section in CustomProductForm.jsx is dead JSX (commented out),
+// so restoring it is out of scope for this stabilization fix.
 // import VariantFormModal from '@/admin/components/products/VariantFormModal'
 import CustomCategoryCollectionModel from '@/admin/components/products/CustomCategoryCollectionModel'
 import QuickCustomCategoryEditModal from '@/admin/components/products/QuickCustomCategoryEditModal'
@@ -320,7 +325,7 @@ export default function ProductsPage() {
   // ── Modals ──────────────────────────────────────────────────────────────────
   const [formModal,      setFormModal]      = useState({ open: false, product: null })
 //   const [variantModal,   setVariantModal]   = useState({ open: false, productId: null })
-//   const [imageModal,     setImageModal]     = useState({ open: false, product: null })
+  const [imageModal,     setImageModal]     = useState({ open: false, product: null })
   const [manageModal,    setManageModal]    = useState(false)
   const [quickEditModal, setQuickEditModal] = useState({ open: false, product: null })
 
@@ -398,9 +403,12 @@ export default function ProductsPage() {
     onSettled: (_, __, id) => setDeletingIds(prev => { const s = new Set(prev); s.delete(id); return s }),
     onSuccess: () => {
       toast.success('Product deleted successfully.')
+      // Always invalidate first — mirrors the fix applied to ProductsPage.jsx.
+      // Otherwise a page visited earlier than the current one can keep
+      // serving the deleted product from cache within the 5-minute staleTime.
+      invalidate()
       const isLastOnPage = (data?.items?.length ?? 0) === 1
       if (isLastOnPage && page > 1) setPage(p => p - 1)
-      else invalidate()
     },
     onError: e => toast.error(e.response?.data?.detail || 'Delete failed'),
   })
@@ -418,7 +426,7 @@ export default function ProductsPage() {
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
   const openEdit      = useCallback(p => setFormModal({ open: true, product: p }), [])
-//   const openImage     = useCallback(p => setImageModal({ open: true, product: p }), [])
+  const openImage     = useCallback(p => setImageModal({ open: true, product: p }), [])
 //   const openVariant   = useCallback(p => setVariantModal({ open: true, productId: p.id }), [])
   const openQuickEdit = useCallback(p => setQuickEditModal({ open: true, product: p }), [])
   const doToggle      = useCallback(p => toggleStatus.mutate({ id: p.id, status: p.status === 'published' ? 'draft' : 'published' }), [toggleStatus])
@@ -797,14 +805,25 @@ export default function ProductsPage() {
                             product: null
                         })
                     }
-                    onOpenImage={() => {}}
-                    onOpenVariant={() => {}}
+                    onOpenImage={openImage}
                 />
               </ProductErrorBoundary>
             </div>
           </div>
         </div>
       )}
+
+      {/* ── Image Manager Modal ── */}
+      <ProductErrorBoundary title="Image manager error">
+        <ImageUploadModal
+          isOpen={imageModal.open}
+          onClose={() => setImageModal({ open: false, product: null })}
+          product={data?.items?.find(p => p.id === imageModal.product?.id) || imageModal.product}
+          api={customProductsApi}
+          queryKeyPrefix="custom-products"
+          detailQueryKey="custom-product"
+        />
+      </ProductErrorBoundary>
 
       {/* ── Manage Categories & Quick Edit Modals ── */}
       <ProductErrorBoundary title="Category manager error">

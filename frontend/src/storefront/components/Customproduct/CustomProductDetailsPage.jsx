@@ -61,18 +61,22 @@ export default function CustomProductDetailsPage({ product }) {
 
   // Image gallery — build from all available image fields, deduplicated
     const images = useMemo(() => {
-
-        const arr = [];
-
-        if(product?.thumbnail){
-
-            arr.push(product.thumbnail);
-
-        }
-
-        return arr;
-
-    },[product]);
+        const seen = new Set();
+        const result = [];
+        const addImg = (url) => {
+            if (url && !seen.has(url)) {
+                seen.add(url);
+                result.push(url);
+            }
+        };
+        addImg(product?.thumbnail);
+        addImg(product?.image_front);
+        addImg(product?.image_back);
+        addImg(product?.image_size_chart);
+        (product?.gallery_images || []).forEach(addImg);
+        (product?.images || []).forEach(addImg);
+        return result;
+    }, [product]);
 
     const { data } = useCustomProducts();
 

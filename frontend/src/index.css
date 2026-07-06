@@ -70,7 +70,6 @@
     transition: background-color 0.2s ease, color 0.2s ease;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    overflow-x: hidden;
   }
 }
 
@@ -287,6 +286,15 @@
 
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
 }
 
 .scrollbar-hide::-webkit-scrollbar {

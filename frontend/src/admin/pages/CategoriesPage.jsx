@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ImagePlus, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { AlertTriangle, ImagePlus, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
+import toast from "react-hot-toast";
 
 import { homepageCategoriesAPI } from "@/shared/services/api";
 import { useTheme } from "@/shared/hooks/useAuth";
+import useBusinessLimits from "@/shared/hooks/useBusinessLimits";
 
 const BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "");
 
@@ -20,7 +20,7 @@ function getImageUrl(path) {
     return path;
   }
   if (path.startsWith("/")) return `${BACKEND_ORIGIN}${path}`;
-  return `${BACKEND_ORIGIN}/uploads/categories/${path}`;
+  return `${BACKEND_ORIGIN}/assets/categories/${path}`;
 }
 
 function CategoryModal({ category, onClose, onSaved }) {
@@ -211,7 +211,7 @@ function CategoryModal({ category, onClose, onSaved }) {
 }
 
 export default function CategoriesPage() {
-  const { isDark } = useTheme();
+  const { limits, isLoading: limitsLoading, error: limitsError, refetch: refetchLimits } = useBusinessLimits();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalCategory, setModalCategory] = useState(null);
@@ -235,6 +235,10 @@ export default function CategoriesPage() {
   }, []);
 
   const openCreate = () => {
+    if (limits && categories.length >= limits.max_homepage_categories) {
+      toast.error(`You have reached the maximum allowed limit of ${limits.max_homepage_categories} homepage categories.`);
+      return;
+    }
     setModalCategory(emptyForm);
     setModalOpen(true);
   };
@@ -267,11 +271,30 @@ export default function CategoriesPage() {
 
   return (
     <div className="min-h-screen bg-app px-0 py-2">
-      <ToastContainer
-        position="top-right"
-        autoClose={2500}
-        theme={isDark ? "dark" : "light"}
-      />
+      {limitsError && (
+        <div className="mb-4 flex items-center justify-between rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-600">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={16} />
+            <span>Unable to load store configuration. Please refresh the page or try again.</span>
+          </div>
+          <button
+            onClick={() => refetchLimits()}
+            className="rounded bg-red-600 px-3 py-1 text-white hover:bg-red-700 font-semibold"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {limits && categories.length >= limits.max_homepage_categories && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3 text-xs text-yellow-600">
+          <AlertTriangle size={16} />
+          <span>
+            You have reached the maximum allowed limit of {limits.max_homepage_categories} homepage categories.
+            Please delete an existing homepage category before adding a new one.
+          </span>
+        </div>
+      )}
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -281,9 +304,27 @@ export default function CategoriesPage() {
         <button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center gap-2 rounded-lg border border-brand-600 bg-brand-500 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600"
+          disabled={limitsLoading || !!limitsError || (limits && categories.length >= limits.max_homepage_categories)}
+          title={
+            limitsLoading
+              ? "Loading store configuration..."
+              : limitsError
+              ? "Unable to load configuration"
+              : limits && categories.length >= limits.max_homepage_categories
+              ? `Maximum limit reached.\nDelete an existing homepage category to continue.`
+              : ""
+          }
+          className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-semibold text-white transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
+          style={{
+            background: limits && categories.length >= limits.max_homepage_categories ? "#4b5563" : "#2563eb",
+            borderColor: limits && categories.length >= limits.max_homepage_categories ? "#4b5563" : "#2563eb",
+          }}
         >
-          <Plus size={15} />
+          {limitsLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin text-white" />
+          ) : (
+            <Plus size={15} />
+          )}
           + Add Category
         </button>
       </div>
