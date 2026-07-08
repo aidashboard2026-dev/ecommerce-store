@@ -103,9 +103,20 @@ function OrderCard({ order }) {
     </div>
   )
 }
-
 export default function OrdersList() {
-  const { data: orders = [], isLoading } = useMyOrders()
+  const { data, isLoading } = useMyOrders()
+
+  console.log("Orders API Response:", data)
+
+  const orders = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.orders)
+    ? data.orders
+    : Array.isArray(data?.items)
+    ? data.items
+    : Array.isArray(data?.data)
+    ? data.data
+    : []
 
   if (isLoading) {
     return (
@@ -125,9 +136,19 @@ export default function OrdersList() {
         <div className="h-16 w-16 rounded-full bg-surface flex items-center justify-center">
           <Package size={28} className="text-muted" />
         </div>
-        <h1 className="font-display font-bold text-xl text-app">No orders yet</h1>
-        <p className="text-sm text-muted max-w-sm">When you place an order, it'll show up here.</p>
-        <Link to="/products" className="inline-flex items-center justify-center bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm px-6 py-3 rounded-full shadow-glow-sm transition-colors">
+
+        <h1 className="font-display font-bold text-xl text-app">
+          No orders yet
+        </h1>
+
+        <p className="text-sm text-muted max-w-sm">
+          When you place an order, it'll show up here.
+        </p>
+
+        <Link
+          to="/products"
+          className="inline-flex items-center justify-center bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm px-6 py-3 rounded-full shadow-glow-sm transition-colors"
+        >
           Start Shopping
         </Link>
       </div>
@@ -136,7 +157,10 @@ export default function OrdersList() {
 
   return (
     <div className="mx-auto w-full max-w-[900px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      <h1 className="font-display font-bold text-2xl sm:text-3xl text-app mb-8">My Orders</h1>
+      <h1 className="font-display font-bold text-2xl sm:text-3xl text-app mb-8">
+        My Orders
+      </h1>
+
       <div className="flex flex-col gap-4">
         {orders.map((order) => (
           <OrderCard key={order.id} order={order} />
