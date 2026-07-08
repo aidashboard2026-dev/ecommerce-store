@@ -1,5 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { authAPI, customerAuthAPI, storefrontAPI } from '@/shared/services/api'
+import { login, signup, googleLogin } from "@/firebase/auth";
+import axios from "axios";
 
 const TOKEN_KEY = 'customer_token'
 const CUSTOMER_KEY = 'customer'
@@ -12,48 +14,68 @@ const _persistedCustomer = (() => {
 // ── Thunks ────────────────────────────────────────────────────────────────────
 
 export const customerLoginThunk = createAsyncThunk(
-  'customer/login',
+  "customer/login",
   async ({ email, password }, { rejectWithValue }) => {
     try {
-      const res = await customerAuthAPI.login({ email, password })
-      return res.data
+      // Firebase Login
+      const credential = await login(email, password);
+
+      // Email verification check
+      if (!credential.user.emailVerified) {
+        throw new Error("Please verify your email before login.");
+      }
+
+      // Firebase ID Token
+      const idToken = await credential.user.getIdToken();
+
+      // Backend Login
+      const res = await axios.post("/api/v1/auth/firebase/login", {
+        id_token: idToken,
+      });
+
+      return res.data;
+
     } catch (err) {
-      return rejectWithValue(err.response?.data?.detail || 'Login failed')
+      return rejectWithValue(
+        err.response?.data?.detail ||
+        err.message ||
+        "Login failed"
+      );
     }
   }
-)
+);
 
 export const customerSignupThunk = createAsyncThunk(
-  'customer/signup',
-  async (data, { rejectWithValue }) => {
+  "customer/signup",
+  async ({ email, password }, { rejectWithValue }) => {
     try {
-      const res = await authAPI.signup(data)
-      return res.data
+
+      await signup(email, password);
+
+      return {
+        message:
+          "Verification email sent. Please verify your email before login.",
+      };
+
     } catch (err) {
-
-        console.log("Signup Error Full");
-        console.log(JSON.stringify(err.response?.data, null, 2));
-        console.log(err.response?.data?.detail);
-        console.table(err.response?.data?.detail);
-
-        const detail = err.response?.data?.detail;
-
-        if (Array.isArray(detail)) {
-
-            return rejectWithValue(detail[0].msg);
-
-        }
-
-        if (typeof detail === "string") {
-
-            return rejectWithValue(detail);
-
-        }
-
-        return rejectWithValue("Signup failed");
+      return rejectWithValue(
+        err.message || "Signup failed"
+      );
     }
-      }
-)
+  }
+);
+
+export const customerLogoutThunk = createAsyncThunk(
+  "customer/logout",
+  async (_, { dispatch }) => {
+
+    const { logout } = await import("@/firebase/auth");
+
+    await logout();
+
+    dispatch(customerLogout());
+  }
+);
 
 export const fetchCustomerMeThunk = createAsyncThunk(
   'customer/fetchMe',
@@ -77,14 +99,6 @@ export const updateCustomerProfileThunk = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(err.response?.data?.detail || 'Update failed')
     }
-  }
-)
-
-export const customerLogoutThunk = createAsyncThunk(
-  'customer/logout',
-  async (_, { dispatch }) => {
-    try { await customerAuthAPI.logout() } catch (err) { void err }
-    dispatch(customerLogout())
   }
 )
 

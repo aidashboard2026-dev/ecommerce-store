@@ -1,32 +1,41 @@
-import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useDispatch, useSelector } from 'react-redux'
-import { Mail, Lock, User, Phone, Calendar, UserPlus, Eye, EyeOff } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { customerSignupThunk, clearCustomerError } from '@/storefront/store/customerSlice'
+import React, { useState } from "react";
+import { Link, useNavigate} from "react-router-dom";
+// import { useDispatch, useSelector } from "react-redux";
+import {
+  Mail,
+  Lock,
+  User,
+  Phone,
+  Calendar,
+  UserPlus,
+  Eye,
+  EyeOff,
+} from "lucide-react";
+import toast from "react-hot-toast";
+import { signup } from "@/firebase/auth";
+
 
 export default function RegisterForm() {
-  const dispatch = useDispatch()
-  const navigate = useNavigate()
-  const { loading, error } = useSelector((s) => s.customer)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const [form, setForm] = useState({
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    dob: '',
-    password: '',
-    confirmPassword: '',
-  })
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone: "",
+    dob: "",
+    password: "",
+    confirmPassword: "",
+  });
 
-  const update = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
+  const update = (key) => (e) =>
+    setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    dispatch(clearCustomerError())
+    e.preventDefault();
 
     if (form.first_name.trim().length < 2) {
       toast.error("First name must be at least 2 characters");
@@ -39,41 +48,72 @@ export default function RegisterForm() {
     }
 
     if (form.password.length < 8) {
-      toast.error('Password must be at least 8 characters')
-      return
+      toast.error("Password must be at least 8 characters");
+      return;
     }
 
     if (form.password !== form.confirmPassword) {
-      toast.error('Passwords do not match')
-      return
+      toast.error("Passwords do not match");
+      return;
     }
 
-    const { confirmPassword, ...payload } = form
-    if (!payload.phone) delete payload.phone
+    try {
+      setLoading(true);
 
-    const result = await dispatch(customerSignupThunk(payload))
-    if (customerSignupThunk.fulfilled.match(result)) {
-      toast.success('Account created! Please sign in.')
-      navigate('/auth/login')
+      // Firebase Signup
+      await signup(form.email, form.password);
+
+      toast.success(
+        "Verification email sent. Please verify your email before login.",
+      );
+
+      navigate("/auth/login");
+    } catch (err) {
+      console.error(err);
+
+      switch (err.code) {
+        case "auth/email-already-in-use":
+          toast.error("Email already exists");
+          break;
+
+        case "auth/invalid-email":
+          toast.error("Invalid email address");
+          break;
+
+        case "auth/weak-password":
+          toast.error("Password should be at least 6 characters");
+          break;
+
+        default:
+          toast.error(err.message);
+      }
+    } finally {
+      setLoading(false);
     }
-  }
-
+  };
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-4 py-16">
       <div className="w-full max-w-md bg-app border border-app rounded-2xl p-8 shadow-card dark:shadow-card-dark">
-        <h1 className="font-display font-bold text-2xl text-app text-center mb-1">Create Account</h1>
-        <p className="text-sm text-muted text-center mb-6">Join AuraStore for exclusive perks</p>
+        <h1 className="font-display font-bold text-2xl text-app text-center mb-1">
+          Create Account
+        </h1>
+        <p className="text-sm text-muted text-center mb-6">
+          Join AuraStore for exclusive perks
+        </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="relative">
-              <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+              <User
+                size={16}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-muted"
+              />
               <input
                 type="text"
                 required
                 minLength={2}
                 value={form.first_name}
-                onChange={update('first_name')}
+                onChange={update("first_name")}
                 placeholder="First name"
                 aria-label="First name"
                 className="w-full bg-surface border border-app rounded-xl py-3 pl-11 pr-3 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-muted"
@@ -85,7 +125,7 @@ export default function RegisterForm() {
                 required
                 minLength={2}
                 value={form.last_name}
-                onChange={update('last_name')}
+                onChange={update("last_name")}
                 placeholder="Last name"
                 aria-label="Last name"
                 className="w-full bg-surface border border-app rounded-xl py-3 px-4 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-muted"
@@ -94,12 +134,15 @@ export default function RegisterForm() {
           </div>
 
           <div className="relative">
-            <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+            <Mail
+              size={16}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted"
+            />
             <input
               type="email"
               required
               value={form.email}
-              onChange={update('email')}
+              onChange={update("email")}
               placeholder="Email address"
               aria-label="Email address"
               className="w-full bg-surface border border-app rounded-xl py-3 pl-11 pr-4 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-muted"
@@ -107,11 +150,14 @@ export default function RegisterForm() {
           </div>
 
           <div className="relative">
-            <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+            <Phone
+              size={16}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted"
+            />
             <input
               type="tel"
               value={form.phone}
-              onChange={update('phone')}
+              onChange={update("phone")}
               placeholder="Phone number (optional)"
               aria-label="Phone number (optional)"
               minLength={10}
@@ -120,25 +166,31 @@ export default function RegisterForm() {
           </div>
 
           <div className="relative">
-            <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+            <Calendar
+              size={16}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted"
+            />
             <input
               type="date"
               required
               value={form.dob}
-              onChange={update('dob')}
+              onChange={update("dob")}
               aria-label="Date of birth"
               className="w-full bg-surface border border-app rounded-xl py-3 pl-11 pr-4 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
             />
           </div>
 
           <div className="relative">
-            <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+            <Lock
+              size={16}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted"
+            />
             <input
-              type={showPassword ? 'text' : 'password'}
+              type={showPassword ? "text" : "password"}
               required
               minLength={8}
               value={form.password}
-              onChange={update('password')}
+              onChange={update("password")}
               placeholder="Password (min 8 characters)"
               aria-label="Password (min 8 characters)"
               className="w-full bg-surface border border-app rounded-xl py-3 pl-11 pr-11 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-muted"
@@ -154,13 +206,16 @@ export default function RegisterForm() {
           </div>
 
           <div className="relative">
-            <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+            <Lock
+              size={16}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted"
+            />
             <input
-              type={showConfirm ? 'text' : 'password'}
+              type={showConfirm ? "text" : "password"}
               required
               minLength={8}
               value={form.confirmPassword}
-              onChange={update('confirmPassword')}
+              onChange={update("confirmPassword")}
               placeholder="Confirm password"
               aria-label="Confirm password"
               className="w-full bg-surface border border-app rounded-xl py-3 pl-11 pr-11 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-muted"
@@ -168,37 +223,35 @@ export default function RegisterForm() {
             <button
               type="button"
               onClick={() => setShowConfirm((s) => !s)}
-              aria-label={showConfirm ? "Hide confirm password" : "Show confirm password"}
+              aria-label={
+                showConfirm ? "Hide confirm password" : "Show confirm password"
+              }
               className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-app"
             >
               {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
 
-          {error && (
-              <p className="text-xs text-red-500">
-                  {typeof error === "string"
-                      ? error
-                      : JSON.stringify(error)}
-              </p>
-          )}
-
           <button
             type="submit"
             disabled={loading}
             className="inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-60 text-white font-semibold text-sm py-3 rounded-full shadow-glow-sm transition-colors mt-2"
           >
-            <UserPlus size={16} /> {loading ? 'Creating account…' : 'Create Account'}
+            <UserPlus size={16} />
+            {loading ? "Creating Account..." : "Create Account"}
           </button>
         </form>
 
         <p className="text-center text-sm text-muted mt-6">
-          Already have an account?{' '}
-          <Link to="/auth/login" className="text-brand-500 font-semibold hover:text-brand-600">
+          Already have an account?{" "}
+          <Link
+            to="/auth/login"
+            className="text-brand-500 font-semibold hover:text-brand-600"
+          >
             Sign in
           </Link>
         </p>
       </div>
     </div>
-  )
+  );
 }
