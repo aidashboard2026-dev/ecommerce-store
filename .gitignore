@@ -46,6 +46,9 @@ htmlcov/
 backend/uploads/products/*
 !backend/uploads/products/.gitkeep
 
+# Secrets
+backend/secrets/firebase-service-account.json
+
 # Reports
 reports/
 *.md

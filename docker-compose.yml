@@ -76,24 +76,27 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     restart: unless-stopped
+
     environment:
       - VITE_API_URL=/api/v1
       - VITE_BACKEND_URL=
       - DOCKER=true
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
+  
     ports:
       - "5173:5173"
+  
     depends_on:
       backend:
         condition: service_healthy
+  
     volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/public:/app/public
+      - ./frontend:/app
       - /app/node_modules
+  
     networks:
-      - admindash_network
-
+    - admindash_network
   nginx:
     image: nginx:alpine
     restart: unless-stopped

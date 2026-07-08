@@ -16,6 +16,7 @@ class Customer(Base):
     __tablename__ = "customers"
 
     id = Column(Integer, primary_key=True, index=True)
+    
 
     # ── Identity ─────────────────────────────────────────────────────────────
     first_name = Column(String(100), nullable=False)
@@ -27,6 +28,21 @@ class Customer(Base):
     # ── Auth (admin-created; password_hash kept from original) ───────────────
     password_hash = Column(String(255), nullable=True)   # nullable — admin-created customers may not have a password
 
+        # ── Firebase Authentication ─────────────────────────────────────
+
+    firebase_uid = Column(
+        String(128),
+        unique=True,
+        nullable=True,
+        index=True,
+    )
+    
+    auth_provider = Column(
+        String(30),
+        nullable=False,
+        default="password",
+    )
+    
     # ── Email verification ───────────────────────────────────────────────────
     email_verified = Column(Boolean, default=False, nullable=False)
 
