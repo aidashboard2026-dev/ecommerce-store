@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.modules.admins.router import router as admins_router
 from app.modules.audit.router import router as audit_router
 from app.modules.auth.router import router as auth_router
+from app.modules.auth.firebase_router import router as firebase_router
 from app.modules.banners.router import router as banners_router
 from app.modules.custom_products.router import router as custom_products_router
 from app.modules.customers.router import router as customers_router
@@ -19,6 +20,11 @@ from app.shared.routing.router import router as routes_router
 api_router = APIRouter()
 
 api_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
+api_router.include_router(
+    firebase_router,
+    prefix="/auth",
+    tags=["Firebase Authentication"],
+)
 api_router.include_router(homepage_categories_router, tags=["Homepage Categories"])
 api_router.include_router(admins_router, prefix="/admins", tags=["Admins"])
 api_router.include_router(dashboard_router, prefix="/dashboard", tags=["Dashboard"])

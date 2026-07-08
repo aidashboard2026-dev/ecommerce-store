@@ -1,39 +1,99 @@
-import React, { useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { useDispatch, useSelector } from 'react-redux'
-import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { customerLoginThunk, clearCustomerError } from '@/storefront/store/customerSlice'
+import React, { useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
+import toast from "react-hot-toast";
+import {
+  clearCustomerError,
+} from "@/storefront/store/customerSlice";
+import { login } from "@/firebase/auth";
+import { googleLogin } from "@/firebase/auth";
+import axios from "axios";
 
 export default function LoginForm() {
-  const dispatch = useDispatch()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { loading, error } = useSelector((s) => s.customer)
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { loading, error } = useSelector((s) => s.customer);
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    dispatch(clearCustomerError())
-    const result = await dispatch(customerLoginThunk({ email, password }))
-    if (customerLoginThunk.fulfilled.match(result)) {
-      toast.success('Welcome back!')
-      navigate('/', { replace: true })
+    e.preventDefault();
+
+    dispatch(clearCustomerError());
+
+    try {
+      // Firebase Login
+      const credential = await login(email, password);
+
+      // Email Verification Check
+      if (!credential.user.emailVerified) {
+        toast.error("Please verify your email before login.");
+        return;
+      }
+
+      // Firebase ID Token
+      const idToken = await credential.user.getIdToken();
+
+      // Backend Login
+      const res = await axios.post("/api/v1/auth/firebase/login", {
+        id_token: idToken,
+      });
+
+      // Save JWT
+      localStorage.setItem("customer_token", res.data.access_token);
+      localStorage.setItem("customer", JSON.stringify(res.data.customer));
+
+      toast.success("Welcome Back!");
+
+      navigate("/", { replace: true });
+    } catch (err) {
+      console.error(err);
+
+      toast.error(err.response?.data?.detail || err.message || "Login failed");
     }
-  }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      const credential = await googleLogin();
+
+      const idToken = await credential.user.getIdToken();
+
+      const res = await axios.post("/api/v1/auth/firebase/login", {
+        id_token: idToken,
+      });
+
+      localStorage.setItem("customer_token", res.data.access_token);
+      localStorage.setItem("customer", JSON.stringify(res.data.customer));
+
+      toast.success("Google Login Success");
+
+      navigate("/");
+    } catch (err) {
+      toast.error(err.response?.data?.detail || err.message);
+    }
+  };
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-4 py-16">
       <div className="w-full max-w-md bg-app border border-app rounded-2xl p-8 shadow-card dark:shadow-card-dark">
-        <h1 className="font-display font-bold text-2xl text-app text-center mb-1">Welcome Back</h1>
-        <p className="text-sm text-muted text-center mb-6">Sign in to continue shopping</p>
+        <h1 className="font-display font-bold text-2xl text-app text-center mb-1">
+          Welcome Back
+        </h1>
+        <p className="text-sm text-muted text-center mb-6">
+          Sign in to continue shopping
+        </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="relative">
-            <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+            <Mail
+              size={16}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted"
+            />
             <input
               type="email"
               required
@@ -46,9 +106,12 @@ export default function LoginForm() {
           </div>
 
           <div className="relative">
-            <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+            <Lock
+              size={16}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted"
+            />
             <input
-              type={showPassword ? 'text' : 'password'}
+              type={showPassword ? "text" : "password"}
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -82,17 +145,28 @@ export default function LoginForm() {
             disabled={loading}
             className="inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-60 text-white font-semibold text-sm py-3 rounded-full shadow-glow-sm transition-colors mt-2"
           >
-            <LogIn size={16} /> {loading ? 'Signing in…' : 'Sign In'}
+            <LogIn size={16} />
+            {loading ? "Signing in..." : "Sign In"}
+          </button>
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            className="w-full mt-3 border border-app rounded-xl py-3 font-medium hover:bg-surface transition"
+          >
+            Continue with Google
           </button>
         </form>
 
         <p className="text-center text-sm text-muted mt-6">
-          New here?{' '}
-          <Link to="/auth/register" className="text-brand-500 font-semibold hover:text-brand-600">
+          New here?{" "}
+          <Link
+            to="/auth/register"
+            className="text-brand-500 font-semibold hover:text-brand-600"
+          >
             Create an account
           </Link>
         </p>
       </div>
     </div>
-  )
+  );
 }
