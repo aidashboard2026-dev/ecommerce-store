@@ -263,6 +263,8 @@ export const storefrontAPI = {
   getOrder:         (id)          => storefrontClient.get(`/orders/customer/${id}`),
   cancelOrder:      (id)          => storefrontClient.post(`/orders/customer/${id}/cancel`),
   trackOrder:       (orderNumber) => storefrontClient.get(`/orders/track/${orderNumber}`),
+  createRazorpayOrder: (data) => storefrontClient.post('/orders/customer/razorpay/create', data),
+  verifyRazorpayPayment: (data) => storefrontClient.post('/orders/customer/razorpay/verify', data),
 }
 
 export const customProductsAPI = {

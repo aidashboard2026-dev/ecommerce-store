@@ -5,6 +5,8 @@ import {
   fetchMyOrder,
   cancelMyOrder,
   trackOrder,
+  createRazorpayOrder,
+  verifyRazorpayPayment,
 } from '@/storefront/services/ordersService'
 
 export function useMyOrders(enabled = true) {
@@ -51,5 +53,21 @@ export function useTrackOrder(orderNumber) {
     queryFn: () => trackOrder(orderNumber),
     enabled: !!orderNumber,
     retry: false,
+  })
+}
+
+export function useCreateRazorpayOrder() {
+  return useMutation({
+    mutationFn: createRazorpayOrder,
+  })
+}
+
+export function useVerifyRazorpayPayment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: verifyRazorpayPayment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders', 'mine'] })
+    },
   })
 }

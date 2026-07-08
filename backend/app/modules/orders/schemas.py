@@ -58,6 +58,12 @@ class OrderBase(BaseModel):
     # Groups all rows from the same checkout session.
     cart_session_id: Optional[str] = Field(None, max_length=100)
 
+    # Razorpay Payment Fields
+    razorpay_order_id: Optional[str] = Field(None, max_length=100)
+    razorpay_payment_id: Optional[str] = Field(None, max_length=100)
+    razorpay_signature: Optional[str] = Field(None, max_length=200)
+    payment_verified_at: Optional[datetime] = None
+
     # Item type — set by the service layer; clients may send it but it
     # will be validated and overridden if incorrect.
     item_type: str = Field(
@@ -139,3 +145,28 @@ class OrderTrackingResponse(BaseModel):
     expected_delivery_date: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
+
+
+# ─────────────────────────────────────────────────────────────
+# Razorpay Schemas
+# ─────────────────────────────────────────────────────────────
+
+class RazorpayOrderCreateRequest(BaseModel):
+    cart_session_id: str = Field(..., min_length=1, max_length=100)
+
+
+class RazorpayOrderCreateResponse(BaseModel):
+    id: str
+    amount: int
+    currency: str
+    key: Optional[str] = None
+    receipt: Optional[str] = None
+    status: Optional[str] = None
+
+
+class RazorpayPaymentVerifyRequest(BaseModel):
+    cart_session_id: str = Field(..., min_length=1, max_length=100)
+    razorpay_order_id: str = Field(..., min_length=1, max_length=100)
+    razorpay_payment_id: str = Field(..., min_length=1, max_length=100)
+    razorpay_signature: str = Field(..., min_length=1, max_length=200)
+

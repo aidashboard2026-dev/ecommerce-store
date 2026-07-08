@@ -80,6 +80,12 @@ class Order(Base):
     payment_method = Column(String(50), default="COD")
     payment_status = Column(String(50), default="PENDING")
 
+    # ── Razorpay Payment Fields ──────────────────────────────────────────────
+    razorpay_order_id   = Column(String(100), nullable=True, index=True)
+    razorpay_payment_id = Column(String(100), nullable=True)
+    razorpay_signature  = Column(String(200), nullable=True)
+    payment_verified_at = Column(DateTime(timezone=True), nullable=True)
+
     # ── Tracking ─────────────────────────────────────────────────────────────
     tracking_status = Column(String(50), default="PLACED")
     tracking_note   = Column(Text)

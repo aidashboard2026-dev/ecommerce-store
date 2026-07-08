@@ -77,6 +77,22 @@ class OrderRepository(BaseRepository[Order]):
             .all()
         )
 
+    def get_by_razorpay_order_id(self, rzp_order_id: str) -> List[Order]:
+        """Fetch all orders matching a given Razorpay Order ID."""
+        return (
+            self.db.query(Order)
+            .filter(Order.razorpay_order_id == rzp_order_id)
+            .all()
+        )
+
+    def get_by_cart_session_id(self, cart_session_id: str) -> List[Order]:
+        """Fetch all orders matching a given cart session ID."""
+        return (
+            self.db.query(Order)
+            .filter(Order.cart_session_id == cart_session_id)
+            .all()
+        )
+
     def get_customer_order_or_raise(self, order_id: int, customer_email: str) -> Order:
         """
         Fetch an order by PK, asserting it belongs to the given customer.
