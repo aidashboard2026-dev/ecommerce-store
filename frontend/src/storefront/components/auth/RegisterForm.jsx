@@ -151,7 +151,7 @@ export default function RegisterForm() {
 
           <div className="relative">
             <Phone
-              size={16}
+              size={14}
               className="absolute left-4 top-1/2 -translate-y-1/2 text-muted"
             />
             <input
