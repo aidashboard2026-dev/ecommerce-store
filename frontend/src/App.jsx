@@ -42,11 +42,11 @@ function App() {
     }
 
     if (settings.logo) {
-      const favicon = document.querySelector("link[rel~='icon']");
+      // const favicon = document.querySelector("link[rel~='icon']");
 
-      if (favicon) {
-        favicon.href = settings.logo;
-      }
+      // if (favicon) {
+      //   favicon.href = settings.logo;
+      // }
 
       localStorage.setItem("store_logo", settings.logo);
     }
