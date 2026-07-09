@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useLocation, Link } from 'react-router-dom'
 import { KeyRound, Mail, CheckCircle, AlertCircle } from 'lucide-react'
-import { customerAuthAPI } from '@/shared/services/api'
+import { forgotPassword } from '@/firebase/auth'
 import LoginForm from '@/storefront/components/auth/LoginForm'
 import RegisterForm from '@/storefront/components/auth/RegisterForm'
 
@@ -18,13 +18,13 @@ function ForgotPasswordForm() {
     setErrorMsg('')
 
     try {
-      await customerAuthAPI.forgotPassword(email)
+      await forgotPassword(email)
       // Always show success — the backend never reveals whether the email exists
       setStatus('success')
     } catch (err) {
       // Network error or server error — actual 200 responses always succeed above
       setErrorMsg(
-        err?.response?.data?.detail ||
+        err?.message ||
         'Something went wrong. Please try again.'
       )
       setStatus('error')

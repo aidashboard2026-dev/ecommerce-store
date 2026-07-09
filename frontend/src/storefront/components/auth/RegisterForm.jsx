@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate} from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 // import { useDispatch, useSelector } from "react-redux";
 import {
   Mail,
@@ -14,9 +14,9 @@ import {
 import toast from "react-hot-toast";
 import { signup } from "@/firebase/auth";
 
-
 export default function RegisterForm() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -61,13 +61,23 @@ export default function RegisterForm() {
       setLoading(true);
 
       // Firebase Signup
-      await signup(form.email, form.password);
+      await signup(form.email, form.password, form.first_name, form.last_name);
+
+      localStorage.setItem(
+        "pending_customer_profile",
+        JSON.stringify({
+          first_name: form.first_name.trim(),
+          last_name: form.last_name.trim(),
+          phone: form.phone || null,
+          dob: form.dob || null,
+        }),
+      );
 
       toast.success(
         "Verification email sent. Please verify your email before login.",
       );
 
-      navigate("/auth/login");
+      navigate("/auth/login", { state: location.state });
     } catch (err) {
       console.error(err);
 
@@ -246,6 +256,7 @@ export default function RegisterForm() {
           Already have an account?{" "}
           <Link
             to="/auth/login"
+            state={location.state}
             className="text-brand-500 font-semibold hover:text-brand-600"
           >
             Sign in

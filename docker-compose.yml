@@ -83,18 +83,18 @@ services:
       - DOCKER=true
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
-  
+
     ports:
       - "5173:5173"
-  
+
     depends_on:
       backend:
         condition: service_healthy
-  
+
     volumes:
       - ./frontend:/app
       - /app/node_modules
-  
+
     networks:
     - admindash_network
   nginx:
@@ -111,6 +111,17 @@ services:
         condition: service_started
     networks:
       - admindash_network
+  
+  adminer:
+    image: adminer:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+
 
 volumes:
   postgres_data:

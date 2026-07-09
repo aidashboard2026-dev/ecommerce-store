@@ -128,7 +128,7 @@ async def lifespan(app: FastAPI):
         if not os.path.exists(ini_path) and os.path.exists("backend/alembic.ini"):
             ini_path = "backend/alembic.ini"
         alembic_cfg = alembic.config.Config(ini_path)
-        alembic.command.upgrade(alembic_cfg, "head")
+        alembic.command.upgrade(alembic_cfg, "heads")
         logger.info("Alembic upgrade completed successfully on lifespan startup.")
     except Exception as e:
         logger.error(f"Failed to run alembic upgrade on startup: {e}")
