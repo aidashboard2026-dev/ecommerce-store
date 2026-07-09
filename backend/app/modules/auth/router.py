@@ -1,258 +1,453 @@
 import logging
-import time
 import threading
+import time
 from collections import defaultdict
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    Response,
+    status,
+)
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.modules.auth.dependencies import get_current_admin, get_current_customer
+from app.core.config import settings
 from app.core.database import get_db
+
 from app.modules.admins.models import Admin
 from app.modules.customers.models import Customer
-from app.modules.admins.schemas import AdminResponse, LoginRequest, Token
-from app.modules.customers.schemas import CustomerResponse
-from app.modules.auth.service import login_admin, login_customer, register_customer, request_password_reset, reset_password
-from app.core.config import settings
-from app.modules.auth.schemas import CustomerLoginRequest, SignupRequest, ForgotPasswordRequest, ResetPasswordRequest
+from app.modules.admins.schemas import (
+    AdminResponse,
+    LoginRequest,
+    Token,
+)
+
+from app.modules.auth.dependencies import (
+    get_current_admin,
+    get_current_customer,
+)
+
+from app.modules.auth.firebase_service import (
+    firebase_login,
+)
+
+from app.modules.auth.service import (
+    login_admin,
+)
+
+
+# ============================================================
+# Router
+# ============================================================
 
 router = APIRouter()
+
 logger = logging.getLogger(__name__)
 
-# ── In-memory brute-force throttle ───────────────────────────────────────────
-# NOTE: Works correctly with --workers 1 (dev/demo). For multi-worker prod,
-# replace with a Redis-backed counter.
+
+def _customer_profile_payload(customer: Customer) -> dict:
+    return {
+        "id": customer.id,
+        "first_name": customer.first_name,
+        "last_name": customer.last_name,
+        "email": customer.email,
+        "phone": customer.phone,
+        "dob": customer.dob,
+        "address_line1": customer.address_line1,
+        "address_line2": customer.address_line2,
+        "city": customer.city,
+        "state": customer.state,
+        "country": customer.country,
+        "pincode": customer.pincode,
+        "photo_url": customer.photo_url,
+        "google_name": customer.google_name,
+        "firebase_uid": customer.firebase_uid,
+        "auth_provider": customer.auth_provider,
+        "email_verified": customer.email_verified,
+        "is_active": customer.is_active,
+        "created_at": customer.created_at,
+    }
+
+
+# ============================================================
+# Firebase Request Schema
+# ============================================================
+
+class FirebaseLoginRequest(BaseModel):
+    id_token: str
+
+
+# ============================================================
+# Login Rate Limit
+# ============================================================
 
 _RATE_LOCK = threading.Lock()
-_attempts: dict[str, list[float]] = defaultdict(list)
 
-MAX_ATTEMPTS = 5        # max failures before lockout
-WINDOW_SECONDS = 300    # 5-minute rolling window
+_attempts: dict[str, list[float]] = defaultdict(
+    list
+)
 
-# ── Cookie configuration ──────────────────────────────────────────────────────
-_COOKIE_NAME    = "admin_token"
-_COOKIE_MAX_AGE = settings.ADMIN_TOKEN_EXPIRE_MINUTES * 60
+MAX_ATTEMPTS = 5
+
+WINDOW_SECONDS = 300
 
 
-def _check_rate_limit(ip: str) -> None:
+def _check_rate_limit(
+    ip: str,
+) -> None:
+
     now = time.monotonic()
+
     with _RATE_LOCK:
-        _attempts[ip] = [t for t in _attempts[ip] if now - t < WINDOW_SECONDS]
-        if len(_attempts[ip]) >= MAX_ATTEMPTS:
+
+        _attempts[ip] = [
+            attempt_time
+            for attempt_time
+            in _attempts[ip]
+            if (
+                now
+                - attempt_time
+                < WINDOW_SECONDS
+            )
+        ]
+
+        if (
+            len(_attempts[ip])
+            >= MAX_ATTEMPTS
+        ):
+
             raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Too many failed login attempts. Please wait 5 minutes.",
-                headers={"Retry-After": str(WINDOW_SECONDS)},
+                status_code=(
+                    status
+                    .HTTP_429_TOO_MANY_REQUESTS
+                ),
+                detail=(
+                    "Too many failed "
+                    "login attempts. "
+                    "Please wait 5 minutes."
+                ),
+                headers={
+                    "Retry-After":
+                    str(
+                        WINDOW_SECONDS
+                    )
+                },
             )
 
 
-def _record_failure(ip: str) -> None:
-    now = time.monotonic()
+def _record_failure(
+    ip: str,
+) -> None:
+
     with _RATE_LOCK:
-        _attempts[ip].append(now)
+
+        _attempts[ip].append(
+            time.monotonic()
+        )
 
 
-def _clear_failures(ip: str) -> None:
+def _clear_failures(
+    ip: str,
+) -> None:
+
     with _RATE_LOCK:
-        _attempts.pop(ip, None)
+
+        _attempts.pop(
+            ip,
+            None,
+        )
 
 
-# ── Admin endpoints ───────────────────────────────────────────────────────────
+# ============================================================
+# Admin Cookie Configuration
+# ============================================================
 
-@router.post("/login", response_model=Token)
-def login(
+ADMIN_COOKIE_NAME = (
+    "admin_token"
+)
+
+ADMIN_COOKIE_MAX_AGE = (
+    settings
+    .ADMIN_TOKEN_EXPIRE_MINUTES
+    * 60
+)
+
+
+# ============================================================
+# Admin Login
+# ============================================================
+
+@router.post(
+    "/login",
+    response_model=Token,
+)
+def admin_login(
     request: Request,
     response: Response,
     login_data: LoginRequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(
+        get_db
+    ),
 ):
-    ip = request.client.host if request.client else "unknown"
 
-    _check_rate_limit(ip)
+    ip = (
+        request.client.host
+        if request.client
+        else "unknown"
+    )
 
-    result = login_admin(db, login_data.email, login_data.password)
+    _check_rate_limit(
+        ip
+    )
+
+    result = login_admin(
+        db,
+        login_data.email,
+        login_data.password,
+    )
+
     if not result:
-        _record_failure(ip)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials.",
+
+        _record_failure(
+            ip
         )
 
-    _clear_failures(ip)
+        raise HTTPException(
+            status_code=(
+                status
+                .HTTP_401_UNAUTHORIZED
+            ),
+            detail=(
+                "Invalid credentials."
+            ),
+        )
 
-    import os as _os
-    cookie_secure = _os.getenv("AUTH_COOKIE_SECURE", "true").lower() != "false"
+    _clear_failures(
+        ip
+    )
+
+
+    import os
+
+    cookie_secure = (
+        os.getenv(
+            "AUTH_COOKIE_SECURE",
+            "true",
+        ).lower()
+        != "false"
+    )
+
+
     response.set_cookie(
-        key=_COOKIE_NAME,
-        value=result["access_token"],
-        max_age=_COOKIE_MAX_AGE,
+        key=(
+            ADMIN_COOKIE_NAME
+        ),
+        value=(
+            result[
+                "access_token"
+            ]
+        ),
+        max_age=(
+            ADMIN_COOKIE_MAX_AGE
+        ),
         httponly=True,
-        secure=cookie_secure,
+        secure=(
+            cookie_secure
+        ),
         samesite="lax",
         path="/",
     )
-    logger.info("Admin login successful: email=%s", login_data.email)
+
+
+    logger.info(
+        (
+            "Admin login "
+            "successful: %s"
+        ),
+        login_data.email,
+    )
+
+
     return result
 
 
-@router.get("/me", response_model=AdminResponse)
-def get_me(current_admin: Admin = Depends(get_current_admin)):
+# ============================================================
+# Current Admin
+# ============================================================
+
+@router.get(
+    "/me",
+    response_model=AdminResponse,
+)
+def get_admin_profile(
+    current_admin: Admin = Depends(
+        get_current_admin
+    ),
+):
+
     return current_admin
 
 
-@router.post("/logout")
-def logout(response: Response, current_admin: Admin = Depends(get_current_admin)):
-    response.delete_cookie(key=_COOKIE_NAME, path="/", samesite="lax")
-    return {"message": "Logged out successfully"}
+# ============================================================
+# Admin Logout
+# ============================================================
+
+@router.post(
+    "/logout"
+)
+def admin_logout(
+    response: Response,
+    current_admin: Admin = Depends(
+        get_current_admin
+    ),
+):
+
+    response.delete_cookie(
+        key=(
+            ADMIN_COOKIE_NAME
+        ),
+        path="/",
+        samesite="lax",
+    )
 
 
-# ── Customer signup ───────────────────────────────────────────────────────────
+    logger.info(
+        (
+            "Admin logout: "
+            "id=%s"
+        ),
+        current_admin.id,
+    )
 
-@router.post("/signup", status_code=status.HTTP_201_CREATED)
-def signup(request: Request, signup_data: SignupRequest, db: Session = Depends(get_db)):
-    """
-    Register a new customer account.
-    Returns safe subset of customer data — no token issued at signup.
-    Customer must call POST /auth/customer/login to obtain a JWT.
-    """
-    ip = request.client.host if request.client else "unknown"
-    _check_rate_limit(ip)
-    customer = register_customer(db, signup_data)
 
     return {
-        "message": "Account created successfully",
-        "customer": {
-            "id": customer.id,
-            "first_name": customer.first_name,
-            "last_name": customer.last_name,
-            "email": customer.email,
-        },
+        "message":
+        "Logged out successfully"
     }
 
 
-# ── Customer login ────────────────────────────────────────────────────────────
+# ============================================================
+# Firebase Customer Login
+# ============================================================
 
-@router.post("/customer/login")
-def customer_login(
-    request: Request,
-    login_data: CustomerLoginRequest,
-    db: Session = Depends(get_db),
+@router.post(
+    "/firebase/login"
+)
+def firebase_customer_login(
+    body: FirebaseLoginRequest,
+    db: Session = Depends(
+        get_db
+    ),
 ):
-    """
-    Authenticate a customer by email + password.
-    Returns access_token (JWT with type='customer') for use in Authorization header.
-    """
-    ip = request.client.host if request.client else "unknown"
-    _check_rate_limit(ip)
 
-    result = login_customer(db, login_data.email, login_data.password)
-    if not result:
-        _record_failure(ip)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials.",
+    print(
+        (
+            "Firebase login "
+            "request received"
+        ),
+        flush=True,
+    )
+
+
+    try:
+
+        result = firebase_login(
+            db=db,
+            id_token=(
+                body.id_token
+            ),
         )
 
-    _clear_failures(ip)
 
-    customer = result["customer"]
-    return {
-        "access_token": result["access_token"],
-        "token_type": result["token_type"],
-        "customer": {
-            "id": customer.id,
-            "first_name": customer.first_name,
-            "last_name": customer.last_name,
-            "email": customer.email,
-            "is_active": customer.is_active,
-        },
-    }
+        print(
+            (
+                "Firebase login "
+                "successful"
+            ),
+            flush=True,
+        )
 
 
+        return result
+
+
+    except HTTPException:
+
+        db.rollback()
+
+        raise
+
+
+    except Exception as error:
+
+        db.rollback()
+
+
+        # print(("FIREBASE""LOGIN ERROR:"),  type(error).__name__,  str(error),  flush=True,)
+        logger.exception(
+            (
+                "Firebase customer "
+                "login failed"
+            )
+        )
+
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to complete Firebase login. Please try again.",
+        )
+    
 @router.get("/customer/me")
-def get_customer_me(current_customer: Customer = Depends(get_current_customer)):
-    """Return the authenticated customer's profile."""
-    return {
-        "id": current_customer.id,
-        "first_name": current_customer.first_name,
-        "last_name": current_customer.last_name,
-        "email": current_customer.email,
-        "phone": current_customer.phone,
-        "is_active": current_customer.is_active,
-    }
+def get_customer_profile(
+    current_customer: Customer = Depends(get_current_customer),
+):
+    return _customer_profile_payload(current_customer)
 
 
-@router.post("/customer/logout")
-def customer_logout(current_customer: Customer = Depends(get_current_customer)):
-    """
-    Server-side customer logout.
-    The JWT remains cryptographically valid until expiry (stateless tokens
-    cannot be invalidated without a denylist), but this endpoint provides
-    a clean logout surface for audit logging and future token revocation
-    (e.g. Redis denylist) without requiring a client-side change.
-    """
-    logger.info("Customer logout: id=%s email=%s", current_customer.id, current_customer.email)
-    return {"message": "Logged out successfully"}
+class CustomerProfileRequest(BaseModel):
+    first_name: str
+    last_name: str
+    phone: str | None = None
+    dob: str | None = None
+    address_line1: str | None = None
+    address_line2: str | None = None
+    city: str | None = None
+    state: str | None = None
+    country: str | None = "India"
+    pincode: str | None = None
+    
 
 
-# ── Forgot Password ────────────────────────────────────────────────────────────
 
-@router.post("/forgot-password")
-async def forgot_password(
-    request: Request,
-    body: ForgotPasswordRequest,
+@router.put("/customer/profile")
+def update_customer_profile(
+    body: CustomerProfileRequest,
+    current_customer=Depends(get_current_customer),
     db: Session = Depends(get_db),
 ):
-    """
-    Request a password-reset email.
+    from datetime import date
 
-    ALWAYS returns 200 with the same generic message regardless of whether
-    the email exists — this prevents user enumeration (SEC-08).
+    current_customer.first_name = body.first_name.strip()
+    current_customer.last_name = body.last_name.strip()
+    current_customer.phone = body.phone
 
-    Rate-limited to 5 requests per IP per 5-minute window (shared limiter).
-    """
-    ip = request.client.host if request.client else "unknown"
-    _check_rate_limit(ip)
+    if body.dob:
+        current_customer.dob = (date.fromisoformat(body.dob) if body.dob else None)
 
-    raw_token = request_password_reset(db, body.email)
+    current_customer.address_line1 = body.address_line1
+    current_customer.address_line2 = body.address_line2
+    current_customer.city = body.city
+    current_customer.state = body.state
+    current_customer.country = body.country
+    current_customer.pincode = body.pincode
 
-    if raw_token:
-        from app.shared.email.service import send_password_reset_email
-        reset_url = f"{settings.FRONTEND_URL}/auth/reset-password?token={raw_token}"
-        await send_password_reset_email(to_email=body.email, reset_url=reset_url)
+    db.commit()
+    db.refresh(current_customer)
 
-    # Always return 200 — never reveal whether the email is registered
     return {
-        "message": (
-            "If an account with that email exists, "
-            "you'll receive a password-reset link shortly."
-        )
+        "message": "Customer profile saved successfully",
+        "customer": _customer_profile_payload(current_customer),
     }
-
-
-# ── Reset Password ─────────────────────────────────────────────────────────────
-
-@router.post("/reset-password")
-def do_reset_password(
-    request: Request,
-    body: ResetPasswordRequest,
-    db: Session = Depends(get_db),
-):
-    """
-    Validate a password-reset token and set a new password.
-
-    The token is consumed on first use (one-time use).
-    Invalid or expired tokens return 400.
-    """
-    ip = request.client.host if request.client else "unknown"
-    _check_rate_limit(ip)
-
-    success = reset_password(db, body.token, body.new_password)
-    if not success:
-        _record_failure(ip)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This reset link is invalid or has expired. Please request a new one.",
-        )
-
-    return {"message": "Password updated successfully. You can now sign in."}

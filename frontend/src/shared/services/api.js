@@ -93,12 +93,8 @@ export const authAPI = {
 // Uses storefrontClient (cookie-based, withCredentials: true).
 
 export const customerAuthAPI = {
-  login:         (creds) => storefrontClient.post('/auth/customer/login', creds),
-  me:            ()      => storefrontClient.get('/auth/customer/me'),
-  logout:        ()      => storefrontClient.post('/auth/customer/logout'),
-  forgotPassword:(email) => storefrontClient.post('/auth/forgot-password', { email }),
-  resetPassword: (token, new_password) =>
-    storefrontClient.post('/auth/reset-password', { token, new_password }),
+  firebaseLogin: (data) => storefrontClient.post('/auth/firebase/login', data),
+  me:            ()     => storefrontClient.get('/auth/customer/me'),
 }
 
 // ─── Categories ───────────────────────────────────────────────────────────────

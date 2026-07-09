@@ -1,167 +1,643 @@
 import React, { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
-import toast from "react-hot-toast";
-import {
-  clearCustomerError,
-} from "@/storefront/store/customerSlice";
-import { login } from "@/firebase/auth";
-import { googleLogin } from "@/firebase/auth";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+
+import { Eye, EyeOff, Loader2, Lock, LogIn, Mail } from "lucide-react";
+
 import axios from "axios";
+import toast from "react-hot-toast";
+
+import { useDispatch } from "react-redux";
+import { setCustomerSession } from "@/storefront/store/customerSlice";
+
+import { googleLogin, login, logout } from "@/firebase/auth";
+
+const FIREBASE_BACKEND_URL = "/api/v1/auth/firebase/login";
+
+const CUSTOMER_PROFILE_URL = "/api/v1/auth/customer/profile";
 
 export default function LoginForm() {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const location = useLocation();
-  const { loading, error } = useSelector((s) => s.customer);
+
+  // =========================================================
+  // Form State
+  // =========================================================
 
   const [email, setEmail] = useState("");
+
   const [password, setPassword] = useState("");
+
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const [loadingType, setLoadingType] = useState(null);
 
-    dispatch(clearCustomerError());
+  // =========================================================
+  // Save Customer Login Session
+  // =========================================================
+
+  const saveCustomerSession = (responseData) => {
+    const accessToken = responseData.access_token;
+
+    axios.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
+
+    dispatch(
+      setCustomerSession({
+        customer: responseData.customer,
+        token: accessToken,
+      }),
+    );
+
+    window.dispatchEvent(new Event("customer-auth-changed"));
+  };
+
+  // =========================================================
+  // Firebase → FastAPI Login
+  // =========================================================
+
+  const connectFirebaseToBackend = async (firebaseUser) => {
+    // Get latest Firebase ID token
+
+    const idToken = await firebaseUser.getIdToken(true);
+
+    // Send Firebase token to backend
+
+    const response = await axios.post(FIREBASE_BACKEND_URL, {
+      id_token: idToken,
+    });
+
+    // Save the backend customer JWT and backend-synchronized profile.
+
+    saveCustomerSession(response.data);
+
+    // Get pending signup profile
+    const pendingProfile = localStorage.getItem("pending_customer_profile");
+
+    // No signup details available
+
+    if (!pendingProfile) {
+      return response.data;
+    }
 
     try {
-      // Firebase Login
-      const credential = await login(email, password);
+      // Convert saved JSON to object
 
-      // Email Verification Check
-      if (!credential.user.emailVerified) {
-        toast.error("Please verify your email before login.");
+      const profile = JSON.parse(pendingProfile);
+
+      // Save customer details
+      // in Supabase database
+
+      const profileResponse = await axios.put(
+        CUSTOMER_PROFILE_URL,
+
+        profile,
+
+        {
+          headers: {
+            Authorization: `Bearer ${response.data.access_token}`,
+          },
+        },
+      );
+
+      // Update local customer details
+
+      if (profileResponse.data.customer) {
+        const updatedSession = {
+          ...response.data,
+          customer: profileResponse.data.customer,
+        };
+
+        saveCustomerSession(updatedSession);
+
+        localStorage.removeItem("pending_customer_profile");
+
+        return updatedSession;
+      }
+
+      // Remove temporary details
+      // only after database success
+
+      localStorage.removeItem("pending_customer_profile");
+
+      console.log("Customer profile saved successfully");
+    } catch (profileError) {
+      console.error(
+        "Customer profile save failed:",
+
+        profileError.response?.data || profileError,
+      );
+
+      // Keep pending profile
+      // to retry during next login
+
+      toast.error("Login successful, but profile details could not be saved.");
+    }
+
+    return response.data;
+  };
+
+  // =========================================================
+  // Redirect After Login
+  // =========================================================
+
+  const redirectAfterLogin = () => {
+    const redirectPath = location.state?.from?.pathname || "/";
+
+    navigate(
+      redirectPath,
+
+      {
+        replace: true,
+      },
+    );
+  };
+
+  // =========================================================
+  // Email and Password Login
+  // =========================================================
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (loadingType) {
+      return;
+    }
+
+    try {
+      setLoadingType("email");
+
+      // Firebase email login
+
+      const userCredential = await login(
+        email.trim().toLowerCase(),
+
+        password,
+      );
+
+      const firebaseUser = userCredential.user;
+
+      // Block login until
+      // email verification
+
+      if (!firebaseUser.emailVerified) {
+        await logout();
+
+        toast.error("Please verify your email before signing in.");
+
         return;
       }
 
-      // Firebase ID Token
-      const idToken = await credential.user.getIdToken();
+      // Connect Firebase
+      // account to backend
 
-      // Backend Login
-      const res = await axios.post("/api/v1/auth/firebase/login", {
-        id_token: idToken,
-      });
+      await connectFirebaseToBackend(firebaseUser);
 
-      // Save JWT
-      localStorage.setItem("customer_token", res.data.access_token);
-      localStorage.setItem("customer", JSON.stringify(res.data.customer));
+      toast.success("Welcome back!");
 
-      toast.success("Welcome Back!");
+      redirectAfterLogin();
+    } catch (error) {
+      console.error(
+        "Email login failed:",
 
-      navigate("/", { replace: true });
-    } catch (err) {
-      console.error(err);
+        error,
+      );
 
-      toast.error(err.response?.data?.detail || err.message || "Login failed");
+      showLoginError(error);
+    } finally {
+      setLoadingType(null);
     }
   };
+
+  // =========================================================
+  // Google Login
+  // =========================================================
 
   const handleGoogleLogin = async () => {
+    if (loadingType) {
+      return;
+    }
+
     try {
-      const credential = await googleLogin();
+      setLoadingType("google");
 
-      const idToken = await credential.user.getIdToken();
+      // Firebase Google login
 
-      const res = await axios.post("/api/v1/auth/firebase/login", {
-        id_token: idToken,
-      });
+      const userCredential = await googleLogin();
 
-      localStorage.setItem("customer_token", res.data.access_token);
-      localStorage.setItem("customer", JSON.stringify(res.data.customer));
+      // Connect Firebase
+      // account to backend
 
-      toast.success("Google Login Success");
+      await connectFirebaseToBackend(userCredential.user);
 
-      navigate("/");
-    } catch (err) {
-      toast.error(err.response?.data?.detail || err.message);
+      toast.success("Welcome!");
+
+      redirectAfterLogin();
+    } catch (error) {
+      console.error("Google login failed:", error);
+
+      if (error.code === "auth/popup-closed-by-user") {
+        return;
+      }
+
+      if (error.code === "auth/cancelled-popup-request") {
+        return;
+      }
+
+      if (error.code === "auth/popup-blocked") {
+        toast.error("Google popup was blocked. Please allow popups.");
+        return;
+      }
+
+      showLoginError(error);
+    } finally {
+      setLoadingType(null);
     }
   };
 
+  // =========================================================
+  // Login Error Messages
+  // =========================================================
+
+  const showLoginError = (error) => {
+    const backendMessage = error.response?.data?.detail;
+
+    if (backendMessage) {
+      toast.error(backendMessage);
+
+      return;
+    }
+
+    switch (error.code) {
+      case "auth/invalid-credential":
+        toast.error("Invalid email or password.");
+
+        break;
+
+      case "auth/invalid-email":
+        toast.error("Please enter a valid email address.");
+
+        break;
+
+      case "auth/user-disabled":
+        toast.error("This account has been disabled.");
+
+        break;
+
+      case "auth/too-many-requests":
+        toast.error("Too many login attempts. Please try again later.");
+
+        break;
+
+      case "auth/network-request-failed":
+        toast.error("Network error. Please check your internet connection.");
+
+        break;
+
+      case "auth/popup-blocked":
+        toast.error("Google login popup was blocked. Please allow popups.");
+
+        break;
+
+      default:
+        toast.error("Login failed. Please try again.");
+    }
+  };
+
+  const isLoading = loadingType !== null;
+
+  // =========================================================
+  // UI
+  // =========================================================
+
   return (
-    <div className="min-h-[70vh] flex items-center justify-center px-4 py-16">
-      <div className="w-full max-w-md bg-app border border-app rounded-2xl p-8 shadow-card dark:shadow-card-dark">
-        <h1 className="font-display font-bold text-2xl text-app text-center mb-1">
+    <div
+      className="
+        min-h-[70vh]
+        flex
+        items-center
+        justify-center
+        px-4
+        py-16
+      "
+    >
+      <div
+        className="
+          w-full
+          max-w-md
+          bg-app
+          border
+          border-app
+          rounded-2xl
+          p-8
+          shadow-card
+          dark:shadow-card-dark
+        "
+      >
+        {/* Title */}
+
+        <h1
+          className="
+            font-display
+            font-bold
+            text-2xl
+            text-app
+            text-center
+            mb-1
+          "
+        >
           Welcome Back
         </h1>
-        <p className="text-sm text-muted text-center mb-6">
+
+        <p
+          className="
+            text-sm
+            text-muted
+            text-center
+            mb-6
+          "
+        >
           Sign in to continue shopping
         </p>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="relative">
+        {/* Login Form */}
+
+        <form
+          onSubmit={handleSubmit}
+          className="
+            flex
+            flex-col
+            gap-4
+          "
+        >
+          {/* Email */}
+
+          <div
+            className="
+              relative
+            "
+          >
             <Mail
               size={16}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted"
+              className="
+                absolute
+                left-4
+                top-1/2
+                -translate-y-1/2
+                text-muted
+              "
             />
+
             <input
               type="email"
               required
+              autoComplete="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoading}
+              onChange={(event) => setEmail(event.target.value)}
               placeholder="Email address"
               aria-label="Email address"
-              className="w-full bg-surface border border-app rounded-xl py-3 pl-11 pr-4 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-muted"
+              className="
+                w-full
+                bg-surface
+                border
+                border-app
+                rounded-xl
+                py-3
+                pl-11
+                pr-4
+                text-sm
+                text-app
+                focus:outline-none
+                focus:ring-2
+                focus:ring-brand-500/20
+                focus:border-brand-500
+                transition-all
+                placeholder:text-muted
+                disabled:opacity-60
+              "
             />
           </div>
 
-          <div className="relative">
+          {/* Password */}
+
+          <div
+            className="
+              relative
+            "
+          >
             <Lock
               size={16}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted"
+              className="
+                absolute
+                left-4
+                top-1/2
+                -translate-y-1/2
+                text-muted
+              "
             />
+
             <input
               type={showPassword ? "text" : "password"}
               required
+              autoComplete="current-password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoading}
+              onChange={(event) => setPassword(event.target.value)}
               placeholder="Password"
               aria-label="Password"
-              className="w-full bg-surface border border-app rounded-xl py-3 pl-11 pr-11 text-sm text-app focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-muted"
+              className="
+                w-full
+                bg-surface
+                border
+                border-app
+                rounded-xl
+                py-3
+                pl-11
+                pr-11
+                text-sm
+                text-app
+                focus:outline-none
+                focus:ring-2
+                focus:ring-brand-500/20
+                focus:border-brand-500
+                transition-all
+                placeholder:text-muted
+                disabled:opacity-60
+              "
             />
+
             <button
               type="button"
-              onClick={() => setShowPassword((s) => !s)}
+              disabled={isLoading}
+              onClick={() => setShowPassword((current) => !current)}
               aria-label={showPassword ? "Hide password" : "Show password"}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-app"
+              className="
+                absolute
+                right-4
+                top-1/2
+                -translate-y-1/2
+                text-muted
+                hover:text-app
+                disabled:opacity-50
+              "
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
 
-          <div className="flex justify-end">
+          {/* Forgot Password */}
+
+          <div
+            className="
+              flex
+              justify-end
+            "
+          >
             <Link
               to="/auth/forgot-password"
-              className="text-xs text-brand-500 hover:text-brand-600 font-medium"
+              className="
+                text-xs
+                text-brand-500
+                hover:text-brand-600
+                font-medium
+              "
             >
               Forgot password?
             </Link>
           </div>
 
-          {error && <p className="text-xs text-red-500">{error}</p>}
+          {/* Login Button */}
 
           <button
             type="submit"
-            disabled={loading}
-            className="inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-60 text-white font-semibold text-sm py-3 rounded-full shadow-glow-sm transition-colors mt-2"
+            disabled={isLoading}
+            className="
+              inline-flex
+              items-center
+              justify-center
+              gap-2
+              bg-brand-500
+              hover:bg-brand-600
+              disabled:opacity-60
+              text-white
+              font-semibold
+              text-sm
+              py-3
+              rounded-full
+              shadow-glow-sm
+              transition-colors
+              mt-2
+            "
           >
-            <LogIn size={16} />
-            {loading ? "Signing in..." : "Sign In"}
+            {loadingType === "email" ? (
+              <Loader2
+                size={16}
+                className="
+                      animate-spin
+                    "
+              />
+            ) : (
+              <LogIn size={16} />
+            )}
+
+            {loadingType === "email" ? "Signing in..." : "Sign In"}
           </button>
+
+          {/* OR */}
+
+          <div
+            className="
+              flex
+              items-center
+              gap-3
+            "
+          >
+            <div
+              className="
+                h-px
+                flex-1
+                border-t
+                border-app
+              "
+            />
+
+            <span
+              className="
+                text-xs
+                text-muted
+              "
+            >
+              OR
+            </span>
+
+            <div
+              className="
+                h-px
+                flex-1
+                border-t
+                border-app
+              "
+            />
+          </div>
+
+          {/* Google Login */}
+
           <button
             type="button"
+            disabled={isLoading}
             onClick={handleGoogleLogin}
-            className="w-full mt-3 border border-app rounded-xl py-3 font-medium hover:bg-surface transition"
+            className="
+              w-full
+              border
+              border-app
+              rounded-full
+              py-3
+              hover:bg-surface
+              disabled:opacity-60
+              transition
+              inline-flex
+              items-center
+              justify-center
+              gap-2
+              text-sm
+              font-medium
+              text-app
+            "
           >
-            Continue with Google
+            {loadingType === "google" ? (
+              <>
+                <Loader2
+                  size={16}
+                  className="
+                        animate-spin
+                      "
+                />
+                Connecting...
+              </>
+            ) : (
+              "Continue with Google"
+            )}
           </button>
         </form>
 
-        <p className="text-center text-sm text-muted mt-6">
+        {/* Register */}
+
+        <p
+          className="
+            text-center
+            text-sm
+            text-muted
+            mt-6
+          "
+        >
           New here?{" "}
           <Link
             to="/auth/register"
-            className="text-brand-500 font-semibold hover:text-brand-600"
+            className="
+              text-brand-500
+              font-semibold
+              hover:text-brand-600
+            "
           >
             Create an account
           </Link>

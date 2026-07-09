@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useSearchParams, Link, useNavigate } from 'react-router-dom'
 import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, KeyRound } from 'lucide-react'
-import { customerAuthAPI } from '@/shared/services/api'
+import { resetPassword } from '@/firebase/auth'
 
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const token = searchParams.get('token') || ''
+  const actionCode = searchParams.get('oobCode') || searchParams.get('token') || ''
 
   const [password, setPassword]         = useState('')
   const [confirm, setConfirm]           = useState('')
@@ -16,7 +16,7 @@ export default function ResetPasswordPage() {
   const [errorMsg, setErrorMsg]         = useState('')
 
   // If there's no token at all, show an immediate error state
-  const hasToken = !!token
+  const hasToken = !!actionCode
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -35,10 +35,10 @@ export default function ResetPasswordPage() {
     setStatus('loading')
 
     try {
-      await customerAuthAPI.resetPassword(token, password)
+      await resetPassword(actionCode, password)
       setStatus('success')
     } catch (err) {
-      const detail = err?.response?.data?.detail
+      const detail = err?.message
       setErrorMsg(detail || 'Something went wrong. Please try again.')
       setStatus('error')
     }
