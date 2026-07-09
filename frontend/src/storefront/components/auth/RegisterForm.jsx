@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate} from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 // import { useDispatch, useSelector } from "react-redux";
 import {
   Mail,
@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { signup } from "@/firebase/auth";
-
 
 export default function RegisterForm() {
   const navigate = useNavigate();
@@ -61,7 +60,17 @@ export default function RegisterForm() {
       setLoading(true);
 
       // Firebase Signup
-      await signup(form.email, form.password);
+      await signup(form.email, form.password, form.first_name, form.last_name);
+
+      localStorage.setItem(
+        "pending_customer_profile",
+        JSON.stringify({
+          first_name: form.first_name.trim(),
+          last_name: form.last_name.trim(),
+          phone: form.phone || null,
+          dob: form.dob || null,
+        }),
+      );
 
       toast.success(
         "Verification email sent. Please verify your email before login.",

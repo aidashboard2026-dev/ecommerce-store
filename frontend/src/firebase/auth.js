@@ -1,90 +1,228 @@
 import {
   createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
+  confirmPasswordReset,
+  GoogleAuthProvider,
+  reload,
   sendEmailVerification,
   sendPasswordResetEmail,
-  signOut,
-  GoogleAuthProvider,
+  signInWithEmailAndPassword,
   signInWithPopup,
+  signOut,
+  updateProfile,
 } from "firebase/auth";
 
 import { auth } from "./firebase";
 
-// Signup
-export const signup = async (email, password) => {
-  const userCredential = await createUserWithEmailAndPassword(
-    auth,
-    email,
-    password
-  );
 
-  await sendEmailVerification(userCredential.user);
+// ------------------------------------------------------------------
+// Email Signup
+// ------------------------------------------------------------------
+
+export const signup = async (
+  email,
+  password,
+  firstName = "",
+  lastName = "",
+) => {
+  const userCredential =
+    await createUserWithEmailAndPassword(
+      auth,
+      email.trim(),
+      password,
+    );
+
+  const user = userCredential.user;
+
+  const displayName = `${firstName} ${lastName}`.trim();
+
+  if (displayName) {
+    await updateProfile(user, {
+      displayName,
+    });
+  }
+
+  await sendEmailVerification(user);
 
   return userCredential;
 };
 
-// Login
-export const login = async (email, password) => {
-  return await signInWithEmailAndPassword(auth, email, password);
+
+// ------------------------------------------------------------------
+// Email Login
+// ------------------------------------------------------------------
+
+export const login = async (
+  email,
+  password,
+) => {
+  const userCredential =
+    await signInWithEmailAndPassword(
+      auth,
+      email.trim(),
+      password,
+    );
+
+  await reload(userCredential.user);
+
+  return userCredential;
 };
 
+
+// ------------------------------------------------------------------
 // Google Login
+// ------------------------------------------------------------------
+
+const googleProvider = new GoogleAuthProvider();
+
+googleProvider.setCustomParameters({
+  prompt: "select_account",
+});
+
+
 export const googleLogin = async () => {
-  const provider = new GoogleAuthProvider();
-  return await signInWithPopup(auth, provider);
+  return await signInWithPopup(
+    auth,
+    googleProvider,
+  );
 };
 
+
+// ------------------------------------------------------------------
 // Forgot Password
-export const forgotPassword = async (email) => {
-  return await sendPasswordResetEmail(auth, email);
+// ------------------------------------------------------------------
+
+export const forgotPassword = async (
+  email,
+) => {
+  return await sendPasswordResetEmail(
+    auth,
+    email.trim(),
+  );
 };
 
+
+// ------------------------------------------------------------------
 // Logout
+// ------------------------------------------------------------------
+
 export const logout = async () => {
-  return await signOut(auth);
+  await signOut(auth);
 };
 
-import {
-  updateProfile,
-  reload,
-} from "firebase/auth";
 
-// Get Current User
-export const getCurrentUser = () => auth.currentUser;
+// ------------------------------------------------------------------
+// Current Firebase User
+// ------------------------------------------------------------------
 
-// Get Firebase Token
-export const getIdToken = async () => {
+export const getCurrentUser = () => {
+  return auth.currentUser;
+};
+
+
+// ------------------------------------------------------------------
+// Firebase ID Token
+// ------------------------------------------------------------------
+
+export const getIdToken = async (
+  forceRefresh = false,
+) => {
   const user = auth.currentUser;
 
-  if (!user) return null;
+  if (!user) {
+    return null;
+  }
 
-  return await user.getIdToken(true);
+  return await user.getIdToken(
+    forceRefresh,
+  );
 };
 
-// Reload User
+
+// ------------------------------------------------------------------
+// Reload Firebase User
+// ------------------------------------------------------------------
+
 export const reloadUser = async () => {
-  if (!auth.currentUser) return;
+  const user = auth.currentUser;
 
-  await reload(auth.currentUser);
+  if (!user) {
+    return null;
+  }
+
+  await reload(user);
+
+  return auth.currentUser;
 };
 
-// Check Email Verification
+
+// ------------------------------------------------------------------
+// Email Verification Status
+// ------------------------------------------------------------------
+
 export const isEmailVerified = () => {
-  return auth.currentUser?.emailVerified ?? false;
+  return (
+    auth.currentUser?.emailVerified
+    ?? false
+  );
 };
 
-// Resend Verification
-export const resendVerificationEmail = async () => {
-  if (!auth.currentUser) return;
 
-  await sendEmailVerification(auth.currentUser);
-};
+// ------------------------------------------------------------------
+// Resend Verification Email
+// ------------------------------------------------------------------
 
-// Update Display Name
-export const updateUserName = async (name) => {
-  if (!auth.currentUser) return;
+export const resendVerificationEmail =
+  async () => {
+    const user = auth.currentUser;
 
-  await updateProfile(auth.currentUser, {
-    displayName: name,
+    if (!user) {
+      throw new Error(
+        "No Firebase user is signed in.",
+      );
+    }
+
+    await sendEmailVerification(user);
+  };
+
+
+// ------------------------------------------------------------------
+// Update Firebase Display Name
+// ------------------------------------------------------------------
+
+export const updateUserName = async (
+  firstName,
+  lastName = "",
+) => {
+  const user = auth.currentUser;
+
+  if (!user) {
+    throw new Error(
+      "No Firebase user is signed in.",
+    );
+  }
+
+  const displayName =
+    `${firstName} ${lastName}`.trim();
+
+  await updateProfile(user, {
+    displayName,
   });
+
+  return auth.currentUser;
+};
+
+
+// ------------------------------------------------------------------
+// Confirm Password Reset
+// ------------------------------------------------------------------
+
+export const resetPassword = async (
+  actionCode,
+  newPassword,
+) => {
+  return await confirmPasswordReset(
+    auth,
+    actionCode,
+    newPassword,
+  );
 };

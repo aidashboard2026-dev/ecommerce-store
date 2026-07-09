@@ -15,20 +15,15 @@ from app.core.database import Base
 class Customer(Base):
     __tablename__ = "customers"
 
+    # ------------------------------------------------------------------
+    # Primary Key
+    # ------------------------------------------------------------------
+
     id = Column(Integer, primary_key=True, index=True)
-    
 
-    # ── Identity ─────────────────────────────────────────────────────────────
-    first_name = Column(String(100), nullable=False)
-    last_name = Column(String(100), nullable=False)
-    email = Column(String(255), unique=True, index=True, nullable=False)
-    phone = Column(String(20), nullable=True)
-    dob = Column(Date, nullable=True)
-
-    # ── Auth (admin-created; password_hash kept from original) ───────────────
-    password_hash = Column(String(255), nullable=True)   # nullable — admin-created customers may not have a password
-
-        # ── Firebase Authentication ─────────────────────────────────────
+    # ------------------------------------------------------------------
+    # Firebase Authentication
+    # ------------------------------------------------------------------
 
     firebase_uid = Column(
         String(128),
@@ -36,43 +31,134 @@ class Customer(Base):
         nullable=True,
         index=True,
     )
-    
+
     auth_provider = Column(
         String(30),
         nullable=False,
-        default="password",
+        default="firebase",
     )
-    
-    # ── Email verification ───────────────────────────────────────────────────
-    email_verified = Column(Boolean, default=False, nullable=False)
 
-    # ── Password reset (hashed token + expiry) ───────────────────────────────
-    password_reset_token = Column(String(255), nullable=True, index=True, unique=True)
-    password_reset_expires = Column(DateTime(timezone=True), nullable=True)
+    email_verified = Column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
 
-    # ── Status & Segmentation ────────────────────────────────────────────────
-    is_active = Column(Boolean, default=True, nullable=False, index=True)
-    # Comma-separated tags: "vip,wholesale,returner"
-    tags = Column(String(500), nullable=True)
+    photo_url = Column(
+        String(1000),
+        nullable=True,
+    )
 
-    # ── Location (denormalised from latest order) ─────────────────────────────
-    city = Column(String(100), nullable=True)
-    state = Column(String(100), nullable=True)
-    country = Column(String(100), nullable=True)
+    google_name = Column(
+        String(255),
+        nullable=True,
+    )
 
-    # ── Admin notes ──────────────────────────────────────────────────────────
-    notes = Column(Text, nullable=True)
+    # ------------------------------------------------------------------
+    # Basic Information
+    # ------------------------------------------------------------------
 
-    # ── Timestamps ───────────────────────────────────────────────────────────
-    last_login_at = Column(DateTime(timezone=True), nullable=True)
+    first_name = Column(
+        String(100),
+        nullable=False,
+    )
+
+    last_name = Column(
+        String(100),
+        nullable=False,
+    )
+
+    email = Column(
+        String(255),
+        unique=True,
+        index=True,
+        nullable=False,
+    )
+
+    phone = Column(
+        String(20),
+        nullable=True,
+    )
+
+    dob = Column(
+        Date,
+        nullable=True,
+    )
+
+    # ------------------------------------------------------------------
+    # Address
+    # ------------------------------------------------------------------
+
+    address_line1 = Column(
+        String(255),
+        nullable=True,
+    )
+
+    address_line2 = Column(
+        String(255),
+        nullable=True,
+    )
+
+    city = Column(
+        String(100),
+        nullable=True,
+    )
+
+    state = Column(
+        String(100),
+        nullable=True,
+    )
+
+    country = Column(
+        String(100),
+        nullable=True,
+    )
+
+    pincode = Column(
+        String(20),
+        nullable=True,
+    )
+
+    # ------------------------------------------------------------------
+    # Admin
+    # ------------------------------------------------------------------
+
+    is_active = Column(
+        Boolean,
+        default=True,
+        nullable=False,
+        index=True,
+    )
+
+    tags = Column(
+        String(500),
+        nullable=True,
+    )
+
+    notes = Column(
+        Text,
+        nullable=True,
+    )
+
+    # ------------------------------------------------------------------
+    # Activity
+    # ------------------------------------------------------------------
+
+    last_login_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
         index=True,
     )
+
     updated_at = Column(
         DateTime(timezone=True),
+        server_default=func.now(),
         onupdate=func.now(),
-        nullable=True,
+        nullable=False,
     )
