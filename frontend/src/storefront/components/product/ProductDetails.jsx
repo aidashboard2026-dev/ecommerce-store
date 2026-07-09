@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import toast from "react-hot-toast";
@@ -17,6 +17,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import clsx from "clsx";
+import { useCheckoutAuthModal } from "@/storefront/layouts/StorefrontLayout";
 import {
   useProductBySlug,
   useRelatedProducts,
@@ -34,6 +35,8 @@ export default function ProductDetails() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { token, customer } = useSelector((s) => s.customer);
+  const { openCheckoutAuthModal } = useCheckoutAuthModal();
+  const buyNowButtonRef = useRef(null);
   const { data: product, isLoading, isError } = useProductBySlug(slug);
   const isWishlisted = useSelector(selectIsWishlisted(product?.id));
 
@@ -232,6 +235,13 @@ export default function ProductDetails() {
       return;
     }
     dispatch(addToCart(buildCartItem()));
+
+    const isAuthenticated = !!(token && customer);
+    if (!isAuthenticated) {
+      openCheckoutAuthModal(buyNowButtonRef.current);
+      return;
+    }
+
     navigate("/checkout");
   };
 
@@ -544,6 +554,7 @@ export default function ProductDetails() {
               <ShoppingBag size={22} /> Add to Cart
             </button>
             {/* <button
+              ref={buyNowButtonRef}
               onClick={handleBuyNow}
               disabled={!inStock}
               className={clsx(
