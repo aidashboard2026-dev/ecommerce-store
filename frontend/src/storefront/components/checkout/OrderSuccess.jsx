@@ -84,7 +84,7 @@ export default function OrderSuccess() {
                 <p className="text-sm text-muted">Order ID :</p>
 
                 <p className="font-semibold text-app">
-                  {firstOrder?.id || "N/A"}
+                    {firstOrder?.order_number || firstOrder?.id || "N/A"}
                 </p>
               </div>
 

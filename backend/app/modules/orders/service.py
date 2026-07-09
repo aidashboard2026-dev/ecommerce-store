@@ -370,6 +370,125 @@ def create_order_admin(db: Session, order_in: OrderCreate) -> OrderResponse:
     return OrderResponse.model_validate(order)
 
 
+def reconcile_pending_orders(db: Session, customer_email: str):
+    """
+    Check for any pending online orders with a razorpay_order_id, fetch from Razorpay API,
+    and update them to PAID if paid on Razorpay.
+    """
+    pending_orders = db.query(Order).filter(
+        Order.customer_email == customer_email,
+        Order.payment_status == "PENDING",
+        Order.payment_method == "ONLINE",
+        Order.razorpay_order_id.isnot(None),
+    ).all()
+
+    if not pending_orders:
+        return
+
+    from collections import defaultdict
+    by_rzp_id = defaultdict(list)
+    for o in pending_orders:
+        by_rzp_id[o.razorpay_order_id].append(o)
+
+    from app.core.config import settings
+    import razorpay
+
+    try:
+        client = razorpay.Client(
+            auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
+        )
+        for rzp_order_id, orders in by_rzp_id.items():
+            try:
+                rzp_order = client.order.fetch(rzp_order_id)
+                if rzp_order.get("status") == "paid":
+                    payments_res = client.order.payments(rzp_order_id)
+                    payment_items = payments_res.get("items", [])
+                    captured_payment = next(
+                        (p for p in payment_items if p.get("status") in ("captured", "authorized")),
+                        None
+                    )
+                    payment_id = captured_payment.get("id") if captured_payment else "auto_reconciled"
+
+                    logger.info(
+                        "Reconciliation: Order %s paid on Razorpay. Updating db to PAID.",
+                        rzp_order_id
+                    )
+                    for order in orders:
+                        order.payment_status = "PAID"
+                        order.payment_verified_at = datetime.utcnow()
+                        order.razorpay_payment_id = payment_id
+                    db.commit()
+            except Exception as e:
+                logger.warning(
+                    "Reconciliation: Failed to check/update Razorpay Order %s: %s",
+                    rzp_order_id, e
+                )
+    except Exception as general_err:
+        logger.error("Failed to run Razorpay reconciliation: %s", general_err)
+
+
+def process_razorpay_webhook_payment(
+    db: Session,
+    razorpay_order_id: str,
+    razorpay_payment_id: str,
+) -> int:
+    """
+    Idempotently processes a successful Razorpay payment webhook.
+    Marks all corresponding pending orders as PAID and returns the count of updated rows.
+    """
+    orders = db.query(Order).filter(Order.razorpay_order_id == razorpay_order_id).all()
+    if not orders:
+        logger.warning(
+            "Webhook: No database orders found matching razorpay_order_id %s",
+            razorpay_order_id
+        )
+        return 0
+
+    already_paid_count = sum(1 for o in orders if o.payment_status == "PAID")
+    if already_paid_count == len(orders):
+        logger.info(
+            "Webhook: All orders for razorpay_order_id %s are already PAID. Exiting safely.",
+            razorpay_order_id
+        )
+        return 0
+
+    updated_count = 0
+    now = datetime.utcnow()
+    for order in orders:
+        if order.payment_status == "PENDING":
+            order.payment_status = "PAID"
+            order.payment_verified_at = now
+            if razorpay_payment_id:
+                order.razorpay_payment_id = razorpay_payment_id
+            updated_count += 1
+            
+            try:
+                from app.shared.notifications.service import send_notification_sync
+                send_notification_sync(
+                    db=db,
+                    event_name="Order Payment Completed",
+                    to_email=order.customer_email,
+                    context={"order_number": order.order_number, "total_amount": float(order.total_amount)},
+                    subject=f"Payment Confirmed! - #{order.order_number}",
+                    text_body=f"Your payment for order #{order.order_number} has been received and confirmed. Thank you!",
+                    html_body=f"<p>Your payment for order #{order.order_number} has been received and confirmed. Thank you!</p>",
+                )
+            except Exception as notify_err:
+                logger.error(
+                    "Webhook: Failed to send payment completion notification for order %s: %s",
+                    order.order_number, notify_err
+                )
+    
+    if updated_count > 0:
+        db.commit()
+        logger.info(
+            "Webhook: Successfully reconciled %d pending orders for razorpay_order_id %s to PAID.",
+            updated_count, razorpay_order_id
+        )
+
+    return updated_count
+
+
 def create_order_customer(
     db: Session,
     order_in: OrderCreate,
@@ -379,6 +498,36 @@ def create_order_customer(
     Create an order through the storefront (authenticated customer).
     Customer fields are taken from the Customer record, not the request body.
     """
+    # 1. Run Razorpay reconciliation first so any paid orders are correctly updated
+    reconcile_pending_orders(db, customer.email)
+
+    # 2. Check if customer already has an active unpaid online checkout
+    if order_in.payment_method == "ONLINE":
+        existing_pending = db.query(Order).filter(
+            Order.customer_email == customer.email,
+            Order.payment_status == "PENDING",
+            Order.payment_method == "ONLINE",
+            Order.cart_session_id.isnot(None),
+        ).all()
+        
+        if existing_pending:
+            active_session_id = existing_pending[0].cart_session_id
+            if order_in.cart_session_id != active_session_id:
+                # Try to see if there's a matching order in the existing session
+                matching = [
+                    o for o in existing_pending
+                    if o.product_id == order_in.product_id
+                    and o.size == order_in.size
+                    and o.color == order_in.color
+                ]
+                if matching:
+                    return OrderResponse.model_validate(matching[0])
+                
+                raise BusinessRuleError(
+                    f"An active unpaid checkout session '{active_session_id}' already exists.",
+                    code="ACTIVE_CHECKOUT_EXISTS",
+                )
+
     repo         = OrderRepository(db)
     order_number = repo.generate_order_number()
 
@@ -574,6 +723,8 @@ def list_customer_orders(
     per_page: int = DEFAULT_PAGE_SIZE,
 ) -> OrderListResponse:
     """Return paginated orders for an authenticated customer."""
+    reconcile_pending_orders(db, customer.email)
+
     repo    = OrderRepository(db)
     orders, total = repo.list_paginated(
         page=page,
@@ -621,3 +772,223 @@ def _handle_cancellation_transition(
 
     if is_now_cancelled and not was_cancelled:
         _restore_inventory(repo, order)
+
+
+# ─────────────────────────────────────────────────────────────
+# Razorpay Integration Service Methods
+# ─────────────────────────────────────────────────────────────
+
+def create_razorpay_order(
+    db: Session,
+    cart_session_id: str,
+    customer: Customer,
+) -> dict:
+    """
+    Find all orders with cart_session_id belonging to customer, calculate total,
+    reuse existing pending and usable Razorpay order if present, or create a new one.
+    """
+    from app.shared.exceptions import ExternalServiceError, NotFoundError
+    import razorpay
+    from app.core.config import settings
+
+    repo = OrderRepository(db)
+    orders = repo.get_by_cart_session_id(cart_session_id)
+    if not orders:
+        raise NotFoundError(
+            f"No orders found for cart session '{cart_session_id}'.",
+            code="ORDER_NOT_FOUND",
+        )
+
+    for order in orders:
+        if order.customer_email != customer.email:
+            raise NotFoundError(
+                f"No orders found for cart session '{cart_session_id}'.",
+                code="ORDER_NOT_FOUND",
+            )
+
+    total_amount = sum(order.total_amount for order in orders)
+    amount_paise = int(round(total_amount * 100))
+
+    client = razorpay.Client(
+        auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
+    )
+
+    # Check for order reuse eligibility
+    existing_order_id = orders[0].razorpay_order_id if orders else None
+    all_pending = all(order.payment_status == "PENDING" for order in orders)
+
+    if all_pending and existing_order_id:
+        try:
+            rzp_order = client.order.fetch(existing_order_id)
+            if (
+                rzp_order.get("status") in ("created", "attempted")
+                and rzp_order.get("amount") == amount_paise
+            ):
+                logger.info(
+                    "Reusing existing Razorpay Order: %s for cart_session_id: %s",
+                    existing_order_id,
+                    cart_session_id,
+                )
+                return {
+                    "id": rzp_order["id"],
+                    "amount": rzp_order["amount"],
+                    "currency": rzp_order["currency"],
+                    "key": settings.RAZORPAY_KEY_ID,
+                    "receipt": rzp_order.get("receipt"),
+                    "status": rzp_order.get("status"),
+                }
+        except Exception as fetch_err:
+            logger.warning(
+                "Could not reuse existing Razorpay Order %s: %s. Creating a new one.",
+                existing_order_id,
+                fetch_err,
+            )
+
+    try:
+        razorpay_order = client.order.create(
+            {
+                "amount": amount_paise,
+                "currency": "INR",
+                "receipt": f"rcpt_{cart_session_id[:20]}",
+                "notes": {
+                    "cart_session_id": cart_session_id,
+                    "customer_email": customer.email,
+                },
+            }
+        )
+    except Exception as e:
+        logger.exception("Razorpay SDK order creation failed")
+        raise ExternalServiceError(
+            f"Razorpay API failure: {str(e)}",
+            code="RAZORPAY_API_FAILURE",
+        )
+
+    try:
+        for order in orders:
+            repo.update_order_fields(
+                order,
+                {
+                    "razorpay_order_id": razorpay_order["id"],
+                    "payment_method": "RAZORPAY",
+                },
+            )
+        db.commit()
+    except Exception as db_err:
+        db.rollback()
+        logger.exception("Database persistence of razorpay_order_id failed")
+        raise BusinessRuleError(
+            "Failed to save Razorpay order ID to the database.",
+            code="DATABASE_ERROR",
+        )
+
+    return {
+        "id": razorpay_order["id"],
+        "amount": razorpay_order["amount"],
+        "currency": razorpay_order["currency"],
+        "key": settings.RAZORPAY_KEY_ID,
+        "receipt": razorpay_order.get("receipt"),
+        "status": razorpay_order.get("status"),
+    }
+
+
+def verify_razorpay_payment(
+    db: Session,
+    cart_session_id: str,
+    razorpay_order_id: str,
+    razorpay_payment_id: str,
+    razorpay_signature: str,
+    customer: Customer,
+) -> list[OrderResponse]:
+    """
+    Verify the payment signature with Razorpay SDK, update payment status to PAID,
+    tracking status to CONFIRMED, and record payment metadata.
+    """
+    from app.shared.exceptions import ConflictError, NotFoundError
+    from app.modules.orders.constants import PaymentStatus, TrackingStatus
+    import razorpay
+    from app.core.config import settings
+
+    repo = OrderRepository(db)
+    orders = repo.get_by_cart_session_id(cart_session_id)
+    if not orders:
+        raise NotFoundError(
+            f"No orders found for cart session '{cart_session_id}'.",
+            code="ORDER_NOT_FOUND",
+        )
+
+    for order in orders:
+        if order.customer_email != customer.email:
+            raise NotFoundError(
+                f"No orders found for cart session '{cart_session_id}'.",
+                code="ORDER_NOT_FOUND",
+            )
+
+    # 1. Idempotency Check: if already PAID, return cached orders without modifying anything
+    if any(order.payment_status == PaymentStatus.PAID for order in orders):
+        logger.info(
+            "Payment already verified (PAID) for cart_session_id=%s. Returning cached orders.",
+            cart_session_id,
+        )
+        return [OrderResponse.model_validate(order) for order in orders]
+
+    # 2. Duplicate Verification: check if payment ID has already been used on a DIFFERENT session
+    duplicate_payment = (
+        db.query(Order)
+        .filter(
+            Order.razorpay_payment_id == razorpay_payment_id,
+            Order.cart_session_id != cart_session_id,
+        )
+        .first()
+    )
+    if duplicate_payment:
+        raise ConflictError(
+            f"Payment ID '{razorpay_payment_id}' has already been verified for another transaction.",
+            code="DUPLICATE_VERIFICATION",
+        )
+
+    # 3. Signature Verification using official SDK
+    try:
+        client = razorpay.Client(
+            auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
+        )
+        client.utility.verify_payment_signature(
+            {
+                "razorpay_order_id": razorpay_order_id,
+                "razorpay_payment_id": razorpay_payment_id,
+                "razorpay_signature": razorpay_signature,
+            }
+        )
+    except Exception as e:
+        logger.warning("Razorpay signature verification failed: %s", e)
+        raise BusinessRuleError(
+            "Invalid payment signature.",
+            code="INVALID_SIGNATURE",
+        )
+
+    # 4. Atomic Transaction update
+    try:
+        now_utc = datetime.now(timezone.utc)
+        for order in orders:
+            repo.update_order_fields(
+                order,
+                {
+                    "razorpay_payment_id": razorpay_payment_id,
+                    "razorpay_signature": razorpay_signature,
+                    "payment_status": PaymentStatus.PAID,
+                    "payment_verified_at": now_utc,
+                    "tracking_status": TrackingStatus.CONFIRMED,
+                },
+            )
+        db.commit()
+        for order in orders:
+            db.refresh(order)
+    except Exception as db_err:
+        db.rollback()
+        logger.exception("Database update during payment verification failed")
+        raise BusinessRuleError(
+            "Failed to update payment status in database.",
+            code="DATABASE_ERROR",
+        )
+
+    return [OrderResponse.model_validate(order) for order in orders]
+
