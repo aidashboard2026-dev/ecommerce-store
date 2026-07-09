@@ -28,7 +28,17 @@ print("SMTP_PORT:", SMTP_PORT)
 print("SMTP_EMAIL:", SMTP_EMAIL)
 print("SUPPORT_EMAIL:", SUPPORT_EMAIL)
 print("SMTP_PASSWORD:", "Loaded" if SMTP_PASSWORD else "Missing")
-
+def get_db_settings():
+    try:
+        from app.core.database import SessionLocal
+        from app.modules.settings.service import get_or_create_store_settings
+        db = SessionLocal()
+        try:
+            return get_or_create_store_settings(db)
+        finally:
+            db.close()
+    except Exception:
+        return None
 
 # ── Email Templates ─────────────────────────────────────────────────────────
 
@@ -40,6 +50,8 @@ def get_admin_email_html(
     submitted_at: datetime,
 ) -> str:
     """Generate professional HTML email template for admin notification."""
+    db_settings = get_db_settings()
+    STORE_NAME = db_settings.store_name if db_settings else os.getenv("STORE_NAME", "My Designers")
 
     submitted_date = submitted_at.strftime("%B %d, %Y")
     submitted_time = submitted_at.strftime("%I:%M %p")
@@ -211,6 +223,8 @@ def get_admin_email_html(
 
 def get_customer_reply_html(customer_name: str) -> str:
     """Generate professional HTML email template for customer auto-reply."""
+    db_settings = get_db_settings()
+    STORE_NAME = db_settings.store_name if db_settings else os.getenv("STORE_NAME", "My Designers")
     current_year = datetime.now().year
 
     return f"""
@@ -330,6 +344,8 @@ def get_customer_reply_html(customer_name: str) -> str:
 
 def get_admin_reply_html(customer_name: str, subject: str, reply_message: str) -> str:
     """Generate professional HTML email template for admin reply to customer."""
+    db_settings = get_db_settings()
+    STORE_NAME = db_settings.store_name if db_settings else os.getenv("STORE_NAME", "My Designers")
     current_year = datetime.now().year
 
     return f"""
@@ -464,10 +480,14 @@ def send_admin_notification(
 ) -> bool:
     """Send HTML email notification to admin about new contact message."""
     try:
+        db_settings = get_db_settings()
+        store_name = db_settings.store_name if db_settings else STORE_NAME
+        support_email = db_settings.support_email if (db_settings and db_settings.support_email) else SUPPORT_EMAIL
+
         msg = MIMEMultipart("alternative")
         msg["From"] = SMTP_EMAIL
-        msg["To"] = SUPPORT_EMAIL
-        msg["Subject"] = f"[{STORE_NAME}] New Contact: {subject}"
+        msg["To"] = support_email
+        msg["Subject"] = f"[{store_name}] New Contact: {subject}"
 
         html_content = get_admin_email_html(
             customer_name,
@@ -482,7 +502,7 @@ def send_admin_notification(
         server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
         server.starttls()
         server.login(SMTP_EMAIL, SMTP_PASSWORD)
-        server.sendmail(SMTP_EMAIL, SUPPORT_EMAIL, msg.as_string())
+        server.sendmail(SMTP_EMAIL, support_email, msg.as_string())
         server.quit()
 
         return True
@@ -495,10 +515,13 @@ def send_admin_notification(
 def send_customer_auto_reply(customer_name: str, customer_email: str) -> bool:
     """Send automatic thank-you email to customer."""
     try:
+        db_settings = get_db_settings()
+        store_name = db_settings.store_name if db_settings else STORE_NAME
+
         msg = MIMEMultipart("alternative")
         msg["From"] = SMTP_EMAIL
         msg["To"] = customer_email
-        msg["Subject"] = f"Thank you for contacting {STORE_NAME}"
+        msg["Subject"] = f"Thank you for contacting {store_name}"
 
         html_content = get_customer_reply_html(customer_name)
         msg.attach(MIMEText(html_content, "html"))

@@ -28,7 +28,20 @@ logger = logging.getLogger(__name__)
 
 # ── HTML email templates ───────────────────────────────────────────────────────
 
-def _password_reset_html(reset_url: str, expires_minutes: int) -> str:
+def get_db_store_name() -> str:
+    try:
+        from app.core.database import SessionLocal
+        from app.modules.settings.service import get_or_create_store_settings
+        db = SessionLocal()
+        try:
+            return get_or_create_store_settings(db).store_name
+        finally:
+            db.close()
+    except Exception:
+        return getattr(settings, "SMTP_FROM_NAME", "My Designers") or "My Designers"
+
+
+def _password_reset_html(reset_url: str, expires_minutes: int, store_name: str) -> str:
     return f"""
 <!DOCTYPE html>
 <html lang="en">
@@ -48,7 +61,7 @@ def _password_reset_html(reset_url: str, expires_minutes: int) -> str:
           <tr>
             <td style="background:linear-gradient(135deg,#7c3aed,#6d28d9);padding:32px 40px;text-align:center;">
               <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">
-                AuraStore
+                {store_name}
               </h1>
             </td>
           </tr>
@@ -60,7 +73,7 @@ def _password_reset_html(reset_url: str, expires_minutes: int) -> str:
                 Reset your password
               </h2>
               <p style="margin:0 0 24px;color:#6b7280;font-size:15px;line-height:1.6;">
-                We received a request to reset the password for your AuraStore account.
+                We received a request to reset the password for your {store_name} account.
                 Click the button below to choose a new password. This link expires in
                 <strong>{expires_minutes} minutes</strong>.
               </p>
@@ -95,7 +108,7 @@ def _password_reset_html(reset_url: str, expires_minutes: int) -> str:
           <tr>
             <td style="padding:20px 40px;background:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;">
               <p style="margin:0;color:#9ca3af;font-size:12px;">
-                © 2026 AuraStore. All rights reserved.
+                © 2026 {store_name}. All rights reserved.
               </p>
             </td>
           </tr>
@@ -109,9 +122,9 @@ def _password_reset_html(reset_url: str, expires_minutes: int) -> str:
 """
 
 
-def _password_reset_text(reset_url: str, expires_minutes: int) -> str:
+def _password_reset_text(reset_url: str, expires_minutes: int, store_name: str) -> str:
     return (
-        f"Reset your AuraStore password\n\n"
+        f"Reset your {store_name} password\n\n"
         f"We received a request to reset your password.\n"
         f"Click the link below to set a new password (expires in {expires_minutes} minutes):\n\n"
         f"{reset_url}\n\n"
@@ -191,10 +204,11 @@ async def send_password_reset_email(to_email: str, reset_url: str) -> None:
     email must never cause the HTTP endpoint to return 500, to avoid leaking
     whether an email address is registered (SEC-08 mitigation).
     """
+    store_name = get_db_store_name()
     expires = settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES
-    subject = "Reset your AuraStore password"
-    html_body = _password_reset_html(reset_url, expires)
-    text_body = _password_reset_text(reset_url, expires)
+    subject = f"Reset your {store_name} password"
+    html_body = _password_reset_html(reset_url, expires, store_name)
+    text_body = _password_reset_text(reset_url, expires, store_name)
 
     try:
         if settings.RESEND_API_KEY:

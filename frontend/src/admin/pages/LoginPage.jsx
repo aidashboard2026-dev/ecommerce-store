@@ -16,7 +16,7 @@ export default function LoginPage() {
   const { isDark, toggle } = useTheme()
   const { settings } = useStoreSettings()
   const logoUrl = settings?.logo
-  const storeName = settings?.store_name || 'AdminDash'
+  const storeName = import.meta.env.VITE_STORE_NAME || 'My Designers'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -73,13 +73,7 @@ export default function LoginPage() {
             </div>
           )}
           <h1 className="font-display font-bold text-xl text-app tracking-tight">
-            {logoUrl ? (
-              <span>{storeName}</span>
-            ) : (
-              <>
-                Admin<span className="text-brand-500">Dash</span>
-              </>
-            )}
+            {storeName}
           </h1>
           <p className="text-muted text-xs mt-1">Enterprise eCommerce Administration Portal</p>
         </div>

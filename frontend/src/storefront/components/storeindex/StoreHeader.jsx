@@ -47,7 +47,7 @@ const StoreHeaderComponent = function StoreHeader({
   const dispatch = useDispatch();
   const { settings } = useStoreSettings();
   const logoUrl = settings?.logo;
-  const storeName = settings?.store_name || "AuraStore";
+  const storeName = import.meta.env.VITE_STORE_NAME || "My Designers";
   const navigate = useNavigate();
   const location = useLocation();
   const searchRef = useRef(null);
@@ -160,13 +160,7 @@ const StoreHeaderComponent = function StoreHeader({
               </div>
             )}
             <span className="font-display font-bold text-lg text-app tracking-tight">
-              {logoUrl || settings?.store_name ? (
-                <span>{storeName}</span>
-              ) : (
-                <>
-                  My<span className="text-brand-500">Store</span>
-                </>
-              )}
+              {storeName}
             </span>
           </Link>
 

@@ -137,15 +137,18 @@ export default function CustomProductDetailsPage({ product }) {
         Product:
         ${window.location.href}`;
 
+        const waNumber = import.meta.env.VITE_WHATSAPP_NUMBER || "";
+        if (!waNumber) return;
+
         const isMobile =
             /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
         if (isMobile) {
             window.location.href =
-            `https://wa.me/918778021610?text=${encodeURIComponent(message)}`;
+            `https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`;
         } else {
             window.location.href =
-            `https://web.whatsapp.com/send?phone=918778021610&text=${encodeURIComponent(message)}`;
+            `https://web.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent(message)}`;
         }
     };
   const handleWishlist = () => {
