@@ -83,7 +83,7 @@ export default function OrderSuccess() {
                 <Package size={18} className="text-zinc-500" />
                 <p className="text-sm text-muted">Order Number :</p>
                 <p className="font-semibold text-app">
-                  {firstOrder?.id || "N/A"}
+                    {firstOrder?.order_number || firstOrder?.id || "N/A"}
                 </p>
               </div>
 

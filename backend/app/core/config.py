@@ -197,21 +197,33 @@ class Settings(BaseSettings):
     @field_validator("RAZORPAY_KEY_ID", mode="after")
     @classmethod
     def razorpay_key_id_required(cls, v: str) -> str:
+        # Allow empty value during development
         if not v or not str(v).strip():
-            raise ValueError("RAZORPAY_KEY_ID configuration is missing.")
+            return ""
+
         if any(p in v.lower() for p in ["placeholder", "change-me", "changeme", "your_key"]):
             raise ValueError("RAZORPAY_KEY_ID appears to be a placeholder value.")
+
         if not (v.startswith("rzp_test_") or v.startswith("rzp_live_")):
             raise ValueError("RAZORPAY_KEY_ID must start with 'rzp_test_' or 'rzp_live_'.")
+
         return v
 
     @field_validator("RAZORPAY_KEY_SECRET", mode="after")
     @classmethod
     def razorpay_key_secret_required(cls, v: str) -> str:
+        # Allow empty value during development
         if not v or not str(v).strip():
-            raise ValueError("RAZORPAY_KEY_SECRET configuration is missing.")
-        if any(p in v.lower() for p in ["placeholder", "change-me", "changeme", "your_secret"]):
-            raise ValueError("RAZORPAY_KEY_SECRET appears to be a placeholder value.")
+            return ""
+
+        if any(
+            p in v.lower()
+            for p in ["placeholder", "change-me", "changeme", "your_secret"]
+        ):
+            raise ValueError(
+                "RAZORPAY_KEY_SECRET appears to be a placeholder value."
+            )
+
         return v
 
 
