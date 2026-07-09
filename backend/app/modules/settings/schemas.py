@@ -32,6 +32,7 @@ class StoreSettingsBase(BaseModel):
     support_email: EmailStr
     support_phone: Optional[str] = Field(default=None, max_length=30)
     description: Optional[str] = Field(default=None, max_length=1000)
+    store_location: Optional[str] = Field(default=None, max_length=1000)
     logo: Optional[str] = None
     country: str = Field(..., min_length=2, max_length=100)
     currency: str = Field(..., min_length=2, max_length=10)
@@ -96,6 +97,7 @@ class StoreSettingsUpdate(BaseModel):
     support_email: Optional[EmailStr] = None
     support_phone: Optional[str] = Field(default=None, max_length=30)
     description: Optional[str] = Field(default=None, max_length=1000)
+    store_location: Optional[str] = Field(default=None, max_length=1000)
     logo: Optional[str] = None
     country: Optional[str] = Field(default=None, min_length=2, max_length=100)
     currency: Optional[str] = Field(default=None, min_length=2, max_length=10)

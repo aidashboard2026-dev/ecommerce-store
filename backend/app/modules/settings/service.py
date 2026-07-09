@@ -97,6 +97,8 @@ def get_settings_bundle(db: Session, admin: Admin) -> dict:
 def update_store_settings(db: Session, payload: StoreSettingsUpdate) -> StoreSettings:
     settings = get_or_create_store_settings(db)
     update_data = payload.model_dump(exclude_unset=True)
+    update_data.pop("store_name", None)
+    update_data.pop("store_url", None)
     for field, value in update_data.items():
         setattr(settings, field, str(value) if field == "store_url" and value is not None else value)
     db.flush()

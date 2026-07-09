@@ -349,7 +349,7 @@ const HeaderComponent = function Header() {
 const Logo = React.memo(function Logo({ compact = false, sidebarOpen = true }) {
   const { settings } = useStoreSettings();
   const logoUrl = settings?.logo;
-  const storeName = settings?.store_name || "AdminDash";
+  const storeName = import.meta.env.VITE_STORE_NAME || "My Designers";
 
   return (
     <div className="flex items-center gap-2.5 px-5 py-4 h-[53px]">
@@ -371,13 +371,7 @@ const Logo = React.memo(function Logo({ compact = false, sidebarOpen = true }) {
           sidebarOpen ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden",
         )}
       >
-        {logoUrl ? (
-          <span>{storeName}</span>
-        ) : (
-          <>
-            Admin<span className="text-brand-500">Dash</span>
-          </>
-        )}
+        {storeName}
       </span>
     </div>
   );
