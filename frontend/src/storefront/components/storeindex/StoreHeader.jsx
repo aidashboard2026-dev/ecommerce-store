@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { CartBadge } from "@/storefront/components/shoppingcart";
 import { openCartDrawer } from "@/storefront/store/cartSlice";
-import useStoreSettings from '@/shared/hooks/useStoreSettings'
+import useStoreSettings from "@/shared/hooks/useStoreSettings";
 
 // Static nav config — module scope so it isn't re-allocated every render.
 // `to` values must resolve against real routes/filters (see AppRoutes.jsx
@@ -25,15 +25,31 @@ import useStoreSettings from '@/shared/hooks/useStoreSettings'
 // these at "/sub-products" — that route is a dead catch-all redirect to
 // /products with no category context.
 const MOBILE_NAV_LINKS = [
-  { label: 'Home', to: '/' },
+  { label: "Home", to: "/" },
   { label: "T-Shirts for Mens", to: "/products?category=t-shirts&gender=Men" },
-  { label: "Track Pants for Mens", to: "/products?category=track-pants&gender=Men" },
+  {
+    label: "Track Pants for Mens",
+    to: "/products?category=track-pants&gender=Men",
+  },
   { label: "Trousers for Mens", to: "/products?category=trousers&gender=Men" },
   { label: "Shirts for Mens", to: "/products?category=shirts&gender=Men" },
-  { label: 'Custom product', to: '/custom' },
-  { label: 'Offers', to: '/offers' },
-  { label: 'Track Order', to: '/tracking' },
-]
+  { label: "Custom product", to: "/custom" },
+  { label: "Offers", to: "/offers" },
+  { label: "Track Order", to: "/tracking" },
+];
+
+const generateInitials = (name = "") => {
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  return initials || "U";
+};
 
 const StoreHeaderComponent = function StoreHeader({
   toggleTheme,
@@ -45,9 +61,9 @@ const StoreHeaderComponent = function StoreHeader({
   handleLogout,
 }) {
   const dispatch = useDispatch();
-  const { settings } = useStoreSettings()
-  const logoUrl = settings?.logo
-  const storeName = settings?.store_name || 'AuraStore'
+  const { settings } = useStoreSettings();
+  const logoUrl = settings?.logo;
+  const storeName = settings?.store_name || "AuraStore";
   const navigate = useNavigate();
   const location = useLocation();
   const searchRef = useRef(null);
@@ -120,13 +136,12 @@ const StoreHeaderComponent = function StoreHeader({
     }
   };
 
-
   return (
     <>
       <header
         className={clsx(
           "sticky top-0 z-40 store-bg transition-all py-3 px-3 sm:px-10 w-full duration-300 border-b border-app shadow-[0_1px_20px_rgba(0,0,0,0.12)]",
-          scrolled, 
+          scrolled,
         )}
       >
         <div className="mx-auto w-full max-w-[1400px] flex items-center justify-between gap-4">
@@ -237,13 +252,51 @@ const StoreHeaderComponent = function StoreHeader({
                   to="/profile"
                   className="flex items-center gap-2 p-1.5 rounded-full hover:bg-surface text-app transition-colors duration-200"
                 >
-                  <div className="h-7 w-7 rounded-full bg-brand-500 flex items-center justify-center text-white font-bold text-xs">
-                    {customer.first_name.toUpperCase()}
-                  </div>
+                  {/* Google Image / Initial */}
+                  {customer?.photo_url ? (
+                    <img
+                      src={customer.photo_url}
+                      alt={
+                        customer.google_name ||
+                        customer.first_name ||
+                        "Customer"
+                      }
+                      className="h-9 w-9 rounded-full object-cover border border-app"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="h-9 w-9 rounded-full bg-cyan-600 flex items-center justify-center text-white text-sm font-semibold">
+                      {generateInitials(
+                        customer.google_name ||
+                          `${customer.first_name || ""} ${
+                            customer.last_name || ""
+                          }`,
+                      )}
+                    </div>
+                  )}
                 </Link>
-                
+
                 {/* Profile Hover Dropdown */}
-                <div className="absolute right-0 mt-1.5 w-48 bg-app border border-app rounded-xl shadow-lg py-2 hidden group-hover/profile:block animate-fade-in z-50">
+                <div className="absolute right-0 mt-1.5 w-56 bg-app border border-app rounded-xl shadow-lg py-2 hidden group-hover/profile:block animate-fade-in z-50">
+                  {/* Customer Details */}
+                  <div className="px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-app truncate">
+                        {customer.google_name ||
+                          `${customer.first_name || ""} ${
+                            customer.last_name || ""
+                          }`.trim() ||
+                          "Customer"}
+                      </p>
+
+                      <p className="text-xs text-muted truncate">
+                        {customer.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  <hr className="border-app my-1" />
+
                   <Link
                     to="/profile"
                     className="flex items-center gap-2 px-4 py-2 text-xs text-app hover:bg-surface"
@@ -251,6 +304,7 @@ const StoreHeaderComponent = function StoreHeader({
                     <User size={13} />
                     My Account
                   </Link>
+
                   <Link
                     to="/profile/orders"
                     className="flex items-center gap-2 px-4 py-2 text-xs text-app hover:bg-surface"
@@ -258,8 +312,11 @@ const StoreHeaderComponent = function StoreHeader({
                     <ClipboardList size={13} />
                     My Orders
                   </Link>
+
                   <hr className="border-app my-1" />
+
                   <button
+                    type="button"
                     onClick={handleLogout}
                     className="flex w-full items-center gap-2 px-4 py-2 text-xs text-red-500 hover:bg-surface text-left"
                   >
@@ -269,7 +326,11 @@ const StoreHeaderComponent = function StoreHeader({
                 </div>
               </div>
             ) : (
-              <Link to="/auth/login" className="hidden md:block" aria-label="Log in">
+              <Link
+                to="/auth/login"
+                className="hidden md:block text-app"
+                aria-label="Log in"
+              >
                 <User size={22} />
               </Link>
             )}
@@ -298,7 +359,10 @@ const StoreHeaderComponent = function StoreHeader({
               className="flex-1 bg-surface border-0 rounded-full py-2 px-5"
             />
 
-            <button onClick={() => setShowSearch(false)} aria-label="Close search">
+            <button
+              onClick={() => setShowSearch(false)}
+              aria-label="Close search"
+            >
               <X size={22} />
             </button>
           </div>
@@ -317,7 +381,10 @@ const StoreHeaderComponent = function StoreHeader({
           <div className="fixed top-0 right-0 h-full w-72 bg-app border-l border-app z-50  shadow-xl flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-end p-4">
-              <button onClick={() => setMobileMenuOpen(false)} aria-label="Close navigation menu">
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="Close navigation menu"
+              >
                 <X size={22} />
               </button>
             </div>
@@ -341,30 +408,95 @@ const StoreHeaderComponent = function StoreHeader({
                 </Link>
               ))}
 
-              <div className="flex flex-col md:hidden ">
-                <Link
-                  to="/profile/orders"
-                  className="px-5 py-3 uppercase hover:bg-surface"
-                >
-                  My Orders
-                </Link>
+              <div className="flex flex-col md:hidden">
+                {token && customer ? (
+                  <>
+                    {/* Customer Profile */}
+                    <div className="flex items-center gap-3 px-5 py-4">
+                      {customer.photo_url ? (
+                        <img
+                          src={customer.photo_url}
+                          alt={
+                            customer.google_name ||
+                            customer.first_name ||
+                            "Customer"
+                          }
+                          className="h-11 w-11 rounded-full object-cover border border-app"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="h-11 w-11 rounded-full bg-cyan-600 flex items-center justify-center text-white text-sm font-semibold">
+                          {generateInitials(
+                            customer.google_name ||
+                              `${customer.first_name || ""} ${
+                                customer.last_name || ""
+                              }`,
+                          )}
+                        </div>
+                      )}
 
-                {/* user account setting */}
-                <hr className="border-app my-1" />
-                <Link
-                  to="/profile"
-                  className="flex items-center gap-2 px-4 py-2 text-xs text-app hover:bg-surface"
-                >
-                  <User size={13} />
-                  My Account
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="flex w-full items-center gap-2 px-4 py-2 text-xs text-red-500 hover:bg-surface text-left"
-                >
-                  <LogOut size={13} />
-                  Logout
-                </button>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-app truncate">
+                          {customer.google_name ||
+                            `${customer.first_name || ""} ${
+                              customer.last_name || ""
+                            }`.trim() ||
+                            "Customer"}
+                        </p>
+
+                        <p className="text-xs text-muted truncate">
+                          {customer.email}
+                        </p>
+                      </div>
+                    </div>
+
+                    <hr className="border-app" />
+
+                    {/* My Orders */}
+                    <Link
+                      to="/profile/orders"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 px-5 py-3 text-xs text-app hover:bg-surface"
+                    >
+                      <ClipboardList size={14} />
+                      My Orders
+                    </Link>
+
+                    {/* My Account */}
+                    <Link
+                      to="/profile"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 px-5 py-3 text-xs text-app hover:bg-surface"
+                    >
+                      <User size={14} />
+                      My Account
+                    </Link>
+
+                    <hr className="border-app my-1" />
+
+                    {/* Logout */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        handleLogout();
+                      }}
+                      className="flex w-full items-center gap-2 px-5 py-3 text-xs text-red-500 hover:bg-surface text-left"
+                    >
+                      <LogOut size={14} />
+                      Logout
+                    </button>
+                  </>
+                ) : (
+                  <Link
+                    to="/auth/login"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-2 px-5 py-3 text-xs text-app hover:bg-surface"
+                  >
+                    <User size={14} />
+                    Login
+                  </Link>
+                )}
               </div>
             </div>
           </div>
@@ -372,7 +504,7 @@ const StoreHeaderComponent = function StoreHeader({
       )}
     </>
   );
-}
+};
 
 const StoreHeader = React.memo(StoreHeaderComponent);
 export default StoreHeader;

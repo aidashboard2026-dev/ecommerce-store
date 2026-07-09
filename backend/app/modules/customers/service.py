@@ -104,7 +104,8 @@ def create_customer(db: Session, data: CustomerCreate) -> Customer:
         tags=_tags_to_str(data.tags),
         notes=data.notes,
         is_active=True,
-        password_hash="",  # admin-created; no self-login
+        auth_provider="firebase",
+        email_verified=False,
     )
     db.add(customer)
     try:

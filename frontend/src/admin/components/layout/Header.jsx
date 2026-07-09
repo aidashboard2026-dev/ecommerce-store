@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
-import { useDispatch, useSelector } from 'react-redux'
+import React, { useEffect, useRef, useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import {
   LayoutDashboard,
   LogOut,
@@ -18,103 +18,111 @@ import {
   Grid2X2,
   Bell,
   MessageSquare,
-} from 'lucide-react'
-import clsx from 'clsx'
-import { useAuth, useTheme } from '@/shared/hooks/useAuth'
-import { logout } from '@/admin/store/authSlice'
+} from "lucide-react";
+import clsx from "clsx";
+import { useAuth, useTheme } from "@/shared/hooks/useAuth";
+// import { logout } from '@/admin/store/authSlice'
+import { logout } from "@/firebase/auth";
 // import { toggleSidebar } from '@/admin/store/uiSlice'
-import Avatar from '@/shared/components/ui/Avatar'
-import ProfileCard from '@/shared/components/ui/ProfileCard'
-import useStoreSettings from '@/shared/hooks/useStoreSettings'
+import Avatar from "@/shared/components/ui/Avatar";
+import ProfileCard from "@/shared/components/ui/ProfileCard";
+import useStoreSettings from "@/shared/hooks/useStoreSettings";
 
 const navItems = [
-  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/admin/products', label: 'Products', icon: Package },
-  { to: '/admin/categories', label: 'Categories', icon: Grid2X2 },
-  { to: "/admin/custom-products", label: "Custom Products", icon: Package},
-  { to: '/admin/orders', label: 'Orders', icon: ShoppingCart },
-  { to: '/admin/offers', label: 'Offers', icon: Tags },
-  { to: '/admin/banners', label: 'Banners', icon: Image },
-  { to: '/admin/customers', label: 'Customers', icon: UserRound },
-  { to: '/admin/contact', label: 'Contact', icon: MessageSquare },
-  { to: '/admin/settings', label: 'Settings', icon: Settings },
-]
+  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/admin/products", label: "Products", icon: Package },
+  { to: "/admin/categories", label: "Categories", icon: Grid2X2 },
+  { to: "/admin/custom-products", label: "Custom Products", icon: Package },
+  { to: "/admin/orders", label: "Orders", icon: ShoppingCart },
+  { to: "/admin/offers", label: "Offers", icon: Tags },
+  { to: "/admin/banners", label: "Banners", icon: Image },
+  { to: "/admin/customers", label: "Customers", icon: UserRound },
+  { to: "/admin/contact", label: "Contact", icon: MessageSquare },
+  { to: "/admin/settings", label: "Settings", icon: Settings },
+];
 
 const HeaderComponent = function Header() {
-  const { admin } = useAuth()
-  const { isDark, toggle } = useTheme()
-  const dispatch = useDispatch()
-  const navigate = useNavigate()
-  const sidebarOpen = useSelector((s) => s.ui.sidebarOpen)
+  const { admin } = useAuth();
+  const { isDark, toggle } = useTheme();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const sidebarOpen = useSelector((s) => s.ui.sidebarOpen);
 
-  const [profileOpen, setProfileOpen] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const drawerRef = useRef(null)
-  const profileRef = useRef(null)
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const drawerRef = useRef(null);
+  const profileRef = useRef(null);
 
   useEffect(() => {
-    if (!mobileOpen) return undefined
+    if (!mobileOpen) return undefined;
 
     const handleClickOutside = (event) => {
       if (drawerRef.current && !drawerRef.current.contains(event.target)) {
-        setMobileOpen(false)
+        setMobileOpen(false);
       }
-    }
+    };
 
     const handleEscape = (event) => {
-      if (event.key === 'Escape') {
-        setMobileOpen(false)
+      if (event.key === "Escape") {
+        setMobileOpen(false);
       }
-    }
+    };
 
-    document.body.style.overflow = 'hidden'
-    document.addEventListener('mousedown', handleClickOutside)
-    document.addEventListener('keydown', handleEscape)
+    document.body.style.overflow = "hidden";
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
 
     return () => {
-      document.body.style.overflow = ''
-      document.removeEventListener('mousedown', handleClickOutside)
-      document.removeEventListener('keydown', handleEscape)
-    }
-  }, [mobileOpen])
+      document.body.style.overflow = "";
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [mobileOpen]);
 
   useEffect(() => {
-    if (!profileOpen) return
+    if (!profileOpen) return;
 
     const handleClickOutside = (event) => {
       if (profileRef.current && !profileRef.current.contains(event.target)) {
-        setProfileOpen(false)
+        setProfileOpen(false);
       }
-    }
+    };
 
-    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [profileOpen])
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [profileOpen]);
 
-  const handleLogout = () => {
-    dispatch(logout())
-    navigate('/admin/login')
-  }
+  const handleLogout = async () => {
+    try {
+      await logout(); // Firebase logout
+
+      localStorage.removeItem("customer_token");
+      localStorage.removeItem("customer");
+
+      navigate("/auth/login");
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const closeAndLogout = () => {
-    setMobileOpen(false)
-    handleLogout()
-  }
+    setMobileOpen(false);
+    handleLogout();
+  };
 
-  const initial = admin?.name?.charAt(0).toUpperCase() || 'A'
-  const names = admin?.name?.split(' ') || ['Admin']
-  const firstName = names[0]
-  const lastName = names[1] || ''
+  const initial = admin?.name?.charAt(0).toUpperCase() || "A";
+  const names = admin?.name?.split(" ") || ["Admin"];
+  const firstName = names[0];
+  const lastName = names[1] || "";
 
   return (
     <>
       {/* desktop sidebar */}
       <aside
         className={clsx(
-          'fixed left-0 top-0 z-30  w-60 hidden h-screen border-r border-app bg-surface shadow-sm transition-all duration-300 md:flex md:flex-col',
-
+          "fixed left-0 top-0 z-30  w-60 hidden h-screen border-r border-app bg-surface shadow-sm transition-all duration-300 md:flex md:flex-col",
         )}
       >
         <Logo />
@@ -128,10 +136,10 @@ const HeaderComponent = function Header() {
               end={end}
               className={({ isActive }) =>
                 clsx(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-normal transition-all duration-150 cursor-pointer group',
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-normal transition-all duration-150 cursor-pointer group",
                   isActive
-                    ? 'bg-brand-500/10 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400'
-                    : 'text-muted hover:text-app hover:bg-app'
+                    ? "bg-brand-500/10 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400"
+                    : "text-muted hover:text-app hover:bg-app",
                 )
               }
               title={!sidebarOpen ? label : undefined}
@@ -142,8 +150,10 @@ const HeaderComponent = function Header() {
               />
               <span
                 className={clsx(
-                  'transition-all duration-200 truncate',
-                  sidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 overflow-hidden'
+                  "transition-all duration-200 truncate",
+                  sidebarOpen
+                    ? "opacity-100 w-auto"
+                    : "opacity-0 w-0 overflow-hidden",
                 )}
               >
                 {label}
@@ -152,9 +162,11 @@ const HeaderComponent = function Header() {
           ))}
         </nav>
 
-
         {/* profile and theme toggle */}
-        <div ref={profileRef} className="relative w-full p-4 border-t border-app">
+        <div
+          ref={profileRef}
+          className="relative w-full p-4 border-t border-app"
+        >
           <div
             onClick={() => setProfileOpen((prev) => !prev)}
             className="flex items-center gap-3.5 cursor-pointer p-1.5 rounded-lg hover:bg-app transition-colors"
@@ -162,14 +174,18 @@ const HeaderComponent = function Header() {
             <Avatar size="sm" firstName={firstName} lastName={lastName} />
             <div
               className={clsx(
-                'min-w-0 transition-all duration-200 flex-1 flex items-center justify-between',
-                sidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 overflow-hidden'
+                "min-w-0 transition-all duration-200 flex-1 flex items-center justify-between",
+                sidebarOpen
+                  ? "opacity-100 w-auto"
+                  : "opacity-0 w-0 overflow-hidden",
               )}
             >
               <div className="truncate">
-                <p className="truncate text-xs font-bold text-app">{admin?.name || 'Admin User'}</p>
+                <p className="truncate text-xs font-bold text-app">
+                  {admin?.name || "Admin User"}
+                </p>
                 <p className="truncate text-[10px] text-muted font-medium mt-0.5">
-                  {admin?.email || 'admin@example.com'}
+                  {admin?.email || "admin@example.com"}
                 </p>
               </div>
               <div className="flex h-6 w-6 items-center justify-center rounded text-muted">
@@ -181,8 +197,8 @@ const HeaderComponent = function Header() {
           {profileOpen && (
             <div
               className={clsx(
-                'absolute bottom-[72px] z-50 rounded-xl border border-app bg-surface p-2 shadow-elevated animate-slide-up',
-                sidebarOpen ? 'left-4 w-[208px]' : 'left-2 w-[190px]'
+                "absolute bottom-[72px] z-50 rounded-xl border border-app bg-surface p-2 shadow-elevated animate-slide-up",
+                sidebarOpen ? "left-4 w-[208px]" : "left-2 w-[190px]",
               )}
             >
               <div className="mb-4 border-b border-app pb-4">
@@ -192,7 +208,11 @@ const HeaderComponent = function Header() {
                 onClick={toggle}
                 className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-app hover:bg-app transition-colors"
               >
-                {isDark ? <Sun size={13} className="text-muted" /> : <Moon size={13} className="text-muted" />}
+                {isDark ? (
+                  <Sun size={13} className="text-muted" />
+                ) : (
+                  <Moon size={13} className="text-muted" />
+                )}
                 Toggle Theme
               </button>
               <button
@@ -239,24 +259,24 @@ const HeaderComponent = function Header() {
           >
             <Menu size={18} />
           </button>
-
         </div>
-
       </header>
 
       {/* mobile drawer */}
       <div
         className={clsx(
-          'fixed inset-0 z-50 bg-black/40 backdrop-blur-xs transition-opacity duration-300 md:hidden',
-          mobileOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+          "fixed inset-0 z-50 bg-black/40 backdrop-blur-xs transition-opacity duration-300 md:hidden",
+          mobileOpen
+            ? "pointer-events-auto opacity-100"
+            : "pointer-events-none opacity-0",
         )}
         aria-hidden={!mobileOpen}
       >
         <div
           ref={drawerRef}
           className={clsx(
-            'absolute right-0 top-0 bottom-0 flex h-full w-[260px] flex-col bg-surface p-6 shadow-2xl transition-transform duration-300 ease-in-out',
-            mobileOpen ? 'translate-x-0' : 'translate-x-full'
+            "absolute right-0 top-0 bottom-0 flex h-full w-[260px] flex-col bg-surface p-6 shadow-2xl transition-transform duration-300 ease-in-out",
+            mobileOpen ? "translate-x-0" : "translate-x-full",
           )}
           role="dialog"
           aria-modal="true"
@@ -285,10 +305,10 @@ const HeaderComponent = function Header() {
                 onClick={() => setMobileOpen(false)}
                 className={({ isActive }) =>
                   clsx(
-                    'flex items-center gap-3 px-3.5 py-3 rounded-lg text-xs font-semibold transition-all duration-150',
+                    "flex items-center gap-3 px-3.5 py-3 rounded-lg text-xs font-semibold transition-all duration-150",
                     isActive
-                      ? 'bg-brand-500/10 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400'
-                      : 'text-muted hover:text-app hover:bg-app'
+                      ? "bg-brand-500/10 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400"
+                      : "text-muted hover:text-app hover:bg-app",
                   )
                 }
               >
@@ -300,13 +320,15 @@ const HeaderComponent = function Header() {
 
           {/* mobile profile and theme */}
           <div className="mt-auto space-y-3 border-t border-app pt-6">
-
-
             <div className="border border-app rounded-xl p-2.5 bg-app flex items-center gap-3">
               <Avatar size="sm" firstName={firstName} lastName={lastName} />
               <div className="min-w-0">
-                <p className="truncate text-xs font-bold text-app">{admin?.name || 'Admin User'}</p>
-                <p className="truncate text-[10px] text-muted mt-0.5">{admin?.email || 'admin@example.com'}</p>
+                <p className="truncate text-xs font-bold text-app">
+                  {admin?.name || "Admin User"}
+                </p>
+                <p className="truncate text-[10px] text-muted mt-0.5">
+                  {admin?.email || "admin@example.com"}
+                </p>
               </div>
             </div>
 
@@ -321,13 +343,13 @@ const HeaderComponent = function Header() {
         </div>
       </div>
     </>
-  )
-}
+  );
+};
 
 const Logo = React.memo(function Logo({ compact = false, sidebarOpen = true }) {
-  const { settings } = useStoreSettings()
-  const logoUrl = settings?.logo
-  const storeName = settings?.store_name || 'AdminDash'
+  const { settings } = useStoreSettings();
+  const logoUrl = settings?.logo;
+  const storeName = settings?.store_name || "AdminDash";
 
   return (
     <div className="flex items-center gap-2.5 px-5 py-4 h-[53px]">
@@ -344,9 +366,9 @@ const Logo = React.memo(function Logo({ compact = false, sidebarOpen = true }) {
       )}
       <span
         className={clsx(
-          'font-display text-sm font-bold tracking-tight text-app transition-all duration-200 truncate',
-          compact && 'text-xs',
-          sidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 overflow-hidden'
+          "font-display text-sm font-bold tracking-tight text-app transition-all duration-200 truncate",
+          compact && "text-xs",
+          sidebarOpen ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden",
         )}
       >
         {logoUrl ? (
@@ -358,9 +380,8 @@ const Logo = React.memo(function Logo({ compact = false, sidebarOpen = true }) {
         )}
       </span>
     </div>
-  )
-})
+  );
+});
 
-const Header = React.memo(HeaderComponent)
-export default Header
-
+const Header = React.memo(HeaderComponent);
+export default Header;

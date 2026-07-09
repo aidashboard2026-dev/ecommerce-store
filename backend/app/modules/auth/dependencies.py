@@ -89,7 +89,13 @@ def get_current_customer(
     Raises AuthorizationError (→ HTTP 403) when:
       - The customer account is inactive/suspended.
     """
-    token       = credentials.credentials
+    if not credentials:
+        raise AuthenticationError(
+            "Customer authentication required.",
+            code="NO_CUSTOMER_TOKEN",
+        )
+
+    token = credentials.credentials
     customer_id = verify_token(token, expected_type="customer")
 
     if not customer_id:

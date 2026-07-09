@@ -102,6 +102,14 @@ class CustomerResponse(BaseModel):
     email: str
     phone: Optional[str]
     dob: Optional[date]
+    address_line1: Optional[str] = None
+    address_line2: Optional[str] = None
+    pincode: Optional[str] = None
+    photo_url: Optional[str] = None
+    google_name: Optional[str] = None
+    firebase_uid: Optional[str] = None
+    auth_provider: Optional[str] = None
+    email_verified: bool = False
     is_active: bool
     tags: List[str] = []
     city: Optional[str]
@@ -135,8 +143,7 @@ class CustomerResponse(BaseModel):
             return []
         return v
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class CustomerListResponse(BaseModel):

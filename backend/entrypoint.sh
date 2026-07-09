@@ -50,6 +50,7 @@ sys.exit(1)
 PYEOF
 
 echo "[entrypoint] Running Alembic migrations..."
+
 alembic upgrade heads
 echo "[entrypoint] Migrations complete."
 
