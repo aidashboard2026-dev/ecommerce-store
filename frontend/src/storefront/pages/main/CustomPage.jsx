@@ -28,7 +28,7 @@ function ProductTypeGrid() {
   return (
     <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
       <div className="text-center mb-10">
-        <h1 className="font-display font-bold text-2xl sm:text-3xl text-app">Custom Orders</h1>
+        <h1 className="font-display font-bold text-2xl sm:text-3xl text-app">Custom Products</h1>
         <p className="text-sm text-muted mt-2 max-w-xl mx-auto">
           Tell us what you'd like custom-made — pick a category below, choose your options, and
           request a quote. We'll get back to you with pricing and timelines.

@@ -633,6 +633,7 @@ export default function LoginForm() {
           New here?{" "}
           <Link
             to="/auth/register"
+            state={location.state}
             className="
               text-brand-500
               font-semibold
