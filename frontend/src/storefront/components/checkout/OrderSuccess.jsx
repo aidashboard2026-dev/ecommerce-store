@@ -78,42 +78,56 @@ export default function OrderSuccess() {
             {/* <h2 className="font-semibold text-lg text-app">Order Details</h2> */}
 
           <div className="space-y-4 flex flex-col justify-center items-center">
+              {/* Order Number */}
               <div className="flex items-center gap-3">
                 <Package size={18} className="text-zinc-500" />
-
-                <p className="text-sm text-muted">Order ID :</p>
-
+                <p className="text-sm text-muted">Order Number :</p>
                 <p className="font-semibold text-app">
                     {firstOrder?.order_number || firstOrder?.id || "N/A"}
                 </p>
               </div>
 
-              {/* <div className="flex items-center gap-3">
-                  <CalendarDays size={18} className="text-brand-500" />
+              {/* Order Date */}
+              <div className="flex items-center gap-3">
+                <CalendarDays size={18} className="text-zinc-500" />
+                <p className="text-sm text-muted">Order Date :</p>
+                <p className="font-semibold text-app">
+                  {new Date().toLocaleDateString()}
+                </p>
+              </div>
 
-                  <div>
-                    <p className="text-xs text-muted">Order Date</p>
+              {/* Payment Status */}
+              <div className="flex items-center gap-3">
+                <CheckCircle2 size={18} className="text-zinc-500" />
+                <p className="text-sm text-muted">Payment Status :</p>
+                <p className="font-semibold text-app">
+                  {paymentMethod === "COD" ? "Pending (Cash on Delivery)" : "Paid"}
+                </p>
+              </div>
 
-                    <p className="font-semibold text-app">
-                      {new Date().toLocaleDateString()}
-                    </p>
-                  </div>
-                </div> */}
+              {/* Payment Method */}
+              <div className="flex items-center gap-3">
+                <CreditCard size={18} className="text-zinc-500" />
+                <p className="text-sm text-muted">Payment Method :</p>
+                <p className="font-semibold text-app">{paymentLabel}</p>
+              </div>
 
+              {/* Amount Paid */}
               <div className="flex items-center gap-3">
                 <Wallet size={18} className="text-zinc-500" />
-                <span className="text-sm text-muted">Total Amount : </span>
-
+                <span className="text-sm text-muted">Amount Paid : </span>
                 <span className="font-semibold text-app">
                   {formatPrice(totals?.total || 0)}
                 </span>
               </div>
 
+              {/* Estimated Delivery */}
               <div className="flex items-center gap-3">
-                <CreditCard size={18} className="text-zinc-500" />
-
-                <p className="text-sm text-muted">Payment Method :</p>
-                <p className="font-semibold text-app">{paymentLabel}</p>
+                <CalendarDays size={18} className="text-zinc-500" />
+                <p className="text-sm text-muted">Estimated Delivery :</p>
+                <p className="font-semibold text-brand-600">
+                  {deliveryDate.toLocaleDateString()}
+                </p>
               </div>
             </div>
           </div>
@@ -269,13 +283,13 @@ export default function OrderSuccess() {
               {/* <ArrowRight size={18} className="ml-2" /> */}
             </Link>
 
-            {/* <Link
+            <Link
               to="/orders"
               state={{ justPlaced: true }}
-              className="inline-flex items-center justify-center rounded-full border border-app hover:bg-surface text-app font-semibold px-8 py-3 transition-colors"
+              className="inline-flex items-center justify-center border border-app hover:bg-surface text-app font-semibold px-8 py-3 transition-colors"
             >
               View My Orders
-            </Link> */}
+            </Link>
 
             {/* <Link
                 to={`/orders/${firstOrder?.id}/tracking`}

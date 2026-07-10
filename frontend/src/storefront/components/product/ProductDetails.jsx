@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import toast from "react-hot-toast";
@@ -17,6 +17,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import clsx from "clsx";
+import { useCheckoutAuthModal } from "@/storefront/layouts/StorefrontLayout";
 import {
   useProductBySlug,
   useRelatedProducts,
@@ -33,6 +34,9 @@ export default function ProductDetails() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { token, customer } = useSelector((s) => s.customer);
+  const { openCheckoutAuthModal } = useCheckoutAuthModal();
+  const buyNowButtonRef = useRef(null);
   const { data: product, isLoading, isError } = useProductBySlug(slug);
   const isWishlisted = useSelector(selectIsWishlisted(product?.id));
 
@@ -180,7 +184,48 @@ export default function ProductDetails() {
     dispatch(addToCart(buildCartItem()));
     dispatch(openCartDrawer());
 
-    toast.success("Added to cart");
+    const isAuthenticated = !!(token && customer);
+    const toastShown = sessionStorage.getItem("aurastore_guest_added_toast_shown");
+    if (!isAuthenticated && !toastShown) {
+      sessionStorage.setItem("aurastore_guest_added_toast_shown", "true");
+      toast.custom((t) => (
+        <div
+          className={clsx(
+            "max-w-md w-full bg-app border border-app shadow-lg rounded-2xl pointer-events-auto flex overflow-hidden transition-all duration-350",
+            t.visible ? "animate-fade-in opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+          )}
+        >
+          <div className="flex-1 p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 pt-0.5 text-green-500 font-bold text-base">
+                ✓
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-sm font-semibold text-app">
+                  Added to Cart
+                </p>
+                <p className="mt-0.5 text-xs text-muted leading-relaxed">
+                  Sign in to save your cart across devices and enjoy faster checkout.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex border-l border-app shrink-0">
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                navigate("/login");
+              }}
+              className="w-24 border border-transparent rounded-none p-4 flex items-center justify-center text-xs font-semibold text-brand-500 hover:bg-surface hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            >
+              Sign In
+            </button>
+          </div>
+        </div>
+      ), { duration: 5000 });
+    } else {
+      toast.success("Added to cart");
+    }
   };
 
   const handleBuyNow = () => {
@@ -190,6 +235,13 @@ export default function ProductDetails() {
       return;
     }
     dispatch(addToCart(buildCartItem()));
+
+    const isAuthenticated = !!(token && customer);
+    if (!isAuthenticated) {
+      openCheckoutAuthModal(buyNowButtonRef.current);
+      return;
+    }
+
     navigate("/checkout");
   };
 
@@ -502,6 +554,7 @@ export default function ProductDetails() {
               <ShoppingBag size={22} /> Add to Cart
             </button>
             {/* <button
+              ref={buyNowButtonRef}
               onClick={handleBuyNow}
               disabled={!inStock}
               className={clsx(

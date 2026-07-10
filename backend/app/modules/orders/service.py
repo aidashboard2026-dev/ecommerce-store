@@ -380,6 +380,7 @@ def reconcile_pending_orders(db: Session, customer_email: str):
         Order.payment_status == "PENDING",
         Order.payment_method == "ONLINE",
         Order.razorpay_order_id.isnot(None),
+        Order.tracking_status != TrackingStatus.CANCELLED,
     ).all()
 
     if not pending_orders:
@@ -508,6 +509,7 @@ def create_order_customer(
             Order.payment_status == "PENDING",
             Order.payment_method == "ONLINE",
             Order.cart_session_id.isnot(None),
+            Order.tracking_status != TrackingStatus.CANCELLED,
         ).all()
         
         if existing_pending:

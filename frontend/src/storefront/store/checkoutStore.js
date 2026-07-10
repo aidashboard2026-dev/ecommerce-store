@@ -33,6 +33,7 @@ const checkoutSlice = createSlice({
     })(),
     placingOrder: false,
     orderError: null,
+    checkoutPayload: null,
   },
   reducers: {
     addAddress(state, action) {
@@ -75,6 +76,13 @@ const checkoutSlice = createSlice({
         /* ignore */
       }
     },
+    setCheckoutPayload(state, action) {
+      state.checkoutPayload = action.payload
+    },
+
+    clearCheckoutPayload(state) {
+      state.checkoutPayload = null
+    },
   },
 })
 
@@ -87,6 +95,10 @@ export const {
   setPlacingOrder,
   setOrderError,
   setLastOrder,
+
+  setCheckoutPayload,
+  clearCheckoutPayload,
+
 } = checkoutSlice.actions
 
 export default checkoutSlice.reducer

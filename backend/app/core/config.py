@@ -180,6 +180,9 @@ class Settings(BaseSettings):
     SUPABASE_BANNER_BUCKET: str = "banners"
     SUPABASE_CATEGORY_BUCKET: str = "category-images"
 
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
+
     @field_validator("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", mode="after")
     @classmethod
     def supabase_storage_credentials_optional(cls, v: str) -> str:

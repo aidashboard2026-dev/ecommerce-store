@@ -51,6 +51,7 @@ const StoreHeaderComponent = function StoreHeader({
   const navigate = useNavigate();
   const location = useLocation();
   const searchRef = useRef(null);
+  const profileRef = useRef(null);
 
   useEffect(() => {
     console.log("=== StoreHeader MOUNTED ===");
@@ -58,6 +59,7 @@ const StoreHeaderComponent = function StoreHeader({
   }, []);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [scrolled, setScrolled] = useState(false);
   const [showSubProducts, setShowSubProducts] = useState(false);
@@ -95,8 +97,10 @@ const StoreHeaderComponent = function StoreHeader({
 
   useEffect(() => {
     setMobileMenuOpen(false);
+    setProfileMenuOpen(false);
   }, [location.pathname]);
 
+  // Click outside handler for search
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
@@ -107,11 +111,24 @@ const StoreHeaderComponent = function StoreHeader({
     };
 
     document.addEventListener("mousedown", handleClickOutside);
-
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [searchQuery]);
+
+  // Click outside handler for profile menu
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -130,7 +147,7 @@ const StoreHeaderComponent = function StoreHeader({
       >
         <div className="mx-auto w-full max-w-[1400px] flex items-center justify-between gap-4">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5  group shrink-0">
+          <Link to="/" className="flex items-center gap-2.5 group shrink-0 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-md">
             {logoUrl ? (
               <img
                 src={logoUrl}
@@ -154,19 +171,21 @@ const StoreHeaderComponent = function StoreHeader({
           </Link>
 
           {/* Right Action Icons */}
-          <div className="flex items-center gap-2  sm:gap-4">
+          <div className="flex items-center gap-1.5 sm:gap-3">
             {/* Search Box - Desktop */}
             <div
               ref={searchRef}
-              className="relative hidden md:flex items-center justify-end w-72"
+              className={clsx(
+                "relative hidden md:flex items-center justify-end transition-all duration-300",
+                showSearch ? "w-72" : "w-11"
+              )}
             >
               <form
                 onSubmit={handleSearchSubmit}
-                className={`relative transition-all duration-300 ease-in-out ${
-                  showSearch
-                    ? "w-72 opacity-100 translate-x-0"
-                    : "w-0 opacity-0 translate-x-4 pointer-events-none"
-                } overflow-hidden`}
+                className={clsx(
+                  "relative transition-all duration-300 ease-in-out overflow-hidden",
+                  showSearch ? "w-full opacity-100 translate-x-0" : "w-0 opacity-0 translate-x-4 pointer-events-none"
+                )}
               >
                 <input
                   autoFocus={showSearch}
@@ -174,31 +193,33 @@ const StoreHeaderComponent = function StoreHeader({
                   placeholder="Search premium apparel..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full text-sm bg-surface border border-app rounded-full py-2 pl-4"
+                  className="w-full text-sm bg-surface border border-app rounded-full py-2 pl-4 pr-12 text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
                 />
               </form>
 
               <button
                 type="button"
                 onClick={() => setShowSearch(!showSearch)}
-                className="absolute z-10 p-2 rounded-full hover:bg-surface"
+                className="absolute right-0 z-10 w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
                 aria-label="Toggle search"
               >
                 <Search size={20} />
               </button>
             </div>
+
             <button
               type="button"
               onClick={() => setShowSearch(true)}
-              className="p-2 rounded-full hover:bg-surface md:hidden"
+              className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface text-app md:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
               aria-label="Open search"
             >
               <Search size={20} />
             </button>
+
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-full hover:bg-surface text-app transition-colors duration-200"
+              className="hidden sm:flex w-11 h-11 items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors duration-200"
               aria-label="Toggle Theme"
             >
               {isDark ? <Sun size={18} /> : <Moon size={18} />}
@@ -207,7 +228,7 @@ const StoreHeaderComponent = function StoreHeader({
             {/* Wishlist */}
             <Link
               to="/wishlist"
-              className="p-2 rounded-full hover:bg-surface text-app transition-colors duration-200 relative"
+              className="hidden sm:flex w-11 h-11 items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors duration-200 relative"
               aria-label="Wishlist"
             >
               <Heart size={18} />
@@ -222,7 +243,7 @@ const StoreHeaderComponent = function StoreHeader({
             <button
               type="button"
               onClick={() => dispatch(openCartDrawer())}
-              className="p-2 rounded-full hover:bg-surface text-app transition-colors duration-200 relative"
+              className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors duration-200 relative"
               aria-label="Cart"
             >
               <ShoppingCart size={18} />
@@ -231,10 +252,14 @@ const StoreHeaderComponent = function StoreHeader({
 
             {/* Account / Login */}
             {token && customer ? (
-              <div className="relative hidden md:block group/profile">
-                <Link
-                  to="/profile"
-                  className="flex items-center gap-2 p-1.5 rounded-full hover:bg-surface text-app transition-colors duration-200"
+              <div ref={profileRef} className="relative hidden md:block">
+                <button
+                  type="button"
+                  onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                  className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors duration-200"
+                  aria-expanded={profileMenuOpen}
+                  aria-haspopup="true"
+                  aria-label="User Profile Menu"
                 >
                   {/* Google Image / Initial */}
                   {customer?.photo_url ? (
@@ -258,7 +283,7 @@ const StoreHeaderComponent = function StoreHeader({
                       )}
                     </div>
                   )}
-                </Link>
+                </button>
 
                 {/* Profile Hover Dropdown */}
                 <div className="absolute right-0 mt-1.5 w-56 bg-app border border-app rounded-xl shadow-lg py-2 hidden group-hover/profile:block animate-fade-in z-50">
@@ -322,7 +347,7 @@ const StoreHeaderComponent = function StoreHeader({
             {/* Mobile Menu Toggle */}
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className=" rounded-full hover:bg-surface text-app transition-colors duration-200"
+              className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors duration-200"
               aria-label="Open Navigation Menu"
             >
               <Menu size={22} />
@@ -340,7 +365,7 @@ const StoreHeaderComponent = function StoreHeader({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search products..."
-              className="flex-1 bg-surface border-0 rounded-full py-2 px-5"
+              className="flex-1 bg-surface border-0 rounded-full py-2 px-5 text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
             />
 
             <button
@@ -362,7 +387,7 @@ const StoreHeaderComponent = function StoreHeader({
           />
 
           {/* Drawer */}
-          <div className="fixed top-0 right-0 h-full w-72 bg-app border-l border-app z-50  shadow-xl flex flex-col">
+          <div className="fixed top-0 right-0 h-full w-72 bg-app border-l border-app z-50 shadow-xl flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-end p-4">
               <button
@@ -373,20 +398,15 @@ const StoreHeaderComponent = function StoreHeader({
               </button>
             </div>
 
-            {/* Navigation
-                Each entry maps to a real, filterable destination.
-                category/gender values must match the Category.name and
-                ProductGender.gender values used by the backend service
-                layer (see app/modules/products/service.py) so the query
-                params here actually filter results on /products. */}
-            <div className="flex flex-col py-3">
+            {/* Navigation */}
+            <div className="flex-1 overflow-y-auto flex flex-col py-3">
               {MOBILE_NAV_LINKS.map((link) => (
                 <Link
                   key={link.label}
                   to={link.to}
                   state={{ fromMenu: true }}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="px-5 py-3 uppercase hover:bg-surface"
+                  className="px-5 py-4 uppercase hover:bg-surface text-sm font-semibold tracking-wider transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
                 >
                   {link.label}
                 </Link>

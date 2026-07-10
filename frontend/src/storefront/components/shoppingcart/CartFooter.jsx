@@ -1,17 +1,29 @@
-import React from 'react'
+import React, { useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { formatPrice } from '@/shared/utils/productUtils'
 import { closeCartDrawer, selectCartCount, selectCartTotals } from '@/storefront/store/cartSlice'
+import { useCheckoutAuthModal } from '@/storefront/layouts/StorefrontLayout'
 
 export default function CartFooter() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const count = useSelector(selectCartCount)
   const totals = useSelector(selectCartTotals)
+  const { token, customer } = useSelector((s) => s.customer)
+  const { openCheckoutAuthModal } = useCheckoutAuthModal()
+  const checkoutButtonRef = useRef(null)
 
   const handleCheckout = () => {
     if (count === 0) return
+
+    const isAuthenticated = !!(token && customer)
+    if (!isAuthenticated) {
+      dispatch(closeCartDrawer())
+      openCheckoutAuthModal(checkoutButtonRef.current)
+      return
+    }
+
     dispatch(closeCartDrawer())
     navigate('/checkout')
   }
@@ -26,6 +38,7 @@ export default function CartFooter() {
         Shipping, taxes, and discounts are calculated at checkout.
       </p>
       <button
+        ref={checkoutButtonRef}
         type="button"
         onClick={handleCheckout}
         disabled={count === 0}

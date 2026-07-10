@@ -1,10 +1,19 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-
+import { useDestinationResolver } from '@/storefront/routing/DestinationResolver'
 import { storefrontAPI } from "@/shared/services/api";
-import { getImageUrl } from "@/shared/utils/productUtils";
-import { useDestinationResolver } from "@/storefront/routing/DestinationResolver";
+
+const BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "");
+
+function getImageUrl(path) {
+  if (!path) return "";
+  if (path.startsWith("blob:") || path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+  if (path.startsWith("/")) return `${BACKEND_ORIGIN}${path}`;
+  return `${BACKEND_ORIGIN}/uploads/categories/${path}`;
+}
 
 export default function CategorySection() {
   const { data: categories = [], isLoading, isError } = useQuery({
