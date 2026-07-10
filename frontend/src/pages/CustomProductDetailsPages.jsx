@@ -267,7 +267,7 @@ export default function ProductDetailsPage() {
                     `);
 
                         window.open(
-                        `https://web.whatsapp.com/send?phone=918778021610&text=${message}`,
+                        `https://web.whatsapp.com/send?phone=${import.meta.env.VITE_WHATSAPP_NUMBER || ""}&text=${message}`,
                         "_blank"
                         );
                     }}

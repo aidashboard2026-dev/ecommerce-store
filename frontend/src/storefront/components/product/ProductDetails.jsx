@@ -542,17 +542,23 @@ export default function ProductDetails() {
           {/* Actions */}
           <div className="flex flex-wrap gap-3 mt-2">
             <button
-              onClick={handleAddToCart}
-              disabled={!inStock}
+              onClick={() => {
+                if (!inStock) {
+                  toast.error("This product is out of stock.");
+                  return;
+                }
+
+                handleAddToCart();
+              }}
               className={clsx(
-                "flex-1 p-2.5 w-full text-2xl flex flex-row gap-3 items-center bg-zinc-950 dark:bg-zinc-900 text-white justify-center rounded-md duration-300",
-                // inStock
-                //   ? "border border-brand-500 text-brand-500 hover:bg-brand-500/10"
-                //   : "border border-app text-muted cursor-not-allowed",
+                "flex-1 p-2.5 w-full text-2xl flex flex-row gap-3 items-center bg-zinc-950 dark:bg-zinc-900 text-white justify-center rounded-md duration-300"
               )}
             >
-              <ShoppingBag size={22} /> Add to Cart
+              <ShoppingBag size={22} />
+              Add to Cart
             </button>
+
+            
             {/* <button
               ref={buyNowButtonRef}
               onClick={handleBuyNow}

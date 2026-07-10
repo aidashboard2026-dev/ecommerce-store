@@ -33,22 +33,20 @@ function App() {
   // --------------------------------------------------
 
   useEffect(() => {
+    // Browser title is set statically in index.html — do NOT overwrite document.title here.
+    const envStoreName = import.meta.env.VITE_STORE_NAME || "My Designers";
+    const envStoreUrl = import.meta.env.VITE_STORE_URL || "https://mydesigners.com";
+
+    // Keep localStorage in sync for invoice generator and price formatter utilities.
+    localStorage.setItem("store_name", envStoreName);
+    localStorage.setItem("store_url", envStoreUrl);
+
     if (!settings) return;
 
-    if (settings.store_name) {
-      document.title = settings.store_name;
-
-      localStorage.setItem("store_name", settings.store_name);
-    }
-
     if (settings.logo) {
-      const favicon = document.querySelector("link[rel~='icon']");
-
-      if (favicon) {
-        favicon.href = settings.logo;
-      }
-
       localStorage.setItem("store_logo", settings.logo);
+    } else {
+      localStorage.removeItem("store_logo");
     }
 
     if (settings.currency) {
@@ -65,10 +63,6 @@ function App() {
 
     if (settings.country) {
       localStorage.setItem("store_country", settings.country);
-    }
-
-    if (settings.store_url) {
-      localStorage.setItem("store_url", settings.store_url);
     }
   }, [settings]);
 

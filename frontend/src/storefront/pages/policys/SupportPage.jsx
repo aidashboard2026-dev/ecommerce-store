@@ -2,6 +2,7 @@ import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Mail, Phone, MapPin as MapPinIcon, HelpCircle, Info, Shield, FileText, RotateCcw, MessageCircle } from 'lucide-react'
 import clsx from 'clsx'
+import useStoreSettings from '@/shared/hooks/useStoreSettings'
 
 // NOTE: AuraStore did not previously have Contact/FAQ/About/Privacy/Terms/
 // Returns pages anywhere in the app (the footer had inert "Privacy Policy"
@@ -11,21 +12,43 @@ import clsx from 'clsx'
 // policy claims that aren't backed by real business decisions. Replace the
 // placeholder text with real content when it's ready.
 
-function ContactUsSection() {
+function ContactUsSection({ settings }) {
+  const supportEmail = settings?.support_email;
+  const rawPhone = settings?.support_phone || "";
+  // Normalize to +91XXXXXXXXXX regardless of how it's stored
+  const supportPhone = rawPhone
+    ? rawPhone.startsWith("+91")
+      ? rawPhone
+      : rawPhone.startsWith("91") && rawPhone.replace(/\D/g, "").length === 12
+      ? `+${rawPhone.replace(/\D/g, "")}`
+      : `+91${rawPhone.replace(/\D/g, "")}`
+    : "";
+  // Display as "+91 9876543210"
+  const displayPhone = supportPhone
+    ? `${supportPhone.slice(0, 3)} ${supportPhone.slice(3)}`
+    : "";
+  const storeLocation = settings?.store_location;
+
   return (
     <div className="flex flex-col gap-4">
       <div className="bg-app border border-app rounded-2xl p-5 sm:p-6">
         <h2 className="font-display font-bold text-lg text-app mb-4">Get in Touch</h2>
         <div className="flex flex-col gap-3 text-sm">
-          <a href="mailto:support@aurastore.com" className="flex items-center gap-3 text-app hover:text-brand-500">
-            <Mail size={16} className="text-brand-500" /> support@aurastore.com
-          </a>
-          <span className="flex items-center gap-3 text-app">
-            <Phone size={16} className="text-brand-500" /> +91 44 2817 9000
-          </span>
-          <span className="flex items-center gap-3 text-app">
-            <MapPinIcon size={16} className="text-brand-500" /> Chennai, Tamil Nadu, India
-          </span>
+          {supportEmail && (
+            <a href={`mailto:${supportEmail}`} className="flex items-center gap-3 text-app hover:text-brand-500">
+              <Mail size={16} className="text-brand-500" /> {supportEmail}
+            </a>
+          )}
+          {displayPhone && (
+            <a href={`tel:${supportPhone}`} className="flex items-center gap-3 text-app hover:text-brand-500">
+              <Phone size={16} className="text-brand-500" /> {displayPhone}
+            </a>
+          )}
+          {storeLocation && (
+            <span className="flex items-start gap-3 text-app whitespace-pre-line">
+              <MapPinIcon size={16} className="text-brand-500 mt-0.5" /> {storeLocation}
+            </span>
+          )}
         </div>
       </div>
       <p className="text-xs text-muted">
@@ -54,15 +77,17 @@ function FAQSection() {
   )
 }
 
-function AboutUsSection() {
+function AboutUsSection({ settings }) {
+  const storeName = import.meta.env.VITE_STORE_NAME || "My Designers";
+  const description = settings?.description || "";
   return (
     <div className="bg-app border border-app rounded-2xl p-5 sm:p-6">
-      <h2 className="font-display font-bold text-lg text-app mb-3">About AuraStore</h2>
-      <p className="text-sm text-muted leading-relaxed">
-        AuraStore curates premium, hand-crafted designer streetwear, high-performance athletic
-        apparel, and timeless accessories. We're a small team focused on quality, fast delivery,
-        and a smooth shopping experience.
-      </p>
+      <h2 className="font-display font-bold text-lg text-app mb-3">About {storeName}</h2>
+      {description && (
+        <p className="text-sm text-muted leading-relaxed whitespace-pre-line">
+          {description}
+        </p>
+      )}
     </div>
   )
 }
@@ -121,6 +146,7 @@ function activeTabFromPath(pathname) {
 // Consolidated support/info page — folds Contact Us, FAQ, About Us, Privacy
 // Policy, Terms, and Returns into one page with internal tab navigation.
 export default function SupportPage() {
+  const { settings } = useStoreSettings()
   const location = useLocation()
   const activeTab = activeTabFromPath(location.pathname)
   const ActiveComponent = TABS.find((t) => t.key === activeTab)?.Component || ContactUsSection
@@ -144,7 +170,7 @@ export default function SupportPage() {
         ))}
       </div>
 
-      <ActiveComponent />
+      <ActiveComponent settings={settings} />
     </div>
   )
 }
