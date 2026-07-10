@@ -6,6 +6,8 @@ import clsx from 'clsx'
 import Header from '@/admin/components/layout/Header'
 import PageHeader from '@/admin/components/layout/PageHeader'
 import { PageLoader } from '@/shared/components/common/Spinner'
+import LoginSummaryToast from '@/admin/components/layout/LoginSummaryToast'
+
 
 const pageTitles = {
   '/admin': 'Dashboard',
@@ -66,6 +68,8 @@ export default function MainLayout() {
   return (
     <div className="h-screen overflow-hidden bg-app">
       <Header />
+      <LoginSummaryToast />
+
 
       <main
         ref={mainRef}

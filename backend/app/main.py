@@ -123,83 +123,44 @@ async def lifespan(app: FastAPI):
     import traceback
     import time
 
-    _startup_start = time.monotonic()
-    logger.info("[startup] Application lifespan starting...")
-
-    # ── NOTE: Alembic migrations are intentionally NOT run here. ──────────────
-    # They execute once, before Gunicorn starts, inside entrypoint.sh.
-    # Running migrations inside each worker's lifespan would cause:
-    #   1. Duplicate migrations when workers=2+ all race at startup.
-    #   2. Locking conflicts on the alembic_version table.
-    #   3. A failed migration silently killing only some workers.
-    # The entrypoint guarantees migrations complete exactly once, serially,
-    # before any worker is forked.
-
-    # ── Bootstrap Normalization Registry ──────────────────────────────────────
     try:
-        logger.info("[startup] Initializing normalization alias registry...")
-        from app.shared.normalization.rules.aliases import default_registry
-        from app.core.normalization import AURASTORE_COMPOUND_MAPPINGS, validate_mydesigners_aliases
+        logger.info("[Startup] Initializing Services")
 
-        # Validates mapping integrity (logs warnings for redundant/circular)
-        validate_mydesigners_aliases(AURASTORE_COMPOUND_MAPPINGS)
+        # ── Bootstrap Normalization Registry ──────────────────────────────────────
+        try:
+            from app.shared.normalization.rules.aliases import default_registry
+            from app.core.normalization import AURASTORE_COMPOUND_MAPPINGS, validate_mydesigners_aliases
 
-        default_registry.initialize_aliases(AURASTORE_COMPOUND_MAPPINGS)
-        logger.info("[startup] Normalization registry initialized (%d aliases).", len(AURASTORE_COMPOUND_MAPPINGS))
-    except Exception:
-        logger.critical("[startup] FATAL: Normalization registry initialization failed:\n%s", traceback.format_exc())
-        raise
+            # Validates mapping integrity (logs warnings for redundant/circular)
+            validate_mydesigners_aliases(AURASTORE_COMPOUND_MAPPINGS)
 
-    # ── Supabase Credentials Check (production guard) ─────────────────────────
-    if _IS_PRODUCTION and not (settings.SUPABASE_URL and settings.SUPABASE_SERVICE_ROLE_KEY):
-        raise RuntimeError(
-            "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in production. "
-            "Uploaded images would be written to an ephemeral local directory and "
-            "lost on every container restart. Set these env vars and redeploy."
+            default_registry.initialize_aliases(AURASTORE_COMPOUND_MAPPINGS)
+            logger.info("[startup] Normalization registry initialized (%d aliases).", len(AURASTORE_COMPOUND_MAPPINGS))
+        except Exception:
+            logger.critical("[startup] FATAL: Normalization registry initialization failed:\n%s", traceback.format_exc())
+            raise
+
+        # ── Supabase Credentials Check (production guard) ─────────────────────────
+        if _IS_PRODUCTION and not (settings.SUPABASE_URL and settings.SUPABASE_SERVICE_ROLE_KEY):
+            raise RuntimeError(
+                "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in production. "
+                "Uploaded images would be written to an ephemeral local directory and "
+                "lost on every container restart. Set these env vars and redeploy."
+            )
+
+        logger.info("[Startup] Application Started Successfully")
+        yield
+
+    except BaseException as e:
+        logger.critical(
+            "[Startup] FATAL: Application failed during startup stage: %s\n%s",
+            e, traceback.format_exc(),
+            exc_info=True
         )
+        raise e
+    finally:
+        logger.info("[shutdown] Application shutdown complete.")
 
-    # ── Supabase Bucket Reachability Check (best-effort, non-blocking) ────────
-    # This is a WARNING-only check. A missing bucket will cause upload failures
-    # at request time, but it must NOT prevent the application from starting.
-    # Bucket creation is a deployment concern, not a startup concern.
-    if settings.SUPABASE_URL and settings.SUPABASE_SERVICE_ROLE_KEY:
-        import httpx as _httpx
-        _headers = {
-            "Authorization": f"Bearer {settings.SUPABASE_SERVICE_ROLE_KEY}",
-            "apikey": settings.SUPABASE_SERVICE_ROLE_KEY,
-        }
-        for bucket in (
-            settings.SUPABASE_PRODUCT_BUCKET,
-            settings.SUPABASE_CUSTOM_PRODUCT_BUCKET,
-            settings.SUPABASE_BANNER_BUCKET,
-        ):
-            _url = f"{settings.SUPABASE_URL.rstrip('/')}/storage/v1/bucket/{bucket}"
-            try:
-                resp = _httpx.get(_url, headers=_headers, timeout=5.0)
-                if resp.status_code == 404:
-                    logger.warning(
-                        "[startup] Supabase bucket '%s' not found (HTTP 404). "
-                        "Create it in your Supabase project or update SUPABASE_*_BUCKET in .env. "
-                        "Image uploads to this bucket will fail at runtime.",
-                        bucket,
-                    )
-                elif resp.status_code not in (200, 201):
-                    logger.warning(
-                        "[startup] Could not verify Supabase bucket '%s' (HTTP %s). "
-                        "Image uploads may fail at runtime.",
-                        bucket, resp.status_code,
-                    )
-                else:
-                    logger.info("[startup] Supabase bucket '%s' verified OK.", bucket)
-            except _httpx.HTTPError as exc:
-                logger.warning("[startup] Supabase bucket check skipped for '%s': %s", bucket, exc)
-
-    _elapsed = time.monotonic() - _startup_start
-    logger.info("[startup] Application startup complete in %.2fs.", _elapsed)
-
-    yield
-
-    logger.info("[shutdown] Application shutdown complete.")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -388,6 +349,7 @@ async def integrity_error_handler(request: Request, exc: IntegrityError):
 # API Routes
 # ──────────────────────────────────────────────────────────────────────────────
 
+logger.info("[Startup] Registering Routes")
 app.include_router(
     api_router,
     prefix=settings.API_V1_STR,
@@ -398,12 +360,14 @@ app.include_router(
 # Health Check
 # ──────────────────────────────────────────────────────────────────────────────
 
+logger.info("[Startup] Health Endpoint Ready")
 @app.get("/health")
 async def health_check():
     return {
         "status": "healthy",
         "version": settings.VERSION,
     }
+
 
 
 

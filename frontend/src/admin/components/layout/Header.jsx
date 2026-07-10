@@ -26,6 +26,8 @@ import { logout } from '@/admin/store/authSlice'
 import Avatar from "@/shared/components/ui/Avatar";
 import ProfileCard from "@/shared/components/ui/ProfileCard";
 import useStoreSettings from "@/shared/hooks/useStoreSettings";
+import NotificationBell from "@/admin/components/layout/NotificationBell";
+
 
 const navItems = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -231,13 +233,8 @@ const HeaderComponent = function Header() {
         <Logo compact />
         <div className="flex items-center gap-2">
           {/* Notifications */}
-          {/* <button
-            className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-app bg-surface hover:bg-app text-muted hover:text-app transition-all active:scale-95"
-            aria-label="View notifications"
-          >
-            <Bell size={14} />
-            <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />
-          </button> */}
+          <NotificationBell />
+
 
           {/* Theme Toggle */}
           <button

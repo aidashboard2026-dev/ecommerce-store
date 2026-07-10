@@ -248,6 +248,7 @@ export const storefrontAPI = {
       storefrontClient.get(`/custom-products/${id}`),
 
   getPublicSettings: () => storefrontClient.get('/settings/public'),
+  getPublicPayments: () => storefrontClient.get('/settings/public-payments'),
 
   // ── Customer profile ──────────────────────────────────────────────────────
   updateProfile:    (data)        => storefrontClient.put('/customers/profile/update', data),

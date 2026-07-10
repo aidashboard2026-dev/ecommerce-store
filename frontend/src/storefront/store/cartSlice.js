@@ -170,15 +170,14 @@ export const selectCartTotals = createSelector(
   (subtotal, shipping, couponDiscount) => {
     const discountAmount = (subtotal * (couponDiscount || 0)) / 100;
     const discountedSubtotal = subtotal - discountAmount;
-    const tax = discountedSubtotal * TAX_RATE;
-    const total = discountedSubtotal + shipping + tax;
+    // const tax = discountedSubtotal * TAX_RATE;
+    const total = discountedSubtotal + shipping ;
 
     return {
       subtotal,
       discountAmount,
       discountedSubtotal,
       shipping,
-      tax,
       total,
     };
   },

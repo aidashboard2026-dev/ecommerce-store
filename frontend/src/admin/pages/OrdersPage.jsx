@@ -450,7 +450,9 @@ export default function OrdersPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted">Shipping</span>
-                      <span className="font-bold text-emerald-500 uppercase text-[10px]">FREE</span>
+                      <span className={order.shipping_fee > 0 ? "font-medium text-app" : "font-bold text-emerald-500 uppercase text-[10px]"}>
+                        {order.shipping_fee > 0 ? `₹${order.shipping_fee}` : "FREE"}
+                      </span>
                     </div>
                     <div className="flex justify-between border-t border-app pt-2 font-bold text-sm">
                       <span className="text-app">Total Amount</span>

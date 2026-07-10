@@ -359,7 +359,8 @@ def generate_invoice_pdf(order, db=None) -> bytes:
     gst_amount   = subtotal - taxable
     cgst         = gst_amount / Decimal("2")
     sgst         = gst_amount / Decimal("2")
-    grand_total  = subtotal  
+    shipping_val = decimal_attr("shipping_fee", Decimal("0.00"))
+    grand_total  = subtotal + shipping_val
 
     def fmt_money(val: Decimal) -> str:
         return f"₹{val:,.2f}"
@@ -569,14 +570,25 @@ def generate_invoice_pdf(order, db=None) -> bytes:
 
     # Right Aligned Summary
     summary_rows = [
-        [Paragraph("Subtotal", style("SR_L", fontSize=10, textColor=SECONDARY, alignment=TA_RIGHT))],
-        [Paragraph("Shipping", style("SR_L", fontSize=10, textColor=SECONDARY, alignment=TA_RIGHT))],
-        [Paragraph("Tax Included (18%)", style("SR_L", fontSize=10, textColor=SECONDARY, alignment=TA_RIGHT))],
-        [Spacer(1, 2 * mm)],
-        [Paragraph("Grand Total", style("SR_L", fontSize=11, textColor=PRIMARY, alignment=TA_RIGHT, fontName="Helvetica-Bold"))],
-        [Paragraph(fmt_money(grand_total), style("SR_V", fontSize=20, textColor=PRIMARY, alignment=TA_RIGHT, fontName="Helvetica-Bold"))],
+        [
+            Paragraph("Subtotal", style("SR_L", fontSize=10, textColor=SECONDARY, alignment=TA_LEFT)),
+            Paragraph(fmt_money(subtotal), style("SR_R", fontSize=10, textColor=PRIMARY, alignment=TA_RIGHT))
+        ],
+        [
+            Paragraph("Shipping", style("SR_L_Ship", fontSize=10, textColor=SECONDARY, alignment=TA_LEFT)),
+            Paragraph(fmt_money(shipping_val) if shipping_val > 0 else "FREE", style("SR_R_Ship", fontSize=10, textColor=PRIMARY if shipping_val > 0 else SUCCESS, fontName="Helvetica-Bold" if shipping_val == 0 else "Helvetica", alignment=TA_RIGHT))
+        ],
+        [
+            Paragraph("Tax Included (18%)", style("SR_L_Tax", fontSize=10, textColor=SECONDARY, alignment=TA_LEFT)),
+            Paragraph(fmt_money(gst_amount), style("SR_R_Tax", fontSize=10, textColor=SECONDARY, alignment=TA_RIGHT))
+        ],
+        [Spacer(1, 2 * mm), Spacer(1, 2 * mm)],
+        [
+            Paragraph("Grand Total", style("SR_L_GT", fontSize=11, textColor=PRIMARY, fontName="Helvetica-Bold", alignment=TA_LEFT)),
+            Paragraph(fmt_money(grand_total), style("SR_V", fontSize=20, textColor=PRIMARY, alignment=TA_RIGHT, fontName="Helvetica-Bold"))
+        ],
     ]
-    summary_table = Table(summary_rows, colWidths=[55 * mm])
+    summary_table = Table(summary_rows, colWidths=[50 * mm, W - 130 * mm])
     summary_table.setStyle(TableStyle([
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
         ("RIGHTPADDING", (0, 0), (-1, -1), 0),

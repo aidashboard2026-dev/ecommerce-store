@@ -3,7 +3,6 @@ import { useForm } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
-  Globe2,
   Upload,
   ImagePlus,
   Mail,
@@ -30,26 +29,7 @@ import Button from "@/shared/components/ui/Button";
 import PageHeader from "@/shared/components/ui/PageHeader";
 import settingsService from "@/admin/services/settingsService";
 
-const countries = [
-  "India",
-  "United States",
-  "United Kingdom",
-  "Canada",
-  "Australia",
-  "Singapore",
-  "United Arab Emirates",
-];
-const currencies = ["INR", "USD", "GBP", "CAD", "AUD", "SGD", "AED"];
-const timezones = [
-  "Asia/Kolkata",
-  "UTC",
-  "America/New_York",
-  "America/Los_Angeles",
-  "Europe/London",
-  "Asia/Singapore",
-  "Asia/Dubai",
-];
-const weightUnits = ["kg", "g", "lb", "oz"];
+
 
 function apiError(error, fallback) {
   if (!navigator.onLine) {
@@ -246,6 +226,8 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState(null);
   const [security, setSecurity] = useState(null);
   const [payments, setPayments] = useState([]);
+  const [localPayments, setLocalPayments] = useState([]);
+  const [paymentSaving, setPaymentSaving] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [logoPreview, setLogoPreview] = useState("");
   const [saving, setSaving] = useState({});
@@ -256,11 +238,7 @@ export default function SettingsPage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Dynamic regional options list loaded from the backend
-  const [countriesList, setCountriesList] = useState([]);
-  const [currenciesList, setCurrenciesList] = useState([]);
-  const [timezonesList, setTimezonesList] = useState([]);
-  const [weightUnitsList, setWeightUnitsList] = useState([]);
+
 
   const closeModal = () => {
     setActiveModal(null);
@@ -298,14 +276,7 @@ export default function SettingsPage() {
       logo: "",
     },
   });
-  const regionalForm = useForm({
-    defaultValues: {
-      country: "India",
-      currency: "INR",
-      timezone: "Asia/Kolkata",
-      weight_unit: "kg",
-    },
-  });
+
 
   // Separate forms for username, email and password to avoid shared state
   const usernameForm = useForm({
@@ -384,12 +355,11 @@ export default function SettingsPage() {
     async function loadSettings() {
       try {
         setError(false);
-        const [settingsResponse, paymentsResponse, notificationsResponse, regionalOptionsResponse] =
+        const [settingsResponse, paymentsResponse, notificationsResponse] =
           await Promise.all([
             settingsService.getSettings(),
             settingsService.getPayments(),
             settingsService.getNotifications(),
-            settingsService.getRegionalOptions().catch(() => ({ data: {} })),
           ]);
 
         if (!mounted) return;
@@ -400,14 +370,9 @@ export default function SettingsPage() {
         setSettings(store);
         setSecurity(adminSecurity);
         setPayments(paymentsResponse.data);
+        setLocalPayments(paymentsResponse.data);
         setNotifications(notificationsResponse.data);
         setLogoPreview(store.logo || "");
-
-        const regionalData = regionalOptionsResponse.data || {};
-        setCountriesList(regionalData.countries || []);
-        setCurrenciesList(regionalData.currencies || []);
-        setTimezonesList(regionalData.timezones || []);
-        setWeightUnitsList(regionalData.weight_units || []);
 
         // Normalize stored phone: strip +91 prefix so the 10-digit input field shows only the local number
         const storedPhone = store.support_phone || "";
@@ -426,12 +391,7 @@ export default function SettingsPage() {
           store_location: store.store_location || "",
           logo: store.logo || "",
         });
-        regionalForm.reset({
-          country: store.country || "India",
-          currency: store.currency || "INR",
-          timezone: store.timezone || "Asia/Kolkata",
-          weight_unit: store.weight_unit || "kg",
-        });
+
         // Reset the distinct forms with the fresh security values
         usernameForm.reset({
           username: adminSecurity.username || "",
@@ -559,41 +519,7 @@ export default function SettingsPage() {
     }
   }
 
-  async function saveRegional(data) {
-    const cleanData = {
-      country: data.country?.trim() || "India",
-      currency: data.currency?.trim() || "INR",
-      timezone: data.timezone?.trim() || "Asia/Kolkata",
-      weight_unit: data.weight_unit?.trim() || "kg",
-    };
-    setSaving((state) => ({ ...state, regional: true }));
-    try {
-      const response = await settingsService.updateSettings(cleanData);
-      const updated = response.data;
-      setSettings(updated);
-      regionalForm.reset({
-        country: updated.country || cleanData.country,
-        currency: updated.currency || cleanData.currency,
-        timezone: updated.timezone || cleanData.timezone,
-        weight_unit: updated.weight_unit || cleanData.weight_unit,
-      });
-      queryClient.invalidateQueries({ queryKey: ["storeSettings"] });
-      toast.success("Regional settings saved");
-    } catch (error) {
-      toast.error(apiError(error, "Failed to save regional settings"));
-      // Restore previous state values on failure
-      if (settings) {
-        regionalForm.reset({
-          country: settings.country || "India",
-          currency: settings.currency || "INR",
-          timezone: settings.timezone || "Asia/Kolkata",
-          weight_unit: settings.weight_unit || "kg",
-        });
-      }
-    } finally {
-      setSaving((state) => ({ ...state, regional: false }));
-    }
-  }
+
 
   async function saveUsername(data) {
     const cleanData = {
@@ -717,59 +643,96 @@ export default function SettingsPage() {
       });
   }
 
-  async function updatePaymentMethod(method, fields) {
-    const previous = payments;
-    setPayments((items) =>
+  function handleLocalPaymentChange(methodId, fields) {
+    setLocalPayments((items) =>
       items.map((item) =>
-        item.id === method.id ? { ...item, ...fields } : item
+        item.id === methodId ? { ...item, ...fields } : item
       )
     );
-    setPaymentLoading((state) => ({
-      ...state,
-      [method.id]: true,
-    }));
+  }
 
+  const isPaymentsDirty = useMemo(() => {
+    if (payments.length !== localPayments.length) return false;
+    for (let i = 0; i < payments.length; i++) {
+      const orig = payments[i];
+      const local = localPayments.find((p) => p.id === orig.id);
+      if (!local) return true;
+      if (local.is_active !== orig.is_active) return true;
+      if ((local.description || "") !== (orig.description || "")) return true;
+      if (parseFloat(local.fee || 0) !== parseFloat(orig.fee || 0)) return true;
+    }
+    return false;
+  }, [payments, localPayments]);
+
+  async function savePaymentMethods() {
+    const modified = [];
+    for (const local of localPayments) {
+      const orig = payments.find((p) => p.id === local.id);
+      if (!orig) continue;
+
+      const changes = {};
+      let changed = false;
+
+      if (local.is_active !== orig.is_active) {
+        changes.is_active = local.is_active;
+        changed = true;
+      }
+      if ((local.description || "").trim() !== (orig.description || "").trim()) {
+        changes.description = local.description.trim();
+        changed = true;
+      }
+      const localFee = parseFloat(local.fee || 0);
+      const origFee = parseFloat(orig.fee || 0);
+      if (localFee !== origFee) {
+        changes.fee = localFee;
+        changed = true;
+      }
+
+      if (changed) {
+        modified.push({ id: local.id, name: local.name, changes });
+      }
+    }
+
+    if (modified.length === 0) return;
+
+    setPaymentSaving(true);
     try {
-      const response = await settingsService.updatePayment(method.id, fields);
-      setPayments((items) =>
-        items.map((item) =>
-          item.id === method.id ? { ...item, ...response.data } : item
-        )
+      const promises = modified.map((m) =>
+        settingsService.updatePayment(m.id, m.changes)
       );
+      await Promise.all(promises);
+
+      const paymentsResponse = await settingsService.getPayments();
+      setPayments(paymentsResponse.data);
+      setLocalPayments(paymentsResponse.data);
 
       // Local storage logs for toggles
-      if (fields.is_active !== undefined) {
-        const value = fields.is_active;
-        const existing = safeParseStorage("paymentActivity", []);
-        if (!value) {
-          const updated = [
-            ...existing.filter((item) => item.id !== method.id),
-            {
-              id: method.id,
-              message: `${method.name} disabled`,
-            },
-          ];
-          localStorage.setItem("paymentActivity", JSON.stringify(updated));
-        } else {
-          const updated = existing.filter((item) => item.id !== method.id);
-          localStorage.setItem("paymentActivity", JSON.stringify(updated));
+      for (const m of modified) {
+        if (m.changes.is_active !== undefined) {
+          const value = m.changes.is_active;
+          const existing = safeParseStorage("paymentActivity", []);
+          if (!value) {
+            const updated = [
+              ...existing.filter((item) => item.id !== m.id),
+              {
+                id: m.id,
+                message: `${m.name} disabled`,
+              },
+            ];
+            localStorage.setItem("paymentActivity", JSON.stringify(updated));
+          } else {
+            const updated = existing.filter((item) => item.id !== m.id);
+            localStorage.setItem("paymentActivity", JSON.stringify(updated));
+          }
         }
       }
 
-      toast.success(`${method.name} updated successfully.`);
+      toast.success("Payment settings updated successfully.");
     } catch (error) {
-      setPayments(previous);
-      toast.error(apiError(error, "Failed to update payment method"));
+      toast.error(apiError(error, "Failed to save payment methods"));
     } finally {
-      setPaymentLoading((state) => ({
-        ...state,
-        [method.id]: false,
-      }));
+      setPaymentSaving(false);
     }
-  }
-
-  function togglePayment(method, value) {
-    updatePaymentMethod(method, { is_active: value });
   }
 
   async function toggleNotification(notification, field, value) {
@@ -849,29 +812,14 @@ export default function SettingsPage() {
     );
   }
   async function handleGlobalSave() {
-    const isProfileDirty = profileForm.formState.isDirty;
-    const isRegionalDirty = regionalForm.formState.isDirty;
-
-    if (!isProfileDirty && !isRegionalDirty) {
+    if (!profileForm.formState.isDirty) {
       toast("No changes to save");
       return;
     }
-
-    if (isProfileDirty) {
-      let success = false;
-      await profileForm.handleSubmit(async (data) => {
-        await saveProfile(data);
-        success = true;
-      })();
-      if (!success) return;
-    }
-
-    if (isRegionalDirty) {
-      await regionalForm.handleSubmit(saveRegional)();
-    }
+    await profileForm.handleSubmit(saveProfile)();
   }
 
-  const isAnyFormDirty = profileForm.formState.isDirty || regionalForm.formState.isDirty;
+  const isAnyFormDirty = profileForm.formState.isDirty;
 
   return (
     <div className="space-y-6">
@@ -888,7 +836,6 @@ export default function SettingsPage() {
             disabled={
               !isAnyFormDirty ||
               saving.profile ||
-              saving.regional ||
               saving.password ||
               saving.security
             }
@@ -1083,68 +1030,6 @@ export default function SettingsPage() {
           </form>
         </SettingsCard>
 
-        <SettingsCard
-          title="Regional & Currency"
-          subtitle="Market defaults"
-          icon={Globe2}
-          accent="emerald"
-        >
-          <form
-            onSubmit={regionalForm.handleSubmit(saveRegional)}
-            className="flex flex-col w-full gap-5 pb-5"
-          >
-            <div className="flex flex-col sm:flex-row w-full gap-4">
-              <div className="w-full flex flex-col gap-3">
-                <SelectInput
-                  label="Country"
-                  options={countriesList.length > 0 ? countriesList : countries}
-                  error={regionalForm.formState.errors.country}
-                  {...regionalForm.register("country", {
-                    required: "Country is required",
-                    minLength: { value: 2, message: "Country name is too short" },
-                    maxLength: { value: 100, message: "Country name cannot exceed 100 characters" },
-                  })}
-                />
-                <SelectInput
-                  label="Currency"
-                  options={currenciesList.length > 0 ? currenciesList : currencies}
-                  error={regionalForm.formState.errors.currency}
-                  {...regionalForm.register("currency", {
-                    required: "Currency is required",
-                    minLength: { value: 2, message: "Currency code is too short" },
-                    maxLength: { value: 10, message: "Currency code cannot exceed 10 characters" },
-                  })}
-                />
-              </div>
-              <div className="w-full flex flex-col gap-3">
-                <SelectInput
-                  label="Timezone"
-                  options={timezonesList.length > 0 ? timezonesList : timezones}
-                  error={regionalForm.formState.errors.timezone}
-                  {...regionalForm.register("timezone", {
-                    required: "Timezone is required",
-                    minLength: { value: 2, message: "Timezone is too short" },
-                    maxLength: { value: 100, message: "Timezone cannot exceed 100 characters" },
-                  })}
-                />
-                <SelectInput
-                  label="Weight Unit"
-                  options={weightUnitsList.length > 0 ? weightUnitsList : weightUnits}
-                  error={regionalForm.formState.errors.weight_unit}
-                  {...regionalForm.register("weight_unit", {
-                    required: "Weight unit is required",
-                    minLength: { value: 1, message: "Weight unit is too short" },
-                    maxLength: { value: 20, message: "Weight unit cannot exceed 20 characters" },
-                  })}
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <SaveButton loading={saving.regional} disabled={saving.regional || !regionalForm.formState.isDirty}>Save Regional</SaveButton>
-            </div>
-          </form>
-        </SettingsCard>
       </div>
 
       <SettingsCard
@@ -1251,7 +1136,7 @@ export default function SettingsPage() {
                 </h2>
 
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  Google Authenticator or Authy
+                  Google Authenticator
                 </p>
               </div>
 
@@ -1581,17 +1466,31 @@ export default function SettingsPage() {
         icon={CreditCardIcon}
         accent="amber"
       >
-        <div className="flex flex-col gap-3 py-4">
-          {payments.map((method) => (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            savePaymentMethods();
+          }}
+          className="flex flex-col gap-3 py-4"
+        >
+          {localPayments.map((method) => (
             <PaymentMethodCard
               key={method.id}
               method={method}
-              loading={paymentLoading[method.id]}
-              onToggle={togglePayment}
-              onUpdate={updatePaymentMethod}
+              loading={paymentSaving}
+              onToggle={(m, val) => handleLocalPaymentChange(m.id, { is_active: val })}
+              onUpdate={(m, fields) => handleLocalPaymentChange(m.id, fields)}
             />
           ))}
-        </div>
+          <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-zinc-800">
+            <SaveButton
+              loading={paymentSaving}
+              disabled={paymentSaving || !isPaymentsDirty}
+            >
+              Save Payments
+            </SaveButton>
+          </div>
+        </form>
       </SettingsCard>
       <SettingsCard
         title="Notification Triggers"

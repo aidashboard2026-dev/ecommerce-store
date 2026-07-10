@@ -49,6 +49,16 @@ def init_db() -> None:
             admin.role = "superadmin"
             logger.info("Initial admin account verified (password unchanged)")
 
+        # ── 2. Clean up notification settings ──────────────────────────────────
+        from app.modules.settings.models import NotificationSetting
+        from app.modules.settings.service import DEFAULT_NOTIFICATIONS
+        allowed_names = {n["event_name"] for n in DEFAULT_NOTIFICATIONS}
+        deleted_count = db.query(NotificationSetting).filter(
+            NotificationSetting.event_name.notin_(allowed_names)
+        ).delete(synchronize_session=False)
+        if deleted_count > 0:
+            logger.info(f"Pruned {deleted_count} obsolete notification settings from database on startup.")
+
         db.commit()
         logger.info("init_db complete")
 

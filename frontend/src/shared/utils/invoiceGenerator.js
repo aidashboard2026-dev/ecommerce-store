@@ -855,7 +855,7 @@ export async function generateInvoice(order) {
   const sgst =
     gstAmount / 2;
 
-  const shippingCharge = 0;
+  const shippingCharge = safeNum(order.shipping_fee || 0);
 
   const grandTotal =
     grossAmount + shippingCharge;
@@ -989,12 +989,21 @@ export async function generateInvoice(order) {
     paymentY + 27
   );
 
-  pdf.text(
-    "FREE",
-    194,
-    paymentY + 27,
-    {align:"right"}
-  );
+  if (shippingCharge > 0) {
+    drawAmount(
+      pdf,
+      shippingCharge,
+      194,
+      paymentY + 27
+    );
+  } else {
+    pdf.text(
+      "FREE",
+      194,
+      paymentY + 27,
+      {align:"right"}
+    );
+  }
 
   pdf.text(
     "GST",

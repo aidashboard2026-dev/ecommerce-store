@@ -160,7 +160,7 @@ def update_payment(
 ):
     try:
         payment = db.query(PaymentMethod).filter(PaymentMethod.id == payment_id).first()
-        if not payment:
+        if not payment or payment.name not in {"Online Payment", "Cash On Delivery"}:
             raise HTTPException(status_code=404, detail="Payment method not found.")
         previous_data = {
             "name": payment.name,

@@ -156,6 +156,21 @@ def _check_and_decrement_stock(
         except Exception as e:
             logger.error(f"Failed to send low stock alert: {e}", exc_info=True)
 
+        try:
+            from app.modules.notifications.service import create_admin_notification
+            item_desc = f"{order_in.product_name} {variant.size or ''}".strip()
+            create_admin_notification(
+                db=repo.db,
+                title="⚠️ Low Stock",
+                message=f"{item_desc}\nRemaining Stock: {variant.stock_quantity}",
+                type="warning",
+                event="Low Stock Alert",
+                metadata={"product_name": order_in.product_name, "size": variant.size, "stock": variant.stock_quantity}
+            )
+        except Exception as e:
+            logger.error(f"Failed to create low stock admin notification: {e}", exc_info=True)
+
+
 
 def _restore_inventory(repo: OrderRepository, order: Order) -> None:
     """
@@ -348,8 +363,21 @@ def create_order_admin(db: Session, order_in: OrderCreate) -> OrderResponse:
         )
 
     order = _build_and_persist_order(repo, order_in, order_number)
+    try:
+        from app.modules.notifications.service import create_admin_notification
+        create_admin_notification(
+            db=db,
+            title="🛒 New Order Received",
+            message=f"Order #{order.order_number}\nCustomer: {order.customer_name}\nAmount: ₹{int(order.total_amount)}",
+            type="success",
+            event="New Order Placed",
+            metadata={"order_number": order.order_number, "customer_name": order.customer_name, "total_amount": float(order.total_amount)}
+        )
+    except Exception as e:
+        logger.error(f"Failed to create admin notification for order {order.order_number}: {e}", exc_info=True)
     db.commit()
     db.refresh(order)
+
     logger.info("Admin order created: order_number=%s", order.order_number)
 
     # Send order confirmation email with invoice PDF attached
@@ -415,7 +443,20 @@ def reconcile_pending_orders(db: Session, customer_email: str):
                         order.payment_status = "PAID"
                         order.payment_verified_at = datetime.utcnow()
                         order.razorpay_payment_id = payment_id
+                        try:
+                            from app.modules.notifications.service import create_admin_notification
+                            create_admin_notification(
+                                db=db,
+                                title="💳 Payment Received",
+                                message=f"Order #{order.order_number}\n₹{int(order.total_amount)}",
+                                type="success",
+                                event="Payment Received",
+                                metadata={"order_number": order.order_number, "total_amount": float(order.total_amount)}
+                            )
+                        except Exception as notif_err:
+                            logger.error(f"Reconciliation: Failed to create payment received admin notification for {order.order_number}: {notif_err}")
                     db.commit()
+
             except Exception as e:
                 logger.warning(
                     "Reconciliation: Failed to check/update Razorpay Order %s: %s",
@@ -476,6 +517,23 @@ def process_razorpay_webhook_payment(
                     "Webhook: Failed to send payment completion notification for order %s: %s",
                     order.order_number, notify_err
                 )
+
+            try:
+                from app.modules.notifications.service import create_admin_notification
+                create_admin_notification(
+                    db=db,
+                    title="💳 Payment Received",
+                    message=f"Order #{order.order_number}\n₹{int(order.total_amount)}",
+                    type="success",
+                    event="Payment Received",
+                    metadata={"order_number": order.order_number, "total_amount": float(order.total_amount)}
+                )
+            except Exception as notify_admin_err:
+                logger.error(
+                    "Webhook: Failed to create payment received admin notification for order %s: %s",
+                    order.order_number, notify_admin_err
+                )
+
     
     if updated_count > 0:
         db.commit()
@@ -531,8 +589,21 @@ def create_order_customer(
     order_number = repo.generate_order_number()
 
     order = _build_and_persist_order(repo, order_in, order_number, customer=customer)
+    try:
+        from app.modules.notifications.service import create_admin_notification
+        create_admin_notification(
+            db=db,
+            title="🛒 New Order Received",
+            message=f"Order #{order.order_number}\nCustomer: {order.customer_name}\nAmount: ₹{int(order.total_amount)}",
+            type="success",
+            event="New Order Placed",
+            metadata={"order_number": order.order_number, "customer_name": order.customer_name, "total_amount": float(order.total_amount)}
+        )
+    except Exception as e:
+        logger.error(f"Failed to create admin notification for order {order.order_number}: {e}", exc_info=True)
     db.commit()
     db.refresh(order)
+
     logger.info(
         "Customer order created: order_number=%s customer_email=%s",
         order.order_number, customer.email,
@@ -592,8 +663,40 @@ def update_order(db: Session, order_id: int, payload: OrderUpdate) -> OrderRespo
         _handle_cancellation_transition(repo, order, new_status)
 
     repo.update_order_fields(order, update)
+
+    # Trigger admin notifications on manual transitions
+    new_payment_status = update.get("payment_status")
+    if new_payment_status == "PAID" and old_payment_status != "PAID":
+        try:
+            from app.modules.notifications.service import create_admin_notification
+            create_admin_notification(
+                db=db,
+                title="💳 Payment Received",
+                message=f"Order #{order.order_number}\n₹{int(order.total_amount)}",
+                type="success",
+                event="Payment Received",
+                metadata={"order_number": order.order_number, "total_amount": float(order.total_amount)}
+            )
+        except Exception as e:
+            logger.error(f"Failed to create manual update payment received notification: {e}")
+
+    if new_status == TrackingStatus.CANCELLED and old_tracking_status != TrackingStatus.CANCELLED:
+        try:
+            from app.modules.notifications.service import create_admin_notification
+            create_admin_notification(
+                db=db,
+                title="❌ Order Cancelled",
+                message=f"Order #{order.order_number}",
+                type="error",
+                event="Order Cancelled",
+                metadata={"order_number": order.order_number}
+            )
+        except Exception as e:
+            logger.error(f"Failed to create manual update cancellation notification: {e}")
+
     db.commit()
     db.refresh(order)
+
 
     # Trigger tracking status transition notification
     if new_status is not None:
@@ -601,23 +704,6 @@ def update_order(db: Session, order_id: int, payload: OrderUpdate) -> OrderRespo
             _handle_status_transition_notifications(db, order, old_tracking_status, new_status)
         except Exception as e:
             logger.error(f"Failed to send status transition notification: {e}", exc_info=True)
-
-    # Trigger Refund Processed notification
-    new_payment_status = update.get("payment_status")
-    if new_payment_status is not None and new_payment_status.upper() == "REFUNDED" and (old_payment_status or "").upper() != "REFUNDED":
-        try:
-            from app.shared.notifications.service import send_notification_sync
-            send_notification_sync(
-                db=db,
-                event_name="Refund Processed",
-                to_email=order.customer_email,
-                context={"order_number": order.order_number, "total_amount": float(order.total_amount)},
-                subject=f"Refund Processed for Order #{order.order_number}",
-                text_body=f"We have processed a refund of {order.total_amount} for your order #{order.order_number}.",
-                html_body=f"<p>We have processed a refund of <strong>{order.total_amount}</strong> for your order #{order.order_number}.</p>",
-            )
-        except Exception as e:
-            logger.error(f"Failed to send refund notification: {e}", exc_info=True)
 
     return OrderResponse.model_validate(order)
 
@@ -635,6 +721,18 @@ def cancel_order_admin(db: Session, order_id: int) -> OrderResponse:
         _restore_inventory(repo, order)
 
     repo.update_order_fields(order, {"tracking_status": TrackingStatus.CANCELLED})
+    try:
+        from app.modules.notifications.service import create_admin_notification
+        create_admin_notification(
+            db=db,
+            title="❌ Order Cancelled",
+            message=f"Order #{order.order_number}",
+            type="error",
+            event="Order Cancelled",
+            metadata={"order_number": order.order_number}
+        )
+    except Exception as e:
+        logger.error(f"Failed to create admin notification for cancellation: {e}")
     db.commit()
     db.refresh(order)
     logger.info("Admin cancelled order: order_id=%s", order_id)
@@ -672,8 +770,21 @@ def cancel_order_customer(
         _restore_inventory(repo, order)
 
     repo.update_order_fields(order, {"tracking_status": TrackingStatus.CANCELLED})
+    try:
+        from app.modules.notifications.service import create_admin_notification
+        create_admin_notification(
+            db=db,
+            title="❌ Order Cancelled",
+            message=f"Order #{order.order_number}",
+            type="error",
+            event="Order Cancelled",
+            metadata={"order_number": order.order_number}
+        )
+    except Exception as e:
+        logger.error(f"Failed to create admin notification for cancellation: {e}")
     db.commit()
     db.refresh(order)
+
     logger.info(
         "Customer cancelled order: order_id=%s customer_email=%s",
         order_id, customer.email,
@@ -699,8 +810,22 @@ def update_tracking(db: Session, order_id: int, tracking_status: str) -> OrderRe
     _handle_cancellation_transition(repo, order, tracking_status)
 
     repo.update_order_fields(order, {"tracking_status": tracking_status})
+    if tracking_status.upper() == TrackingStatus.CANCELLED and old_tracking_status != TrackingStatus.CANCELLED:
+        try:
+            from app.modules.notifications.service import create_admin_notification
+            create_admin_notification(
+                db=db,
+                title="❌ Order Cancelled",
+                message=f"Order #{order.order_number}",
+                type="error",
+                event="Order Cancelled",
+                metadata={"order_number": order.order_number}
+            )
+        except Exception as e:
+            logger.error(f"Failed to create admin notification for cancellation in update_tracking: {e}")
     db.commit()
     db.refresh(order)
+
 
     try:
         _handle_status_transition_notifications(db, order, old_tracking_status, tracking_status)

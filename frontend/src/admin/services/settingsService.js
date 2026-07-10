@@ -14,7 +14,6 @@ export const settingsService = {
   deleteLogo: () => api.delete('/settings/logo'),
   getBusinessLimits: () => api.get('/settings/business-limits'),
   getDefaultCatalog: () => api.get('/settings/default-catalog'),
-  getRegionalOptions: () => api.get('/settings/regional-options'),
 }
 
 export default settingsService

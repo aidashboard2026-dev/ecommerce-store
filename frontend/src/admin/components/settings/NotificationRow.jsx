@@ -24,15 +24,19 @@ export default function NotificationRow({
         />
       </div>
 
-      <div className="flex justify-center">
+      {/* <div className="flex flex-col items-center justify-center gap-1">
         <ToggleSwitch
           checked={notification.whatsapp_enabled}
           loading={loadingField === "whatsapp_enabled"}
+          disabled={true}
           onChange={(value) =>
             onToggle(notification, "whatsapp_enabled", value)
           }
-        />
+        /> */}
+        <span className="text-[9px] text-zinc-400 dark:text-zinc-500 text-center leading-tight max-w-[90px]">
+          Coming Soon
+        </span>
       </div>
-    </div>
+    // </div>
   );
 }

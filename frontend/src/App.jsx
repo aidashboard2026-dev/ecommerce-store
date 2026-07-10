@@ -49,20 +49,12 @@ function App() {
       localStorage.removeItem("store_logo");
     }
 
-    if (settings.currency) {
-      localStorage.setItem("store_currency", settings.currency);
-    }
-
     if (settings.support_email) {
       localStorage.setItem("store_email", settings.support_email);
     }
 
     if (settings.support_phone) {
       localStorage.setItem("store_phone", settings.support_phone);
-    }
-
-    if (settings.country) {
-      localStorage.setItem("store_country", settings.country);
     }
   }, [settings]);
 

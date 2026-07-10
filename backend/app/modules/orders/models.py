@@ -74,6 +74,7 @@ class Order(Base):
 
     # Numeric(10, 2) — exact decimal arithmetic; no floating-point rounding errors.
     price        = Column(Numeric(precision=10, scale=2), default=0)
+    shipping_fee = Column(Numeric(precision=10, scale=2), default=0)
     total_amount = Column(Numeric(precision=10, scale=2), default=0)
 
     # ── Payment ──────────────────────────────────────────────────────────────

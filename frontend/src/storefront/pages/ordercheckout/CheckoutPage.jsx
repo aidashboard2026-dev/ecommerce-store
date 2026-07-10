@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, {useMemo, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { ShoppingBag } from "lucide-react";
 import BillingAddress from "@/storefront/components/checkout/BillingAddress";
@@ -13,6 +14,7 @@ import {
   setLastOrder,
   setOrderError,
   setPlacingOrder,
+  setPaymentMethod,
 } from "@/storefront/store/checkoutStore";
 import { clearCart, removeFromCart, selectCartTotals } from "@/storefront/store/cartSlice";
 import { useCreateOrder, useCreateRazorpayOrder, useVerifyRazorpayPayment } from "@/storefront/hooks/useOrders";
@@ -284,6 +286,7 @@ const buildOrderPayload = ({
   paymentMethod,
   form,
   sessionId,
+  shippingFee = 0,
 }) => ({
   customer_name: selectedAddress.full_name,
   customer_email: customer?.email || form.email || null,
@@ -301,7 +304,8 @@ const buildOrderPayload = ({
   color: item.color,
   quantity: item.quantity,
   price: item.sellingPrice,
-  total_amount: item.sellingPrice * item.quantity,
+  shipping_fee: shippingFee,
+  total_amount: (item.sellingPrice * item.quantity) + shippingFee,
   payment_method: paymentMethod,
   payment_status: "PENDING",
   tracking_status: "PLACED",
@@ -345,11 +349,76 @@ export default function CheckoutPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const items = useSelector((state) => state.cart.items);
-  const totals = useSelector(selectCartTotals);
+  const cartTotals = useSelector(selectCartTotals);
   const selectedAddress = useSelector(selectSelectedAddress);
   const paymentMethod = useSelector((state) => state.checkout.paymentMethod);
   const placingOrder = useSelector((state) => state.checkout.placingOrder);
   const { customer, token } = useSelector((state) => state.customer);
+
+  const { data: paymentMethodsList = [] } = useQuery({
+    queryKey: ["publicPayments"],
+    queryFn: async () => {
+      const res = await storefrontAPI.getPublicPayments();
+      return res.data || [];
+    },
+  });
+
+  useEffect(() => {
+    if (paymentMethodsList.length > 0) {
+      const activeValues = paymentMethodsList.map((m) =>
+        m.name.toLowerCase() === "online payment" ? "ONLINE" : "COD"
+      );
+      if (!activeValues.includes(paymentMethod)) {
+        dispatch(setPaymentMethod(activeValues[0]));
+      }
+    }
+  }, [paymentMethodsList, paymentMethod, dispatch]);
+
+  const totals = useMemo(() => {
+    const nameToFind = paymentMethod === "ONLINE" ? "Online Payment" : "Cash On Delivery";
+    const selectedMethod = paymentMethodsList.find(
+      (m) => m.name.toLowerCase() === nameToFind.toLowerCase()
+    );
+    const shipping = selectedMethod ? parseFloat(selectedMethod.fee || 0) : 0;
+    const subtotal = cartTotals.subtotal;
+    const discountAmount = cartTotals.discountAmount;
+    const discountedSubtotal = subtotal - discountAmount;
+    /*
+    =========================================================
+    Future Feature
+
+    GST / Tax Module
+
+    When Tax Settings module is implemented:
+
+    const tax = discountedSubtotal * GST_RATE;
+
+    const total =
+        discountedSubtotal +
+        shipping +
+        tax;
+
+    return {
+        subtotal,
+        discountAmount,
+        discountedSubtotal,
+        shipping,
+        tax,
+        total,
+    };
+
+    =========================================================
+    */
+    const total = discountedSubtotal + shipping;
+
+    return {
+      subtotal,
+      discountAmount,
+      discountedSubtotal,
+      shipping,
+      total,
+    };
+  }, [paymentMethod, paymentMethodsList, cartTotals.subtotal, cartTotals.discountAmount]);
 
   const createOrderMutation = useCreateOrder();
   const createRazorpayOrderMutation = useCreateRazorpayOrder();
@@ -392,6 +461,10 @@ export default function CheckoutPage() {
   }, [checkoutPhase, paymentMethod]);
 
   const getButtonText = () => {
+    if (paymentMethodsList.length === 0) {
+      return "No Payment Methods Available";
+    }
+
     if (paymentMethod === "COD") {
       if (checkoutPhase === CHECKOUT_PHASE.CREATING_ORDERS) {
         return "Creating Order...";
@@ -427,7 +500,7 @@ export default function CheckoutPage() {
   // API & STATE HELPERS (COMPONENT BOUND)
   // ============================================================================
 
-  const persistOrderItem = async (item, sessionId) => {
+  const persistOrderItem = async (item, sessionId, itemShippingFee = 0) => {
     const payload = buildOrderPayload({
       item,
       customer,
@@ -435,6 +508,7 @@ export default function CheckoutPage() {
       paymentMethod,
       form,
       sessionId,
+      shippingFee: itemShippingFee,
     });
     logApiCall("createOrderMutation", { sessionId, ordersCount: undefined, paymentMethod });
     return measureApi(
@@ -706,10 +780,12 @@ export default function CheckoutPage() {
     const currentSessionId = crypto.randomUUID();
     const currentOrders = [];
 
-    for (const item of items) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const itemShippingFee = i === 0 ? totals.shipping : 0;
       let created;
       try {
-        created = await persistOrderItem(item, currentSessionId);
+        created = await persistOrderItem(item, currentSessionId, itemShippingFee);
       } catch (itemErr) {
         const errInfo = getPaymentErrorMessage(itemErr);
 
@@ -775,6 +851,19 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async () => {
     logStep("STEP 1: Entered handlePlaceOrder()");
+
+    if (paymentMethodsList.length === 0) {
+      logExit({
+        step: "STEP 1.5 (payment method availability check)",
+        reason: "No payment methods available",
+        sessionId: checkoutState.cartSessionId,
+        ordersCount: checkoutState.orders.length,
+        paymentMethod,
+        nextApi: "createOrderMutation, createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
+      });
+      toast.error("No payment methods are currently available. Please contact the store administrator.");
+      return;
+    }
 
     if (!selectedAddress) {
       logExit({
@@ -1394,12 +1483,12 @@ export default function CheckoutPage() {
                       : formatPrice(totals.shipping)}
                   </span>
                 </div>
-                <div className="flex justify-between text-muted">
+                {/* <div className="flex justify-between text-muted">
                   <span>Tax (5% GST)</span>
                   <span className="text-app font-medium">
                     {formatPrice(totals.tax)}
                   </span>
-                </div>
+                </div> */}
               </div>
 
               <div className="flex justify-between items-baseline pt-4 border-t border-app">
@@ -1419,8 +1508,8 @@ export default function CheckoutPage() {
           <button
             type="button"
             onClick={() => handlePlaceOrder()}
-            disabled={submitting || placingOrder}
-            aria-disabled={submitting || placingOrder}
+            disabled={submitting || placingOrder || paymentMethodsList.length === 0}
+            aria-disabled={submitting || placingOrder || paymentMethodsList.length === 0}
             className="w-full h-12 flex items-center justify-center bg-brand-500 hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 text-white font-semibold text-sm rounded-full shadow-glow-sm transition-colors"
           >
             {getButtonText()}

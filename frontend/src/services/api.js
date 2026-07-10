@@ -119,4 +119,12 @@ export const productsAPI = {
   deleteImage:        (productId) => api.delete(`/products/admin/images/${productId}`),
 }
 
+// ─── Admin Notifications ──────────────────────────────────────────────────────
+export const notificationsAPI = {
+  list: () => api.get('/admin/notifications'),
+  read: (id) => api.put(`/admin/notifications/read?notification_id=${id}`),
+  readAll: () => api.put('/admin/notifications/read-all'),
+}
+
 export default api
+

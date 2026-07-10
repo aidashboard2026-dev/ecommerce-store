@@ -53,10 +53,10 @@ export default function CartSummary({ showCheckoutButton = true }) {
           </span>
         </div>
 
-        <div className="flex justify-between text-muted">
+        {/* <div className="flex justify-between text-muted">
           <span>Tax (5% GST)</span>
           <span className="text-app font-medium">{formatPrice(totals.tax)}</span>
-        </div>
+        </div> */}
 
         {totals.subtotal > 0 && totals.subtotal < SHIPPING_THRESHOLD && (
           <p className="text-[11px] text-brand-500">
