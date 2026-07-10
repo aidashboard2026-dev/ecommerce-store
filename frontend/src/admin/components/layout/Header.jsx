@@ -17,12 +17,11 @@ import {
   Image,
   Grid2X2,
   Bell,
-  MessageSquare,
-} from "lucide-react";
-import clsx from "clsx";
-import { useAuth, useTheme } from "@/shared/hooks/useAuth";
-// import { logout } from '@/admin/store/authSlice'
-import { logout } from "@/firebase/auth";
+  MessageSquare
+} from 'lucide-react'
+import clsx from 'clsx'
+import { useAuth, useTheme } from '@/shared/hooks/useAuth'
+import { logout } from '@/admin/store/authSlice'
 // import { toggleSidebar } from '@/admin/store/uiSlice'
 import Avatar from "@/shared/components/ui/Avatar";
 import ProfileCard from "@/shared/components/ui/ProfileCard";

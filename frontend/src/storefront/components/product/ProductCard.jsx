@@ -20,10 +20,16 @@ function ProductCard({ product }) {
   const variants = product.variants || [];
   const inStock = (product.total_stock ?? 0) > 0;
   const minPrice = product.min_price;
-  const firstVariant = variants[0];
+  const availableVariant =
+    variants.find((variant) => Number(variant.stock_quantity) > 0) || null;
+
+  const firstVariant = availableVariant || variants[0];
+  const priceVariant = availableVariant || variants[0];
+
   const hasDiscount =
-    firstVariant &&
-    Number(firstVariant.original_price) > Number(firstVariant.selling_price);
+    priceVariant &&
+    Number(priceVariant.original_price) >
+    Number(priceVariant.selling_price);
   const discountPct = hasDiscount
     ? Math.round(
         ((Number(firstVariant.original_price) -
@@ -51,7 +57,7 @@ function ProductCard({ product }) {
   const handleQuickAdd = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!inStock || !firstVariant) {
+    if (!availableVariant) {
       toast.error("Out of stock");
       return;
     }
@@ -61,12 +67,12 @@ function ProductCard({ product }) {
         slug: product.slug,
         title: product.title,
         thumbnail: product.thumbnail,
-        size: firstVariant.size,
-        color: firstVariant.color || null,
-        colorHex: firstVariant.color_hex || null,
-        sellingPrice: Number(firstVariant.selling_price),
-        originalPrice: Number(firstVariant.original_price),
-        stockQuantity: firstVariant.stock_quantity,
+        size: availableVariant.size,
+        color: availableVariant.color || null,
+        colorHex: availableVariant.color_hex || null,
+        sellingPrice: Number(availableVariant.selling_price),
+        originalPrice: Number(availableVariant.original_price),
+        stockQuantity: availableVariant.stock_quantity,
         quantity: 1,
       }),
     );
@@ -194,7 +200,7 @@ function ProductCard({ product }) {
               </span>
               {hasDiscount && (
                 <span className="text-xs text-muted line-through">
-                  {formatPrice(firstVariant.original_price)}
+                  {formatPrice(priceVariant.original_price)}
                 </span>
               )}
             </>

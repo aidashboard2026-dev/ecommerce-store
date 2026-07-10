@@ -106,9 +106,6 @@ def firebase_login(db: Session, id_token: str):
         firebase_claims.get("sign_in_provider")
     )
 
-    if email.endswith("@example.com"):
-        email_verified = True
-
     if not email_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

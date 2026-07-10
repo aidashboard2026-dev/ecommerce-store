@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Check, MapPin, Plus } from "lucide-react";
+import toast from "react-hot-toast";
 import clsx from "clsx";
 import {
   addAddress,
   removeAddress,
+  updateAddress,
   selectAddress,
   selectSelectedAddress,
 } from "@/storefront/store/checkoutStore";
@@ -42,32 +44,67 @@ export default function DeliveryAddress({ form, setForm, update }) {
   const addresses = useSelector((state) => state.checkout.addresses);
   const selectedAddress = useSelector(selectSelectedAddress);
   const [showForm, setShowForm] = useState(addresses.length === 0);
+  const [editingId, setEditingId] = useState(null);
 
   const handleSave = (event) => {
-    event.preventDefault();
+      event.preventDefault();
 
-    dispatch(
-      addAddress({
-        full_name: form.full_name,
-        phone: form.phone,
-        address_line1: form.address_line1,
-        address_line2: form.address_line2,
-        city: form.city,
-        state: form.state,
-        pincode: form.pincode,
-      }),
-    );
+      const addressData = {
+          full_name: form.full_name,
+          phone: form.phone,
+          address_line1: form.address_line1,
+          address_line2: form.address_line2,
+          city: form.city,
+          state: form.state,
+          pincode: form.pincode,
+      };
 
-    setForm((current) =>
-      DELIVERY_FIELDS.reduce(
-        (next, field) => ({
-          ...next,
-          [field]: "",
-        }),
-        current,
-      ),
-    );
-    setShowForm(false);
+      if (editingId) {
+          dispatch(
+              updateAddress({
+                  id: editingId,
+                  data: addressData,
+              })
+          );
+          toast.success("Address updated successfully!");
+
+          setEditingId(null);
+      } else {
+          dispatch(addAddress(addressData));
+          toast.success("Address saved successfully!");
+      }
+
+      setForm((current) =>
+          DELIVERY_FIELDS.reduce(
+              (next, field) => ({
+                  ...next,
+                  [field]: "",
+              }),
+              current,
+          ),
+      );
+
+      setShowForm(false);
+  };
+  
+
+  
+
+  const handleEdit = (addr) => {
+      setEditingId(addr.id);
+
+      setForm((current) => ({
+          ...current,
+          full_name: addr.full_name,
+          phone: addr.phone,
+          address_line1: addr.address_line1,
+          address_line2: addr.address_line2,
+          city: addr.city,
+          state: addr.state,
+          pincode: addr.pincode,
+      }));
+
+      setShowForm(true);
   };
 
   return (
@@ -114,16 +151,34 @@ export default function DeliveryAddress({ form, setForm, update }) {
                   {addr.city}, {addr.state} - {addr.pincode}
                 </p>
                 <p className="text-xs text-muted mt-1">Phone: {addr.phone}</p>
+                <div className="flex items-center gap-4 mt-2">
+
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(addr);
+                    }}
+                    className="text-[11px] text-blue-600 hover:underline"
+                >
+                    Edit
+                </button>
+
                 <button
                   type="button"
                   onClick={(event) => {
                     event.stopPropagation();
+
                     dispatch(removeAddress(addr.id));
+
+                    toast.success("Address removed successfully!");
                   }}
-                  className="text-[11px] text-red-500 mt-2 hover:underline"
+                  className="text-[11px] text-red-500 hover:underline"
                 >
                   Remove
                 </button>
+
+            </div>
               </div>
             );
           })}
@@ -219,7 +274,7 @@ export default function DeliveryAddress({ form, setForm, update }) {
               type="submit"
               className="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm py-2.5 rounded-lg transition-colors"
             >
-              Save Address
+              {editingId ? "Update Address" : "Save Address"}
             </button>
             {addresses.length > 0 && (
               <button
