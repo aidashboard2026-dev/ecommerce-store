@@ -1,14 +1,16 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Package, ChevronDown, ChevronUp, XCircle } from 'lucide-react'
+import { Package, ChevronDown, ChevronUp, XCircle, Download } from 'lucide-react'
 import clsx from 'clsx'
 import { useMyOrders, useCancelOrder } from '@/storefront/hooks/useOrders'
 import { getImageUrl, formatPrice } from '@/shared/utils/productUtils'
 import OrderTimeline from '@/storefront/components/orders/OrderTimeline'
+import { storefrontAPI } from '@/shared/services/api'
 
 function OrderCard({ order }) {
   const [expanded, setExpanded] = useState(false)
+  const [downloadingInvoice, setDownloadingInvoice] = useState(false)
   const cancelMutation = useCancelOrder()
 
   const canCancel = !['SHIPPED', 'DELIVERED', 'CANCELLED'].includes((order.tracking_status || '').toUpperCase())
@@ -20,6 +22,28 @@ function OrderCard({ order }) {
       toast.success('Order cancelled')
     } catch (err) {
       toast.error(err?.response?.data?.detail || 'Failed to cancel order')
+    }
+  }
+
+  const handleDownloadInvoice = async () => {
+    setDownloadingInvoice(true)
+    try {
+      const response = await storefrontAPI.downloadInvoice(order.id)
+      const blob = new Blob([response.data], { type: 'application/pdf' })
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href     = url
+      a.download = `Invoice-${order.order_number}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      toast.success('Invoice downloaded!')
+    } catch (err) {
+      console.error(err)
+      toast.error('Failed to download invoice')
+    } finally {
+      setDownloadingInvoice(false)
     }
   }
 
@@ -81,13 +105,21 @@ function OrderCard({ order }) {
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <Link
               to={`/orders/${order.id}`}
               className="flex-1 text-center border border-app rounded-full py-2.5 text-sm font-semibold text-app hover:bg-surface transition-colors"
             >
               View Details
             </Link>
+            <button
+              onClick={handleDownloadInvoice}
+              disabled={downloadingInvoice}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 border border-brand-500/30 text-brand-500 rounded-full py-2.5 text-sm font-semibold hover:bg-brand-500/5 transition-colors disabled:opacity-60"
+            >
+              <Download size={14} />
+              {downloadingInvoice ? 'Downloading…' : 'Download Invoice'}
+            </button>
             {canCancel && (
               <button
                 onClick={handleCancel}

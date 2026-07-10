@@ -106,7 +106,9 @@ function App() {
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
 
-          <p className="text-muted text-sm font-medium">Loading AuraStore...</p>
+          <p className="text-muted text-sm font-medium">
+            Loading {import.meta.env.VITE_STORE_NAME || "My Designers"}...
+          </p>
         </div>
       </div>
     );

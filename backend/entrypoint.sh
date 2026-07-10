@@ -69,11 +69,13 @@ print('[entrypoint] Database seed complete.')
 
 echo '[entrypoint] Starting Gunicorn with Uvicorn workers...'
 
+# gunicorn.conf.py (in the working directory /app) is auto-loaded by Gunicorn
+# and provides: workers, worker_class, bind, timeout, keepalive, loglevel,
+# capture_output, accesslog, errorlog.
+# --capture-output is critical: it routes all worker stdout/stderr (including
+# Python exception tracebacks) into the Gunicorn error log so they appear in
+# `docker compose logs backend`.
 exec gunicorn app.main:app \
-    --workers 2 \
-    --worker-class uvicorn.workers.UvicornWorker \
-    --bind 0.0.0.0:8000 \
-    --timeout 120 \
-    --keep-alive 5 \
-    --access-logfile - \
-    --error-logfile -
+    --config gunicorn.conf.py \
+    --capture-output \
+    --log-level info

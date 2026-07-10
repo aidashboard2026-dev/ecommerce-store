@@ -124,7 +124,7 @@ class Settings(BaseSettings):
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
     SMTP_FROM_EMAIL: str = "noreply@yourdomain.com"
-    SMTP_FROM_NAME: str = "AuraStore"
+    SMTP_FROM_NAME: str = "My Designers"
     SMTP_TLS: bool = True
 
     # Optional Google reCAPTCHA support for public forms.

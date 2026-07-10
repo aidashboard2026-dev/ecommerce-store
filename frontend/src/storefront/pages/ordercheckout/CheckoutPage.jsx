@@ -1028,7 +1028,7 @@ export default function CheckoutPage() {
         key: rzpOrder.key,
         amount: rzpOrder.amount,
         currency: rzpOrder.currency,
-        name: "AuraStore",
+        name: import.meta.env.VITE_STORE_NAME || "My Designers",
         description: "Order Checkout Payment",
         order_id: rzpOrder.id,
         handler: async (response) => {

@@ -1,7 +1,7 @@
 .PHONY: help test-phase0 test-phase1 test-phase2 test-phase3 test-frontend test-e2e test-all
 
 help:
-	@echo "AuraStore Test Suite Runner"
+	@echo "My Designers Test Suite Runner"
 	@echo "==========================="
 	@echo "Available commands:"
 	@echo "  make test-phase0    - Run Phase 0 (Database connections & constraints)"

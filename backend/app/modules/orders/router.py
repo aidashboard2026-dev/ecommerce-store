@@ -18,6 +18,7 @@ Everything else lives in:
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query, Request, status, Header
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -37,8 +38,10 @@ from app.modules.orders.schemas import (
     RazorpayOrderCreateResponse,
     RazorpayPaymentVerifyRequest,
 )
+from app.shared.invoice import generate_invoice_pdf, invoice_filename
 
 router = APIRouter()
+
 
 
 # ─────────────────────────────────────────────────────────────
@@ -82,6 +85,28 @@ def get_order(
 ):
     """Admin — fetch a single order by PK."""
     return order_service.get_order(db, order_id)
+
+
+@router.get("/{order_id}/invoice")
+def download_invoice_admin(
+    order_id: int,
+    db:       Session = Depends(get_db),
+    _:        Admin   = Depends(get_current_admin),
+):
+    """
+    Admin — generate and download the invoice PDF for any order.
+
+    Uses the single shared invoice generator (app.shared.invoice.service).
+    The PDF is identical to the customer download and email attachment.
+    """
+    order = order_service.get_order(db, order_id)
+    pdf_bytes = generate_invoice_pdf(order, db=db)
+    filename  = invoice_filename(order)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ─────────────────────────────────────────────────────────────
@@ -259,6 +284,30 @@ def cancel_customer_order(
 ):
     """Storefront — customer cancels their own order (blocked after SHIPPED/DELIVERED)."""
     return order_service.cancel_order_customer(db, order_id, current_customer)
+
+
+@router.get("/customer/{order_id}/invoice")
+def download_invoice_customer(
+    order_id:         int,
+    db:               Session  = Depends(get_db),
+    current_customer: Customer = Depends(get_current_customer),
+):
+    """
+    Storefront — customer downloads the invoice PDF for their own order.
+
+    Ownership is enforced — the customer can only access invoices for orders
+    belonging to their account. Uses the exact same PDF generator as the
+    Admin endpoint and the Email attachment. One generator, three paths.
+    """
+    # get_customer_order_or_raise enforces ownership
+    order = order_service.get_customer_order(db, order_id, current_customer)
+    pdf_bytes = generate_invoice_pdf(order, db=db)
+    filename  = invoice_filename(order)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ─────────────────────────────────────────────────────────────

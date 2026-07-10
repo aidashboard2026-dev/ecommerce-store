@@ -4,7 +4,7 @@ import { Mail, Phone, MapPin as MapPinIcon, HelpCircle, Info, Shield, FileText, 
 import clsx from 'clsx'
 import useStoreSettings from '@/shared/hooks/useStoreSettings'
 
-// NOTE: AuraStore did not previously have Contact/FAQ/About/Privacy/Terms/
+// NOTE: My Designers did not previously have Contact/FAQ/About/Privacy/Terms/
 // Returns pages anywhere in the app (the footer had inert "Privacy Policy"
 // / "Terms of Use" buttons with no destination). This page is new — built
 // to satisfy the target architecture's SupportPage.jsx — and uses
@@ -106,11 +106,12 @@ function PrivacyPolicySection() {
 }
 
 function TermsSection() {
+  const storeName = import.meta.env.VITE_STORE_NAME || "My Designers";
   return (
     <div className="bg-app border border-app rounded-2xl p-5 sm:p-6">
       <h2 className="font-display font-bold text-lg text-app mb-3">Terms of Use</h2>
       <p className="text-sm text-muted leading-relaxed">
-        This section will outline the terms that govern your use of AuraStore. Full terms are
+        This section will outline the terms that govern your use of {storeName}. Full terms are
         being finalized — contact support if you have questions before then.
       </p>
     </div>

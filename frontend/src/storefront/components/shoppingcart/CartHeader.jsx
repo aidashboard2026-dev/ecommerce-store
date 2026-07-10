@@ -7,7 +7,7 @@ export default function CartHeader({ count = 0, onClose }) {
     <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-app bg-app px-4 sm:px-6 py-4">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-500">
-          AuraStore
+          {import.meta.env.VITE_STORE_NAME || "My Designers"}
         </p>
         <h2 className="font-display text-lg font-bold text-app">Shopping cart</h2>
       </div>

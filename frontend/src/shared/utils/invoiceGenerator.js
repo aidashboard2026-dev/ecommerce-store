@@ -109,16 +109,24 @@ function drawAmount(pdf, amount, x, y, size = 7, boldText = false) {
 
 }
 
+/**
+ * safe() — converts any value to a non-empty printable string.
+ * Returns "-" for null / undefined / empty-string / NaN.
+ */
 function safe(value) {
-  if (
-    value === null ||
-    value === undefined ||
-    value === ""
-  ) {
+  if (value === null || value === undefined || value === "") {
     return "-";
   }
+  const s = String(value).trim();
+  return s === "" ? "-" : s;
+}
 
-  return String(value);
+/**
+ * safeNum() — returns a valid finite number; falls back to 0.
+ */
+function safeNum(value) {
+  const n = Number(value);
+  return isFinite(n) ? n : 0;
 }
 
 function formatDate(date) {
@@ -142,6 +150,11 @@ function formatDate(date) {
 =========================================================== */
 
 export async function generateInvoice(order) {
+
+  // Defensive guard — treat missing order as empty object
+  if (!order || typeof order !== "object") {
+    order = {};
+  }
 
   const pdf = new jsPDF({
 
@@ -167,13 +180,17 @@ export async function generateInvoice(order) {
      COMPANY (TOP LEFT)
   ======================================================== */
 
-  const storeName = localStorage.getItem('store_name') || "MY DESIGN PRIVATE LIMITED";
-  const storeCountry = localStorage.getItem('store_country') || "India";
+  const storeName    = safe(localStorage.getItem('store_name')) !== "-"
+    ? localStorage.getItem('store_name')
+    : "MY DESIGN PRIVATE LIMITED";
+  const storeCountry = safe(localStorage.getItem('store_country')) !== "-"
+    ? localStorage.getItem('store_country')
+    : "India";
 
   bold(pdf,10);
 
   pdf.text(
-    `Sold By : ${storeName.toUpperCase()}`,
+    `Sold By : ${safe(storeName).toUpperCase()}`,
     10,
     12
   );
@@ -192,9 +209,11 @@ export async function generateInvoice(order) {
     17
   );
 
+  // FIX: was pdf.text(storeCountry, "Pincode-...", 10, 21)
+  //      — second arg was a string instead of a number (x coord).
+  //      Correct call: text(str, x, y)
   pdf.text(
-    storeCountry,
-    "Pincode-636813,Tamil Nadu, India",
+    `Pincode-636813, Tamil Nadu, ${safe(storeCountry)}`,
     10,
     21
   );
@@ -251,19 +270,31 @@ export async function generateInvoice(order) {
      QR CODE
   ======================================================== */
 
-  const storeUrl = localStorage.getItem('store_url') || window.location.origin;
-  const qr = await QRCode.toDataURL(
-    `${storeUrl}/orders/${safe(order.order_number)}`
-  );
+  try {
 
-  pdf.addImage(
-    qr,
-    "PNG",
-    176,
-    30,
-    18,
-    18
-  );
+    const storeUrl = (safe(localStorage.getItem('store_url')) !== "-")
+      ? localStorage.getItem('store_url')
+      : window.location.origin;
+
+    const qr = await QRCode.toDataURL(
+      `${storeUrl}/orders/${safe(order.order_number)}`
+    );
+
+    pdf.addImage(
+      qr,
+      "PNG",
+      176,
+      30,
+      18,
+      18
+    );
+
+  } catch {
+    // QR generation failed — draw a labelled placeholder box so layout is preserved
+    drawBox(pdf, 176, 30, 18, 18);
+    gray(pdf, 5);
+    pdf.text("QR", 183, 40, { align: "center" });
+  }
 
   hr(pdf,34);
 
@@ -403,12 +434,18 @@ export async function generateInvoice(order) {
 
   normal(pdf, 7);
 
-  const storeNameShip = localStorage.getItem('store_name') || "MY DESIGN PRIVATE LIMITED";
-  const storeCountryShip = localStorage.getItem('store_country') || "India";
-  const storePhoneShip = localStorage.getItem('store_phone') || "+91 9876543210";
+  const storeNameShip    = safe(localStorage.getItem('store_name')) !== "-"
+    ? localStorage.getItem('store_name')
+    : "MY DESIGN PRIVATE LIMITED";
+  const storeCountryShip = safe(localStorage.getItem('store_country')) !== "-"
+    ? localStorage.getItem('store_country')
+    : "India";
+  const storePhoneShip   = safe(localStorage.getItem('store_phone')) !== "-"
+    ? localStorage.getItem('store_phone')
+    : "+91 9876543210";
 
   pdf.text(
-    storeNameShip.toUpperCase(),
+    safe(storeNameShip).toUpperCase(),
     COL3,
     currentY + 7,
     {
@@ -435,7 +472,7 @@ export async function generateInvoice(order) {
   );
 
   pdf.text(
-    storeCountryShip,
+    safe(storeCountryShip),
     COL3,
     currentY + 31
   );
@@ -447,7 +484,7 @@ export async function generateInvoice(order) {
   );
 
   pdf.text(
-    `Phone : ${storePhoneShip}`,
+    `Phone : ${safe(storePhoneShip)}`,
     COL3,
     currentY + 43
   );
@@ -556,21 +593,33 @@ export async function generateInvoice(order) {
 
       const response = await fetch(order.product_image);
 
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
       const blob = await response.blob();
 
-      const image = await new Promise((resolve) => {
+      // Validate MIME — jsPDF only handles JPEG/PNG/GIF/BMP/WEBP
+      const mime = blob.type || "";
+      if (!mime.startsWith("image/") || mime === "image/svg+xml") {
+        throw new Error(`Unsupported image type: ${mime}`);
+      }
+
+      const image = await new Promise((resolve, reject) => {
 
         const reader = new FileReader();
 
         reader.onloadend = () => resolve(reader.result);
 
+        reader.onerror   = () => reject(new Error("FileReader failed"));
+
         reader.readAsDataURL(blob);
 
       });
 
+      const fmt = mime.includes("png") ? "PNG" : "JPEG";
+
       pdf.addImage(
         image,
-        "JPEG",
+        fmt,
         11,
         currentY + 1,
         26,
@@ -646,8 +695,8 @@ export async function generateInvoice(order) {
   currentY += 38;
 
   const subtotal =
-    Number(order.price || 0) *
-    Number(order.quantity || 1);
+    safeNum(order.price) *
+    safeNum(order.quantity || 1);
 
   const taxable =
     subtotal / 1.18;
@@ -727,9 +776,7 @@ export async function generateInvoice(order) {
     body:[[
       safe(order.product_name),
 
-      `${safe(order.product_name)}
-HSN : 6109
-Warranty : 6 Months`,
+      `${safe(order.product_name)}\nHSN : 6109\nWarranty : 6 Months`,
 
       safe(order.quantity),
 
@@ -765,8 +812,9 @@ Warranty : 6 Months`,
     currentY
   );
 
+  // FIX: guard against null/undefined quantity
   pdf.text(
-    String(order.quantity),
+    safe(order.quantity),
     120,
     currentY,
     {
@@ -790,8 +838,8 @@ Warranty : 6 Months`,
   ======================================================== */
 
   const grossAmount =
-    Number(order.price || 0) *
-    Number(order.quantity || 1);
+    safeNum(order.price) *
+    safeNum(order.quantity || 1);
 
   const discount = 0;
 
@@ -1013,10 +1061,11 @@ Warranty : 6 Months`,
 
   normal(pdf,7);
 
+  // FIX: guard grandTotal against NaN before calling toFixed
+  const grandTotalSafe = isFinite(grandTotal) ? grandTotal : 0;
+
   pdf.text(
-    "Rupees " +
-    grandTotal.toFixed(2) +
-    " Only",
+    "Rupees " + grandTotalSafe.toFixed(2) + " Only",
     10,
     currentY + 6
   );
@@ -1241,36 +1290,8 @@ Warranty : 6 Months`,
   );
 
   /* ========================================================
-     WATERMARK
+     WATERMARK — REMOVED (Issue 10)
   ======================================================== */
-
-  pdf.saveGraphicsState();
-
-  pdf.setGState(
-    new pdf.GState({
-      opacity: 0.04
-    })
-  );
-
-  pdf.setFont(
-    "helvetica",
-    "bold"
-  );
-
-  pdf.setFontSize(50);
-
-  pdf.setTextColor(150);
-
-  pdf.text(
-    "MY DESIGN",
-    55,
-    180,
-    {
-      angle: 45
-    }
-  );
-
-  pdf.restoreGraphicsState();
 
   /* ========================================================
      SAVE PDF

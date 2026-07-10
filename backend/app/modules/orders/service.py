@@ -352,20 +352,17 @@ def create_order_admin(db: Session, order_in: OrderCreate) -> OrderResponse:
     db.refresh(order)
     logger.info("Admin order created: order_number=%s", order.order_number)
 
-    # Trigger New Order Placed notification
+    # Send order confirmation email with invoice PDF attached
     try:
-        from app.shared.notifications.service import send_notification_sync
-        send_notification_sync(
-            db=db,
-            event_name="New Order Placed",
-            to_email=order.customer_email,
-            context={"order_number": order.order_number, "total_amount": float(order.total_amount)},
-            subject=f"Order Placed successfully! - #{order.order_number}",
-            text_body=f"Your order #{order.order_number} has been placed successfully. Thank you for shopping with us!",
-            html_body=f"<p>Your order #{order.order_number} has been placed successfully. Thank you for shopping with us!</p>",
-        )
+        from app.shared.email.service import send_order_confirmation_with_invoice
+        import asyncio
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(send_order_confirmation_with_invoice(order, db=db))
+        else:
+            asyncio.run(send_order_confirmation_with_invoice(order, db=db))
     except Exception as e:
-        logger.error(f"Failed to send order placed notification: {e}", exc_info=True)
+        logger.error(f"Failed to send order confirmation with invoice: {e}", exc_info=True)
 
     return OrderResponse.model_validate(order)
 
@@ -541,20 +538,17 @@ def create_order_customer(
         order.order_number, customer.email,
     )
 
-    # Trigger New Order Placed notification
+    # Send order confirmation email with invoice PDF attached
     try:
-        from app.shared.notifications.service import send_notification_sync
-        send_notification_sync(
-            db=db,
-            event_name="New Order Placed",
-            to_email=order.customer_email,
-            context={"order_number": order.order_number, "total_amount": float(order.total_amount)},
-            subject=f"Order Placed successfully! - #{order.order_number}",
-            text_body=f"Your order #{order.order_number} has been placed successfully. Thank you for shopping with us!",
-            html_body=f"<p>Your order #{order.order_number} has been placed successfully. Thank you for shopping with us!</p>",
-        )
+        from app.shared.email.service import send_order_confirmation_with_invoice
+        import asyncio
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(send_order_confirmation_with_invoice(order, db=db))
+        else:
+            asyncio.run(send_order_confirmation_with_invoice(order, db=db))
     except Exception as e:
-        logger.error(f"Failed to send order placed notification: {e}", exc_info=True)
+        logger.error(f"Failed to send order confirmation with invoice: {e}", exc_info=True)
 
     return OrderResponse.model_validate(order)
 
