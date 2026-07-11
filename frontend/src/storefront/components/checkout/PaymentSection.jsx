@@ -2,26 +2,59 @@ import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { CreditCard, Banknote } from "lucide-react";
 import clsx from "clsx";
+import { useQuery } from "@tanstack/react-query";
 import { setPaymentMethod } from "@/storefront/store/checkoutStore";
-
-const METHODS = [
-  {
-    value: "ONLINE",
-    label: "Online Payment",
-    icon: CreditCard,
-    desc: "Pay securely with Razorpay (UPI, Cards, Wallets, Net Banking)",
-  },
-  {
-    value: "COD",
-    label: "Cash on Delivery",
-    icon: Banknote,
-    desc: "Pay when your order is delivered",
-  },
-];
+import { storefrontAPI } from "@/shared/services/api";
 
 export default function PaymentSection() {
   const dispatch = useDispatch();
   const paymentMethod = useSelector((s) => s.checkout.paymentMethod);
+
+  const { data: paymentMethods = [], isLoading } = useQuery({
+    queryKey: ["publicPayments"],
+    queryFn: async () => {
+      const res = await storefrontAPI.getPublicPayments();
+      return res.data || [];
+    },
+  });
+
+  const methods = paymentMethods.map((method) => {
+    const isOnline = method.name.toLowerCase() === "online payment";
+    return {
+      value: isOnline ? "ONLINE" : "COD",
+      label: method.name,
+      icon: isOnline ? CreditCard : Banknote,
+      desc: method.description,
+    };
+  });
+
+  if (isLoading) {
+    return (
+      <div className="animate-pulse space-y-3">
+        <div className="h-6 w-32 bg-surface rounded" />
+        <div className="h-20 bg-surface rounded-xl" />
+        <div className="h-20 bg-surface rounded-xl" />
+      </div>
+    );
+  }
+
+  if (methods.length === 0) {
+    return (
+      <div>
+        <h2 className="font-display font-bold text-lg text-app mb-4">
+          Payment Method
+        </h2>
+        <div className="rounded-xl border border-red-200 bg-red-50/50 dark:bg-red-950/10 dark:border-red-900/30 p-4 text-center">
+          <p className="text-sm font-medium text-red-600 dark:text-red-400">
+            No payment methods are currently available.
+          </p>
+          <p className="text-xs text-muted mt-1">
+            Please contact the store administrator.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="">
@@ -30,7 +63,7 @@ export default function PaymentSection() {
       </h2>
 
       <div className="space-y-3">
-        {METHODS.map(({ value, label, icon: Icon, desc }) => (
+        {methods.map(({ value, label, icon: Icon, desc }) => (
           <button
             key={value}
             type="button"
@@ -70,7 +103,7 @@ export default function PaymentSection() {
         ))}
       </div>
 
-      {paymentMethod === "ONLINE" && (
+      {paymentMethod === "ONLINE" && methods.some(m => m.value === "ONLINE") && (
         <div className="mt-4">
           <p className="text-xs text-muted">
             After clicking <strong>Place Order</strong>, you will be redirected
@@ -80,7 +113,7 @@ export default function PaymentSection() {
         </div>
       )}
 
-      {paymentMethod === "COD" && (
+      {paymentMethod === "COD" && methods.some(m => m.value === "COD") && (
         <div className="mt-4">
           <p className="text-xs text-muted">
             Pay in cash when your order is delivered to your address.

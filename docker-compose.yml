@@ -51,6 +51,7 @@ services:
       SUPABASE_PRODUCT_BUCKET: ${SUPABASE_PRODUCT_BUCKET:-product-images}
       SUPABASE_CUSTOM_PRODUCT_BUCKET: ${SUPABASE_CUSTOM_PRODUCT_BUCKET:-custom-product-images}
       SUPABASE_BANNER_BUCKET: ${SUPABASE_BANNER_BUCKET:-banners}
+      SUPABASE_CATEGORY_BUCKET: ${SUPABASE_CATEGORY_BUCKET:-category-images}
       REDIS_URL: redis://redis:6379
     ports:
       - "8000:8000"
@@ -65,11 +66,11 @@ services:
     networks:
       - admindash_network
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 10s
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 60s
 
   frontend:
     build:

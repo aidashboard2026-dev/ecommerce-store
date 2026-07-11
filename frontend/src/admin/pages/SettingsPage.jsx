@@ -3,7 +3,6 @@ import { useForm } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
-  Globe2,
   Upload,
   ImagePlus,
   Mail,
@@ -30,26 +29,7 @@ import Button from "@/shared/components/ui/Button";
 import PageHeader from "@/shared/components/ui/PageHeader";
 import settingsService from "@/admin/services/settingsService";
 
-const countries = [
-  "India",
-  "United States",
-  "United Kingdom",
-  "Canada",
-  "Australia",
-  "Singapore",
-  "United Arab Emirates",
-];
-const currencies = ["INR", "USD", "GBP", "CAD", "AUD", "SGD", "AED"];
-const timezones = [
-  "Asia/Kolkata",
-  "UTC",
-  "America/New_York",
-  "America/Los_Angeles",
-  "Europe/London",
-  "Asia/Singapore",
-  "Asia/Dubai",
-];
-const weightUnits = ["kg", "g", "lb", "oz"];
+
 
 function apiError(error, fallback) {
   if (!navigator.onLine) {
@@ -246,6 +226,8 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState(null);
   const [security, setSecurity] = useState(null);
   const [payments, setPayments] = useState([]);
+  const [localPayments, setLocalPayments] = useState([]);
+  const [paymentSaving, setPaymentSaving] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [logoPreview, setLogoPreview] = useState("");
   const [saving, setSaving] = useState({});
@@ -256,11 +238,7 @@ export default function SettingsPage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Dynamic regional options list loaded from the backend
-  const [countriesList, setCountriesList] = useState([]);
-  const [currenciesList, setCurrenciesList] = useState([]);
-  const [timezonesList, setTimezonesList] = useState([]);
-  const [weightUnitsList, setWeightUnitsList] = useState([]);
+
 
   const closeModal = () => {
     setActiveModal(null);
@@ -289,22 +267,16 @@ export default function SettingsPage() {
 
   const profileForm = useForm({
     defaultValues: {
-      store_name: "",
-      store_url: "",
+      store_name: import.meta.env.VITE_STORE_NAME || "",
+      store_url: import.meta.env.VITE_STORE_URL || "",
       support_email: "",
       support_phone: "",
       description: "",
+      store_location: "",
       logo: "",
     },
   });
-  const regionalForm = useForm({
-    defaultValues: {
-      country: "India",
-      currency: "INR",
-      timezone: "Asia/Kolkata",
-      weight_unit: "kg",
-    },
-  });
+
 
   // Separate forms for username, email and password to avoid shared state
   const usernameForm = useForm({
@@ -383,12 +355,11 @@ export default function SettingsPage() {
     async function loadSettings() {
       try {
         setError(false);
-        const [settingsResponse, paymentsResponse, notificationsResponse, regionalOptionsResponse] =
+        const [settingsResponse, paymentsResponse, notificationsResponse] =
           await Promise.all([
             settingsService.getSettings(),
             settingsService.getPayments(),
             settingsService.getNotifications(),
-            settingsService.getRegionalOptions().catch(() => ({ data: {} })),
           ]);
 
         if (!mounted) return;
@@ -399,29 +370,28 @@ export default function SettingsPage() {
         setSettings(store);
         setSecurity(adminSecurity);
         setPayments(paymentsResponse.data);
+        setLocalPayments(paymentsResponse.data);
         setNotifications(notificationsResponse.data);
         setLogoPreview(store.logo || "");
 
-        const regionalData = regionalOptionsResponse.data || {};
-        setCountriesList(regionalData.countries || []);
-        setCurrenciesList(regionalData.currencies || []);
-        setTimezonesList(regionalData.timezones || []);
-        setWeightUnitsList(regionalData.weight_units || []);
+        // Normalize stored phone: strip +91 prefix so the 10-digit input field shows only the local number
+        const storedPhone = store.support_phone || "";
+        const displayPhone = storedPhone.startsWith("+91")
+          ? storedPhone.slice(3)
+          : storedPhone.startsWith("91") && storedPhone.length === 12
+          ? storedPhone.slice(2)
+          : storedPhone;
 
         profileForm.reset({
-          store_name: store.store_name || "",
-          store_url: store.store_url || "",
+          store_name: import.meta.env.VITE_STORE_NAME || "",
+          store_url: import.meta.env.VITE_STORE_URL || "",
           support_email: store.support_email || "",
-          support_phone: store.support_phone || "",
+          support_phone: displayPhone,
           description: store.description || "",
+          store_location: store.store_location || "",
           logo: store.logo || "",
         });
-        regionalForm.reset({
-          country: store.country || "India",
-          currency: store.currency || "INR",
-          timezone: store.timezone || "Asia/Kolkata",
-          weight_unit: store.weight_unit || "kg",
-        });
+
         // Reset the distinct forms with the fresh security values
         usernameForm.reset({
           username: adminSecurity.username || "",
@@ -494,12 +464,17 @@ export default function SettingsPage() {
   }, [activeModal]);
 
   async function saveProfile(data) {
+    // Normalize phone: prepend +91 if not already present
+    const rawPhone = (data.support_phone || "").replace(/[^0-9]/g, "");
+    const normalizedPhone = rawPhone ? `+91${rawPhone}` : "";
+
     const cleanData = {
-      store_name: data.store_name?.trim() || "",
-      store_url: data.store_url?.trim() || "",
+      store_name: import.meta.env.VITE_STORE_NAME || "My Designers",
+      store_url: import.meta.env.VITE_STORE_URL || "https://mydesigners.com",
       support_email: data.support_email?.trim() || "",
-      support_phone: data.support_phone?.trim() || "",
-      description: data.description?.trim() || "",
+      support_phone: normalizedPhone,
+      description: (data.description || "").trim().slice(0, 200),
+      store_location: data.store_location?.trim() || "",
       logo: data.logo || "",
     };
     setSaving((state) => ({ ...state, profile: true }));
@@ -507,27 +482,34 @@ export default function SettingsPage() {
       const response = await settingsService.updateProfile(cleanData);
       const updated = response.data;
       setSettings(updated);
+      // Strip +91 prefix again for display in the input
+      const updatedPhone = updated.support_phone || normalizedPhone;
+      const displayPhone = updatedPhone.startsWith("+91") ? updatedPhone.slice(3) : updatedPhone;
       profileForm.reset({
-        store_name: updated.store_name || cleanData.store_name,
-        store_url: updated.store_url || cleanData.store_url,
+        store_name: import.meta.env.VITE_STORE_NAME || "My Designers",
+        store_url: import.meta.env.VITE_STORE_URL || "https://mydesigners.com",
         support_email: updated.support_email || cleanData.support_email,
-        support_phone: updated.support_phone || cleanData.support_phone,
+        support_phone: displayPhone,
         description: updated.description || cleanData.description,
+        store_location: updated.store_location || cleanData.store_location,
         logo: updated.logo || cleanData.logo,
       });
       setLogoPreview(updated.logo || "");
       queryClient.invalidateQueries({ queryKey: ["storeSettings"] });
-      toast.success("Store profile saved");
+      toast.success("Store profile updated successfully.");
     } catch (error) {
       toast.error(apiError(error, "Failed to save store profile"));
       // Restore previous state values on failure
       if (settings) {
+        const prevPhone = settings.support_phone || "";
+        const prevDisplayPhone = prevPhone.startsWith("+91") ? prevPhone.slice(3) : prevPhone;
         profileForm.reset({
-          store_name: settings.store_name || "",
-          store_url: settings.store_url || "",
+          store_name: import.meta.env.VITE_STORE_NAME || "My Designers",
+          store_url: import.meta.env.VITE_STORE_URL || "https://mydesigners.com",
           support_email: settings.support_email || "",
-          support_phone: settings.support_phone || "",
+          support_phone: prevDisplayPhone,
           description: settings.description || "",
+          store_location: settings.store_location || "",
           logo: settings.logo || "",
         });
         setLogoPreview(settings.logo || "");
@@ -537,41 +519,7 @@ export default function SettingsPage() {
     }
   }
 
-  async function saveRegional(data) {
-    const cleanData = {
-      country: data.country?.trim() || "India",
-      currency: data.currency?.trim() || "INR",
-      timezone: data.timezone?.trim() || "Asia/Kolkata",
-      weight_unit: data.weight_unit?.trim() || "kg",
-    };
-    setSaving((state) => ({ ...state, regional: true }));
-    try {
-      const response = await settingsService.updateSettings(cleanData);
-      const updated = response.data;
-      setSettings(updated);
-      regionalForm.reset({
-        country: updated.country || cleanData.country,
-        currency: updated.currency || cleanData.currency,
-        timezone: updated.timezone || cleanData.timezone,
-        weight_unit: updated.weight_unit || cleanData.weight_unit,
-      });
-      queryClient.invalidateQueries({ queryKey: ["storeSettings"] });
-      toast.success("Regional settings saved");
-    } catch (error) {
-      toast.error(apiError(error, "Failed to save regional settings"));
-      // Restore previous state values on failure
-      if (settings) {
-        regionalForm.reset({
-          country: settings.country || "India",
-          currency: settings.currency || "INR",
-          timezone: settings.timezone || "Asia/Kolkata",
-          weight_unit: settings.weight_unit || "kg",
-        });
-      }
-    } finally {
-      setSaving((state) => ({ ...state, regional: false }));
-    }
-  }
+
 
   async function saveUsername(data) {
     const cleanData = {
@@ -695,59 +643,96 @@ export default function SettingsPage() {
       });
   }
 
-  async function updatePaymentMethod(method, fields) {
-    const previous = payments;
-    setPayments((items) =>
+  function handleLocalPaymentChange(methodId, fields) {
+    setLocalPayments((items) =>
       items.map((item) =>
-        item.id === method.id ? { ...item, ...fields } : item
+        item.id === methodId ? { ...item, ...fields } : item
       )
     );
-    setPaymentLoading((state) => ({
-      ...state,
-      [method.id]: true,
-    }));
+  }
 
+  const isPaymentsDirty = useMemo(() => {
+    if (payments.length !== localPayments.length) return false;
+    for (let i = 0; i < payments.length; i++) {
+      const orig = payments[i];
+      const local = localPayments.find((p) => p.id === orig.id);
+      if (!local) return true;
+      if (local.is_active !== orig.is_active) return true;
+      if ((local.description || "") !== (orig.description || "")) return true;
+      if (parseFloat(local.fee || 0) !== parseFloat(orig.fee || 0)) return true;
+    }
+    return false;
+  }, [payments, localPayments]);
+
+  async function savePaymentMethods() {
+    const modified = [];
+    for (const local of localPayments) {
+      const orig = payments.find((p) => p.id === local.id);
+      if (!orig) continue;
+
+      const changes = {};
+      let changed = false;
+
+      if (local.is_active !== orig.is_active) {
+        changes.is_active = local.is_active;
+        changed = true;
+      }
+      if ((local.description || "").trim() !== (orig.description || "").trim()) {
+        changes.description = local.description.trim();
+        changed = true;
+      }
+      const localFee = parseFloat(local.fee || 0);
+      const origFee = parseFloat(orig.fee || 0);
+      if (localFee !== origFee) {
+        changes.fee = localFee;
+        changed = true;
+      }
+
+      if (changed) {
+        modified.push({ id: local.id, name: local.name, changes });
+      }
+    }
+
+    if (modified.length === 0) return;
+
+    setPaymentSaving(true);
     try {
-      const response = await settingsService.updatePayment(method.id, fields);
-      setPayments((items) =>
-        items.map((item) =>
-          item.id === method.id ? { ...item, ...response.data } : item
-        )
+      const promises = modified.map((m) =>
+        settingsService.updatePayment(m.id, m.changes)
       );
+      await Promise.all(promises);
+
+      const paymentsResponse = await settingsService.getPayments();
+      setPayments(paymentsResponse.data);
+      setLocalPayments(paymentsResponse.data);
 
       // Local storage logs for toggles
-      if (fields.is_active !== undefined) {
-        const value = fields.is_active;
-        const existing = safeParseStorage("paymentActivity", []);
-        if (!value) {
-          const updated = [
-            ...existing.filter((item) => item.id !== method.id),
-            {
-              id: method.id,
-              message: `${method.name} disabled`,
-            },
-          ];
-          localStorage.setItem("paymentActivity", JSON.stringify(updated));
-        } else {
-          const updated = existing.filter((item) => item.id !== method.id);
-          localStorage.setItem("paymentActivity", JSON.stringify(updated));
+      for (const m of modified) {
+        if (m.changes.is_active !== undefined) {
+          const value = m.changes.is_active;
+          const existing = safeParseStorage("paymentActivity", []);
+          if (!value) {
+            const updated = [
+              ...existing.filter((item) => item.id !== m.id),
+              {
+                id: m.id,
+                message: `${m.name} disabled`,
+              },
+            ];
+            localStorage.setItem("paymentActivity", JSON.stringify(updated));
+          } else {
+            const updated = existing.filter((item) => item.id !== m.id);
+            localStorage.setItem("paymentActivity", JSON.stringify(updated));
+          }
         }
       }
 
-      toast.success(`${method.name} updated successfully.`);
+      toast.success("Payment settings updated successfully.");
     } catch (error) {
-      setPayments(previous);
-      toast.error(apiError(error, "Failed to update payment method"));
+      toast.error(apiError(error, "Failed to save payment methods"));
     } finally {
-      setPaymentLoading((state) => ({
-        ...state,
-        [method.id]: false,
-      }));
+      setPaymentSaving(false);
     }
-  }
-
-  function togglePayment(method, value) {
-    updatePaymentMethod(method, { is_active: value });
   }
 
   async function toggleNotification(notification, field, value) {
@@ -827,29 +812,14 @@ export default function SettingsPage() {
     );
   }
   async function handleGlobalSave() {
-    const isProfileDirty = profileForm.formState.isDirty;
-    const isRegionalDirty = regionalForm.formState.isDirty;
-
-    if (!isProfileDirty && !isRegionalDirty) {
+    if (!profileForm.formState.isDirty) {
       toast("No changes to save");
       return;
     }
-
-    if (isProfileDirty) {
-      let success = false;
-      await profileForm.handleSubmit(async (data) => {
-        await saveProfile(data);
-        success = true;
-      })();
-      if (!success) return;
-    }
-
-    if (isRegionalDirty) {
-      await regionalForm.handleSubmit(saveRegional)();
-    }
+    await profileForm.handleSubmit(saveProfile)();
   }
 
-  const isAnyFormDirty = profileForm.formState.isDirty || regionalForm.formState.isDirty;
+  const isAnyFormDirty = profileForm.formState.isDirty;
 
   return (
     <div className="space-y-6">
@@ -866,7 +836,6 @@ export default function SettingsPage() {
             disabled={
               !isAnyFormDirty ||
               saving.profile ||
-              saving.regional ||
               saving.password ||
               saving.security
             }
@@ -947,29 +916,24 @@ export default function SettingsPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <FormInput
-                label="Store Name"
-                error={profileForm.formState.errors.store_name}
-                {...profileForm.register("store_name", {
-                  required: "Store name is required",
-                  minLength: { value: 2, message: "Store name must be at least 2 characters" },
-                  maxLength: { value: 150, message: "Store name cannot exceed 150 characters" },
-                  validate: (val) => val.trim().length >= 2 || "Store name cannot be empty or whitespace-only",
-                })}
-              />
-              <FormInput
-                label="Store URL"
-                error={profileForm.formState.errors.store_url}
-                {...profileForm.register("store_url", {
-                  required: "Store URL is required",
-                  maxLength: { value: 500, message: "Store URL cannot exceed 500 characters" },
-                  pattern: {
-                    value: /^https?:\/\/[^\s/$.?#].[^\s]*$/i,
-                    message: "Enter a valid URL (e.g., https://example.com)",
-                  },
-                  validate: (val) => val.trim().length > 0 || "Store URL cannot be whitespace-only",
-                })}
-              />
+              <div>
+                <FormInput
+                  label="Store Name"
+                  readOnly={true}
+                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 pr-10 text-sm text-zinc-500 outline-none transition cursor-not-allowed dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400"
+                  error={profileForm.formState.errors.store_name}
+                  {...profileForm.register("store_name")}
+                />
+              </div>
+              <div>
+                <FormInput
+                  label="Store URL"
+                  readOnly={true}
+                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 pr-10 text-sm text-zinc-500 outline-none transition cursor-not-allowed dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400"
+                  error={profileForm.formState.errors.store_url}
+                  {...profileForm.register("store_url")}
+                />
+              </div>
               <FormInput
                 label="Support Email"
                 type="email"
@@ -983,28 +947,79 @@ export default function SettingsPage() {
                   },
                 })}
               />
-              <FormInput
-                label="Support Phone"
-                error={profileForm.formState.errors.support_phone}
-                {...profileForm.register("support_phone", {
-                  maxLength: { value: 30, message: "Phone number cannot exceed 30 characters" },
-                  validate: (val) => {
-                    if (!val) return true;
-                    if (!val.trim()) return "Phone number cannot be whitespace-only";
-                    const cleaned = val.replace(/[\s\-()]/g, "");
-                    return /^\+?\d+$/.test(cleaned) || "Phone must contain only digits, spaces, +, -, or ()";
-                  }
-                })}
-              />
+
+              {/* +91 Indian Phone Prefix Input */}
+              <div>
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">Support Phone</span>
+                  <div className="flex rounded-lg border border-gray-200 bg-white overflow-hidden focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/10 dark:border-zinc-800 dark:bg-zinc-950">
+                    <span className="inline-flex items-center px-3 bg-gray-50 border-r border-gray-200 text-sm text-zinc-500 font-medium shrink-0 select-none dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-400">
+                      +91
+                    </span>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={10}
+                      placeholder="9876543210"
+                      className="flex-1 px-3 py-2 text-sm text-zinc-950 outline-none bg-transparent dark:text-zinc-50"
+                      {...profileForm.register("support_phone", {
+                        validate: (val) => {
+                          if (!val || val.trim() === "") return true;
+                          const digits = val.replace(/[^0-9]/g, "");
+                          if (digits.length !== 10) return "Enter exactly 10 digits";
+                          if (!/^[6-9]/.test(digits)) return "Indian mobile numbers start with 6, 7, 8, or 9";
+                          return true;
+                        },
+                      })}
+                    />
+                  </div>
+                  {profileForm.formState.errors.support_phone && (
+                    <span className="block text-[11px] font-semibold text-red-600">
+                      {profileForm.formState.errors.support_phone.message}
+                    </span>
+                  )}
+                  <span className="text-[10px] text-zinc-400">Enter 10-digit mobile number without country code</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Short Description with live counter */}
+            <div>
+              <label className="block space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">Short Description</span>
+                  <span className={`text-[11px] font-mono tabular-nums ${
+                    (profileForm.watch("description") || "").length >= 200
+                      ? "text-red-500 font-bold"
+                      : "text-zinc-400"
+                  }`}>
+                    {(profileForm.watch("description") || "").length} / 200
+                  </span>
+                </div>
+                <textarea
+                  rows={4}
+                  maxLength={200}
+                  placeholder="A short description of your store…"
+                  className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                  {...profileForm.register("description", {
+                    maxLength: { value: 200, message: "Description must be under 200 characters" },
+                  })}
+                />
+                {profileForm.formState.errors.description && (
+                  <span className="block text-[11px] font-semibold text-red-600">
+                    {profileForm.formState.errors.description.message}
+                  </span>
+                )}
+              </label>
             </div>
 
             <FormTextarea
-              label="Short Description"
-              error={profileForm.formState.errors.description}
-              {...profileForm.register("description", {
+              label="Store Location"
+              error={profileForm.formState.errors.store_location}
+              {...profileForm.register("store_location", {
                 maxLength: {
                   value: 1000,
-                  message: "Description must be under 1000 characters",
+                  message: "Store Location must be under 1000 characters",
                 },
               })}
             />
@@ -1015,68 +1030,6 @@ export default function SettingsPage() {
           </form>
         </SettingsCard>
 
-        <SettingsCard
-          title="Regional & Currency"
-          subtitle="Market defaults"
-          icon={Globe2}
-          accent="emerald"
-        >
-          <form
-            onSubmit={regionalForm.handleSubmit(saveRegional)}
-            className="flex flex-col w-full gap-5 pb-5"
-          >
-            <div className="flex flex-col sm:flex-row w-full gap-4">
-              <div className="w-full flex flex-col gap-3">
-                <SelectInput
-                  label="Country"
-                  options={countriesList.length > 0 ? countriesList : countries}
-                  error={regionalForm.formState.errors.country}
-                  {...regionalForm.register("country", {
-                    required: "Country is required",
-                    minLength: { value: 2, message: "Country name is too short" },
-                    maxLength: { value: 100, message: "Country name cannot exceed 100 characters" },
-                  })}
-                />
-                <SelectInput
-                  label="Currency"
-                  options={currenciesList.length > 0 ? currenciesList : currencies}
-                  error={regionalForm.formState.errors.currency}
-                  {...regionalForm.register("currency", {
-                    required: "Currency is required",
-                    minLength: { value: 2, message: "Currency code is too short" },
-                    maxLength: { value: 10, message: "Currency code cannot exceed 10 characters" },
-                  })}
-                />
-              </div>
-              <div className="w-full flex flex-col gap-3">
-                <SelectInput
-                  label="Timezone"
-                  options={timezonesList.length > 0 ? timezonesList : timezones}
-                  error={regionalForm.formState.errors.timezone}
-                  {...regionalForm.register("timezone", {
-                    required: "Timezone is required",
-                    minLength: { value: 2, message: "Timezone is too short" },
-                    maxLength: { value: 100, message: "Timezone cannot exceed 100 characters" },
-                  })}
-                />
-                <SelectInput
-                  label="Weight Unit"
-                  options={weightUnitsList.length > 0 ? weightUnitsList : weightUnits}
-                  error={regionalForm.formState.errors.weight_unit}
-                  {...regionalForm.register("weight_unit", {
-                    required: "Weight unit is required",
-                    minLength: { value: 1, message: "Weight unit is too short" },
-                    maxLength: { value: 20, message: "Weight unit cannot exceed 20 characters" },
-                  })}
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <SaveButton loading={saving.regional} disabled={saving.regional || !regionalForm.formState.isDirty}>Save Regional</SaveButton>
-            </div>
-          </form>
-        </SettingsCard>
       </div>
 
       <SettingsCard
@@ -1183,7 +1136,7 @@ export default function SettingsPage() {
                 </h2>
 
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  Google Authenticator or Authy
+                  Google Authenticator
                 </p>
               </div>
 
@@ -1513,17 +1466,31 @@ export default function SettingsPage() {
         icon={CreditCardIcon}
         accent="amber"
       >
-        <div className="flex flex-col gap-3 py-4">
-          {payments.map((method) => (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            savePaymentMethods();
+          }}
+          className="flex flex-col gap-3 py-4"
+        >
+          {localPayments.map((method) => (
             <PaymentMethodCard
               key={method.id}
               method={method}
-              loading={paymentLoading[method.id]}
-              onToggle={togglePayment}
-              onUpdate={updatePaymentMethod}
+              loading={paymentSaving}
+              onToggle={(m, val) => handleLocalPaymentChange(m.id, { is_active: val })}
+              onUpdate={(m, fields) => handleLocalPaymentChange(m.id, fields)}
             />
           ))}
-        </div>
+          <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-zinc-800">
+            <SaveButton
+              loading={paymentSaving}
+              disabled={paymentSaving || !isPaymentsDirty}
+            >
+              Save Payments
+            </SaveButton>
+          </div>
+        </form>
       </SettingsCard>
       <SettingsCard
         title="Notification Triggers"

@@ -16,3 +16,5 @@ from app.modules.settings.models import (  # noqa: F401
     PaymentMethod,
     StoreSettings,
 )
+from app.modules.notifications.models import AdminNotification  # noqa: F401
+

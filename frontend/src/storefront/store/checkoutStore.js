@@ -12,7 +12,6 @@ function loadAddresses() {
     return []
   }
 }
-
 function persistAddresses(addresses) {
   try {
     localStorage.setItem(ADDRESS_KEY, JSON.stringify(addresses))
@@ -33,6 +32,7 @@ const checkoutSlice = createSlice({
     })(),
     placingOrder: false,
     orderError: null,
+    checkoutPayload: null,
   },
   reducers: {
     addAddress(state, action) {
@@ -42,10 +42,19 @@ const checkoutSlice = createSlice({
       persistAddresses(state.addresses)
     },
     updateAddress(state, action) {
-      const idx = state.addresses.findIndex((a) => a.id === action.payload.id)
-      if (idx >= 0) {
-        state.addresses[idx] = { ...state.addresses[idx], ...action.payload }
-        persistAddresses(state.addresses)
+      const { id, data } = action.payload;
+
+      const idx = state.addresses.findIndex(
+        (a) => a.id === id
+      );
+
+      if (idx !== -1) {
+        state.addresses[idx] = {
+          ...state.addresses[idx],
+          ...data,
+        };
+
+        persistAddresses(state.addresses);
       }
     },
     removeAddress(state, action) {
@@ -75,6 +84,13 @@ const checkoutSlice = createSlice({
         /* ignore */
       }
     },
+    setCheckoutPayload(state, action) {
+      state.checkoutPayload = action.payload
+    },
+
+    clearCheckoutPayload(state) {
+      state.checkoutPayload = null
+    },
   },
 })
 
@@ -87,6 +103,10 @@ export const {
   setPlacingOrder,
   setOrderError,
   setLastOrder,
+
+  setCheckoutPayload,
+  clearCheckoutPayload,
+
 } = checkoutSlice.actions
 
 export default checkoutSlice.reducer

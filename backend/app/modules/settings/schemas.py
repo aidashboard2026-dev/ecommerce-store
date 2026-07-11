@@ -32,6 +32,7 @@ class StoreSettingsBase(BaseModel):
     support_email: EmailStr
     support_phone: Optional[str] = Field(default=None, max_length=30)
     description: Optional[str] = Field(default=None, max_length=1000)
+    store_location: Optional[str] = Field(default=None, max_length=1000)
     logo: Optional[str] = None
     country: str = Field(..., min_length=2, max_length=100)
     currency: str = Field(..., min_length=2, max_length=10)
@@ -96,6 +97,7 @@ class StoreSettingsUpdate(BaseModel):
     support_email: Optional[EmailStr] = None
     support_phone: Optional[str] = Field(default=None, max_length=30)
     description: Optional[str] = Field(default=None, max_length=1000)
+    store_location: Optional[str] = Field(default=None, max_length=1000)
     logo: Optional[str] = None
     country: Optional[str] = Field(default=None, min_length=2, max_length=100)
     currency: Optional[str] = Field(default=None, min_length=2, max_length=10)
@@ -230,8 +232,21 @@ class PasswordUpdate(BaseModel):
 
 class PaymentMethodUpdate(BaseModel):
     description: Optional[str] = Field(default=None, max_length=500)
-    fee: Optional[Decimal] = None
+    fee: Optional[Decimal] = Field(default=Decimal("0.00"), ge=0)
     is_active: Optional[bool] = None
+
+    @field_validator("fee", mode="before")
+    @classmethod
+    def validate_fee(cls, value):
+        if value is None or str(value).strip() == "":
+            return Decimal("0.00")
+        try:
+            val = Decimal(str(value))
+        except Exception:
+            raise ValueError("Fee must be a valid number.")
+        if val < 0:
+            raise ValueError("Fee cannot be negative.")
+        return val
 
 class PaymentMethodResponse(BaseModel):
     id: int

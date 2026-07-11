@@ -41,6 +41,7 @@ class OrderBase(BaseModel):
 
     # Decimal matches Numeric(10,2) on the database — no floating-point rounding.
     price:        Decimal = Field(default=Decimal("0.00"), ge=0)
+    shipping_fee: Decimal = Field(default=Decimal("0.00"), ge=0)
     total_amount: Decimal = Field(default=Decimal("0.00"), ge=0)
 
     payment_method: str = Field("COD",     max_length=50)
@@ -57,6 +58,12 @@ class OrderBase(BaseModel):
 
     # Groups all rows from the same checkout session.
     cart_session_id: Optional[str] = Field(None, max_length=100)
+
+    # Razorpay Payment Fields
+    razorpay_order_id: Optional[str] = Field(None, max_length=100)
+    razorpay_payment_id: Optional[str] = Field(None, max_length=100)
+    razorpay_signature: Optional[str] = Field(None, max_length=200)
+    payment_verified_at: Optional[datetime] = None
 
     # Item type — set by the service layer; clients may send it but it
     # will be validated and overridden if incorrect.
@@ -130,6 +137,7 @@ class OrderTrackingResponse(BaseModel):
     size:                   Optional[str] = None
     color:                  Optional[str] = None
     total_amount:           float
+    shipping_fee:           float
     tracking_status:        str
     tracking_note:          Optional[str] = None
     logistics:              Optional[str] = None
@@ -139,3 +147,28 @@ class OrderTrackingResponse(BaseModel):
     expected_delivery_date: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
+
+
+# ─────────────────────────────────────────────────────────────
+# Razorpay Schemas
+# ─────────────────────────────────────────────────────────────
+
+class RazorpayOrderCreateRequest(BaseModel):
+    cart_session_id: str = Field(..., min_length=1, max_length=100)
+
+
+class RazorpayOrderCreateResponse(BaseModel):
+    id: str
+    amount: int
+    currency: str
+    key: Optional[str] = None
+    receipt: Optional[str] = None
+    status: Optional[str] = None
+
+
+class RazorpayPaymentVerifyRequest(BaseModel):
+    cart_session_id: str = Field(..., min_length=1, max_length=100)
+    razorpay_order_id: str = Field(..., min_length=1, max_length=100)
+    razorpay_payment_id: str = Field(..., min_length=1, max_length=100)
+    razorpay_signature: str = Field(..., min_length=1, max_length=200)
+

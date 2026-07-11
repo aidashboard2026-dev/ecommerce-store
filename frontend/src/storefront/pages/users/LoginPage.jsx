@@ -12,7 +12,7 @@ export default function LoginPage() {
   const { settings } = useStoreSettings()
 
   const logoUrl = settings?.logo
-  const storeName = settings?.store_name || "AuraStore"
+  const storeName = import.meta.env.VITE_STORE_NAME || 'My Designers'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -74,7 +74,7 @@ export default function LoginPage() {
             </div>
           )}
           <h1 className="font-display font-bold text-2xl text-app tracking-tight text-center">
-            {logoUrl ? storeName : <>Admin<span className="text-brand-500">Dash</span> Pro</>}
+            {storeName}
           </h1>
           <p className="text-muted text-sm mt-1">Sign in to your dashboard</p>
         </div>

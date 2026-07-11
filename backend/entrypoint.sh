@@ -8,7 +8,7 @@ POSTGRES_USER="${POSTGRES_USER:-admin}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-password}"
 POSTGRES_DB="${POSTGRES_DB:-admindb}"
 
-echo "[entrypoint] Waiting for PostgreSQL..."
+echo "[Startup] Waiting for PostgreSQL"
 
 python <<PYEOF
 import time
@@ -37,24 +37,24 @@ for attempt in range(max_retries):
             dbname=dbname,
         )
         conn.close()
-        print("[entrypoint] PostgreSQL is ready.")
+        print("[Startup] PostgreSQL Ready")
         sys.exit(0)
 
     except Exception as e:
-        print(f"[entrypoint] ERROR: {e}")
-        print(f"[entrypoint] Waiting for PostgreSQL... ({attempt + 1}/{max_retries})")
+        print(f"[Startup] ERROR: {e}")
+        print(f"[Startup] Waiting for PostgreSQL ({attempt + 1}/{max_retries})")
         time.sleep(2)
 
-print("[entrypoint] ERROR: PostgreSQL did not become ready.")
+print("[Startup] ERROR: PostgreSQL did not become ready.")
 sys.exit(1)
 PYEOF
 
-echo "[entrypoint] Running Alembic migrations..."
+echo "[Startup] Running Alembic"
 
 alembic upgrade heads
-echo "[entrypoint] Migrations complete."
+echo "[Startup] Alembic Complete"
 
-echo "[entrypoint] Running database seed..."
+echo "[Startup] Running database seed..."
 
 python -c "
 import logging
@@ -64,16 +64,18 @@ from app.core.init_db import init_db
 
 init_db()
 
-print('[entrypoint] Database seed complete.')
+print('[Startup] Database Seed Complete')
 "
 
 echo '[entrypoint] Starting Gunicorn with Uvicorn workers...'
 
+# gunicorn.conf.py (in the working directory /app) is auto-loaded by Gunicorn
+# and provides: workers, worker_class, bind, timeout, keepalive, loglevel,
+# capture_output, accesslog, errorlog.
+# --capture-output is critical: it routes all worker stdout/stderr (including
+# Python exception tracebacks) into the Gunicorn error log so they appear in
+# `docker compose logs backend`.
 exec gunicorn app.main:app \
-    --workers 2 \
-    --worker-class uvicorn.workers.UvicornWorker \
-    --bind 0.0.0.0:8000 \
-    --timeout 120 \
-    --keep-alive 5 \
-    --access-logfile - \
-    --error-logfile -
+    --config gunicorn.conf.py \
+    --capture-output \
+    --log-level info

@@ -74,11 +74,18 @@ class Order(Base):
 
     # Numeric(10, 2) — exact decimal arithmetic; no floating-point rounding errors.
     price        = Column(Numeric(precision=10, scale=2), default=0)
+    shipping_fee = Column(Numeric(precision=10, scale=2), default=0)
     total_amount = Column(Numeric(precision=10, scale=2), default=0)
 
     # ── Payment ──────────────────────────────────────────────────────────────
     payment_method = Column(String(50), default="COD")
     payment_status = Column(String(50), default="PENDING")
+
+    # ── Razorpay Payment Fields ──────────────────────────────────────────────
+    razorpay_order_id   = Column(String(100), nullable=True, index=True)
+    razorpay_payment_id = Column(String(100), nullable=True)
+    razorpay_signature  = Column(String(200), nullable=True)
+    payment_verified_at = Column(DateTime(timezone=True), nullable=True)
 
     # ── Tracking ─────────────────────────────────────────────────────────────
     tracking_status = Column(String(50), default="PLACED")

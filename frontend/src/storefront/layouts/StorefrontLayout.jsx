@@ -1,4 +1,4 @@
-import React, { Suspense, useCallback } from "react";
+import React, { Suspense, useCallback, createContext, useContext, useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 
@@ -8,6 +8,13 @@ import { customerLogoutThunk } from "@/storefront/store/customerSlice";
 import StoreHeader from "@/storefront/components/storeindex/StoreHeader";
 import StoreFooter from "@/storefront/components/storeindex/StoreFooter";
 import CartDrawer from "@/storefront/components/shoppingcart/CartDrawer";
+import GuestAuthModal from "@/storefront/components/checkout/GuestAuthModal";
+
+export const CheckoutAuthModalContext = createContext(null);
+
+export function useCheckoutAuthModal() {
+  return useContext(CheckoutAuthModalContext);
+}
 
 export default function StorefrontLayout() {
   const navigate = useNavigate();
@@ -18,6 +25,18 @@ export default function StorefrontLayout() {
   const wishlistItems = useSelector((s) => s.wishlist.items);
 
   const { isDark, toggle: toggleTheme } = useTheme();
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalTrigger, setModalTrigger] = useState(null);
+
+  const openCheckoutAuthModal = useCallback((triggerEl) => {
+    setModalTrigger(triggerEl);
+    setModalOpen(true);
+  }, []);
+
+  const closeCheckoutAuthModal = useCallback(() => {
+    setModalOpen(false);
+  }, []);
 
   // Track page scroll to toggle header background glassmorphism
   const handleLogout = useCallback(() => {
@@ -31,43 +50,51 @@ export default function StorefrontLayout() {
   const wishlistCount = wishlistItems.length;
 
   return (
-    <div className="min-h-screen w-full store-bg flex flex-col transition-colors duration-300">
-      {/* Top Promotional Banner */}
-      {/* <div className="bg-gradient-to-r from-brand-600 to-indigo-600 text-white text-xs py-2 px-4 text-center font-medium tracking-wide">
-        FREE SHIPPING ON ORDERS OVER ₹999 & COMPLIMENTARY TRIAL GIFTS IN EVERY ORDER!
-      </div> */}
+    <CheckoutAuthModalContext.Provider value={{ openCheckoutAuthModal, closeCheckoutAuthModal }}>
+      <div className="min-h-screen w-full store-bg flex flex-col transition-colors duration-300">
+        {/* Top Promotional Banner */}
+        {/* <div className="bg-gradient-to-r from-brand-600 to-indigo-600 text-white text-xs py-2 px-4 text-center font-medium tracking-wide">
+          FREE SHIPPING ON ORDERS OVER ₹999 & COMPLIMENTARY TRIAL GIFTS IN EVERY ORDER!
+        </div> */}
 
-      {/* Main Glassmorphic Header */}
-      <StoreHeader
-        // scrolled={scrolled}
-        location={location}
-        toggleTheme={toggleTheme}
-        isDark={isDark}
-        wishlistCount={wishlistCount}
-        cartCount={cartCount}
-        token={token}
-        customer={customer}
-        handleLogout={handleLogout}
-      />
+        {/* Main Glassmorphic Header */}
+        <StoreHeader
+          // scrolled={scrolled}
+          location={location}
+          toggleTheme={toggleTheme}
+          isDark={isDark}
+          wishlistCount={wishlistCount}
+          cartCount={cartCount}
+          token={token}
+          customer={customer}
+          handleLogout={handleLogout}
+        />
 
-      {/* Main Page Layout Wrapper */}
-      <main className="flex-1 w-full mt-5 p-2 relative">
-        <Suspense
-          fallback={
-            <div className="flex items-center justify-center min-h-[60vh]">
-              <div className="text-gray-500 text-lg">
-                Loading...
+        {/* Main Page Layout Wrapper */}
+        <main className="flex-1 w-full mt-5 p-2 relative">
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="text-gray-500 text-lg">
+                  Loading...
+                </div>
               </div>
-            </div>
-          }
-        >
-          <Outlet />
-        </Suspense>
-      </main>
+            }
+          >
+            <Outlet />
+          </Suspense>
+        </main>
 
-      <CartDrawer />
+        <CartDrawer />
 
-      <StoreFooter />
-    </div>
+        <StoreFooter />
+
+        <GuestAuthModal
+          isOpen={modalOpen}
+          onClose={closeCheckoutAuthModal}
+          triggerElement={modalTrigger}
+        />
+      </div>
+    </CheckoutAuthModalContext.Provider>
   );
 }

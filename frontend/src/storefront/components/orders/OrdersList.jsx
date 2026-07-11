@@ -1,14 +1,16 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Package, ChevronDown, ChevronUp, XCircle } from 'lucide-react'
+import { Package, ChevronDown, ChevronUp, XCircle, Download } from 'lucide-react'
 import clsx from 'clsx'
 import { useMyOrders, useCancelOrder } from '@/storefront/hooks/useOrders'
 import { getImageUrl, formatPrice } from '@/shared/utils/productUtils'
 import OrderTimeline from '@/storefront/components/orders/OrderTimeline'
+import { storefrontAPI } from '@/shared/services/api'
 
 function OrderCard({ order }) {
   const [expanded, setExpanded] = useState(false)
+  const [downloadingInvoice, setDownloadingInvoice] = useState(false)
   const cancelMutation = useCancelOrder()
 
   const canCancel = !['SHIPPED', 'DELIVERED', 'CANCELLED'].includes((order.tracking_status || '').toUpperCase())
@@ -20,6 +22,28 @@ function OrderCard({ order }) {
       toast.success('Order cancelled')
     } catch (err) {
       toast.error(err?.response?.data?.detail || 'Failed to cancel order')
+    }
+  }
+
+  const handleDownloadInvoice = async () => {
+    setDownloadingInvoice(true)
+    try {
+      const response = await storefrontAPI.downloadInvoice(order.id)
+      const blob = new Blob([response.data], { type: 'application/pdf' })
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href     = url
+      a.download = `Invoice-${order.order_number}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      toast.success('Invoice downloaded!')
+    } catch (err) {
+      console.error(err)
+      toast.error('Failed to download invoice')
+    } finally {
+      setDownloadingInvoice(false)
     }
   }
 
@@ -81,13 +105,21 @@ function OrderCard({ order }) {
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <Link
               to={`/orders/${order.id}`}
               className="flex-1 text-center border border-app rounded-full py-2.5 text-sm font-semibold text-app hover:bg-surface transition-colors"
             >
               View Details
             </Link>
+            <button
+              onClick={handleDownloadInvoice}
+              disabled={downloadingInvoice}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 border border-brand-500/30 text-brand-500 rounded-full py-2.5 text-sm font-semibold hover:bg-brand-500/5 transition-colors disabled:opacity-60"
+            >
+              <Download size={14} />
+              {downloadingInvoice ? 'Downloading…' : 'Download Invoice'}
+            </button>
             {canCancel && (
               <button
                 onClick={handleCancel}
@@ -103,9 +135,20 @@ function OrderCard({ order }) {
     </div>
   )
 }
-
 export default function OrdersList() {
-  const { data: orders = [], isLoading } = useMyOrders()
+  const { data, isLoading } = useMyOrders()
+
+  console.log("Orders API Response:", data)
+
+  const orders = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.orders)
+    ? data.orders
+    : Array.isArray(data?.items)
+    ? data.items
+    : Array.isArray(data?.data)
+    ? data.data
+    : []
 
   if (isLoading) {
     return (
@@ -125,9 +168,19 @@ export default function OrdersList() {
         <div className="h-16 w-16 rounded-full bg-surface flex items-center justify-center">
           <Package size={28} className="text-muted" />
         </div>
-        <h1 className="font-display font-bold text-xl text-app">No orders yet</h1>
-        <p className="text-sm text-muted max-w-sm">When you place an order, it'll show up here.</p>
-        <Link to="/products" className="inline-flex items-center justify-center bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm px-6 py-3 rounded-full shadow-glow-sm transition-colors">
+
+        <h1 className="font-display font-bold text-xl text-app">
+          No orders yet
+        </h1>
+
+        <p className="text-sm text-muted max-w-sm">
+          When you place an order, it'll show up here.
+        </p>
+
+        <Link
+          to="/products"
+          className="inline-flex items-center justify-center bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm px-6 py-3 rounded-full shadow-glow-sm transition-colors"
+        >
           Start Shopping
         </Link>
       </div>
@@ -136,7 +189,10 @@ export default function OrdersList() {
 
   return (
     <div className="mx-auto w-full max-w-[900px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      <h1 className="font-display font-bold text-2xl sm:text-3xl text-app mb-8">My Orders</h1>
+      <h1 className="font-display font-bold text-2xl sm:text-3xl text-app mb-8">
+        My Orders
+      </h1>
+
       <div className="flex flex-col gap-4">
         {orders.map((order) => (
           <OrderCard key={order.id} order={order} />

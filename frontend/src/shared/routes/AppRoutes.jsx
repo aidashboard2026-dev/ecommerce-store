@@ -5,6 +5,7 @@ import {
   Navigate,
   useNavigate,
   useParams,
+  useLocation,
 } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 
@@ -17,9 +18,7 @@ import StorefrontLayout from "@/storefront/layouts/StorefrontLayout";
 import ProductDetails from "@/storefront/components/product/ProductDetails";
 import OrderSuccess from "@/storefront/components/checkout/OrderSuccess";
 import ReturnsPolicy from "@/storefront/pages/policys/ReturnsPolicy";
-
-// const AboutPage = lazy(() => import("@/storefront/components/storeindex/StoreFrontFooterPages/AboutPage"));
-// import OrderTimelinePage from "@/storefront/components/orders/OrderTimeline";
+// import OrderTimelinePage from "@/storefront/components/order/components/OrderTimeline";
 
 // Lazy loaded pages/components to optimize bundle sizes
 const AdminLoginPage = lazy(() => import("@/admin/pages/LoginPage"));
@@ -91,8 +90,24 @@ function AdminPublicRoute({ children }) {
 // ── CUSTOMER AUTH STATE ──────────────────────────────────────────────────────
 function CustomerProtectedRoute({ children }) {
   const { token, customer } = useSelector((s) => s.customer);
+  const cartItems = useSelector((s) => s.cart?.items || []);
+  const location = useLocation();
 
-  return token && customer ? children : <Navigate to="/auth/login" replace />;
+  if (token && customer) {
+    return children;
+  }
+
+  // Allow guest checkout if cart is not empty
+  if (location.pathname === "/checkout" && cartItems.length > 0) {
+    return children;
+  }
+
+  return <Navigate to="/auth/login" replace state={{ from: location }} />;
+}
+
+function NavigateToCustomerAuth({ target }) {
+  const location = useLocation();
+  return <Navigate to={target} replace state={location.state} />;
 }
 
 function CustomerPublicRoute({ children }) {
@@ -168,12 +183,9 @@ export default function AppRoutes() {
     <Suspense fallback={<Spinner />}>
       <Routes>
         {/* ── BACKWARD COMPATIBILITY REDIRECTS ─────────────────────────────── */}
-        <Route path="/login" element={<Navigate to="/admin/login" replace />} />
-
-        <Route
-          path="/signup"
-          element={<Navigate to="/admin/signup" replace />}
-        />
+        <Route path="/login" element={<NavigateToCustomerAuth target="/auth/login" />} />
+        <Route path="/register" element={<NavigateToCustomerAuth target="/auth/register" />} />
+        <Route path="/signup" element={<NavigateToCustomerAuth target="/auth/register" />} />
 
         {/* ── ADMIN AUTH ROUTES (structure unchanged) ───────────────────────── */}
         <Route
@@ -196,8 +208,6 @@ export default function AppRoutes() {
         >
           <Route index element={<DashboardPage />} />
           <Route path="products" element={<AdminProductsPage />} />
-          <Route path="products/:id" element={<AdminProductsPage />} />
-          <Route path="products/:id/edit" element={<AdminProductsPage />} />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="custom-products" element={<CustomProductsPage />} />
           <Route path="orders" element={<AdminOrdersPage />} />
@@ -296,7 +306,14 @@ export default function AppRoutes() {
           <Route path="auth/reset-password" element={<ResetPasswordPage />} />
 
           {/* Protected Customer Routes */}
-          <Route path="checkout" element={<CheckoutPage />} />
+          <Route
+            path="checkout"
+            element={
+              <CustomerProtectedRoute>
+                <CheckoutPage />
+              </CustomerProtectedRoute>
+            }
+          />
 
           <Route
             path="payment"

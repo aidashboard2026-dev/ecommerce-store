@@ -356,6 +356,18 @@ Dockerfile
 
 ---
 
+## WhatsApp Notification Integration
+
+The platform includes full architectural support for **WhatsApp Notifications** (via Meta WhatsApp Cloud API) alongside Email notifications.
+
+### Current Status
+* **Database & API**: Fully supported. Database fields, schemas, and endpoints for toggling WhatsApp alerts are active.
+* **Admin UI**: Fully functional. The Admin Settings page includes independent toggles for Email and WhatsApp per notification event.
+* **Runtime Dispatcher**: The WhatsApp channel execution logic is temporarily disabled (messages are not sent) in `backend/app/shared/notifications/service.py` to prepare for future Meta Cloud API integration.
+* **Future Integration**: To activate WhatsApp notifications, only the provider-level sending logic needs to be implemented inside the dispatcher; the UI settings, database schema, and event triggers are fully ready and require zero modification.
+
+---
+
 ## API Reference
 
 All endpoints are prefixed with `/api/v1`.

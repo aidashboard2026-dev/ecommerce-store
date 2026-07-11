@@ -160,7 +160,7 @@ def update_payment(
 ):
     try:
         payment = db.query(PaymentMethod).filter(PaymentMethod.id == payment_id).first()
-        if not payment:
+        if not payment or payment.name not in {"Online Payment", "Cash On Delivery"}:
             raise HTTPException(status_code=404, detail="Payment method not found.")
         previous_data = {
             "name": payment.name,
@@ -290,6 +290,7 @@ def update_profile(
             "support_email": previous.support_email,
             "support_phone": previous.support_phone,
             "description": previous.description,
+            "store_location": previous.store_location,
             "logo": previous.logo,
         }
         result = update_store_settings(db, payload)
@@ -299,6 +300,7 @@ def update_profile(
             "support_email": result.support_email,
             "support_phone": result.support_phone,
             "description": result.description,
+            "store_location": result.store_location,
             "logo": result.logo,
         }
         audit.log(
@@ -658,10 +660,13 @@ def read_public_settings(db: Session = Depends(get_db)):
             "store_url": settings_row.store_url,
             "logo": logo_url,
             "description": settings_row.description,
+            "store_location": settings_row.store_location,
             "country": settings_row.country,
             "currency": settings_row.currency,
             "timezone": settings_row.timezone,
             "weight_unit": settings_row.weight_unit,
+            "support_email": settings_row.support_email,
+            "support_phone": settings_row.support_phone,
         }
     except Exception as e:
         db.rollback()

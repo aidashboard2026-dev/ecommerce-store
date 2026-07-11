@@ -120,64 +120,47 @@ _IS_PRODUCTION = os.getenv("ENVIRONMENT", "development").lower() == "production"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ── Programmatic Alembic Upgrade ──
+    import traceback
+    import time
+
     try:
-        import alembic.config
-        import alembic.command
-        ini_path = "alembic.ini"
-        if not os.path.exists(ini_path) and os.path.exists("backend/alembic.ini"):
-            ini_path = "backend/alembic.ini"
-        alembic_cfg = alembic.config.Config(ini_path)
-        alembic.command.upgrade(alembic_cfg, "heads")
-        logger.info("Alembic upgrade completed successfully on lifespan startup.")
-    except Exception as e:
-        logger.error(f"Failed to run alembic upgrade on startup: {e}")
+        logger.info("[Startup] Initializing Services")
 
-    # ── Bootstrap Normalization Registry ──
-    from app.shared.normalization.rules.aliases import default_registry
-    from app.core.normalization import AURASTORE_COMPOUND_MAPPINGS, validate_aurastore_aliases
+        # ── Bootstrap Normalization Registry ──────────────────────────────────────
+        try:
+            from app.shared.normalization.rules.aliases import default_registry
+            from app.core.normalization import AURASTORE_COMPOUND_MAPPINGS, validate_mydesigners_aliases
 
-    
-    # Run lightweight startup check (validates mappings integrity)
-    validate_aurastore_aliases(AURASTORE_COMPOUND_MAPPINGS)
-    
-    default_registry.initialize_aliases(AURASTORE_COMPOUND_MAPPINGS)
+            # Validates mapping integrity (logs warnings for redundant/circular)
+            validate_mydesigners_aliases(AURASTORE_COMPOUND_MAPPINGS)
 
-    # ── Fix 8: Fail loudly if Supabase credentials are absent in production ──
-    if _IS_PRODUCTION and not (settings.SUPABASE_URL and settings.SUPABASE_SERVICE_ROLE_KEY):
-        raise RuntimeError(
-            "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in production. "
-            "Uploaded images would be written to an ephemeral local directory and "
-            "lost on every container restart. Set these env vars and redeploy."
+            default_registry.initialize_aliases(AURASTORE_COMPOUND_MAPPINGS)
+            logger.info("[startup] Normalization registry initialized (%d aliases).", len(AURASTORE_COMPOUND_MAPPINGS))
+        except Exception:
+            logger.critical("[startup] FATAL: Normalization registry initialization failed:\n%s", traceback.format_exc())
+            raise
+
+        # ── Supabase Credentials Check (production guard) ─────────────────────────
+        if _IS_PRODUCTION and not (settings.SUPABASE_URL and settings.SUPABASE_SERVICE_ROLE_KEY):
+            raise RuntimeError(
+                "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in production. "
+                "Uploaded images would be written to an ephemeral local directory and "
+                "lost on every container restart. Set these env vars and redeploy."
+            )
+
+        logger.info("[Startup] Application Started Successfully")
+        yield
+
+    except BaseException as e:
+        logger.critical(
+            "[Startup] FATAL: Application failed during startup stage: %s\n%s",
+            e, traceback.format_exc(),
+            exc_info=True
         )
+        raise e
+    finally:
+        logger.info("[shutdown] Application shutdown complete.")
 
-    # ── Fix 9: Verify configured bucket names exist and are reachable ────────
-    if settings.SUPABASE_URL and settings.SUPABASE_SERVICE_ROLE_KEY:
-        import httpx as _httpx
-        _headers = {
-            "Authorization": f"Bearer {settings.SUPABASE_SERVICE_ROLE_KEY}",
-            "apikey": settings.SUPABASE_SERVICE_ROLE_KEY,
-        }
-        for bucket in (settings.SUPABASE_PRODUCT_BUCKET, settings.SUPABASE_CUSTOM_PRODUCT_BUCKET, settings.SUPABASE_BANNER_BUCKET):
-            _url = f"{settings.SUPABASE_URL.rstrip('/')}/storage/v1/bucket/{bucket}"
-            try:
-                resp = _httpx.get(_url, headers=_headers, timeout=10.0)
-                if resp.status_code == 404:
-                    raise RuntimeError(
-                        f"Supabase bucket '{bucket}' does not exist. "
-                        f"Create it in your Supabase project or update "
-                        f"SUPABASE_PRODUCT_BUCKET / SUPABASE_BANNER_BUCKET in .env."
-                    )
-                if resp.status_code not in (200, 201):
-                    logger.warning(
-                        "Could not verify Supabase bucket '%s' (HTTP %s). "
-                        "Image uploads may fail at runtime.",
-                        bucket, resp.status_code,
-                    )
-            except _httpx.HTTPError as exc:
-                logger.warning("Supabase bucket check failed for '%s': %s", bucket, exc)
-
-    yield
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -366,6 +349,7 @@ async def integrity_error_handler(request: Request, exc: IntegrityError):
 # API Routes
 # ──────────────────────────────────────────────────────────────────────────────
 
+logger.info("[Startup] Registering Routes")
 app.include_router(
     api_router,
     prefix=settings.API_V1_STR,
@@ -376,9 +360,14 @@ app.include_router(
 # Health Check
 # ──────────────────────────────────────────────────────────────────────────────
 
+logger.info("[Startup] Health Endpoint Ready")
 @app.get("/health")
 async def health_check():
     return {
         "status": "healthy",
         "version": settings.VERSION,
     }
+
+
+
+

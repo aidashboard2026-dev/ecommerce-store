@@ -17,7 +17,8 @@ Everything else lives in:
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status, Header
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -33,9 +34,14 @@ from app.modules.orders.schemas import (
     OrderResponse,
     OrderTrackingResponse,
     OrderUpdate,
+    RazorpayOrderCreateRequest,
+    RazorpayOrderCreateResponse,
+    RazorpayPaymentVerifyRequest,
 )
+from app.shared.invoice import generate_invoice_pdf, invoice_filename
 
 router = APIRouter()
+
 
 
 # ─────────────────────────────────────────────────────────────
@@ -79,6 +85,28 @@ def get_order(
 ):
     """Admin — fetch a single order by PK."""
     return order_service.get_order(db, order_id)
+
+
+@router.get("/{order_id}/invoice")
+def download_invoice_admin(
+    order_id: int,
+    db:       Session = Depends(get_db),
+    _:        Admin   = Depends(get_current_admin),
+):
+    """
+    Admin — generate and download the invoice PDF for any order.
+
+    Uses the single shared invoice generator (app.shared.invoice.service).
+    The PDF is identical to the customer download and email attachment.
+    """
+    order = order_service.get_order(db, order_id)
+    pdf_bytes = generate_invoice_pdf(order, db=db)
+    filename  = invoice_filename(order)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ─────────────────────────────────────────────────────────────
@@ -194,6 +222,37 @@ def create_customer_order(
     return order_service.create_order_customer(db, order_in, current_customer)
 
 
+@router.post("/customer/razorpay/create", response_model=RazorpayOrderCreateResponse)
+def create_razorpay_order_endpoint(
+    payload:          RazorpayOrderCreateRequest,
+    db:               Session  = Depends(get_db),
+    current_customer: Customer = Depends(get_current_customer),
+):
+    """Storefront — create a Razorpay Order for a cart session."""
+    return order_service.create_razorpay_order(
+        db,
+        cart_session_id=payload.cart_session_id,
+        customer=current_customer,
+    )
+
+
+@router.post("/customer/razorpay/verify", response_model=list[OrderResponse])
+def verify_razorpay_payment_endpoint(
+    payload:          RazorpayPaymentVerifyRequest,
+    db:               Session  = Depends(get_db),
+    current_customer: Customer = Depends(get_current_customer),
+):
+    """Storefront — verify Razorpay payment and mark order as PAID."""
+    return order_service.verify_razorpay_payment(
+        db,
+        cart_session_id=payload.cart_session_id,
+        razorpay_order_id=payload.razorpay_order_id,
+        razorpay_payment_id=payload.razorpay_payment_id,
+        razorpay_signature=payload.razorpay_signature,
+        customer=current_customer,
+    )
+
+
 @router.get("/customer/all", response_model=OrderListResponse)
 def list_customer_orders(
     page:     int     = Query(1, ge=1),
@@ -227,6 +286,30 @@ def cancel_customer_order(
     return order_service.cancel_order_customer(db, order_id, current_customer)
 
 
+@router.get("/customer/{order_id}/invoice")
+def download_invoice_customer(
+    order_id:         int,
+    db:               Session  = Depends(get_db),
+    current_customer: Customer = Depends(get_current_customer),
+):
+    """
+    Storefront — customer downloads the invoice PDF for their own order.
+
+    Ownership is enforced — the customer can only access invoices for orders
+    belonging to their account. Uses the exact same PDF generator as the
+    Admin endpoint and the Email attachment. One generator, three paths.
+    """
+    # get_customer_order_or_raise enforces ownership
+    order = order_service.get_customer_order(db, order_id, current_customer)
+    pdf_bytes = generate_invoice_pdf(order, db=db)
+    filename  = invoice_filename(order)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 # ─────────────────────────────────────────────────────────────
 # Public — order tracking (no auth)
 # ─────────────────────────────────────────────────────────────
@@ -241,3 +324,77 @@ def track_order_by_number(
     Returns only shipping/status fields; strips all customer PII.
     """
     return order_service.get_order_by_number(db, order_number)
+
+
+
+
+
+@router.post("/razorpay/webhook", status_code=status.HTTP_200_OK)
+async def razorpay_webhook(
+    request: Request,
+    x_razorpay_signature: str = Header(None),
+    db: Session = Depends(get_db),
+):
+    """
+    Razorpay Webhook endpoint to receive asynchronous order payment events.
+    """
+    import json
+    import logging
+    from app.core.config import settings
+    from fastapi import HTTPException
+
+    logger = logging.getLogger("app")
+
+    if not x_razorpay_signature:
+        logger.warning("Webhook received without signature header.")
+        raise HTTPException(status_code=400, detail="Signature header missing.")
+
+    body = await request.body()
+
+    # Signature verification
+    if settings.RAZORPAY_WEBHOOK_SECRET:
+        import hmac
+        import hashlib
+        expected_sig = hmac.new(
+            settings.RAZORPAY_WEBHOOK_SECRET.encode(),
+            body,
+            hashlib.sha256
+        ).hexdigest()
+        
+        if not hmac.compare_digest(expected_sig, x_razorpay_signature):
+            logger.error("Webhook signature mismatch.")
+            raise HTTPException(status_code=400, detail="Signature verification failed.")
+
+    try:
+        data = json.loads(body.decode())
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload.")
+
+    event = data.get("event")
+    if event not in ("order.paid", "payment.captured"):
+        return {"status": "skipped", "message": f"Event '{event}' not processed."}
+
+    payload = data.get("payload", {})
+    order_entity = payload.get("order", {}).get("entity", {})
+    payment_entity = payload.get("payment", {}).get("entity", {})
+
+    razorpay_order_id = order_entity.get("id") or payment_entity.get("order_id")
+    razorpay_payment_id = payment_entity.get("id")
+
+    if not razorpay_order_id:
+        logger.warning("Webhook event missing razorpay_order_id.")
+        return {"status": "ignored", "message": "No razorpay_order_id found."}
+
+    try:
+        updated_count = order_service.process_razorpay_webhook_payment(
+            db=db,
+            razorpay_order_id=razorpay_order_id,
+            razorpay_payment_id=razorpay_payment_id
+        )
+        return {
+            "status": "success",
+            "message": f"Processed webhook event successfully. Updated {updated_count} order(s)."
+        }
+    except Exception as e:
+        logger.error(f"Failed to process webhook event: {e}", exc_info=True)
+        return {"status": "failed", "message": str(e)}

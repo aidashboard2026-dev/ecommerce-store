@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import clsx from "clsx";
@@ -19,38 +19,39 @@ import { CartBadge } from "@/storefront/components/shoppingcart";
 import { openCartDrawer } from "@/storefront/store/cartSlice";
 import useStoreSettings from "@/shared/hooks/useStoreSettings";
 
-// Static nav config — module scope so it isn't re-allocated every render.
-// `to` values must resolve against real routes/filters (see AppRoutes.jsx
-// CategoryRedirect + ProductsList.jsx searchParams contract). Do not point
-// these at "/sub-products" — that route is a dead catch-all redirect to
-// /products with no category context.
+// ─── Static nav config ───────────────────────────────────────────────────────
 const MOBILE_NAV_LINKS = [
   { label: "Home", to: "/" },
-  { label: "T-Shirts for Mens", to: "/products?category=t-shirts&gender=Men" },
-  {
-    label: "Track Pants for Mens",
-    to: "/products?category=track-pants&gender=Men",
-  },
-  { label: "Trousers for Mens", to: "/products?category=trousers&gender=Men" },
-  { label: "Shirts for Mens", to: "/products?category=shirts&gender=Men" },
+  { label: "T-Shirts for Mens", to: "/products?category=t-shirt&gender=Men" },
+  { label: "Track Pants for Mens", to: "/products?category=track-pant&gender=Men" },
+  { label: "Trousers for Mens", to: "/products?category=trouser&gender=Men" },
+  { label: "Shirts for Mens", to: "/products?category=shirt&gender=Men" },
   { label: "Custom product", to: "/custom" },
   { label: "Offers", to: "/offers" },
   { label: "Track Order", to: "/tracking" },
 ];
 
-const generateInitials = (name = "") => {
-  const initials = name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+/** Extracts initials from a name string: "John Doe" → "JD" */
+function generateInitials(name) {
+  if (!name || typeof name !== "string") return "?";
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+}
 
-  return initials || "U";
-};
+/** Build a display name from customer object */
+function getCustomerName(customer) {
+  if (!customer) return "Customer";
+  return (
+    customer.google_name ||
+    [customer.first_name, customer.last_name].filter(Boolean).join(" ").trim() ||
+    "Customer"
+  );
+}
 
+// ─── Component ───────────────────────────────────────────────────────────────
 const StoreHeaderComponent = function StoreHeader({
   toggleTheme,
   isDark,
@@ -63,90 +64,111 @@ const StoreHeaderComponent = function StoreHeader({
   const dispatch = useDispatch();
   const { settings } = useStoreSettings();
   const logoUrl = settings?.logo;
-  const storeName = settings?.store_name || "AuraStore";
+  const storeName = import.meta.env.VITE_STORE_NAME || "My Designers";
   const navigate = useNavigate();
   const location = useLocation();
-  const searchRef = useRef(null);
 
-  useEffect(() => {
-    console.log("=== StoreHeader MOUNTED ===");
-    return () => console.log("=== StoreHeader UNMOUNTED ===");
-  }, []);
+  const searchRef = useRef(null);
+  const profileRef = useRef(null);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [scrolled, setScrolled] = useState(false);
-  const [showSubProducts, setShowSubProducts] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
 
-  // Sync search input with URL search param
+  const customerName = getCustomerName(customer);
+
+  // ── Sync search input with URL ────────────────────────────────────────────
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const searchVal = params.get("search") || "";
     setSearchQuery(searchVal);
-    if (searchVal) {
-      setShowSearch(true);
-    }
+    setShowSearch(!!searchVal);
   }, [location.search]);
 
+  // ── Close all menus on route change ───────────────────────────────────────
   useEffect(() => {
-    const closeMenu = () => setShowSubProducts(false);
+    setMobileMenuOpen(false);
+    setProfileMenuOpen(false);
+    setShowSearch(false);
+  }, [location.pathname, location.search]);
 
-    if (showSubProducts) {
-      document.addEventListener("click", closeMenu);
-    }
-
-    return () => {
-      document.removeEventListener("click", closeMenu);
-    };
-  }, [showSubProducts]);
-
+  // ── Scroll detection ─────────────────────────────────────────────────────
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll);
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // ── Lock body scroll when mobile menu is open ─────────────────────────────
   useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [location.pathname]);
+    document.body.style.overflow = mobileMenuOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileMenuOpen]);
 
+  // ── Escape key handler ────────────────────────────────────────────────────
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (searchRef.current && !searchRef.current.contains(event.target)) {
-        if (!searchQuery.trim()) {
-          setShowSearch(false);
-        }
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      if (mobileMenuOpen) setMobileMenuOpen(false);
+      if (profileMenuOpen) setProfileMenuOpen(false);
+      if (showSearch) setShowSearch(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [mobileMenuOpen, profileMenuOpen, showSearch]);
+
+  // ── Click outside (profile dropdown + desktop search) ─────────────────────
+  useEffect(() => {
+    const onMouseDown = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileMenuOpen(false);
+      }
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(e.target) &&
+        !searchQuery.trim()
+      ) {
+        setShowSearch(false);
       }
     };
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
   }, [searchQuery]);
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
-    }
-  };
+  // ── Search submit ─────────────────────────────────────────────────────────
+  const handleSearchSubmit = useCallback(
+    (e) => {
+      e?.preventDefault();
+      const q = searchQuery.trim();
+      if (!q) return;
+      navigate(`/products?search=${encodeURIComponent(q)}`);
+      setShowSearch(false);
+    },
+    [searchQuery, navigate],
+  );
 
+  const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), []);
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
+      {/* ════════════════════ HEADER BAR ════════════════════ */}
       <header
         className={clsx(
-          "sticky top-0 z-40 store-bg transition-all py-3 px-3 sm:px-10 w-full duration-300 border-b border-app shadow-[0_1px_20px_rgba(0,0,0,0.12)]",
-          scrolled,
+          "sticky top-0 z-40 store-bg transition-all duration-300 w-full border-b border-app",
+          "py-3 px-3 sm:px-10",
+          "shadow-[0_1px_20px_rgba(0,0,0,0.12)]",
+          scrolled && "py-2 shadow-[0_4px_30px_rgba(0,0,0,0.2)]",
         )}
       >
         <div className="mx-auto w-full max-w-[1400px] flex items-center justify-between gap-4">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5  group shrink-0">
+          {/* ── Logo ─────────────────────────────────────────────────────── */}
+          <Link
+            to="/"
+            className="flex items-center gap-2.5 group shrink-0 min-h-[44px] rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+          >
             {logoUrl ? (
               <img
                 src={logoUrl}
@@ -159,63 +181,70 @@ const StoreHeaderComponent = function StoreHeader({
               </div>
             )}
             <span className="font-display font-bold text-lg text-app tracking-tight">
-              {logoUrl || settings?.store_name ? (
-                <span>{storeName}</span>
-              ) : (
-                <>
-                  My<span className="text-brand-500">Store</span>
-                </>
-              )}
+              {storeName}
             </span>
           </Link>
 
-          {/* Right Action Icons */}
-          <div className="flex items-center gap-2  sm:gap-4">
-            {/* Search Box - Desktop */}
+          {/* ── Right Actions ────────────────────────────────────────────── */}
+          <div className="flex items-center gap-1.5 sm:gap-3">
+            {/* Desktop Search */}
             <div
               ref={searchRef}
-              className="relative hidden md:flex items-center justify-end w-72"
+              className={clsx(
+                "relative hidden md:flex items-center justify-end transition-all duration-300",
+                showSearch ? "w-72" : "w-11",
+              )}
             >
               <form
                 onSubmit={handleSearchSubmit}
-                className={`relative transition-all duration-300 ease-in-out ${
+                className={clsx(
+                  "relative transition-all duration-300 ease-in-out overflow-hidden",
                   showSearch
-                    ? "w-72 opacity-100 translate-x-0"
-                    : "w-0 opacity-0 translate-x-4 pointer-events-none"
-                } overflow-hidden`}
+                    ? "w-full opacity-100 translate-x-0"
+                    : "w-0 opacity-0 translate-x-4 pointer-events-none",
+                )}
               >
                 <input
                   autoFocus={showSearch}
                   type="text"
-                  placeholder="Search premium apparel..."
+                  placeholder="Search premium apparel…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full text-sm bg-surface border border-app rounded-full py-2 pl-4"
+                  className="w-full text-sm bg-surface border border-app rounded-full py-2 pl-4 pr-12 text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                  aria-label="Search products"
                 />
               </form>
-
               <button
                 type="button"
-                onClick={() => setShowSearch(!showSearch)}
-                className="absolute z-10 p-2 rounded-full hover:bg-surface"
-                aria-label="Toggle search"
+                onClick={() => {
+                  if (showSearch && searchQuery.trim()) {
+                    handleSearchSubmit();
+                  } else {
+                    setShowSearch((v) => !v);
+                  }
+                }}
+                className="absolute right-0 z-10 w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                aria-label={showSearch ? "Submit search" : "Open search"}
               >
                 <Search size={20} />
               </button>
             </div>
+
+            {/* Mobile Search Button */}
             <button
               type="button"
               onClick={() => setShowSearch(true)}
-              className="p-2 rounded-full hover:bg-surface md:hidden"
+              className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface text-app md:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
               aria-label="Open search"
             >
               <Search size={20} />
             </button>
+
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-full hover:bg-surface text-app transition-colors duration-200"
-              aria-label="Toggle Theme"
+              className="hidden sm:flex w-11 h-11 items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors duration-200"
+              aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
             >
               {isDark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
@@ -223,12 +252,12 @@ const StoreHeaderComponent = function StoreHeader({
             {/* Wishlist */}
             <Link
               to="/wishlist"
-              className="p-2 rounded-full hover:bg-surface text-app transition-colors duration-200 relative"
-              aria-label="Wishlist"
+              className="hidden sm:flex w-11 h-11 items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors duration-200 relative"
+              aria-label={`Wishlist${wishlistCount > 0 ? ` (${wishlistCount} items)` : ""}`}
             >
               <Heart size={18} />
               {wishlistCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] font-bold h-4 w-4 rounded-full flex items-center justify-center animate-pulse">
+                <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] font-bold h-4 w-4 rounded-full flex items-center justify-center">
                   {wishlistCount}
                 </span>
               )}
@@ -238,108 +267,102 @@ const StoreHeaderComponent = function StoreHeader({
             <button
               type="button"
               onClick={() => dispatch(openCartDrawer())}
-              className="p-2 rounded-full hover:bg-surface text-app transition-colors duration-200 relative"
-              aria-label="Cart"
+              className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors duration-200 relative"
+              aria-label={`Cart${cartCount > 0 ? ` (${cartCount} items)` : ""}`}
             >
               <ShoppingCart size={18} />
               <CartBadge count={cartCount} />
             </button>
 
-            {/* Account / Login */}
+            {/* ── Account (Desktop) ──────────────────────────────────────── */}
             {token && customer ? (
-              <div className="relative hidden md:block group/profile">
-                <Link
-                  to="/profile"
-                  className="flex items-center gap-2 p-1.5 rounded-full hover:bg-surface text-app transition-colors duration-200"
+              <div ref={profileRef} className="relative hidden md:block">
+                <button
+                  type="button"
+                  onClick={() => setProfileMenuOpen((v) => !v)}
+                  className={clsx(
+                    "w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface text-app transition-colors duration-200",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
+                    profileMenuOpen && "ring-2 ring-brand-500",
+                  )}
+                  aria-expanded={profileMenuOpen}
+                  aria-haspopup="true"
+                  aria-label="User profile menu"
                 >
-                  {/* Google Image / Initial */}
-                  {customer?.photo_url ? (
+                  {customer.photo_url ? (
                     <img
                       src={customer.photo_url}
-                      alt={
-                        customer.google_name ||
-                        customer.first_name ||
-                        "Customer"
-                      }
+                      alt={customerName}
                       className="h-9 w-9 rounded-full object-cover border border-app"
                       referrerPolicy="no-referrer"
                     />
                   ) : (
                     <div className="h-9 w-9 rounded-full bg-cyan-600 flex items-center justify-center text-white text-sm font-semibold">
-                      {generateInitials(
-                        customer.google_name ||
-                          `${customer.first_name || ""} ${
-                            customer.last_name || ""
-                          }`,
-                      )}
+                      {generateInitials(customerName)}
                     </div>
                   )}
-                </Link>
+                </button>
 
-                {/* Profile Hover Dropdown */}
-                <div className="absolute right-0 mt-1.5 w-56 bg-app border border-app rounded-xl shadow-lg py-2 hidden group-hover/profile:block animate-fade-in z-50">
-                  {/* Customer Details */}
-                  <div className="px-4 py-3">
-                    <div className="min-w-0">
+                {/* ✅ Fixed: now driven by profileMenuOpen state */}
+                {profileMenuOpen && (
+                  <div
+                    className="absolute right-0 mt-1.5 w-56 bg-app border border-app rounded-xl shadow-lg py-2 animate-fade-in z-50"
+                    role="menu"
+                    aria-orientation="vertical"
+                  >
+                    <div className="px-4 py-3">
                       <p className="text-sm font-semibold text-app truncate">
-                        {customer.google_name ||
-                          `${customer.first_name || ""} ${
-                            customer.last_name || ""
-                          }`.trim() ||
-                          "Customer"}
+                        {customerName}
                       </p>
-
-                      <p className="text-xs text-muted truncate">
-                        {customer.email}
-                      </p>
+                      <p className="text-xs text-muted truncate">{customer.email}</p>
                     </div>
+                    <hr className="border-app my-1" />
+                    <Link
+                      to="/profile"
+                      onClick={() => setProfileMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-xs text-app hover:bg-surface transition-colors"
+                      role="menuitem"
+                    >
+                      <User size={13} /> My Account
+                    </Link>
+                    <Link
+                      to="/profile/orders"
+                      onClick={() => setProfileMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-xs text-app hover:bg-surface transition-colors"
+                      role="menuitem"
+                    >
+                      <ClipboardList size={13} /> My Orders
+                    </Link>
+                    <hr className="border-app my-1" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        handleLogout();
+                      }}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-xs text-red-500 hover:bg-surface text-left transition-colors"
+                      role="menuitem"
+                    >
+                      <LogOut size={13} /> Logout
+                    </button>
                   </div>
-
-                  <hr className="border-app my-1" />
-
-                  <Link
-                    to="/profile"
-                    className="flex items-center gap-2 px-4 py-2 text-xs text-app hover:bg-surface"
-                  >
-                    <User size={13} />
-                    My Account
-                  </Link>
-
-                  <Link
-                    to="/profile/orders"
-                    className="flex items-center gap-2 px-4 py-2 text-xs text-app hover:bg-surface"
-                  >
-                    <ClipboardList size={13} />
-                    My Orders
-                  </Link>
-
-                  <hr className="border-app my-1" />
-
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-xs text-red-500 hover:bg-surface text-left"
-                  >
-                    <LogOut size={13} />
-                    Logout
-                  </button>
-                </div>
+                )}
               </div>
             ) : (
               <Link
                 to="/auth/login"
-                className="hidden md:block text-app"
+                className="hidden md:flex w-11 h-11 items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors duration-200"
                 aria-label="Log in"
               >
-                <User size={22} />
+                <User size={20} />
               </Link>
             )}
 
             {/* Mobile Menu Toggle */}
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className=" rounded-full hover:bg-surface text-app transition-colors duration-200"
-              aria-label="Open Navigation Menu"
+              className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors duration-200"
+              aria-label="Open navigation menu"
             >
               <Menu size={22} />
             </button>
@@ -347,159 +370,138 @@ const StoreHeaderComponent = function StoreHeader({
         </div>
       </header>
 
+      {/* ════════════════════ MOBILE SEARCH OVERLAY ════════════════════ */}
       {showSearch && (
-        <div className="fixed h-fit inset-0 top-16 z-50 md:hidden bg-app">
-          <div className="p-4 border-b flex items-center gap-3">
+        <div className="fixed inset-0 top-[56px] z-50 md:hidden bg-app flex flex-col">
+          <form
+            onSubmit={handleSearchSubmit}
+            className="p-4 border-b border-app flex items-center gap-3 shrink-0"
+          >
             <input
               autoFocus
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search products..."
-              className="flex-1 bg-surface border-0 rounded-full py-2 px-5"
+              placeholder="Search products…"
+              className="flex-1 bg-surface border-0 rounded-full py-2.5 px-5 text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+              aria-label="Search products"
             />
-
             <button
+              type="button"
               onClick={() => setShowSearch(false)}
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface text-app transition-colors shrink-0"
               aria-label="Close search"
             >
               <X size={22} />
             </button>
-          </div>
+          </form>
+          {/* Tapping empty area closes search */}
+          <div className="flex-1" onClick={() => setShowSearch(false)} />
         </div>
       )}
 
+      {/* ════════════════════ MOBILE MENU DRAWER ════════════════════ */}
       {mobileMenuOpen && (
         <>
-          {/* Overlay */}
+          {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black/40 z-40 "
-            onClick={() => setMobileMenuOpen(false)}
+            className="fixed inset-0 bg-black/50 z-40"
+            onClick={closeMobileMenu}
+            aria-hidden="true"
           />
 
           {/* Drawer */}
-          <div className="fixed top-0 right-0 h-full w-72 bg-app border-l border-app z-50  shadow-xl flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-end p-4">
+          <nav
+            className="fixed top-0 right-0 h-full w-72 bg-app border-l border-app z-50 shadow-xl flex flex-col
+                        animate-[slideInRight_250ms_ease-out]"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation menu"
+          >
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between p-4 border-b border-app shrink-0">
+              <span className="font-display font-bold text-app">Menu</span>
               <button
-                onClick={() => setMobileMenuOpen(false)}
-                aria-label="Close navigation menu"
+                onClick={closeMobileMenu}
+                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface text-app transition-colors"
+                aria-label="Close menu"
               >
                 <X size={22} />
               </button>
             </div>
 
-            {/* Navigation
-                Each entry maps to a real, filterable destination.
-                category/gender values must match the Category.name and
-                ProductGender.gender values used by the backend service
-                layer (see app/modules/products/service.py) so the query
-                params here actually filter results on /products. */}
-            <div className="flex flex-col py-3">
+            {/* Scrollable Links */}
+            <div className="flex-1 overflow-y-auto overscroll-contain py-2">
               {MOBILE_NAV_LINKS.map((link) => (
                 <Link
-                  key={link.label}
+                  key={link.to}
                   to={link.to}
                   state={{ fromMenu: true }}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="px-5 py-3 uppercase hover:bg-surface"
+                  onClick={closeMobileMenu}
+                  className="block px-5 py-3.5 uppercase text-sm font-semibold tracking-wider text-app hover:bg-surface transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
                 >
                   {link.label}
                 </Link>
               ))}
-
-              <div className="flex flex-col md:hidden">
-                {token && customer ? (
-                  <>
-                    {/* Customer Profile */}
-                    <div className="flex items-center gap-3 px-5 py-4">
-                      {customer.photo_url ? (
-                        <img
-                          src={customer.photo_url}
-                          alt={
-                            customer.google_name ||
-                            customer.first_name ||
-                            "Customer"
-                          }
-                          className="h-11 w-11 rounded-full object-cover border border-app"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        <div className="h-11 w-11 rounded-full bg-cyan-600 flex items-center justify-center text-white text-sm font-semibold">
-                          {generateInitials(
-                            customer.google_name ||
-                              `${customer.first_name || ""} ${
-                                customer.last_name || ""
-                              }`,
-                          )}
-                        </div>
-                      )}
-
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-app truncate">
-                          {customer.google_name ||
-                            `${customer.first_name || ""} ${
-                              customer.last_name || ""
-                            }`.trim() ||
-                            "Customer"}
-                        </p>
-
-                        <p className="text-xs text-muted truncate">
-                          {customer.email}
-                        </p>
+              {/* Auth Section */}
+              {token && customer ? (
+                <>
+                  <div className="flex items-center gap-3 px-5 py-4">
+                    {customer.photo_url ? (
+                      <img
+                        src={customer.photo_url}
+                        alt={customerName}
+                        className="h-11 w-11 rounded-full object-cover border border-app shrink-0"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="h-11 w-11 rounded-full bg-cyan-600 flex items-center justify-center text-white text-sm font-semibold shrink-0">
+                        {generateInitials(customerName)}
                       </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-app truncate">{customerName}</p>
+                      <p className="text-xs text-muted truncate">{customer.email}</p>
                     </div>
-
-                    <hr className="border-app" />
-
-                    {/* My Orders */}
-                    <Link
-                      to="/profile/orders"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-2 px-5 py-3 text-xs text-app hover:bg-surface"
-                    >
-                      <ClipboardList size={14} />
-                      My Orders
-                    </Link>
-
-                    {/* My Account */}
-                    <Link
-                      to="/profile"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-2 px-5 py-3 text-xs text-app hover:bg-surface"
-                    >
-                      <User size={14} />
-                      My Account
-                    </Link>
-
-                    <hr className="border-app my-1" />
-
-                    {/* Logout */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        handleLogout();
-                      }}
-                      className="flex w-full items-center gap-2 px-5 py-3 text-xs text-red-500 hover:bg-surface text-left"
-                    >
-                      <LogOut size={14} />
-                      Logout
-                    </button>
-                  </>
-                ) : (
+                  </div>
+                  <hr className="border-app" />
                   <Link
-                    to="/auth/login"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-2 px-5 py-3 text-xs text-app hover:bg-surface"
+                    to="/profile/orders"
+                    onClick={closeMobileMenu}
+                    className="flex items-center gap-3 px-5 py-3 text-sm text-app hover:bg-surface transition-colors"
                   >
-                    <User size={14} />
-                    Login
+                    <ClipboardList size={16} /> My Orders
                   </Link>
-                )}
-              </div>
+                  <Link
+                    to="/profile"
+                    onClick={closeMobileMenu}
+                    className="flex items-center gap-3 px-5 py-3 text-sm text-app hover:bg-surface transition-colors"
+                  >
+                    <User size={16} /> My Account
+                  </Link>
+                  <hr className="border-app my-2" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      closeMobileMenu();
+                      handleLogout();
+                    }}
+                    className="flex w-full items-center gap-3 px-5 py-3 text-sm text-red-500 hover:bg-surface text-left transition-colors"
+                  >
+                    <LogOut size={16} /> Logout
+                  </button>
+                </>
+              ) : (
+                <Link
+                  to="/auth/login"
+                  onClick={closeMobileMenu}
+                  className="flex items-center gap-3 px-5 py-3 text-sm text-app hover:bg-surface transition-colors"
+                >
+                  <User size={16} /> Login / Sign Up
+                </Link>
+              )}
             </div>
-          </div>
+          </nav>
         </>
       )}
     </>

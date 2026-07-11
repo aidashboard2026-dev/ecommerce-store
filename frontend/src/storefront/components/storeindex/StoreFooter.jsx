@@ -3,7 +3,7 @@ import { storefrontAPI } from "@/shared/services/api";
 import { toast } from "react-hot-toast";
 import { FaWhatsapp } from "react-icons/fa";
 import { Link } from "react-router-dom";
-import { Phone, Instagram, Facebook } from "lucide-react";
+import { Phone, Instagram, Facebook, Mail } from "lucide-react";
 import useStoreSettings from "@/shared/hooks/useStoreSettings";
 
 import ContactModal from "../storefooter/ContactModal";
@@ -11,10 +11,9 @@ import ContactModal from "../storefooter/ContactModal";
 const StoreFooterComponent = function StoreFooter() {
   const { settings } = useStoreSettings();
 
+
   const [openContact, setOpenContact] = useState(false);
-
   const [loading, setLoading] = useState(false);
-
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -22,23 +21,35 @@ const StoreFooterComponent = function StoreFooter() {
     message: "",
   });
 
-  const logoUrl = settings?.logo;
-  const storeName = settings?.store_name || "AuraStore";
-  const supportEmail = settings?.support_email || "aidashboard2026@gmail.com";
-  const supportPhone = settings?.support_phone || "+91 8778021610";
+  const storeName = import.meta.env.VITE_STORE_NAME || "My Designers";
+  const supportEmail = settings?.support_email || "";
 
-  const whatsappNumber = "918778021610";
+  // Normalize phone to +91XXXXXXXXXX from whatever format is stored
+  const rawPhone = settings?.support_phone || "";
+  const supportPhone = rawPhone
+    ? rawPhone.startsWith("+91")
+      ? rawPhone
+      : rawPhone.startsWith("91") && rawPhone.replace(/\D/g, "").length === 12
+      ? `+${rawPhone.replace(/\D/g, "")}`
+      : `+91${rawPhone.replace(/\D/g, "")}`
+    : "";
 
-  const message = encodeURIComponent(
+  // Display-formatted phone: "+91 9876543210"
+  const displayPhone = supportPhone
+    ? `${supportPhone.slice(0, 3)} ${supportPhone.slice(3)}`
+    : "";
+
+  // Social links from environment — never hardcoded
+  const facebookUrl = import.meta.env.VITE_FACEBOOK_URL || "";
+  const instagramUrl = import.meta.env.VITE_INSTAGRAM_URL || "";
+  // WhatsApp business number (digits only, e.g. 919876543210) from env
+  const whatsappNumber = import.meta.env.VITE_WHATSAPP_NUMBER || "";
+
+  const waMessage = encodeURIComponent(
     "Hello! I would like to know more about your products.",
   );
 
-  const instagramUrl = "https://instagram.com/my._.designers";
-  const facebookUrl = "https://facebook.com/your-page";
-
-  const description =
-    settings?.description ||
-    "Curating premium, hand-crafted designer streetwear, high-performance athletic apparel, and timeless accessories.";
+  const description = settings?.description || "";
 
   const linkBase =
     "text-[14px] leading-[1.6] text-[#555555] hover:text-black transition-all duration-300 ease-out inline-block hover:translate-x-[2px]";
@@ -47,151 +58,146 @@ const StoreFooterComponent = function StoreFooter() {
     "text-[12px] font-semibold uppercase tracking-[3px] text-[#111111] whitespace-nowrap";
 
   const openWhatsApp = () => {
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-    const url = isMobile
-      ? `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${message}`
-      : `https://web.whatsapp.com/send?phone=${whatsappNumber}&text=${message}`;
-
-    window.location.href = url;
+    if (!whatsappNumber) return;
+    // wa.me works on both mobile and desktop; the OS/browser decides which app to open
+    window.open(`https://wa.me/${whatsappNumber}?text=${waMessage}`, "_blank", "noopener,noreferrer");
   };
 
   const handleContactSubmit = async (e) => {
-  e.preventDefault();
-
-  try {
-    setLoading(true);
-
-    await storefrontAPI.contact(form);
-
-    toast.success("Message sent successfully!");
-
-    setForm({
-      name: "",
-      email: "",
-      subject: "",
-      message: "",
-    });
-
-    setOpenContact(false);
-  } catch (error) {
-    console.error(error);
-
-    toast.error(
-      error?.response?.data?.message || "Failed to send message."
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+    e.preventDefault();
+    try {
+      setLoading(true);
+      await storefrontAPI.contact(form);
+      toast.success("Message sent successfully!");
+      setForm({ name: "", email: "", subject: "", message: "" });
+      setOpenContact(false);
+    } catch (error) {
+      console.error(error);
+      toast.error(error?.response?.data?.message || "Failed to send message.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <footer className="border-t border-app mt-16 transition-colors duration-300">
       <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-10 lg:px-12 py-5">
         <div className="grid grid-cols-1 gap-5 md:gap-5 md:grid-cols-2 lg:grid-cols-4 justify-center md:items-start">
+
           {/* ================= About ================= */}
+          <div className="flex flex-col justify-between items-start h-full gap-4">
+            <div className="space-y-3">
+              <h4 className={headingBase}>About {storeName}</h4>
 
-          <div className="flex flex-col justify-between items-start h-full">
-            <h4 className={headingBase}>About {storeName}</h4>
+              {description && (
+                <p className="max-w-[340px] text-[14px] leading-[1.6] text-[#555555] font-light whitespace-pre-line">
+                  {description}
+                </p>
+              )}
 
-            <p className="max-w-[340px] text-[14px] leading-2 text-[#555555] font-light">
-              {description}
-            </p>
+              {settings?.store_location && (
+                <div className="text-[13px] leading-[1.5] text-[#555555] font-light max-w-[340px] whitespace-pre-line border-t border-gray-100 pt-3">
+                  <span className="font-semibold text-xs text-[#111111] block mb-1">Our Store Location</span>
+                  {settings.store_location}
+                </div>
+              )}
+            </div>
 
-            <div className="flex items-center gap-6">
+            {/* Social & Contact icon row — always rendered; links degrade gracefully when data is absent */}
+            <div className="flex items-center gap-5">
               <a
-                href={`tel:${supportPhone}`}
+                href={supportEmail ? `mailto:${supportEmail}` : "#"}
+                aria-label="Email Us"
+                className="text-[#555555] hover:text-indigo-500 transition-all duration-300 hover:scale-110"
+              >
+                <Mail size={18} strokeWidth={1.7} />
+              </a>
+
+              <a
+                href={supportPhone ? `tel:${supportPhone}` : "#"}
                 aria-label="Call Us"
                 className="text-[#555555] hover:text-orange-500 transition-all duration-300 hover:scale-110"
               >
                 <Phone size={18} strokeWidth={1.7} />
               </a>
 
-              <a
-                href="#"
-                aria-label="WhatsApp"
-                onClick={(e) => {
-                  e.preventDefault();
-                  openWhatsApp();
-                }}
-                className="text-[#555555] hover:text-[#25D366] transition-all duration-300 hover:scale-110"
-              >
-                <FaWhatsapp size={19} />
-              </a>
+              {whatsappNumber && (
+                <a
+                  href={`https://wa.me/${whatsappNumber}?text=${waMessage}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="WhatsApp"
+                  className="text-[#555555] hover:text-[#25D366] transition-all duration-300 hover:scale-110"
+                >
+                  <FaWhatsapp size={19} />
+                </a>
+              )}
 
-              <a
-                href={facebookUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Facebook"
-                className="text-[#555555] hover:text-[#1877F2] transition-all duration-300 hover:scale-110"
-              >
-                <Facebook size={18} strokeWidth={1.7} />
-              </a>
+              {facebookUrl && (
+                <a
+                  href={facebookUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Facebook"
+                  className="text-[#555555] hover:text-[#1877F2] transition-all duration-300 hover:scale-110"
+                >
+                  <Facebook size={18} strokeWidth={1.7} />
+                </a>
+              )}
 
-              <a
-                href={instagramUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Instagram"
-                className="text-[#555555] hover:text-[#E1306C] transition-all duration-300 hover:scale-110"
-              >
-                <Instagram size={18} strokeWidth={1.7} />
-              </a>
+              {instagramUrl && (
+                <a
+                  href={instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram"
+                  className="text-[#555555] hover:text-[#E1306C] transition-all duration-300 hover:scale-110"
+                >
+                  <Instagram size={18} strokeWidth={1.7} />
+                </a>
+              )}
             </div>
           </div>
 
           {/* ================= Quick Links ================= */}
-
           <div className="flex flex-col items-start lg:items-center h-full mt-5 md:mt-0 gap-3">
             <h4 className={headingBase}>Quick Links</h4>
-
-            <Link to="/" className={linkBase}>
-              Home
-            </Link>
-
-            <Link to="/products" className={linkBase}>
-              Shop
-            </Link>
-
-            <Link to="/about" className={linkBase}>
-              About
-            </Link>
-
-            <Link to="/contact" className={linkBase}>
-              Contact
-            </Link>
+            <Link to="/" className={linkBase}>Home</Link>
+            <Link to="/products" className={linkBase}>Shop</Link>
+            <Link to="/about" className={linkBase}>About</Link>
+            <Link to="/contact" className={linkBase}>Contact</Link>
           </div>
 
           {/* ================= Customer Care ================= */}
-
           <div className="flex flex-col items-start lg:items-center h-full mt-5 md:mt-5 lg:mt-0 gap-3">
             <h4 className={headingBase}>Customer Care</h4>
-
-            <Link to="/shipping-policy" className={linkBase}>
-              Shipping
-            </Link>
-
-            <Link to="/returns" className={linkBase}>
-              Returns
-            </Link>
-
-            <Link to="/privacy-policy" className={linkBase}>
-              Privacy Policy
-            </Link>
-
-            <Link to="/terms" className={linkBase}>
-              Terms & Conditions
-            </Link>
+            <Link to="/shipping-policy" className={linkBase}>Shipping</Link>
+            <Link to="/returns" className={linkBase}>Returns</Link>
+            <Link to="/privacy-policy" className={linkBase}>Privacy Policy</Link>
+            <Link to="/terms" className={linkBase}>Terms &amp; Conditions</Link>
           </div>
-          {/* ================= Contact ================= */}
 
+          {/* ================= Contact ================= */}
           <div className="flex flex-col items-start lg:items-center h-full mt-5 md:mt-5 lg:mt-0 gap-3">
             <h4 className={headingBase}>Contact</h4>
 
-            <a href={`mailto:${supportEmail}`} className={linkBase}>
-              {supportEmail}
-            </a>
+            {supportEmail && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#999999]">Email</span>
+                <a href={`mailto:${supportEmail}`} className={linkBase}>
+                  {supportEmail}
+                </a>
+              </div>
+            )}
+
+            {displayPhone && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#999999]">Phone</span>
+                <a href={`tel:${supportPhone}`} className={linkBase}>
+                  {displayPhone}
+                </a>
+              </div>
+            )}
 
             <button
               onClick={() => setOpenContact(true)}
@@ -199,10 +205,6 @@ const StoreFooterComponent = function StoreFooter() {
             >
               Contact Us
             </button>
-
-            {/* <a href={`tel:${supportPhone}`} className={linkBase}>
-              {supportPhone}
-            </a> */}
           </div>
 
           <ContactModal
@@ -217,23 +219,10 @@ const StoreFooterComponent = function StoreFooter() {
       </div>
 
       {/* ================= Bottom Bar ================= */}
-
       <div className="mx-auto flex w-full p-5 items-center justify-center">
         <p className="text-[12px] md:text-[14px] text-nowrap text-[#555555]">
           © {new Date().getFullYear()} {storeName}. All Rights Reserved.
         </p>
-
-        {/* Future Features */}
-        <div className="flex items-center gap-6 text-[13px] text-[#777777]">
-          {/* Payment Icons */}
-          {/* Visa • MasterCard • UPI */}
-
-          {/* Social Media */}
-
-          {/* Newsletter */}
-
-          {/* Trust Badges */}
-        </div>
       </div>
     </footer>
   );

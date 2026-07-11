@@ -66,9 +66,37 @@ async def send_notification(
 
     if whatsapp_enabled:
         logger.info(f"Dispatching WhatsApp notification for event '{event_name}' to {to_email}")
-        logger.warning(
-            f"[SIMULATION] WhatsApp message sent to client: {text_body}"
-        )
+        # ==========================================================
+        # FUTURE FEATURE
+        #
+        # Meta WhatsApp Cloud API Integration
+        #
+        # This block will send WhatsApp notifications to the admin
+        # once the Meta Cloud API is configured.
+        #
+        # Current status:
+        # Disabled intentionally.
+        #
+        # ==========================================================
+        # logger.warning(
+        #     f"[SIMULATION] WhatsApp message sent to client: {text_body}"
+        # )
+        
+        # ==========================================================
+        # FUTURE INTEGRATION
+        #
+        # Provider:
+        # Meta WhatsApp Cloud API
+        #
+        # Planned Features:
+        # - Admin notifications
+        # - Delivery status tracking
+        # - Template messages
+        # - Retry mechanism
+        # - Error logging
+        #
+        # ==========================================================
+        pass
     else:
         logger.info(f"WhatsApp notification for event '{event_name}' is disabled. Skipping.")
 

@@ -17,16 +17,17 @@ import {
   Image,
   Grid2X2,
   Bell,
-  MessageSquare,
-} from "lucide-react";
-import clsx from "clsx";
-import { useAuth, useTheme } from "@/shared/hooks/useAuth";
-// import { logout } from '@/admin/store/authSlice'
-import { logout } from "@/firebase/auth";
+  MessageSquare
+} from 'lucide-react'
+import clsx from 'clsx'
+import { useAuth, useTheme } from '@/shared/hooks/useAuth'
+import { logout } from '@/admin/store/authSlice'
 // import { toggleSidebar } from '@/admin/store/uiSlice'
 import Avatar from "@/shared/components/ui/Avatar";
 import ProfileCard from "@/shared/components/ui/ProfileCard";
 import useStoreSettings from "@/shared/hooks/useStoreSettings";
+import NotificationBell from "@/admin/components/layout/NotificationBell";
+
 
 const navItems = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -232,13 +233,8 @@ const HeaderComponent = function Header() {
         <Logo compact />
         <div className="flex items-center gap-2">
           {/* Notifications */}
-          {/* <button
-            className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-app bg-surface hover:bg-app text-muted hover:text-app transition-all active:scale-95"
-            aria-label="View notifications"
-          >
-            <Bell size={14} />
-            <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />
-          </button> */}
+          <NotificationBell />
+
 
           {/* Theme Toggle */}
           <button
@@ -349,7 +345,7 @@ const HeaderComponent = function Header() {
 const Logo = React.memo(function Logo({ compact = false, sidebarOpen = true }) {
   const { settings } = useStoreSettings();
   const logoUrl = settings?.logo;
-  const storeName = settings?.store_name || "AdminDash";
+  const storeName = import.meta.env.VITE_STORE_NAME || "My Designers";
 
   return (
     <div className="flex items-center gap-2.5 px-5 py-4 h-[53px]">
@@ -371,13 +367,7 @@ const Logo = React.memo(function Logo({ compact = false, sidebarOpen = true }) {
           sidebarOpen ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden",
         )}
       >
-        {logoUrl ? (
-          <span>{storeName}</span>
-        ) : (
-          <>
-            Admin<span className="text-brand-500">Dash</span>
-          </>
-        )}
+        {storeName}
       </span>
     </div>
   );

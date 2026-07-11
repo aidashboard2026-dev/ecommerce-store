@@ -14,6 +14,7 @@ class StoreSettings(Base):
     support_email = Column(String(255), nullable=False, default="support@example.com")
     support_phone = Column(String(30), nullable=True)
     description = Column(Text, nullable=True)
+    store_location = Column(Text, nullable=True)
     logo = Column(Text, nullable=True)
     country = Column(String(100), nullable=False, default="India")
     currency = Column(String(10), nullable=False, default="INR")

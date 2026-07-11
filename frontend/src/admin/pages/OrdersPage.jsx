@@ -11,7 +11,7 @@ import PageHeader from "@/shared/components/ui/PageHeader";
 import SearchBar from "@/shared/components/ui/SearchBar";
 import Badge from "@/shared/components/ui/Badge";
 import Button from "@/shared/components/ui/Button";
-import { generateInvoice } from "@/shared/utils/invoiceGenerator";
+import { ordersAPI } from "@/shared/services/api";
 
 import {
   getOrders,
@@ -19,6 +19,7 @@ import {
   updateOrder,
 } from "@/admin/services/order_Service";
 import { useDebounce } from "@/shared/utils/productUtils";
+import { generateInvoice } from "@/shared/utils/invoiceGenerator";
 
 export default function OrdersPage() {
   const [searchParams] = useSearchParams();
@@ -74,6 +75,17 @@ export default function OrdersPage() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownloadInvoice = async (order) => {
+    const toastId = toast.loading("Generating invoice…");
+    try {
+      await generateInvoice(order);
+      toast.success("Invoice downloaded!", { id: toastId });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to download invoice", { id: toastId });
     }
   };
 
@@ -438,7 +450,9 @@ export default function OrdersPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted">Shipping</span>
-                      <span className="font-bold text-emerald-500 uppercase text-[10px]">FREE</span>
+                      <span className={order.shipping_fee > 0 ? "font-medium text-app" : "font-bold text-emerald-500 uppercase text-[10px]"}>
+                        {order.shipping_fee > 0 ? `₹${order.shipping_fee}` : "FREE"}
+                      </span>
                     </div>
                     <div className="flex justify-between border-t border-app pt-2 font-bold text-sm">
                       <span className="text-app">Total Amount</span>
@@ -498,12 +512,11 @@ export default function OrdersPage() {
                     </div>
 
                   <Button
-                    onClick={() => generateInvoice(order)}
+                    onClick={() => handleDownloadInvoice(order)}
                     variant="download"
                     className="flex"
                     icon={Download}
                   >
-                    {/* <Download size={14} /> */}
                     Invoice PDF
                   </Button>
                 </div>

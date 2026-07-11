@@ -2,7 +2,7 @@ import logging
 
 logger = logging.getLogger("app.core.normalization")
 
-# AuraStore-specific alias configuration mappings.
+# My Designers-specific alias configuration mappings.
 # Keys are lowercased. Values are standardized Title Case equivalents.
 AURASTORE_COMPOUND_MAPPINGS = {
     "tshirt": "T Shirt",
@@ -15,9 +15,9 @@ AURASTORE_COMPOUND_MAPPINGS = {
 }
 
 
-def validate_aurastore_aliases(mappings: dict) -> None:
+def validate_mydesigners_aliases(mappings: dict) -> None:
     """
-    Performs startup-time audit of the AuraStore alias configuration.
+    Performs startup-time audit of the My Designers alias configuration.
     Reports redundant, self-referencing, duplicate, or circular mappings.
     """
     from app.shared.normalization.rules.whitespace import clean_whitespace

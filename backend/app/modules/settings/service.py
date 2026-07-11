@@ -17,15 +17,9 @@ from app.modules.settings.schemas import (
 
 DEFAULT_PAYMENTS = [
     {
-        "name": "Razorpay",
-        "description": "Cards, net banking, wallets, and UPI through Razorpay checkout.",
+        "name": "Online Payment",
+        "description": "Supports UPI, Cards, Wallets and Net Banking.",
         "fee": Decimal("2.00"),
-        "is_active": True,
-    },
-    {
-        "name": "UPI / PhonePe",
-        "description": "Direct UPI payments and PhonePe transactions for India-based customers.",
-        "fee": Decimal("0.00"),
         "is_active": True,
     },
     {
@@ -34,21 +28,14 @@ DEFAULT_PAYMENTS = [
         "fee": Decimal("0.00"),
         "is_active": False,
     },
-    {
-        "name": "PayPal",
-        "description": "International card and wallet payments through PayPal.",
-        "fee": Decimal("3.50"),
-        "is_active": False,
-    },
 ]
 
 DEFAULT_NOTIFICATIONS = [
     {"event_name": "New Order Placed", "email_enabled": True, "whatsapp_enabled": True},
+    {"event_name": "Order Payment Completed", "email_enabled": True, "whatsapp_enabled": True},
     {"event_name": "Order Shipped", "email_enabled": True, "whatsapp_enabled": True},
-    {"event_name": "Low Stock Alert", "email_enabled": True, "whatsapp_enabled": False},
-    {"event_name": "Refund Processed", "email_enabled": True, "whatsapp_enabled": False},
     {"event_name": "Order Cancelled", "email_enabled": True, "whatsapp_enabled": True},
-    {"event_name": "New Review Posted", "email_enabled": True, "whatsapp_enabled": False},
+    {"event_name": "Low Stock Alert", "email_enabled": True, "whatsapp_enabled": False},
 ]
 
 
@@ -97,6 +84,8 @@ def get_settings_bundle(db: Session, admin: Admin) -> dict:
 def update_store_settings(db: Session, payload: StoreSettingsUpdate) -> StoreSettings:
     settings = get_or_create_store_settings(db)
     update_data = payload.model_dump(exclude_unset=True)
+    update_data.pop("store_name", None)
+    update_data.pop("store_url", None)
     for field, value in update_data.items():
         setattr(settings, field, str(value) if field == "store_url" and value is not None else value)
     db.flush()
@@ -155,6 +144,13 @@ def update_admin_password(db: Session, admin: Admin, payload: PasswordUpdate) ->
 
 
 def ensure_payment_methods(db: Session) -> List[PaymentMethod]:
+    # Check for legacy "Razorpay" and rename it to "Online Payment"
+    legacy_razorpay = db.query(PaymentMethod).filter(PaymentMethod.name == "Razorpay").first()
+    if legacy_razorpay:
+        legacy_razorpay.name = "Online Payment"
+        legacy_razorpay.description = "Supports UPI, Cards, Wallets and Net Banking."
+        db.flush()
+
     existing_by_name = {method.name: method for method in db.query(PaymentMethod).all()}
     changed = False
 
@@ -165,14 +161,16 @@ def ensure_payment_methods(db: Session) -> List[PaymentMethod]:
 
     if changed:
         db.flush()
-        return db.query(PaymentMethod).order_by(PaymentMethod.id.asc()).all()
 
-    return sorted(existing_by_name.values(), key=lambda x: x.id)
+    # Only return Online Payment and Cash On Delivery
+    allowed_names = {p["name"] for p in DEFAULT_PAYMENTS}
+    all_methods = db.query(PaymentMethod).order_by(PaymentMethod.id.asc()).all()
+    return [m for m in all_methods if m.name in allowed_names]
 
 
 def update_payment_method(db: Session, payment_id: int, payload: PaymentMethodUpdate) -> PaymentMethod:
     payment = db.query(PaymentMethod).filter(PaymentMethod.id == payment_id).first()
-    if not payment:
+    if not payment or payment.name not in {"Online Payment", "Cash On Delivery"}:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment method not found.")
 
     update_data = payload.model_dump(exclude_unset=True)
@@ -195,9 +193,8 @@ def ensure_notification_settings(db: Session) -> List[NotificationSetting]:
 
     if changed:
         db.flush()
-        return db.query(NotificationSetting).order_by(NotificationSetting.id.asc()).all()
 
-    return sorted(existing_by_name.values(), key=lambda x: x.id)
+    return db.query(NotificationSetting).order_by(NotificationSetting.id.asc()).all()
 
 
 def update_notification_setting(

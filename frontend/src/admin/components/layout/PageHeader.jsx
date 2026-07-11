@@ -16,6 +16,8 @@ import {
 import { useAuth, useTheme } from '@/shared/hooks/useAuth'
 import { logout } from '@/admin/store/authSlice'
 import Avatar from '@/shared/components/ui/Avatar'
+import NotificationBell from '@/admin/components/layout/NotificationBell'
+
 
 export default function PageHeader({ title }) {
   const { admin } = useAuth()
@@ -89,13 +91,8 @@ export default function PageHeader({ title }) {
         </div>
 
         {/* Notifications */}
-        {/* <button
-          className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-app bg-surface hover:bg-app text-muted hover:text-app transition-all active:scale-95"
-          aria-label="View notifications"
-        >
-          <Bell size={14} />
-          <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />
-        </button> */}
+        <NotificationBell />
+
 
         {/* Theme Toggle */}
         <button

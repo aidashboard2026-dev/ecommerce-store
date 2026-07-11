@@ -124,7 +124,7 @@ class Settings(BaseSettings):
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
     SMTP_FROM_EMAIL: str = "noreply@yourdomain.com"
-    SMTP_FROM_NAME: str = "AuraStore"
+    SMTP_FROM_NAME: str = "My Designers"
     SMTP_TLS: bool = True
 
     # Optional Google reCAPTCHA support for public forms.
@@ -180,12 +180,54 @@ class Settings(BaseSettings):
     SUPABASE_BANNER_BUCKET: str = "banners"
     SUPABASE_CATEGORY_BUCKET: str = "category-images"
 
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
+
     @field_validator("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", mode="after")
     @classmethod
     def supabase_storage_credentials_optional(cls, v: str) -> str:
         # We allow empty strings at startup to facilitate a local upload directory fallback
         # when Supabase Storage is not configured (e.g. in local development).
         return v or ""
+
+    # ------------------------------------------------------------------
+    # Razorpay Integration
+    # ------------------------------------------------------------------
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
+    RAZORPAY_WEBHOOK_SECRET: str = ""
+
+    @field_validator("RAZORPAY_KEY_ID", mode="after")
+    @classmethod
+    def razorpay_key_id_required(cls, v: str) -> str:
+        # Allow empty value during development
+        if not v or not str(v).strip():
+            return ""
+
+        if any(p in v.lower() for p in ["placeholder", "change-me", "changeme", "your_key"]):
+            raise ValueError("RAZORPAY_KEY_ID appears to be a placeholder value.")
+
+        if not (v.startswith("rzp_test_") or v.startswith("rzp_live_")):
+            raise ValueError("RAZORPAY_KEY_ID must start with 'rzp_test_' or 'rzp_live_'.")
+
+        return v
+
+    @field_validator("RAZORPAY_KEY_SECRET", mode="after")
+    @classmethod
+    def razorpay_key_secret_required(cls, v: str) -> str:
+        # Allow empty value during development
+        if not v or not str(v).strip():
+            return ""
+
+        if any(
+            p in v.lower()
+            for p in ["placeholder", "change-me", "changeme", "your_secret"]
+        ):
+            raise ValueError(
+                "RAZORPAY_KEY_SECRET appears to be a placeholder value."
+            )
+
+        return v
 
 
 settings = Settings()

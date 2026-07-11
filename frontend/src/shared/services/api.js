@@ -248,6 +248,7 @@ export const storefrontAPI = {
       storefrontClient.get(`/custom-products/${id}`),
 
   getPublicSettings: () => storefrontClient.get('/settings/public'),
+  getPublicPayments: () => storefrontClient.get('/settings/public-payments'),
 
   // ── Customer profile ──────────────────────────────────────────────────────
   updateProfile:    (data)        => storefrontClient.put('/customers/profile/update', data),
@@ -259,6 +260,14 @@ export const storefrontAPI = {
   getOrder:         (id)          => storefrontClient.get(`/orders/customer/${id}`),
   cancelOrder:      (id)          => storefrontClient.post(`/orders/customer/${id}/cancel`),
   trackOrder:       (orderNumber) => storefrontClient.get(`/orders/track/${orderNumber}`),
+  createRazorpayOrder: (data) => storefrontClient.post('/orders/customer/razorpay/create', data),
+  verifyRazorpayPayment: (data) => storefrontClient.post('/orders/customer/razorpay/verify', data),
+  /**
+   * Download the invoice PDF for a customer's own order.
+   * Ownership is enforced by the backend. Returns a Blob.
+   */
+  downloadInvoice: (id) =>
+    storefrontClient.get(`/orders/customer/${id}/invoice`, { responseType: 'blob' }),
 }
 
 export const customProductsAPI = {
@@ -305,6 +314,12 @@ export const ordersAPI = {
   cancel:      (id)          => api.post(`/orders/${id}/cancel`),
   updateTracking: (id, trackingStatus) =>
     api.put(`/orders/${id}/tracking`, null, { params: { tracking_status: trackingStatus } }),
+  /**
+   * Download the invoice PDF for a given order (Admin).
+   * Returns a Blob that can be saved to disk.
+   */
+  downloadInvoice: (id) =>
+    api.get(`/orders/${id}/invoice`, { responseType: 'blob' }),
 }
 
 // ─── Customers ────────────────────────────────────────────────────────────────

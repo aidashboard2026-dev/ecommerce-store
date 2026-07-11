@@ -33,26 +33,20 @@ function App() {
   // --------------------------------------------------
 
   useEffect(() => {
+    // Browser title is set statically in index.html — do NOT overwrite document.title here.
+    const envStoreName = import.meta.env.VITE_STORE_NAME || "My Designers";
+    const envStoreUrl = import.meta.env.VITE_STORE_URL || "https://mydesigners.com";
+
+    // Keep localStorage in sync for invoice generator and price formatter utilities.
+    localStorage.setItem("store_name", envStoreName);
+    localStorage.setItem("store_url", envStoreUrl);
+
     if (!settings) return;
 
-    if (settings.store_name) {
-      document.title = settings.store_name;
-
-      localStorage.setItem("store_name", settings.store_name);
-    }
-
     if (settings.logo) {
-      const favicon = document.querySelector("link[rel~='icon']");
-
-      if (favicon) {
-        favicon.href = settings.logo;
-      }
-
       localStorage.setItem("store_logo", settings.logo);
-    }
-
-    if (settings.currency) {
-      localStorage.setItem("store_currency", settings.currency);
+    } else {
+      localStorage.removeItem("store_logo");
     }
 
     if (settings.support_email) {
@@ -61,14 +55,6 @@ function App() {
 
     if (settings.support_phone) {
       localStorage.setItem("store_phone", settings.support_phone);
-    }
-
-    if (settings.country) {
-      localStorage.setItem("store_country", settings.country);
-    }
-
-    if (settings.store_url) {
-      localStorage.setItem("store_url", settings.store_url);
     }
   }, [settings]);
 
@@ -112,7 +98,9 @@ function App() {
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
 
-          <p className="text-muted text-sm font-medium">Loading AuraStore...</p>
+          <p className="text-muted text-sm font-medium">
+            Loading {import.meta.env.VITE_STORE_NAME || "My Designers"}...
+          </p>
         </div>
       </div>
     );
