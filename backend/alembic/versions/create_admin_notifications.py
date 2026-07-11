@@ -25,7 +25,7 @@ def upgrade() -> None:
     if not _table_exists("admin_notifications"):
         op.create_table(
             "admin_notifications",
-            sa.Column("id", sa.Integer(), primary_key=True, index=True, nullable=False),
+            sa.Column("id", sa.Integer(), primary_key=True, nullable=False),
             sa.Column("title", sa.String(length=255), nullable=False),
             sa.Column("message", sa.Text(), nullable=False),
             sa.Column("type", sa.String(length=50), nullable=False, server_default="info"),
@@ -34,14 +34,14 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
             sa.Column("metadata", sa.JSON(), nullable=True),
         )
-        op.create_index(
-            "ix_admin_notifications_id",
-            "admin_notifications",
-            ["id"],
-            unique=False,
-        )
+        # op.create_index(
+        #     "ix_admin_notifications_id",
+        #     "admin_notifications",
+        #     ["id"],
+        #     unique=False,
+        # )
 
 def downgrade() -> None:
     if _table_exists("admin_notifications"):
-        op.drop_index("ix_admin_notifications_id", table_name="admin_notifications")
+        # op.drop_index("ix_admin_notifications_id", table_name="admin_notifications")
         op.drop_table("admin_notifications")

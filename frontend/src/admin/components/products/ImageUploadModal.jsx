@@ -320,6 +320,8 @@ export default function ImageUploadModal({
   api = productsApi,
   queryKeyPrefix = 'products',
   detailQueryKey = 'product',
+  onUploadLocal,
+  onDeleteLocal,
 }) {
   const qc = useQueryClient()
   const fileRef = useRef(null)
@@ -329,6 +331,8 @@ export default function ImageUploadModal({
   const [file, setFile]           = useState(null)
   const [preview, setPreview]     = useState(null)
   const [deletingIndex, setDeletingIndex] = useState(null)
+
+  const isLocalFlow = product && (product.id === null || product.id === undefined)
 
   // Reset when modal closes or product changes
   useEffect(() => {
@@ -509,8 +513,13 @@ export default function ImageUploadModal({
 
     if (filesToUpload.length === 0) return
 
-    galleryUploadMutation.mutate(filesToUpload)
-  }, [isGalleryUploading, product?.gallery_images, galleryUploadMutation])
+    if (isLocalFlow && onUploadLocal) {
+      onUploadLocal('gallery', filesToUpload)
+      toast.success(`${filesToUpload.length} gallery image${filesToUpload.length === 1 ? '' : 's'} staged successfully.`)
+    } else {
+      galleryUploadMutation.mutate(filesToUpload)
+    }
+  }, [isGalleryUploading, product?.gallery_images, galleryUploadMutation, isLocalFlow, onUploadLocal])
 
   // ── Current image for the active tab ─────────────────────────────────────────
 
@@ -525,11 +534,13 @@ export default function ImageUploadModal({
   const galleryRemainingSlots = Math.max(0, GALLERY_MAX_IMAGES - galleryImages.length)
   const isGalleryFull = galleryImages.length >= GALLERY_MAX_IMAGES
 
-  const currentCount = (product?.thumbnail ? 1 : 0) +
-                       (product?.image_front ? 1 : 0) +
-                       (product?.image_back ? 1 : 0) +
-                       (product?.image_size_chart ? 1 : 0) +
-                       (product?.gallery_images || []).length
+  const currentCount = product
+    ? (product.thumbnail ? 1 : 0) +
+      (product.image_front ? 1 : 0) +
+      (product.image_back ? 1 : 0) +
+      (product.image_size_chart ? 1 : 0) +
+      (product.gallery_images || []).length
+    : 0
 
   const willIncrease = activeTab === 'gallery' ? true : (currentTab?.field ? !product?.[currentTab.field] : false)
   const isLimitReached = limits ? currentCount >= limits.max_product_images && willIncrease : true
@@ -551,7 +562,13 @@ export default function ImageUploadModal({
       )
       return
     }
-    uploadMutation.mutate()
+    if (isLocalFlow && onUploadLocal) {
+      onUploadLocal(activeTab, file)
+      toast.success(`${IMAGE_TABS.find(t => t.key === activeTab)?.label || 'Image'} staged successfully.`)
+      clearSelection()
+    } else {
+      uploadMutation.mutate()
+    }
   }
 
   const uploadLabel = currentTab
@@ -619,14 +636,28 @@ export default function ImageUploadModal({
         {isGallery ? (
           <GalleryGrid
             images={galleryImages}
-            onDelete={idx => deleteGalleryMutation.mutate(idx)}
+            onDelete={idx => {
+              if (isLocalFlow && onDeleteLocal) {
+                onDeleteLocal('gallery', idx)
+                toast.success('Gallery image removed.')
+              } else {
+                deleteGalleryMutation.mutate(idx)
+              }
+            }}
             deletingIndex={deletingIndex}
           />
         ) : (
           <SingleImageSlot
             label={currentTab?.label || ''}
             imageUrl={currentImageUrl}
-            onDelete={() => deleteMutation.mutate()}
+            onDelete={() => {
+              if (isLocalFlow && onDeleteLocal) {
+                onDeleteLocal(activeTab)
+                toast.success('Image removed.')
+              } else {
+                deleteMutation.mutate()
+              }
+            }}
             isPending={deleteMutation.isPending}
           />
         )}
