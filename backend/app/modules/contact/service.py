@@ -8,6 +8,7 @@ Handles contact message creation, retrieval, status updates, and replies.
 from datetime import datetime, timezone
 from typing import Optional, List, Tuple
 
+from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.modules.contact.models import ContactMessage, ContactStatus
@@ -32,6 +33,7 @@ class ContactService:
     def create_contact_message(
         db: Session,
         contact_data: ContactMessageCreate,
+        background_tasks: Optional[BackgroundTasks] = None,
     ) -> ContactMessageResponse:
         """
         Create a new contact message with automatic email notifications.
@@ -57,20 +59,36 @@ class ContactService:
             message=contact_data.message,
         )
 
-        # Send admin notification
-        send_admin_notification(
-            customer_name=contact_data.name,
-            customer_email=contact_data.email,
-            subject=contact_data.subject,
-            message=contact_data.message,
-            submitted_at=message.created_at,
-        )
-
-        # Send customer auto-reply
-        send_customer_auto_reply(
-            customer_name=contact_data.name,
-            customer_email=contact_data.email,
-        )
+        if background_tasks:
+            # Send admin notification in the background
+            background_tasks.add_task(
+                send_admin_notification,
+                customer_name=contact_data.name,
+                customer_email=contact_data.email,
+                subject=contact_data.subject,
+                message=contact_data.message,
+                submitted_at=message.created_at,
+            )
+            # Send customer auto-reply in the background
+            background_tasks.add_task(
+                send_customer_auto_reply,
+                customer_name=contact_data.name,
+                customer_email=contact_data.email,
+            )
+        else:
+            # Send admin notification synchronously
+            send_admin_notification(
+                customer_name=contact_data.name,
+                customer_email=contact_data.email,
+                subject=contact_data.subject,
+                message=contact_data.message,
+                submitted_at=message.created_at,
+            )
+            # Send customer auto-reply synchronously
+            send_customer_auto_reply(
+                customer_name=contact_data.name,
+                customer_email=contact_data.email,
+            )
 
         return ContactMessageResponse.from_orm(message)
 
@@ -187,6 +205,7 @@ class ContactService:
         message_id: int,
         reply_message: str,
         admin_id: Optional[int] = None,
+        background_tasks: Optional[BackgroundTasks] = None,
     ) -> Optional[ContactMessageResponse]:
         """
         Send reply to a contact message.
@@ -219,13 +238,23 @@ class ContactService:
             admin_id=admin_id,
         )
 
-        # Send reply email to customer
-        send_admin_reply_to_customer(
-            customer_name=original_message.name,
-            customer_email=original_message.email,
-            subject=original_message.subject,
-            reply_message=reply_message,
-        )
+        if background_tasks:
+            # Send reply email to customer in the background
+            background_tasks.add_task(
+                send_admin_reply_to_customer,
+                customer_name=original_message.name,
+                customer_email=original_message.email,
+                subject=original_message.subject,
+                reply_message=reply_message,
+            )
+        else:
+            # Send reply email to customer synchronously
+            send_admin_reply_to_customer(
+                customer_name=original_message.name,
+                customer_email=original_message.email,
+                subject=original_message.subject,
+                reply_message=reply_message,
+            )
 
         return ContactMessageResponse.from_orm(message)
 

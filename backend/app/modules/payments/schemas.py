@@ -23,7 +23,7 @@ class CreatePaymentRequest(BaseModel):
     Request received from the frontend before opening Razorpay.
     """
 
-    amount: int = Field(..., gt=0, description="Amount in paise")
+    amount: int = Field(..., ge=100, description="Amount in paise")
     currency: str = Field(default="INR")
     receipt: Optional[str] = None
 

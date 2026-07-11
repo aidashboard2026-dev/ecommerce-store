@@ -17,7 +17,7 @@ Everything else lives in:
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query, Request, status, Header
+from fastapi import APIRouter, Depends, Query, Request, status, Header, BackgroundTasks
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
@@ -115,13 +115,14 @@ def download_invoice_admin(
 
 @router.post("/", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
 def create_order(
-    order_in:      OrderCreate,
-    request:       Request,
-    db:            Session = Depends(get_db),
-    current_admin: Admin   = Depends(get_current_admin),
+    order_in:         OrderCreate,
+    request:          Request,
+    background_tasks: BackgroundTasks,
+    db:               Session = Depends(get_db),
+    current_admin:    Admin   = Depends(get_current_admin),
 ):
     """Admin — create an order manually."""
-    order = order_service.create_order_admin(db, order_in)
+    order = order_service.create_order_admin(db, order_in, background_tasks=background_tasks)
 
     audit.created(
         db=db, admin=current_admin,
@@ -138,14 +139,15 @@ def create_order(
 
 @router.put("/{order_id}", response_model=OrderResponse)
 def update_order(
-    order_id: int,
-    payload:  OrderUpdate,
-    request:  Request,
-    db:       Session = Depends(get_db),
-    current_admin: Admin = Depends(get_current_admin),
+    order_id:         int,
+    payload:          OrderUpdate,
+    request:          Request,
+    background_tasks: BackgroundTasks,
+    db:               Session = Depends(get_db),
+    current_admin:    Admin = Depends(get_current_admin),
 ):
     """Admin — update order fields (status, tracking, payment)."""
-    order = order_service.update_order(db, order_id, payload)
+    order = order_service.update_order(db, order_id, payload, background_tasks=background_tasks)
 
     audit.updated(
         db=db, admin=current_admin,
@@ -162,13 +164,14 @@ def update_order(
 
 @router.post("/{order_id}/cancel", response_model=OrderResponse)
 def cancel_order(
-    order_id: int,
-    request:  Request,
-    db:       Session = Depends(get_db),
-    current_admin: Admin = Depends(get_current_admin),
+    order_id:         int,
+    request:          Request,
+    background_tasks: BackgroundTasks,
+    db:               Session = Depends(get_db),
+    current_admin:    Admin = Depends(get_current_admin),
 ):
     """Admin — cancel an order (no status restrictions)."""
-    order = order_service.cancel_order_admin(db, order_id)
+    order = order_service.cancel_order_admin(db, order_id, background_tasks=background_tasks)
 
     audit.log(
         db=db, admin=current_admin,
@@ -188,11 +191,12 @@ def update_tracking(
     order_id:        int,
     tracking_status: str,
     request:         Request,
+    background_tasks: BackgroundTasks,
     db:              Session = Depends(get_db),
     current_admin:   Admin   = Depends(get_current_admin),
 ):
     """Admin — update tracking status only."""
-    order = order_service.update_tracking(db, order_id, tracking_status)
+    order = order_service.update_tracking(db, order_id, tracking_status, background_tasks=background_tasks)
 
     audit.log(
         db=db, admin=current_admin,
@@ -215,11 +219,12 @@ def update_tracking(
 @router.post("/customer", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
 def create_customer_order(
     order_in:         OrderCreate,
+    background_tasks: BackgroundTasks,
     db:               Session  = Depends(get_db),
     current_customer: Customer = Depends(get_current_customer),
 ):
     """Storefront — authenticated customer places an order."""
-    return order_service.create_order_customer(db, order_in, current_customer)
+    return order_service.create_order_customer(db, order_in, current_customer, background_tasks=background_tasks)
 
 
 @router.post("/customer/razorpay/create", response_model=RazorpayOrderCreateResponse)
@@ -279,11 +284,12 @@ def get_customer_order(
 @router.post("/customer/{order_id}/cancel", response_model=OrderResponse)
 def cancel_customer_order(
     order_id:         int,
+    background_tasks: BackgroundTasks,
     db:               Session  = Depends(get_db),
     current_customer: Customer = Depends(get_current_customer),
 ):
     """Storefront — customer cancels their own order (blocked after SHIPPED/DELIVERED)."""
-    return order_service.cancel_order_customer(db, order_id, current_customer)
+    return order_service.cancel_order_customer(db, order_id, current_customer, background_tasks=background_tasks)
 
 
 @router.get("/customer/{order_id}/invoice")
@@ -332,6 +338,7 @@ def track_order_by_number(
 @router.post("/razorpay/webhook", status_code=status.HTTP_200_OK)
 async def razorpay_webhook(
     request: Request,
+    background_tasks: BackgroundTasks,
     x_razorpay_signature: str = Header(None),
     db: Session = Depends(get_db),
 ):
@@ -364,6 +371,11 @@ async def razorpay_webhook(
         if not hmac.compare_digest(expected_sig, x_razorpay_signature):
             logger.error("Webhook signature mismatch.")
             raise HTTPException(status_code=400, detail="Signature verification failed.")
+    else:
+        if settings.ENVIRONMENT.lower() == "production":
+            logger.error("RAZORPAY_WEBHOOK_SECRET is missing in production. Signature verification cannot be skipped.")
+            raise HTTPException(status_code=500, detail="Webhook configuration error.")
+        logger.warning("RAZORPAY_WEBHOOK_SECRET is missing. Skipping signature verification in development.")
 
     try:
         data = json.loads(body.decode())
@@ -389,7 +401,8 @@ async def razorpay_webhook(
         updated_count = order_service.process_razorpay_webhook_payment(
             db=db,
             razorpay_order_id=razorpay_order_id,
-            razorpay_payment_id=razorpay_payment_id
+            razorpay_payment_id=razorpay_payment_id,
+            background_tasks=background_tasks
         )
         return {
             "status": "success",

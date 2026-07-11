@@ -164,6 +164,13 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error("[Startup] Failed to run product image paths auto-repair: %s", e, exc_info=True)
 
+        # ── Validate Email Configuration ──────────────────────────────────────────
+        try:
+            from app.shared.email.service import validate_email_configuration_at_startup
+            validate_email_configuration_at_startup()
+        except Exception as e:
+            logger.error("[Startup] Failed to validate email configuration: %s", e)
+
         logger.info("[Startup] Application Started Successfully")
         yield
 

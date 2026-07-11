@@ -1,6 +1,6 @@
 from typing import List
 
-from pydantic import computed_field, field_validator
+from pydantic import computed_field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "AdminDash Pro"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
+    ENVIRONMENT: str = "development"
 
     # ------------------------------------------------------------------
     # Database (Supabase PostgreSQL)
@@ -115,17 +116,40 @@ class Settings(BaseSettings):
     # Set RESEND_API_KEY for Resend (recommended), or configure SMTP.
     # ------------------------------------------------------------------
 
-    # Resend (https://resend.com) — simplest integration with FastAPI
+    # Resend (https://resend.com)
     RESEND_API_KEY: str = ""
+    RESEND_ENABLED: bool = True
+    RESEND_FROM_EMAIL: str = ""
+    RESEND_FROM_NAME: str = ""
+    RESEND_REPLY_TO: str = ""
+    RESEND_TIMEOUT: int = 15
 
-    # SMTP fallback (leave blank if using Resend)
+    # SMTP fallback
+    SMTP_ENABLED: bool = True
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
+    SMTP_TLS: bool = True
+    SMTP_SSL: bool = False
     SMTP_FROM_EMAIL: str = "noreply@yourdomain.com"
     SMTP_FROM_NAME: str = "My Designers"
-    SMTP_TLS: bool = True
+    SMTP_REPLY_TO: str = ""
+    SMTP_TIMEOUT: int = 15
+
+    # Centralized Branding Config
+    STORE_NAME: str = "My Designers"
+    STORE_URL: str = "http://localhost:5173"
+    STORE_LOGO_URL: str = ""
+    SUPPORT_EMAIL: str = "support@mydesigners.in"
+    SUPPORT_PHONE: str = "+91 9876543210"
+    FACEBOOK_URL: str = "https://facebook.com/mydesigners"
+    INSTAGRAM_URL: str = "https://instagram.com/mydesigners"
+    LINKEDIN_URL: str = "https://linkedin.com/company/mydesigners"
+    TWITTER_URL: str = ""
+    YOUTUBE_URL: str = ""
+    WHATSAPP_NUMBER: str = ""
+    BUSINESS_ADDRESS: str = ""
 
     # Optional Google reCAPTCHA support for public forms.
     RECAPTCHA_SECRET_KEY: str = ""
@@ -180,9 +204,6 @@ class Settings(BaseSettings):
     SUPABASE_BANNER_BUCKET: str = "banners"
     SUPABASE_CATEGORY_BUCKET: str = "category-images"
 
-    RAZORPAY_KEY_ID: str = ""
-    RAZORPAY_KEY_SECRET: str = ""
-
     @field_validator("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", mode="after")
     @classmethod
     def supabase_storage_credentials_optional(cls, v: str) -> str:
@@ -196,6 +217,7 @@ class Settings(BaseSettings):
     RAZORPAY_KEY_ID: str = ""
     RAZORPAY_KEY_SECRET: str = ""
     RAZORPAY_WEBHOOK_SECRET: str = ""
+    RAZORPAY_ORDER_TIMEOUT_MINUTES: int = 15
 
     @field_validator("RAZORPAY_KEY_ID", mode="after")
     @classmethod
@@ -228,6 +250,23 @@ class Settings(BaseSettings):
             )
 
         return v
+
+    @model_validator(mode="after")
+    def validate_production_razorpay_secrets(self) -> "Settings":
+        if self.ENVIRONMENT.lower() == "production":
+            missing = []
+            if not self.RAZORPAY_KEY_ID or not self.RAZORPAY_KEY_ID.strip():
+                missing.append("RAZORPAY_KEY_ID")
+            if not self.RAZORPAY_KEY_SECRET or not self.RAZORPAY_KEY_SECRET.strip():
+                missing.append("RAZORPAY_KEY_SECRET")
+            if not self.RAZORPAY_WEBHOOK_SECRET or not self.RAZORPAY_WEBHOOK_SECRET.strip():
+                missing.append("RAZORPAY_WEBHOOK_SECRET")
+            if missing:
+                raise ValueError(
+                    f"Production startup validation failed: Missing required Razorpay credentials: {', '.join(missing)}. "
+                    f"Application refuses to start in production without these secrets."
+                )
+        return self
 
 
 settings = Settings()

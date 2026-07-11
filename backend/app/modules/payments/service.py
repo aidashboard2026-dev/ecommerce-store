@@ -47,6 +47,11 @@ class RazorpayService:
 
         Amount must be in paise.
         """
+        if amount < 100:
+            raise HTTPException(
+                status_code=400,
+                detail="Amount must be at least 100 paise (1.00 INR).",
+            )
 
         try:
 

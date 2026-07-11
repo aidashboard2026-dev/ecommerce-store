@@ -34,6 +34,7 @@ import logging
 import math
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
+from fastapi import BackgroundTasks
 
 from sqlalchemy.orm import Session
 
@@ -137,38 +138,9 @@ def _check_and_decrement_stock(
 
     repo.decrement_stock(variant, qty)
 
-    # Check if stock dropped below low_stock_threshold
-    if variant.stock_quantity <= variant.low_stock_threshold:
-        try:
-            from app.modules.settings.service import get_or_create_store_settings
-            settings_row = get_or_create_store_settings(repo.db)
-            to_email = settings_row.support_email or "admin@example.com"
-            from app.shared.notifications.service import send_notification_sync
-            send_notification_sync(
-                db=repo.db,
-                event_name="Low Stock Alert",
-                to_email=to_email,
-                context={"product_name": order_in.product_name, "stock": variant.stock_quantity},
-                subject=f"Low Stock Alert: {order_in.product_name}",
-                text_body=f"Product {order_in.product_name} (Size: {variant.size}) is low on stock. Current stock: {variant.stock_quantity}.",
-                html_body=f"<p>Product <strong>{order_in.product_name}</strong> (Size: {variant.size}) is low on stock. Current stock: <strong>{variant.stock_quantity}</strong>.</p>",
-            )
-        except Exception as e:
-            logger.error(f"Failed to send low stock alert: {e}", exc_info=True)
+    # Note: Low stock alerts have been moved to a post-commit hook
+    # to ensure notifications are only triggered if the order transaction is committed successfully.
 
-        try:
-            from app.modules.notifications.service import create_admin_notification
-            item_desc = f"{order_in.product_name} {variant.size or ''}".strip()
-            create_admin_notification(
-                db=repo.db,
-                title="⚠️ Low Stock",
-                message=f"{item_desc}\nRemaining Stock: {variant.stock_quantity}",
-                type="warning",
-                event="Low Stock Alert",
-                metadata={"product_name": order_in.product_name, "size": variant.size, "stock": variant.stock_quantity}
-            )
-        except Exception as e:
-            logger.error(f"Failed to create low stock admin notification: {e}", exc_info=True)
 
 
 
@@ -256,6 +228,82 @@ def _build_and_persist_order(
     return repo.create_order(order)
 
 
+def trigger_low_stock_alerts_post_commit(
+    db: Session,
+    order: Order,
+    background_tasks: Optional[BackgroundTasks] = None,
+) -> None:
+    """
+    Check if the order item variant stock is below threshold post-commit,
+    and trigger low stock email and database notifications.
+    """
+    if order.item_type != ItemType.PRODUCT or not order.size:
+        return
+
+    from app.modules.products.models import ProductVariant
+    # query the variant
+    variant = (
+        db.query(ProductVariant)
+        .filter(
+            ProductVariant.product_id == order.product_id,
+            ProductVariant.size == order.size,
+            ProductVariant.color == order.color,
+        )
+        .first()
+    )
+
+    if not variant:
+        return
+
+    if variant.stock_quantity <= variant.low_stock_threshold:
+        # Create database notification
+        try:
+            from app.modules.notifications.service import create_admin_notification
+            item_desc = f"{order.product_name} {variant.size or ''}".strip()
+            create_admin_notification(
+                db=db,
+                title="⚠️ Low Stock",
+                message=f"{item_desc}\nRemaining Stock: {variant.stock_quantity}",
+                type="warning",
+                event="Low Stock Alert",
+                metadata={"product_name": order.product_name, "size": variant.size, "stock": variant.stock_quantity}
+            )
+            db.commit()
+        except Exception as e:
+            logger.error(f"Failed to create low stock admin notification: {e}", exc_info=True)
+
+        # Trigger email notification
+        try:
+            from app.modules.settings.service import get_or_create_store_settings
+            settings_row = get_or_create_store_settings(db)
+            to_email = settings_row.support_email or "admin@example.com"
+
+            if background_tasks:
+                from app.shared.notifications.service import send_notification_background
+                background_tasks.add_task(
+                    send_notification_background,
+                    event_name="Low Stock Alert",
+                    to_email=to_email,
+                    context={"product_name": order.product_name, "stock": variant.stock_quantity},
+                    subject=f"Low Stock Alert: {order.product_name}",
+                    text_body=f"Product {order.product_name} (Size: {variant.size}) is low on stock. Current stock: {variant.stock_quantity}.",
+                    html_body=f"<p>Product <strong>{order.product_name}</strong> (Size: {variant.size}) is low on stock. Current stock: <strong>{variant.stock_quantity}</strong>.</p>",
+                )
+            else:
+                from app.shared.notifications.service import send_notification_sync
+                send_notification_sync(
+                    db=db,
+                    event_name="Low Stock Alert",
+                    to_email=to_email,
+                    context={"product_name": order.product_name, "stock": variant.stock_quantity},
+                    subject=f"Low Stock Alert: {order.product_name}",
+                    text_body=f"Product {order.product_name} (Size: {variant.size}) is low on stock. Current stock: {variant.stock_quantity}.",
+                    html_body=f"<p>Product <strong>{order.product_name}</strong> (Size: {variant.size}) is low on stock. Current stock: <strong>{variant.stock_quantity}</strong>.</p>",
+                )
+        except Exception as e:
+            logger.error(f"Failed to send low stock alert: {e}", exc_info=True)
+
+
 # ─────────────────────────────────────────────────────────────
 # Public service functions
 # ─────────────────────────────────────────────────────────────
@@ -316,6 +364,7 @@ def _handle_status_transition_notifications(
     order: Order,
     old_status: Optional[str],
     new_status: str,
+    background_tasks: Optional[BackgroundTasks] = None,
 ) -> None:
     old_status_upper = (old_status or "").upper()
     new_status_upper = new_status.upper()
@@ -323,31 +372,59 @@ def _handle_status_transition_notifications(
     if old_status_upper == new_status_upper:
         return
 
-    from app.shared.notifications.service import send_notification_sync
-
     if new_status_upper == "SHIPPED":
-        send_notification_sync(
-            db=db,
-            event_name="Order Shipped",
-            to_email=order.customer_email,
-            context={"order_number": order.order_number},
-            subject=f"Your order #{order.order_number} has been shipped!",
-            text_body=f"Great news! Your order #{order.order_number} has been shipped. It will arrive soon.",
-            html_body=f"<p>Great news! Your order #{order.order_number} has been shipped. It will arrive soon.</p>",
-        )
+        if background_tasks:
+            from app.shared.notifications.service import send_notification_background
+            background_tasks.add_task(
+                send_notification_background,
+                event_name="Order Shipped",
+                to_email=order.customer_email,
+                context={"order_number": order.order_number},
+                subject=f"Your order #{order.order_number} has been shipped!",
+                text_body=f"Great news! Your order #{order.order_number} has been shipped. It will arrive soon.",
+                html_body=f"<p>Great news! Your order #{order.order_number} has been shipped. It will arrive soon.</p>",
+            )
+        else:
+            from app.shared.notifications.service import send_notification_sync
+            send_notification_sync(
+                db=db,
+                event_name="Order Shipped",
+                to_email=order.customer_email,
+                context={"order_number": order.order_number},
+                subject=f"Your order #{order.order_number} has been shipped!",
+                text_body=f"Great news! Your order #{order.order_number} has been shipped. It will arrive soon.",
+                html_body=f"<p>Great news! Your order #{order.order_number} has been shipped. It will arrive soon.</p>",
+            )
     elif new_status_upper == "CANCELLED":
-        send_notification_sync(
-            db=db,
-            event_name="Order Cancelled",
-            to_email=order.customer_email,
-            context={"order_number": order.order_number},
-            subject=f"Your order #{order.order_number} has been cancelled",
-            text_body=f"Your order #{order.order_number} has been cancelled successfully.",
-            html_body=f"<p>Your order #{order.order_number} has been cancelled successfully.</p>",
-        )
+        if background_tasks:
+            from app.shared.notifications.service import send_notification_background
+            background_tasks.add_task(
+                send_notification_background,
+                event_name="Order Cancelled",
+                to_email=order.customer_email,
+                context={"order_number": order.order_number},
+                subject=f"Your order #{order.order_number} has been cancelled",
+                text_body=f"Your order #{order.order_number} has been cancelled successfully.",
+                html_body=f"<p>Your order #{order.order_number} has been cancelled successfully.</p>",
+            )
+        else:
+            from app.shared.notifications.service import send_notification_sync
+            send_notification_sync(
+                db=db,
+                event_name="Order Cancelled",
+                to_email=order.customer_email,
+                context={"order_number": order.order_number},
+                subject=f"Your order #{order.order_number} has been cancelled",
+                text_body=f"Your order #{order.order_number} has been cancelled successfully.",
+                html_body=f"<p>Your order #{order.order_number} has been cancelled successfully.</p>",
+            )
 
 
-def create_order_admin(db: Session, order_in: OrderCreate) -> OrderResponse:
+def create_order_admin(
+    db: Session,
+    order_in: OrderCreate,
+    background_tasks: Optional[BackgroundTasks] = None,
+) -> OrderResponse:
     """
     Create an order through the admin panel.
     Validates order number uniqueness, checks stock, and persists atomically.
@@ -378,19 +455,26 @@ def create_order_admin(db: Session, order_in: OrderCreate) -> OrderResponse:
     db.commit()
     db.refresh(order)
 
+    # Post-Commit Hooks: Low stock alert and invoice email
+    trigger_low_stock_alerts_post_commit(db, order, background_tasks=background_tasks)
+
     logger.info("Admin order created: order_number=%s", order.order_number)
 
     # Send order confirmation email with invoice PDF attached
-    try:
-        from app.shared.email.service import send_order_confirmation_with_invoice
-        import asyncio
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            loop.create_task(send_order_confirmation_with_invoice(order, db=db))
-        else:
-            asyncio.run(send_order_confirmation_with_invoice(order, db=db))
-    except Exception as e:
-        logger.error(f"Failed to send order confirmation with invoice: {e}", exc_info=True)
+    if background_tasks:
+        from app.shared.email.service import send_order_confirmation_with_invoice_background
+        background_tasks.add_task(send_order_confirmation_with_invoice_background, order.id)
+    else:
+        try:
+            from app.shared.email.service import send_order_confirmation_with_invoice
+            import asyncio
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(send_order_confirmation_with_invoice(order, db=db))
+            else:
+                asyncio.run(send_order_confirmation_with_invoice(order, db=db))
+        except Exception as e:
+            logger.error(f"Failed to send order confirmation with invoice: {e}", exc_info=True)
 
     return OrderResponse.model_validate(order)
 
@@ -470,6 +554,7 @@ def process_razorpay_webhook_payment(
     db: Session,
     razorpay_order_id: str,
     razorpay_payment_id: str,
+    background_tasks: Optional[BackgroundTasks] = None,
 ) -> int:
     """
     Idempotently processes a successful Razorpay payment webhook.
@@ -491,7 +576,7 @@ def process_razorpay_webhook_payment(
         )
         return 0
 
-    updated_count = 0
+    updated_orders = []
     now = datetime.utcnow()
     for order in orders:
         if order.payment_status == "PENDING":
@@ -499,19 +584,47 @@ def process_razorpay_webhook_payment(
             order.payment_verified_at = now
             if razorpay_payment_id:
                 order.razorpay_payment_id = razorpay_payment_id
-            updated_count += 1
-            
+            updated_orders.append(order)
+
+    updated_count = len(updated_orders)
+    if updated_count > 0:
+        db.commit()
+        logger.info(
+            "Webhook event successfully processed. "
+            "Reconciled %d pending orders to PAID. "
+            "Internal Order IDs: %s, Razorpay Order ID: %s, Razorpay Payment ID: %s, Timestamp: %s",
+            updated_count,
+            [o.id for o in updated_orders],
+            razorpay_order_id,
+            razorpay_payment_id,
+            now.isoformat(),
+        )
+
+        # Trigger notifications ONLY after successful commit
+        for order in updated_orders:
             try:
-                from app.shared.notifications.service import send_notification_sync
-                send_notification_sync(
-                    db=db,
-                    event_name="Order Payment Completed",
-                    to_email=order.customer_email,
-                    context={"order_number": order.order_number, "total_amount": float(order.total_amount)},
-                    subject=f"Payment Confirmed! - #{order.order_number}",
-                    text_body=f"Your payment for order #{order.order_number} has been received and confirmed. Thank you!",
-                    html_body=f"<p>Your payment for order #{order.order_number} has been received and confirmed. Thank you!</p>",
-                )
+                if background_tasks:
+                    from app.shared.notifications.service import send_notification_background
+                    background_tasks.add_task(
+                        send_notification_background,
+                        event_name="Order Payment Completed",
+                        to_email=order.customer_email,
+                        context={"order_number": order.order_number, "total_amount": float(order.total_amount)},
+                        subject=f"Payment Confirmed! - #{order.order_number}",
+                        text_body=f"Your payment for order #{order.order_number} has been received and confirmed. Thank you!",
+                        html_body=f"<p>Your payment for order #{order.order_number} has been received and confirmed. Thank you!</p>",
+                    )
+                else:
+                    from app.shared.notifications.service import send_notification_sync
+                    send_notification_sync(
+                        db=db,
+                        event_name="Order Payment Completed",
+                        to_email=order.customer_email,
+                        context={"order_number": order.order_number, "total_amount": float(order.total_amount)},
+                        subject=f"Payment Confirmed! - #{order.order_number}",
+                        text_body=f"Your payment for order #{order.order_number} has been received and confirmed. Thank you!",
+                        html_body=f"<p>Your payment for order #{order.order_number} has been received and confirmed. Thank you!</p>",
+                    )
             except Exception as notify_err:
                 logger.error(
                     "Webhook: Failed to send payment completion notification for order %s: %s",
@@ -519,28 +632,32 @@ def process_razorpay_webhook_payment(
                 )
 
             try:
-                from app.modules.notifications.service import create_admin_notification
-                create_admin_notification(
-                    db=db,
-                    title="💳 Payment Received",
-                    message=f"Order #{order.order_number}\n₹{int(order.total_amount)}",
-                    type="success",
-                    event="Payment Received",
-                    metadata={"order_number": order.order_number, "total_amount": float(order.total_amount)}
-                )
+                if background_tasks:
+                    from app.shared.notifications.service import create_admin_notification_background
+                    background_tasks.add_task(
+                        create_admin_notification_background,
+                        title="💳 Payment Received",
+                        message=f"Order #{order.order_number}\n₹{int(order.total_amount)}",
+                        type="success",
+                        event="Payment Received",
+                        metadata={"order_number": order.order_number, "total_amount": float(order.total_amount)}
+                    )
+                else:
+                    from app.modules.notifications.service import create_admin_notification
+                    create_admin_notification(
+                        db=db,
+                        title="💳 Payment Received",
+                        message=f"Order #{order.order_number}\n₹{int(order.total_amount)}",
+                        type="success",
+                        event="Payment Received",
+                        metadata={"order_number": order.order_number, "total_amount": float(order.total_amount)}
+                    )
+                    db.commit()
             except Exception as notify_admin_err:
                 logger.error(
                     "Webhook: Failed to create payment received admin notification for order %s: %s",
                     order.order_number, notify_admin_err
                 )
-
-    
-    if updated_count > 0:
-        db.commit()
-        logger.info(
-            "Webhook: Successfully reconciled %d pending orders for razorpay_order_id %s to PAID.",
-            updated_count, razorpay_order_id
-        )
 
     return updated_count
 
@@ -549,6 +666,7 @@ def create_order_customer(
     db: Session,
     order_in: OrderCreate,
     customer: Customer,
+    background_tasks: Optional[BackgroundTasks] = None,
 ) -> OrderResponse:
     """
     Create an order through the storefront (authenticated customer).
@@ -604,27 +722,39 @@ def create_order_customer(
     db.commit()
     db.refresh(order)
 
+    # Post-Commit Hooks: Low stock alert and invoice email
+    trigger_low_stock_alerts_post_commit(db, order, background_tasks=background_tasks)
+
     logger.info(
         "Customer order created: order_number=%s customer_email=%s",
         order.order_number, customer.email,
     )
 
     # Send order confirmation email with invoice PDF attached
-    try:
-        from app.shared.email.service import send_order_confirmation_with_invoice
-        import asyncio
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            loop.create_task(send_order_confirmation_with_invoice(order, db=db))
-        else:
-            asyncio.run(send_order_confirmation_with_invoice(order, db=db))
-    except Exception as e:
-        logger.error(f"Failed to send order confirmation with invoice: {e}", exc_info=True)
+    if background_tasks:
+        from app.shared.email.service import send_order_confirmation_with_invoice_background
+        background_tasks.add_task(send_order_confirmation_with_invoice_background, order.id)
+    else:
+        try:
+            from app.shared.email.service import send_order_confirmation_with_invoice
+            import asyncio
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(send_order_confirmation_with_invoice(order, db=db))
+            else:
+                asyncio.run(send_order_confirmation_with_invoice(order, db=db))
+        except Exception as e:
+            logger.error(f"Failed to send order confirmation with invoice: {e}", exc_info=True)
 
     return OrderResponse.model_validate(order)
 
 
-def update_order(db: Session, order_id: int, payload: OrderUpdate) -> OrderResponse:
+def update_order(
+    db: Session,
+    order_id: int,
+    payload: OrderUpdate,
+    background_tasks: Optional[BackgroundTasks] = None,
+) -> OrderResponse:
     """
     Admin update for an order.
     Handles inventory restoration when tracking_status transitions to CANCELLED.
@@ -701,14 +831,18 @@ def update_order(db: Session, order_id: int, payload: OrderUpdate) -> OrderRespo
     # Trigger tracking status transition notification
     if new_status is not None:
         try:
-            _handle_status_transition_notifications(db, order, old_tracking_status, new_status)
+            _handle_status_transition_notifications(db, order, old_tracking_status, new_status, background_tasks=background_tasks)
         except Exception as e:
             logger.error(f"Failed to send status transition notification: {e}", exc_info=True)
 
     return OrderResponse.model_validate(order)
 
 
-def cancel_order_admin(db: Session, order_id: int) -> OrderResponse:
+def cancel_order_admin(
+    db: Session,
+    order_id: int,
+    background_tasks: Optional[BackgroundTasks] = None,
+) -> OrderResponse:
     """
     Admin-initiated cancellation. No status restrictions.
     Restores inventory if not already cancelled.
@@ -738,7 +872,9 @@ def cancel_order_admin(db: Session, order_id: int) -> OrderResponse:
     logger.info("Admin cancelled order: order_id=%s", order_id)
 
     try:
-        _handle_status_transition_notifications(db, order, old_tracking_status, TrackingStatus.CANCELLED)
+        _handle_status_transition_notifications(
+            db, order, old_tracking_status, TrackingStatus.CANCELLED, background_tasks=background_tasks
+        )
     except Exception as e:
         logger.error(f"Failed to send cancellation notification: {e}", exc_info=True)
 
@@ -749,6 +885,7 @@ def cancel_order_customer(
     db: Session,
     order_id: int,
     customer: Customer,
+    background_tasks: Optional[BackgroundTasks] = None,
 ) -> OrderResponse:
     """
     Customer-initiated cancellation.
@@ -791,14 +928,21 @@ def cancel_order_customer(
     )
 
     try:
-        _handle_status_transition_notifications(db, order, old_tracking_status, TrackingStatus.CANCELLED)
+        _handle_status_transition_notifications(
+            db, order, old_tracking_status, TrackingStatus.CANCELLED, background_tasks=background_tasks
+        )
     except Exception as e:
         logger.error(f"Failed to send cancellation notification: {e}", exc_info=True)
 
     return OrderResponse.model_validate(order)
 
 
-def update_tracking(db: Session, order_id: int, tracking_status: str) -> OrderResponse:
+def update_tracking(
+    db: Session,
+    order_id: int,
+    tracking_status: str,
+    background_tasks: Optional[BackgroundTasks] = None,
+) -> OrderResponse:
     """
     Update tracking status only — used by the dedicated tracking endpoint.
     Restores inventory on PLACED → CANCELLED transition.
@@ -828,7 +972,9 @@ def update_tracking(db: Session, order_id: int, tracking_status: str) -> OrderRe
 
 
     try:
-        _handle_status_transition_notifications(db, order, old_tracking_status, tracking_status)
+        _handle_status_transition_notifications(
+            db, order, old_tracking_status, tracking_status, background_tasks=background_tasks
+        )
     except Exception as e:
         logger.error(f"Failed to send tracking transition notification: {e}", exc_info=True)
 
@@ -913,7 +1059,13 @@ def create_razorpay_order(
     from app.core.config import settings
 
     repo = OrderRepository(db)
-    orders = repo.get_by_cart_session_id(cart_session_id)
+    # Lock matching order rows to serialize concurrent Razorpay order creation requests
+    orders = (
+        db.query(Order)
+        .filter(Order.cart_session_id == cart_session_id)
+        .with_for_update()
+        .all()
+    )
     if not orders:
         raise NotFoundError(
             f"No orders found for cart session '{cart_session_id}'.",
@@ -927,28 +1079,82 @@ def create_razorpay_order(
                 code="ORDER_NOT_FOUND",
             )
 
+    # Case 3: Already Paid Check
+    any_paid = any(order.payment_status == "PAID" for order in orders)
+    if any_paid:
+        logger.warning(
+            "Rejecting Razorpay order creation: Order already PAID for cart_session_id=%s.",
+            cart_session_id,
+        )
+        raise BusinessRuleError(
+            "This order has already been paid.",
+            code="ORDER_ALREADY_PAID",
+        )
+
+    # Cancelled Check
+    any_cancelled = any(order.tracking_status == TrackingStatus.CANCELLED for order in orders)
+    if any_cancelled:
+        logger.warning(
+            "Rejecting Razorpay order creation: Order is CANCELLED for cart_session_id=%s.",
+            cart_session_id,
+        )
+        raise BusinessRuleError(
+            "Cannot pay for a cancelled order.",
+            code="ORDER_CANCELLED",
+        )
+
     total_amount = sum(order.total_amount for order in orders)
     amount_paise = int(round(total_amount * 100))
+
+    if amount_paise < 100:
+        raise BusinessRuleError(
+            "The minimum transaction amount is 1.00 INR (100 paise).",
+            code="INVALID_AMOUNT",
+        )
 
     client = razorpay.Client(
         auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
     )
 
-    # Check for order reuse eligibility
+    # Check for order reuse eligibility (Case 1 vs Case 2)
     existing_order_id = orders[0].razorpay_order_id if orders else None
     all_pending = all(order.payment_status == "PENDING" for order in orders)
+    is_retry = existing_order_id is not None
+    retry_count = 1 if is_retry else 0
 
     if all_pending and existing_order_id:
         try:
+            import time
             rzp_order = client.order.fetch(existing_order_id)
+            rzp_status = rzp_order.get("status")
+            rzp_amount = rzp_order.get("amount")
+            rzp_created_at = rzp_order.get("created_at")
+
+            is_expired = False
+            if rzp_created_at:
+                age_minutes = (time.time() - rzp_created_at) / 60.0
+                if age_minutes > settings.RAZORPAY_ORDER_TIMEOUT_MINUTES:
+                    is_expired = True
+                    logger.info(
+                        "Existing Razorpay Order %s has expired (age: %.1f mins, timeout: %d mins).",
+                        existing_order_id,
+                        age_minutes,
+                        settings.RAZORPAY_ORDER_TIMEOUT_MINUTES,
+                    )
+
             if (
-                rzp_order.get("status") in ("created", "attempted")
-                and rzp_order.get("amount") == amount_paise
+                not is_expired
+                and rzp_status in ("created", "attempted")
+                and rzp_amount == amount_paise
             ):
                 logger.info(
-                    "Reusing existing Razorpay Order: %s for cart_session_id: %s",
+                    "Reusing existing valid Razorpay Order: %s for cart_session_id: %s. "
+                    "Internal Order IDs: %s, Retry Count: %d, Timestamp: %s",
                     existing_order_id,
                     cart_session_id,
+                    [o.id for o in orders],
+                    retry_count,
+                    datetime.now(timezone.utc).isoformat(),
                 )
                 return {
                     "id": rzp_order["id"],
@@ -958,6 +1164,15 @@ def create_razorpay_order(
                     "receipt": rzp_order.get("receipt"),
                     "status": rzp_order.get("status"),
                 }
+            else:
+                logger.info(
+                    "Existing Razorpay Order %s is not reusable (status: %s, amount: %s, expected: %d, expired: %s). Creating a new one.",
+                    existing_order_id,
+                    rzp_status,
+                    rzp_amount,
+                    amount_paise,
+                    is_expired,
+                )
         except Exception as fetch_err:
             logger.warning(
                 "Could not reuse existing Razorpay Order %s: %s. Creating a new one.",
@@ -970,7 +1185,7 @@ def create_razorpay_order(
             {
                 "amount": amount_paise,
                 "currency": "INR",
-                "receipt": f"rcpt_{cart_session_id[:20]}",
+                "receipt": f"RCPT-{orders[0].order_number.replace('ORD-', '')}",
                 "notes": {
                     "cart_session_id": cart_session_id,
                     "customer_email": customer.email,
@@ -994,6 +1209,15 @@ def create_razorpay_order(
                 },
             )
         db.commit()
+        logger.info(
+            "New Razorpay Order created and persisted. "
+            "Internal Order IDs: %s, Cart Session: %s, New Razorpay Order ID: %s, Retry Count: %d, Timestamp: %s",
+            [o.id for o in orders],
+            cart_session_id,
+            razorpay_order["id"],
+            retry_count,
+            datetime.now(timezone.utc).isoformat(),
+        )
     except Exception as db_err:
         db.rollback()
         logger.exception("Database persistence of razorpay_order_id failed")
@@ -1030,7 +1254,13 @@ def verify_razorpay_payment(
     from app.core.config import settings
 
     repo = OrderRepository(db)
-    orders = repo.get_by_cart_session_id(cart_session_id)
+    # Lock matching order rows to serialize concurrent verification requests
+    orders = (
+        db.query(Order)
+        .filter(Order.cart_session_id == cart_session_id)
+        .with_for_update()
+        .all()
+    )
     if not orders:
         raise NotFoundError(
             f"No orders found for cart session '{cart_session_id}'.",
@@ -1042,6 +1272,11 @@ def verify_razorpay_payment(
             raise NotFoundError(
                 f"No orders found for cart session '{cart_session_id}'.",
                 code="ORDER_NOT_FOUND",
+            )
+        if order.razorpay_order_id != razorpay_order_id:
+            raise BusinessRuleError(
+                "Razorpay Order ID mismatch.",
+                code="ORDER_ID_MISMATCH",
             )
 
     # 1. Idempotency Check: if already PAID, return cached orders without modifying anything
@@ -1101,6 +1336,14 @@ def verify_razorpay_payment(
                 },
             )
         db.commit()
+        logger.info(
+            "Razorpay payment verified successfully. "
+            "Internal Order IDs: %s, Razorpay Order ID: %s, Razorpay Payment ID: %s, Status: PAID, Timestamp: %s",
+            [o.id for o in orders],
+            razorpay_order_id,
+            razorpay_payment_id,
+            now_utc.isoformat(),
+        )
         for order in orders:
             db.refresh(order)
     except Exception as db_err:
