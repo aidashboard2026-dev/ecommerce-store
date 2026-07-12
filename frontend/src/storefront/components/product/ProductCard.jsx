@@ -10,6 +10,10 @@ import {
 } from "@/storefront/store/wishlistSlice";
 import { addToCart } from "@/storefront/store/cartSlice";
 import { addCustomerCartItemThunk } from "@/storefront/store/customerCartThunks";
+import {
+  addCustomerWishlistItemThunk,
+  removeCustomerWishlistItemThunk,
+} from "@/storefront/store/customerWishlistThunks";
 import toast from "react-hot-toast";
 
 function ProductCard({ product }) {
@@ -39,19 +43,63 @@ function ProductCard({ product }) {
       )
     : 0;
 
-  const handleWishlist = (e) => {
+  const handleWishlist = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    dispatch(
-      toggleWishlist({
-        productId: product.id,
-        title: product.title,
-        slug: product.slug,
-        thumbnail: product.thumbnail,
-        minPrice: product.selling_price_min,
-      }),
-    );
-    toast.success(isWishlisted ? "Removed from wishlist" : "Added to wishlist");
+
+    const wishlistProduct = {
+      productId: product.id,
+      title: product.title,
+      slug: product.slug,
+      thumbnail: product.thumbnail,
+      minPrice: product.min_price ?? product.selling_price_min ?? null,
+    };
+
+    const isAuthenticated = !!(token && customer);
+
+    // Guest customer:
+    // Redux + guest localStorage only
+    if (!isAuthenticated) {
+      dispatch(toggleWishlist(wishlistProduct));
+
+      toast.success(
+        isWishlisted ? "Removed from wishlist" : "Added to wishlist",
+      );
+
+      return;
+    }
+
+    // Logged-in customer:
+    // Update database first
+    try {
+      if (isWishlisted) {
+        await dispatch(
+          removeCustomerWishlistItemThunk({
+            productId: product.id,
+          }),
+        ).unwrap();
+
+        dispatch(toggleWishlist(wishlistProduct));
+
+        toast.success("Removed from wishlist");
+      } else {
+        await dispatch(
+          addCustomerWishlistItemThunk({
+            productId: product.id,
+          }),
+        ).unwrap();
+
+        dispatch(toggleWishlist(wishlistProduct));
+
+        toast.success("Added to wishlist");
+      }
+    } catch (error) {
+      console.error("Wishlist update failed:", error);
+
+      toast.error(
+        typeof error === "string" ? error : "Unable to update wishlist",
+      );
+    }
   };
 
   const handleQuickAdd = async (e) => {
