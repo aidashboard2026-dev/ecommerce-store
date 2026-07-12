@@ -163,7 +163,7 @@ export default function TermsConditions() {
 
         {/* Products & Services */}
 
-        <section className="py-14 border-t border-gray-200">
+        {/* <section className="py-14 border-t border-gray-200">
 
           <div className="grid lg:grid-cols-2 gap-16">
 
@@ -218,11 +218,11 @@ export default function TermsConditions() {
 
               ))}
 
-            </div>
+            </div> */}
 
-          </div>
+          {/* </div>
 
-        </section>
+        </section> */}
 
         {/* Order Process */}
 

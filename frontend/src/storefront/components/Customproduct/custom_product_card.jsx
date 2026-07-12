@@ -78,10 +78,10 @@ function CustomProductCard({ product }) {
   return (
     <Link
       to={`/custom/${product.id}`}
-      className="group relative flex flex-col w-full justify-between overflow-hidden transition-all duration-300 hover:-translate-y-1"
+      className="group relative flex flex-col w-full justify-between overflow-hidden rounded-none transition-all duration-300 hover:-translate-y-1"
     >
       {/* Image */}
-      <div className="flex relative w-full aspect-[8/9] rounded-2xl bg-surface overflow-hidden">
+      <div className="flex relative w-full aspect-[8/9] rounded-none bg-surface overflow-hidden">
         {product.thumbnail && !imageError ? (
           <img
             src={getImageUrl(product.thumbnail)}
@@ -180,9 +180,9 @@ function CustomProductCard({ product }) {
 
                     {hasDiscount && (
 
-                        <span className="text-red-500 text-sm font-semibold">
+                        <span className="text-red-500 w-fit text-[13px] font-extralight uppercase tracking-wide px-2 py-1 rounded-full">
 
-                            {discountPct}% OFF
+                            {discountPct}% 
 
                         </span>
 
@@ -239,13 +239,14 @@ function CustomProductCard({ product }) {
             }
           }}
           className={clsx(
-            "absolute bottom-0 right-0 w-full p-2.5",
+            "absolute bottom-0 right-0",
+            "w-full p-2.5",
             "flex items-center justify-center gap-3",
             "bg-green-600 hover:bg-green-700 text-white",
-            "uppercase text-sm rounded-md",
+            "uppercase text-sm",
+            "rounded-none",
             "translate-y-12 opacity-0",
-            "group-hover:translate-y-0",
-            "group-hover:opacity-100",
+            "group-hover:translate-y-0 group-hover:opacity-100",
             "duration-300"
           )}
         >
