@@ -25,7 +25,16 @@ function CustomProductCard({ product }) {
   const hasDiscount =
   Number(originalMin) > Number(minPrice);
 
-  const discountPct = product.discount_percentage;
+  const discountPct =
+    product.discount_percentage ??
+    product.discount ??
+    (hasDiscount
+      ? Math.round(
+          ((Number(originalMin) - Number(minPrice)) /
+            Number(originalMin)) *
+            100
+        )
+      : 0);
 
 //   const discountPct =
 //     product.discount_percentage ??

@@ -6,6 +6,7 @@ import HeroSection from "@/storefront/components/home/HeroSection";
 import CategorySection from "@/storefront/components/home/CategorySection";
 import OfferSection from "@/storefront/components/home/OfferSection";
 import ProductGrid from "@/storefront/components/home/ProductGrid";
+import CustomProductSection from "@/storefront/components/Customproduct/CustomProductSection";
 
 import {
   useFeaturedProducts,
@@ -13,6 +14,7 @@ import {
   useBestSellers,
   useActiveOffers,
   useActiveBanners,
+  useCustomProducts,
 } from "@/storefront/hooks/useProducts";
 
 function SectionHeader({ title, subtitle }) {
@@ -43,6 +45,9 @@ export default function HomePage() {
   const { data: banners = [] } = useActiveBanners();
 
   const scrollRef = useRef(null);
+  const { data: customData } = useCustomProducts();
+
+  const customProducts = customData?.items ?? customData ?? [];
 
   const handleWheel = (e) => {
     if (scrollRef.current) {
@@ -68,6 +73,12 @@ export default function HomePage() {
         scrollRef={scrollRef}
         handleWheel={handleWheel}
       />
+      
+
+      <CustomProductSection
+        products={customProducts}
+      />
+
 
       {/* Featured Products */}
       {(loadingFeatured || featured.length > 0) && (

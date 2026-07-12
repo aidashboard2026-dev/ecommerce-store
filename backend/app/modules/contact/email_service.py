@@ -1,46 +1,33 @@
 """
 app/modules/contact/email_service.py
 
-Email service for contact messages with professional HTML templates.
+Email service for contact messages with professional HTML and plain-text templates.
 Handles sending emails to admin and automatic customer replies.
+Uses the centralized Settings and builder presentation layer.
 """
 
-import os
+import time
+import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from datetime import datetime
-from typing import Optional
+from typing import Tuple
+
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+def generate_msg_reference_id() -> str:
+    """Generates a human-readable unique reference ID for support messages."""
+    timestamp = datetime.now().strftime("%Y%m%d")
+    unique_suffix = f"{int(time.time() * 1000) % 1000000:06d}"
+    return f"MSG-{timestamp}-{unique_suffix}"
 
 
-# ── SMTP Configuration ───────────────────────────────────────────────────────
-
-SMTP_HOST = os.getenv("SMTP_HOST")
-SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
-SMTP_EMAIL = os.getenv("SMTP_EMAIL")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL")
-STORE_NAME = os.getenv("STORE_NAME", "My Designers")
-STORE_LOGO_URL = os.getenv("STORE_LOGO_URL", "")
-
-print("SMTP_HOST:", SMTP_HOST)
-print("SMTP_PORT:", SMTP_PORT)
-print("SMTP_EMAIL:", SMTP_EMAIL)
-print("SUPPORT_EMAIL:", SUPPORT_EMAIL)
-print("SMTP_PASSWORD:", "Loaded" if SMTP_PASSWORD else "Missing")
-def get_db_settings():
-    try:
-        from app.core.database import SessionLocal
-        from app.modules.settings.service import get_or_create_store_settings
-        db = SessionLocal()
-        try:
-            return get_or_create_store_settings(db)
-        finally:
-            db.close()
-    except Exception:
-        return None
-
-# ── Email Templates ─────────────────────────────────────────────────────────
+# ── Email Template Adapters ──────────────────────────────────────────────────
 
 def get_admin_email_html(
     customer_name: str,
@@ -48,425 +35,56 @@ def get_admin_email_html(
     subject: str,
     message: str,
     submitted_at: datetime,
-) -> str:
-    """Generate professional HTML email template for admin notification."""
-    db_settings = get_db_settings()
-    STORE_NAME = db_settings.store_name if db_settings else os.getenv("STORE_NAME", "My Designers")
-
+    reference_id: str,
+) -> Tuple[str, str]:
+    """Generate professional HTML and plain-text templates for admin notification."""
+    from app.shared.email.builder import build_contact_admin_notification
+    from app.shared.email.service import compile_email_branding
+    
     submitted_date = submitted_at.strftime("%B %d, %Y")
     submitted_time = submitted_at.strftime("%I:%M %p")
-
-    return f"""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>New Contact Form Submission</title>
-        <style>
-            * {{
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }}
-            
-            body {{
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-                background-color: #f5f7fa;
-                line-height: 1.6;
-                color: #333;
-            }}
-            
-            .container {{
-                max-width: 600px;
-                margin: 20px auto;
-                background-color: #ffffff;
-                border-radius: 12px;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-                overflow: hidden;
-            }}
-            
-            .header {{
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                padding: 30px;
-                text-align: center;
-                color: #ffffff;
-            }}
-            
-            .header h1 {{
-                font-size: 24px;
-                margin-bottom: 10px;
-                font-weight: 600;
-            }}
-            
-            .header p {{
-                font-size: 14px;
-                opacity: 0.9;
-            }}
-            
-            .content {{
-                padding: 30px;
-            }}
-            
-            .greeting {{
-                font-size: 16px;
-                margin-bottom: 20px;
-                color: #333;
-            }}
-            
-            .info-section {{
-                background-color: #f8fafc;
-                border-left: 4px solid #667eea;
-                padding: 15px;
-                margin-bottom: 20px;
-                border-radius: 4px;
-            }}
-            
-            .info-label {{
-                font-weight: 600;
-                color: #667eea;
-                font-size: 12px;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                margin-bottom: 5px;
-            }}
-            
-            .info-value {{
-                color: #333;
-                font-size: 14px;
-                word-break: break-word;
-            }}
-            
-            .message-box {{
-                background-color: #fafbfc;
-                border: 1px solid #e2e8f0;
-                padding: 20px;
-                border-radius: 8px;
-                margin: 20px 0;
-            }}
-            
-            .message-label {{
-                font-weight: 600;
-                color: #333;
-                margin-bottom: 10px;
-                font-size: 14px;
-            }}
-            
-            .message-content {{
-                color: #555;
-                font-size: 14px;
-                line-height: 1.8;
-                white-space: pre-wrap;
-                word-break: break-word;
-            }}
-            
-            .meta-info {{
-                background-color: #f0f4f8;
-                padding: 15px;
-                border-radius: 8px;
-                margin: 20px 0;
-                font-size: 13px;
-                color: #666;
-            }}
-            
-            .footer {{
-                background-color: #f8fafc;
-                padding: 20px;
-                text-align: center;
-                font-size: 12px;
-                color: #888;
-                border-top: 1px solid #e2e8f0;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>📧 New Contact Form Submission</h1>
-                <p>You've received a new message from your website</p>
-            </div>
-            
-            <div class="content">
-                <p class="greeting">Hello Admin,</p>
-                
-                <p style="margin-bottom: 20px; color: #555;">A new contact form submission has been received.</p>
-                
-                <div class="info-section">
-                    <div class="info-label">👤 From</div>
-                    <div class="info-value">{customer_name} &lt;{customer_email}&gt;</div>
-                </div>
-                
-                <div class="info-section">
-                    <div class="info-label">📌 Subject</div>
-                    <div class="info-value">{subject}</div>
-                </div>
-                
-                <div class="message-box">
-                    <div class="message-label">💬 Message</div>
-                    <div class="message-content">{message}</div>
-                </div>
-                
-                <div class="meta-info">
-                    <div><strong>📅 Submitted:</strong> {submitted_date} at {submitted_time}</div>
-                </div>
-            </div>
-            
-            <div class="footer">
-                <p><strong>{STORE_NAME}</strong> - Support Dashboard</p>
-                <p>&copy; {datetime.now().year} {STORE_NAME}. All rights reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
+    branding = compile_email_branding()
+    return build_contact_admin_notification(
+        branding=branding,
+        customer_name=customer_name,
+        customer_email=customer_email,
+        subject=subject,
+        message=message,
+        submitted_date=submitted_date,
+        submitted_time=submitted_time,
+        reference_id=reference_id
+    )
 
 
-def get_customer_reply_html(customer_name: str) -> str:
-    """Generate professional HTML email template for customer auto-reply."""
-    db_settings = get_db_settings()
-    STORE_NAME = db_settings.store_name if db_settings else os.getenv("STORE_NAME", "My Designers")
-    current_year = datetime.now().year
-
-    return f"""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Thank You for Contacting {STORE_NAME}</title>
-        <style>
-            * {{
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }}
-            
-            body {{
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-                background-color: #f5f7fa;
-                line-height: 1.6;
-                color: #333;
-            }}
-            
-            .container {{
-                max-width: 600px;
-                margin: 20px auto;
-                background-color: #ffffff;
-                border-radius: 12px;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-                overflow: hidden;
-            }}
-            
-            .header {{
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                padding: 30px;
-                text-align: center;
-                color: #ffffff;
-            }}
-            
-            .content {{
-                padding: 30px;
-            }}
-            
-            .greeting {{
-                font-size: 18px;
-                color: #333;
-                margin-bottom: 15px;
-                font-weight: 600;
-            }}
-            
-            .message {{
-                line-height: 1.8;
-                color: #555;
-                margin-bottom: 20px;
-                font-size: 14px;
-            }}
-            
-            .highlight-box {{
-                background-color: #f0f4f8;
-                border-left: 4px solid #667eea;
-                padding: 15px;
-                margin: 20px 0;
-                border-radius: 4px;
-            }}
-            
-            .footer {{
-                background-color: #f8fafc;
-                padding: 20px;
-                text-align: center;
-                font-size: 12px;
-                color: #888;
-                border-top: 1px solid #e2e8f0;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>✅ Thank You!</h1>
-                <p>We've received your message</p>
-            </div>
-            
-            <div class="content">
-                <p class="greeting">Hello {customer_name},</p>
-                
-                <p class="message">
-                    Thank you for contacting <strong>{STORE_NAME}</strong>.
-                </p>
-                
-                <p class="message">
-                    We have received your message successfully. Your inquiry is important to us.
-                </p>
-                
-                <div class="highlight-box">
-                    <p><strong>⏱️ What's Next?</strong></p>
-                    <p>Our dedicated support team will review your request and respond within <strong>24 hours</strong>.</p>
-                </div>
-                
-                <p class="message">
-                    In the meantime, if you have any additional information, please feel free to reach out.
-                </p>
-                
-                <p style="margin-top: 30px; color: #555;">
-                    Best regards,<br>
-                    <strong>{STORE_NAME} Support Team</strong>
-                </p>
-            </div>
-            
-            <div class="footer">
-                <p>&copy; {current_year} {STORE_NAME}. All rights reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
+def get_customer_reply_html(customer_name: str, reference_id: str) -> Tuple[str, str]:
+    """Generate professional HTML and plain-text templates for customer auto-reply."""
+    from app.shared.email.builder import build_contact_auto_reply
+    from app.shared.email.service import compile_email_branding
+    
+    branding = compile_email_branding()
+    submitted_date = datetime.now().strftime("%B %d, %Y")
+    return build_contact_auto_reply(
+        branding=branding,
+        customer_name=customer_name,
+        submitted_subject="General Inquiry",
+        submitted_date=submitted_date,
+        reference_id=reference_id
+    )
 
 
-def get_admin_reply_html(customer_name: str, subject: str, reply_message: str) -> str:
-    """Generate professional HTML email template for admin reply to customer."""
-    db_settings = get_db_settings()
-    STORE_NAME = db_settings.store_name if db_settings else os.getenv("STORE_NAME", "My Designers")
-    current_year = datetime.now().year
-
-    return f"""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Reply from {STORE_NAME}</title>
-        <style>
-            * {{
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }}
-            
-            body {{
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-                background-color: #f5f7fa;
-                line-height: 1.6;
-                color: #333;
-            }}
-            
-            .container {{
-                max-width: 600px;
-                margin: 20px auto;
-                background-color: #ffffff;
-                border-radius: 12px;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-                overflow: hidden;
-            }}
-            
-            .header {{
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                padding: 30px;
-                text-align: center;
-                color: #ffffff;
-            }}
-            
-            .content {{
-                padding: 30px;
-            }}
-            
-            .greeting {{
-                font-size: 18px;
-                color: #333;
-                margin-bottom: 15px;
-                font-weight: 600;
-            }}
-            
-            .subject-box {{
-                background-color: #f0f4f8;
-                border-left: 4px solid #667eea;
-                padding: 15px;
-                margin-bottom: 20px;
-                border-radius: 4px;
-            }}
-            
-            .reply-box {{
-                background-color: #fafbfc;
-                border: 1px solid #e2e8f0;
-                padding: 20px;
-                border-radius: 8px;
-                margin: 20px 0;
-            }}
-            
-            .message {{
-                line-height: 1.8;
-                color: #555;
-                margin-bottom: 20px;
-                font-size: 14px;
-                white-space: pre-wrap;
-                word-break: break-word;
-            }}
-            
-            .footer {{
-                background-color: #f8fafc;
-                padding: 20px;
-                text-align: center;
-                font-size: 12px;
-                color: #888;
-                border-top: 1px solid #e2e8f0;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>💌 We've Replied to Your Message</h1>
-                <p>Response from {STORE_NAME}</p>
-            </div>
-            
-            <div class="content">
-                <p class="greeting">Hello {customer_name},</p>
-                
-                <p style="margin-bottom: 20px; color: #555; font-size: 14px;">
-                    Our team has reviewed your inquiry and has provided a response:
-                </p>
-                
-                <div class="subject-box">
-                    <strong>📌 Subject:</strong> {subject}
-                </div>
-                
-                <div class="reply-box">
-                    <div style="font-weight: 600; margin-bottom: 10px;">💬 Response:</div>
-                    <div class="message">{reply_message}</div>
-                </div>
-                
-                <p style="margin-top: 30px; color: #555;">
-                    Thank you for your continued support.<br>
-                    <strong>{STORE_NAME} Support Team</strong>
-                </p>
-            </div>
-            
-            <div class="footer">
-                <p>&copy; {current_year} {STORE_NAME}. All rights reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
+def get_admin_reply_html(customer_name: str, subject: str, reply_message: str, reference_id: str) -> Tuple[str, str]:
+    """Generate professional HTML and plain-text templates for admin reply to customer."""
+    from app.shared.email.builder import build_admin_reply
+    from app.shared.email.service import compile_email_branding
+    
+    branding = compile_email_branding()
+    return build_admin_reply(
+        branding=branding,
+        customer_name=customer_name,
+        subject=subject,
+        reply_message=reply_message,
+        reference_id=reference_id
+    )
 
 
 # ── Email Sending Functions ──────────────────────────────────────────────────
@@ -478,64 +96,67 @@ def send_admin_notification(
     message: str,
     submitted_at: datetime,
 ) -> bool:
-    """Send HTML email notification to admin about new contact message."""
+    """Send HTML and plain-text email notification to admin about new contact message."""
+    reference_id = generate_msg_reference_id()
     try:
-        db_settings = get_db_settings()
-        store_name = db_settings.store_name if db_settings else STORE_NAME
-        support_email = db_settings.support_email if (db_settings and db_settings.support_email) else SUPPORT_EMAIL
+        from app.shared.email.service import compile_email_branding, send_email_unified, _run_async_in_sync
+        branding = compile_email_branding()
+        store_name = branding.get("store_name", "My Designers")
+        support_email = branding.get("support_email", settings.SUPPORT_EMAIL)
 
-        msg = MIMEMultipart("alternative")
-        msg["From"] = SMTP_EMAIL
-        msg["To"] = support_email
-        msg["Subject"] = f"[{store_name}] New Contact: {subject}"
-
-        html_content = get_admin_email_html(
+        html_content, text_content = get_admin_email_html(
             customer_name,
             customer_email,
             subject,
             message,
             submitted_at,
+            reference_id
         )
 
-        msg.attach(MIMEText(html_content, "html"))
+        full_subject = f"[{store_name}] New Contact: {subject}"
 
-        server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
-        server.starttls()
-        server.login(SMTP_EMAIL, SMTP_PASSWORD)
-        server.sendmail(SMTP_EMAIL, support_email, msg.as_string())
-        server.quit()
-
-        return True
-
+        return _run_async_in_sync(
+            send_email_unified(
+                to_email=support_email,
+                subject=full_subject,
+                html_body=html_content,
+                text_body=text_content,
+                reference_id=reference_id
+            )
+        )
     except Exception as e:
-        print(f"Error sending admin notification: {e}")
+        logger.error(
+            "Failed to send admin notification for reference %s: %s",
+            reference_id, e, exc_info=True
+        )
         return False
 
 
 def send_customer_auto_reply(customer_name: str, customer_email: str) -> bool:
     """Send automatic thank-you email to customer."""
+    reference_id = generate_msg_reference_id()
     try:
-        db_settings = get_db_settings()
-        store_name = db_settings.store_name if db_settings else STORE_NAME
+        from app.shared.email.service import compile_email_branding, send_email_unified, _run_async_in_sync
+        branding = compile_email_branding()
+        store_name = branding.get("store_name", "My Designers")
 
-        msg = MIMEMultipart("alternative")
-        msg["From"] = SMTP_EMAIL
-        msg["To"] = customer_email
-        msg["Subject"] = f"Thank you for contacting {store_name}"
+        html_content, text_content = get_customer_reply_html(customer_name, reference_id)
+        full_subject = f"Thank you for contacting {store_name}"
 
-        html_content = get_customer_reply_html(customer_name)
-        msg.attach(MIMEText(html_content, "html"))
-
-        server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
-        server.starttls()
-        server.login(SMTP_EMAIL, SMTP_PASSWORD)
-        server.sendmail(SMTP_EMAIL, customer_email, msg.as_string())
-        server.quit()
-
-        return True
-
+        return _run_async_in_sync(
+            send_email_unified(
+                to_email=customer_email,
+                subject=full_subject,
+                html_body=html_content,
+                text_body=text_content,
+                reference_id=reference_id
+            )
+        )
     except Exception as e:
-        print(f"Error sending customer auto-reply: {e}")
+        logger.error(
+            "Failed to send customer auto-reply for reference %s: %s",
+            reference_id, e, exc_info=True
+        )
         return False
 
 
@@ -546,29 +167,32 @@ def send_admin_reply_to_customer(
     reply_message: str,
 ) -> bool:
     """Send admin reply email to customer."""
+    reference_id = generate_msg_reference_id()
     try:
-        msg = MIMEMultipart("alternative")
-        msg["From"] = SMTP_EMAIL
-        msg["To"] = customer_email
-        msg["Subject"] = f"Re: {subject}"
-
-        html_content = get_admin_reply_html(
+        from app.shared.email.service import send_email_unified, _run_async_in_sync
+        
+        html_content, text_content = get_admin_reply_html(
             customer_name,
             subject,
             reply_message,
+            reference_id
         )
-        msg.attach(MIMEText(html_content, "html"))
+        full_subject = f"Re: {subject}"
 
-        server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
-        server.starttls()
-        server.login(SMTP_EMAIL, SMTP_PASSWORD)
-        server.sendmail(SMTP_EMAIL, customer_email, msg.as_string())
-        server.quit()
-
-        return True
-
+        return _run_async_in_sync(
+            send_email_unified(
+                to_email=customer_email,
+                subject=full_subject,
+                html_body=html_content,
+                text_body=text_content,
+                reference_id=reference_id
+            )
+        )
     except Exception as e:
-        print(f"Error sending admin reply: {e}")
+        logger.error(
+            "Failed to send admin support reply for reference %s: %s",
+            reference_id, e, exc_info=True
+        )
         return False
 
 

@@ -17,6 +17,11 @@ import MainLayout from "@/admin/layouts/MainLayout";
 import StorefrontLayout from "@/storefront/layouts/StorefrontLayout";
 import ProductDetails from "@/storefront/components/product/ProductDetails";
 import OrderSuccess from "@/storefront/components/checkout/OrderSuccess";
+import AboutPage from "@/storefront/components/storefooter/about";
+import ContactPage from "@/storefront/components/storefooter/contact";
+import ShippingPage from "@/storefront/components/storefooter/ShippingPage";
+import ReturnsPage from "@/storefront/components/storefooter/ReturnsPage";
+import PrivacyPolicy from "@/storefront/components/storefooter/PrivacyPolicy";
 import ReturnsPolicy from "@/storefront/pages/policys/ReturnsPolicy";
 
 import EmailVerifiedPage from "@/storefront/pages/emailverified/EmailVerifiedPage";
@@ -234,6 +239,8 @@ export default function AppRoutes() {
         >
           <Route index element={<DashboardPage />} />
           <Route path="products" element={<AdminProductsPage />} />
+          <Route path="products/new" element={<AdminProductsPage />} />
+          <Route path="products/:id/edit" element={<AdminProductsPage />} />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="custom-products" element={<CustomProductsPage />} />
           <Route path="orders" element={<AdminOrdersPage />} />
@@ -288,7 +295,17 @@ export default function AppRoutes() {
               one page component that dispatches internally on the route */}
           <Route path="tracking" element={<OrdersPage />} />
           <Route path="track-order" element={<OrdersPage />} />
-          <Route path="contact" element={<SupportPage />} />
+          {/* <Route path="contact" element={<SupportPage />} /> */}
+
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/shipping" element={<ShippingPage />} />
+          <Route path="/returns" element={<ReturnsPage />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route
+            path="/terms-conditions"
+            element={<TermsConditions />}
+          />
           <Route path="wishlist" element={<WishlistGrid />} />
           <Route path="/product/:id" element={<ProductDetailsPage />} />
           {/* Customer Auth — login/register/forgot-password consolidated;

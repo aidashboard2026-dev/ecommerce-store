@@ -10,6 +10,8 @@ import {
   formatPrice, getImageUrl, revokeObjectURLs, genLocalId, isDuplicateFile,
 } from '@/shared/utils/productUtils'
 import useBusinessLimits from '@/shared/hooks/useBusinessLimits'
+import ImageUploadModal from './ImageUploadModal'
+
 
 import Select from '@/shared/components/ui/Select'
 import Badge from '@/shared/components/ui/Badge'
@@ -354,7 +356,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
   const filteredCollections = useMemo(() => {
     if (!form.category_id) return []
     const selectedCat = categories.find(c => String(c.id) === String(form.category_id));
-    const isMainProduct = selectedCat && ["T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"].includes(selectedCat.name);
+    const isMainProduct = selectedCat && ["T-Shirt", "T Shirt", "Track Pant", "Track-Pant", "Jersey", "Shirt", "Trouser"].includes(selectedCat.name);
     if (isMainProduct) {
       return collections.filter(c => {
         const norm = getNormalizedCollectionName(c.name);
@@ -365,10 +367,17 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
   }, [collections, form.category_id, categories])
 
   // ─── Other state ─────────────────────────────────────────────────────────────
-  const [localImages, setLocalImages]     = useState([])
+  const [localImages, setLocalImages] = useState({
+    thumbnail: null,
+    image_front: null,
+    image_back: null,
+    image_size_chart: null,
+    gallery_images: [],
+  })
   const [localVariants, setLocalVariants] = useState([])
   const [saveSteps, setSaveSteps]         = useState(null)
   const [deletingVariantIds, setDeletingVariantIds] = useState(() => new Set())
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false)
 
   const isSavingRef          = useRef(false)
   const isCriticalFailureRef = useRef(false)
@@ -379,12 +388,26 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
   useEffect(() => { localImagesRef.current = localImages }, [localImages])
   useEffect(() => { productRef.current = product }, [product])
 
+  const revokeLocalImages = (imgs) => {
+    if (!imgs) return
+    ['thumbnail', 'image_front', 'image_back', 'image_size_chart'].forEach(k => {
+      if (imgs[k]?.previewUrl) {
+        try { URL.revokeObjectURL(imgs[k].previewUrl) } catch (_) {}
+      }
+    })
+    ;(imgs.gallery_images || []).forEach(img => {
+      if (img?.previewUrl) {
+        try { URL.revokeObjectURL(img.previewUrl) } catch (_) {}
+      }
+    })
+  }
+
   // Revoke blob URLs on unmount
-  useEffect(() => () => revokeObjectURLs(localImagesRef.current), [])
+  useEffect(() => () => revokeLocalImages(localImagesRef.current), [])
 
   // Populate form when product prop changes (edit mode)
   useEffect(() => {
-    revokeObjectURLs(localImagesRef.current)
+    revokeLocalImages(localImagesRef.current)
     const p = productRef.current
     setForm(p ? {
       title:             p.title,
@@ -403,19 +426,35 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
       seo_title:         p.seo_title         || '',
       seo_description:   p.seo_description   || '',
     } : blankForm.current)
-    setLocalImages([])
+    setLocalImages({
+      thumbnail: null,
+      image_front: null,
+      image_back: null,
+      image_size_chart: null,
+      gallery_images: [],
+    })
     setLocalVariants([])
   }, [product?.id])
 
   // ─── Unsaved-changes guard ────────────────────────────────────────────────────
 
+  const localImagesCount = useMemo(() => {
+    let count = 0
+    if (localImages.thumbnail) count++
+    if (localImages.image_front) count++
+    if (localImages.image_back) count++
+    if (localImages.image_size_chart) count++
+    count += (localImages.gallery_images || []).length
+    return count
+  }, [localImages])
+
   const hasUnsavedChanges = useMemo(() => {
     if (isEdit) return false
     return (
-      localImages.length > 0 || localVariants.length > 0 ||
+      localImagesCount > 0 || localVariants.length > 0 ||
       form.title.trim() !== '' || form.description.trim() !== ''
     )
-  }, [isEdit, localImages.length, localVariants.length, form.title, form.description])
+  }, [isEdit, localImagesCount, localVariants.length, form.title, form.description])
 
   useEffect(() => {
     if (!hasUnsavedChanges) return
@@ -426,7 +465,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
 
   const handleClose = useCallback(() => {
     if (hasUnsavedChanges && !window.confirm('You have unsaved changes. Discard?')) return
-    revokeObjectURLs(localImages)
+    revokeLocalImages(localImages)
     onClose()
   }, [hasUnsavedChanges, localImages, onClose])
 
@@ -453,7 +492,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
       return false
     }
     const selectedCat = categories.find(c => String(c.id) === String(data.category_id))
-    const isMainProduct = selectedCat && ["T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"].includes(selectedCat.name)
+    const isMainProduct = selectedCat && ["T-Shirt", "T Shirt", "Track Pant", "Track-Pant", "Jersey", "Shirt", "Trouser"].includes(selectedCat.name)
     if (isMainProduct) {
       if (!data.collection_id) {
         toast.error("Collection is required for Main Products.")
@@ -515,7 +554,24 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
       return
     }
 
-    const imgCount = localImages.length
+    const imagesToUpload = [];
+    if (localImages.thumbnail) {
+      imagesToUpload.push({ file: localImages.thumbnail.file, type: 'thumbnail', setAsPrimary: true });
+    }
+    if (localImages.image_front) {
+      imagesToUpload.push({ file: localImages.image_front.file, type: 'front', setAsPrimary: !localImages.thumbnail });
+    }
+    if (localImages.image_back) {
+      imagesToUpload.push({ file: localImages.image_back.file, type: 'back', setAsPrimary: false });
+    }
+    if (localImages.image_size_chart) {
+      imagesToUpload.push({ file: localImages.image_size_chart.file, type: 'size_chart', setAsPrimary: false });
+    }
+    (localImages.gallery_images || []).forEach(img => {
+      imagesToUpload.push({ file: img.file, type: 'gallery', setAsPrimary: false });
+    });
+
+    const imgCount = imagesToUpload.length
     const varCount = localVariants.length
 
     const steps = [
@@ -551,12 +607,11 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
       let imgSucceeded = 0
       let imgFailed    = 0
 
-      for (let i = 0; i < localImages.length; i++) {
-        const img       = localImages[i]
-        const imageType = i === 0 ? 'thumbnail' : 'gallery'
+      for (let i = 0; i < imagesToUpload.length; i++) {
+        const { file, type, setAsPrimary } = imagesToUpload[i]
         try {
-          // BUG-2 FIX: pass img.file (raw File) — api.js builds FormData internally
-          await productsApi.uploadImage(createdProduct.id, img.file, imageType, i === 0)
+          // BUG-2 FIX: pass file (raw File) — api.js builds FormData internally
+          await productsApi.uploadImage(createdProduct.id, file, type, setAsPrimary)
           imgSucceeded++
         } catch (_) {
           imgFailed++
@@ -614,7 +669,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
     }
 
     // ── Finish ──────────────────────────────────────────────────────────────────
-    revokeObjectURLs(localImages)
+    revokeLocalImages(localImages)
     await new Promise(r => setTimeout(r, hadPartialFailure ? 1500 : 800))
 
     if (!hadPartialFailure) {
@@ -639,24 +694,56 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
 
   // ─── Local image handlers (new product only) ──────────────────────────────────
 
-  const pickLocalImage = useCallback((f) => {
-    if (!f || !limits) return
-    if (!ALLOWED_TYPES.includes(f.type))  { toast.error('Only JPG, PNG, WebP allowed'); return }
-    if (f.size > limits.max_image_size)   { toast.error(`File must be under ${limits.max_image_size / (1024 * 1024)} MB`); return }
-    setLocalImages(prev => {
-      if (prev.length >= limits.max_product_images) { toast.error(`Maximum ${limits.max_product_images} images`); return prev }
-      if (isDuplicateFile(f, prev))                 { toast.error('This image is already added');  return prev }
-      return [...prev, { id: genLocalId(), file: f, previewUrl: URL.createObjectURL(f) }]
-    })
-    if (localFileRef.current) localFileRef.current.value = ''
-  }, [limits])
+  const handleUploadLocal = useCallback((type, files) => {
+    if (type === 'gallery') {
+      setLocalImages(prev => {
+        const newGallery = [...(prev.gallery_images || [])]
+        files.forEach(f => {
+          if (!isDuplicateFile(f, newGallery)) {
+            newGallery.push({
+              id: genLocalId(),
+              file: f,
+              previewUrl: URL.createObjectURL(f),
+            })
+          }
+        })
+        return { ...prev, gallery_images: newGallery }
+      })
+    } else {
+      setLocalImages(prev => {
+        const old = prev[type]
+        if (old?.previewUrl) {
+          try { URL.revokeObjectURL(old.previewUrl) } catch (_) {}
+        }
+        return {
+          ...prev,
+          [type]: {
+            file: files,
+            previewUrl: URL.createObjectURL(files),
+          }
+        }
+      })
+    }
+  }, [])
 
-
-  const removeLocalImage = useCallback((id) => {
+  const handleDeleteLocal = useCallback((type, index) => {
     setLocalImages(prev => {
-      const item = prev.find(img => img.id === id)
-      if (item) URL.revokeObjectURL(item.previewUrl)
-      return prev.filter(img => img.id !== id)
+      if (type === 'gallery') {
+        const newGallery = [...(prev.gallery_images || [])]
+        if (index >= 0 && index < newGallery.length) {
+          const removed = newGallery.splice(index, 1)[0]
+          if (removed?.previewUrl) {
+            try { URL.revokeObjectURL(removed.previewUrl) } catch (_) {}
+          }
+        }
+        return { ...prev, gallery_images: newGallery }
+      } else {
+        const old = prev[type]
+        if (old?.previewUrl) {
+          try { URL.revokeObjectURL(old.previewUrl) } catch (_) {}
+        }
+        return { ...prev, [type]: null }
+      }
     })
   }, [])
 
@@ -665,9 +752,29 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
 
   // ─── Derived values ───────────────────────────────────────────────────────────
 
-  const thumbnailUrl  = isEdit ? getImageUrl(product?.thumbnail) : (localImages[0]?.previewUrl || null)
+  const thumbnailUrl  = isEdit ? getImageUrl(product?.thumbnail) : (localImages.thumbnail?.previewUrl || localImages.image_front?.previewUrl || null)
+  const hasThumbnail  = isEdit ? !!product?.thumbnail : !!(localImages.thumbnail || localImages.image_front)
   const variants      = isEdit ? (product?.variants || []) : localVariants
   const isBatchSaving = saveSteps !== null
+
+  const handleOpenImageModal = () => {
+    if (isEdit) {
+      onOpenImage(product)
+    } else {
+      setIsImageModalOpen(true)
+    }
+  }
+
+  const mockProductForModal = useMemo(() => {
+    return {
+      id: null,
+      thumbnail: localImages.thumbnail?.previewUrl || null,
+      image_front: localImages.image_front?.previewUrl || null,
+      image_back: localImages.image_back?.previewUrl || null,
+      image_size_chart: localImages.image_size_chart?.previewUrl || null,
+      gallery_images: localImages.gallery_images?.map(img => img.previewUrl) || [],
+    }
+  }, [localImages])
 
   // ─── Render ───────────────────────────────────────────────────────────────────
 
@@ -720,69 +827,22 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
 
             {/* ── LEFT: image panel ── */}
             <div className="flex flex-col items-center gap-3.5">
-              {isEdit ? (
-                <>
-                  <div
-                    className="w-full max-w-[180px] sm:max-w-[220px] md:max-w-none h-40 sm:h-52 md:aspect-square border-2 border-dashed border-brand-500/50 hover:border-brand-500 rounded-2xl bg-app overflow-hidden cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01] mx-auto"
-                    onClick={() => onOpenImage(product)}
-                    title="Click to manage images"
-                  >
-                    {thumbnailUrl
-                      ? <img src={thumbnailUrl} alt={form.title} className="w-full h-full object-cover" />
-                      : <div className="flex flex-col items-center gap-1.5 text-muted">
-                          <Camera size={32} className="text-muted opacity-40" />
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted mt-1">Add Image</span>
-                        </div>
-                    }
-                  </div>
-                  <Button type="button" onClick={() => onOpenImage(product)} variant="secondary" icon={Plus} className="w-full">
-                    {product.thumbnail ? 'Change Image' : 'Add Image'}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <div
-                    className="w-full max-w-[250px] mx-auto h-40 sm:h-auto sm:aspect-square border-2 border-dashed border-gray-500/50 hover:border-brand-500 rounded-2xl bg-app overflow-hidden cursor-pointer flex items-center justify-center"
-                    onClick={() => localFileRef.current?.click()}
-                    title="Click to add image"
-                  >
-                    {localImages.length > 0
-                      ? <img src={localImages[0].previewUrl} alt="preview" className="w-full h-full object-cover" />
-                      : <div className="flex flex-col items-center gap-1.5 text-muted">
-                          <Camera size={32} className="text-muted opacity-40" />
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted mt-1">Click to add</span>
-                        </div>
-                    }
-                  </div>
-                  <input ref={localFileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
-                    onChange={e => pickLocalImage(e.target.files[0])} />
-                  {localImages.length > 1 && (
-                    <div className="flex gap-1.5 flex-wrap mt-1">
-                      {localImages.slice(1).map(img => (
-                        <div key={img.id} className="relative w-8 h-9 rounded overflow-hidden border border-app">
-                          <img src={img.previewUrl} alt="" className="w-full h-full object-cover" />
-                          <Button type="button" onClick={() => removeLocalImage(img.id)}
-                            aria-label="Remove image"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute inset-0 h-full w-full p-0 rounded-none bg-black/50 opacity-0 hover:opacity-100">
-                            <X size={10} className="text-white" />
-                          </Button>
-                        </div>
-                      ))}
+              <div
+                className="w-full max-w-[180px] sm:max-w-[220px] md:max-w-none h-40 sm:h-52 md:aspect-square border-2 border-dashed border-brand-500/50 hover:border-brand-500 rounded-2xl bg-app overflow-hidden cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01] mx-auto"
+                onClick={handleOpenImageModal}
+                title="Click to manage images"
+              >
+                {thumbnailUrl
+                  ? <img src={thumbnailUrl} alt={form.title || 'Product'} className="w-full h-full object-cover" />
+                  : <div className="flex flex-col items-center gap-1.5 text-muted">
+                      <Camera size={32} className="text-muted opacity-40" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted mt-1">Add Image</span>
                     </div>
-                  )}
-                  <Button type="button" onClick={() => localFileRef.current?.click()} variant="secondary" icon={Plus} className="w-full" disabled={limitsLoading || !!limitsError || (limits && localImages.length >= limits.max_product_images)}>
-                    {limitsLoading ? 'Loading limits...' : (localImages.length > 0 ? 'Add More' : 'Add Image')}
-                  </Button>
-                  {localImages.length > 0 && (
-                    <Button type="button" onClick={() => removeLocalImage(localImages[0].id)}
-                      variant="ghost" size="sm" icon={X} className="mt-1.5 p-0 text-[10px] text-red-500 hover:text-red-600 hover:bg-transparent">
-                      Remove
-                    </Button>
-                  )}
-                </>
-              )}
+                }
+              </div>
+              <Button type="button" onClick={handleOpenImageModal} variant="secondary" icon={Plus} className="w-full">
+                {hasThumbnail ? 'Change Image' : 'Add Image'}
+              </Button>
             </div>
 
             {/* ── RIGHT: fields ── */}
@@ -813,7 +873,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                   value={form.category_id}
                   onChange={e => { set('category_id', e.target.value); set('collection_id', '') }}>
                   <option value="">— None —</option>
-                  {categories.filter(c => ["T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"].includes(c.name)).map(c => (
+                  {categories.map(c => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
@@ -1007,11 +1067,11 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
           </div>
 
           {/* Ready badges */}
-          {!isEdit && (localImages.length > 0 || localVariants.length > 0) && (
+          {!isEdit && (localImagesCount > 0 || localVariants.length > 0) && (
             <div className="mx-6 mt-3 flex flex-wrap gap-2">
-              {localImages.length > 0 && (
+              {localImagesCount > 0 && (
                 <span className="inline-flex items-center gap-1 text-[10px] bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-full px-2.5 py-1 font-semibold">
-                  <ImageIcon size={10} /> {localImages.length} image{localImages.length > 1 ? 's' : ''} ready
+                  <ImageIcon size={10} /> {localImagesCount} image{localImagesCount > 1 ? 's' : ''} ready
                 </span>
               )}
               {localVariants.length > 0 && (
@@ -1059,6 +1119,16 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
 
         </form>
       </div>
+
+      {!isEdit && (
+        <ImageUploadModal
+          isOpen={isImageModalOpen}
+          onClose={() => setIsImageModalOpen(false)}
+          product={mockProductForModal}
+          onUploadLocal={handleUploadLocal}
+          onDeleteLocal={handleDeleteLocal}
+        />
+      )}
     </>
   )
 }

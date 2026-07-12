@@ -414,6 +414,17 @@ export default function ProductsPage() {
     return collections.filter(c => String(c.category_id) === String(categoryId))
   }, [collections, categoryId])
 
+  // ── Direct product fetch (for URL-driven edit mode when product
+  //     is not on the currently loaded listing page) ─────────────────────────
+  const shouldFetchProduct = !!urlProductId && urlProductId !== 'new' && !urlOpenedRef.current
+  const { data: directProduct } = useQuery({
+    queryKey: ['product-direct', urlProductId],
+    queryFn: () => productsApi.get(urlProductId).then(r => r.data),
+    enabled: shouldFetchProduct,
+    retry: 1,
+    staleTime: 60_000,
+  })
+
   // ── URL-param driven: auto-open edit modal for /admin/products/:id/edit ─────
   // Placed AFTER data query so the closure correctly captures data.
   // We only auto-open once (urlOpenedRef guards against re-triggering).
@@ -424,13 +435,21 @@ export default function ProductsPage() {
       setFormModal({ open: true, product: null })
       return
     }
-    if (!data?.items) return
-    const found = data.items.find(p => String(p.id) === String(urlProductId))
-    if (found) {
-      urlOpenedRef.current = true
-      setFormModal({ open: true, product: found })
+    // First try to find the product in the current listing
+    if (data?.items) {
+      const found = data.items.find(p => String(p.id) === String(urlProductId))
+      if (found) {
+        urlOpenedRef.current = true
+        setFormModal({ open: true, product: found })
+        return
+      }
     }
-  }, [urlProductId, data?.items])
+    // If not in listing, use the directly fetched product
+    if (directProduct) {
+      urlOpenedRef.current = true
+      setFormModal({ open: true, product: directProduct })
+    }
+  }, [urlProductId, data?.items, directProduct])
 
   // Auto-open/close variant modal from URL
   useEffect(() => {

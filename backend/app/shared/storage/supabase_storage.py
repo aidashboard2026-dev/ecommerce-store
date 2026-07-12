@@ -570,3 +570,182 @@ def delete_category_image(image_url: Optional[str]) -> None:
         _delete_object(settings.SUPABASE_CATEGORY_BUCKET, object_path)
 
 
+def check_object_exists(bucket: str, object_path: str) -> bool:
+    """Checks if an object exists in the given Supabase bucket."""
+    if not is_supabase_configured():
+        return False
+    url = f"{_STORAGE_BASE}/object/{bucket}/{object_path}"
+    try:
+        response = httpx.request(
+            "HEAD",
+            url,
+            headers=_auth_headers(),
+            timeout=_TIMEOUT,
+        )
+        return response.status_code == 200
+    except httpx.HTTPError:
+        return False
+
+
+from urllib.parse import urlparse
+
+def _extract_filename_and_path(val: str, bucket: str) -> tuple[str, Optional[str]]:
+    """
+    Extracts the clean filename and the relative object path from a URL or relative path.
+    Returns (filename, relative_path).
+    """
+    if not val:
+        return "", None
+    
+    parsed = urlparse(val)
+    path_str = parsed.path
+    filename = os.path.basename(path_str)
+    
+    if val.startswith("http://") or val.startswith("https://"):
+        rel_path = _object_path_from_public_url(val, bucket)
+        if rel_path:
+            rel_path = urlparse(rel_path).path
+            return filename, rel_path
+            
+    if val.startswith("/uploads/"):
+        return filename, None
+        
+    rel_path = urlparse(val).path
+    return filename, rel_path
+
+
+def repair_database_images(db) -> dict:
+    """
+    Scans the products table and automatically repairs incorrect image paths
+    if the files exist in Supabase storage under the structured path:
+      products/<category-slug>/<product-slug>/<filename>
+    """
+    from app.modules.products.models import Product, Category
+    
+    products = db.query(Product).filter(Product.deleted_at.is_(None)).all()
+    
+    stats = {
+        "total_scanned": len(products),
+        "total_repaired": 0,
+        "details": []
+    }
+    
+    for p in products:
+        repaired_any = False
+        old_values = {}
+        new_values = {}
+        
+        category_slug = None
+        if p.category:
+            category_slug = p.category.slug
+        elif p.category_id:
+            cat = db.get(Category, p.category_id)
+            if cat:
+                category_slug = cat.slug
+                
+        product_slug = p.slug
+        
+        if not category_slug or not product_slug:
+            continue
+            
+        for attr in ["thumbnail", "image_front", "image_back", "image_size_chart"]:
+            val = getattr(p, attr)
+            if not val:
+                continue
+                
+            if "placeholder-product" in val:
+                continue
+                
+            filename, current_path = _extract_filename_and_path(val, settings.SUPABASE_PRODUCT_BUCKET)
+            if not filename:
+                continue
+                
+            reconstructed_path = f"products/{category_slug}/{product_slug}/{filename}"
+            
+            # Optimization: if current_path already starts with "products/", it's already correct.
+            # Normalize to relative path if it was saved as a full URL.
+            if current_path and current_path.startswith("products/"):
+                if val != current_path:
+                    setattr(p, attr, current_path)
+                    repaired_any = True
+                    old_values[attr] = val
+                    new_values[attr] = current_path
+                continue
+                
+            # Check 1: Does it exist at current_path?
+            if current_path and check_object_exists(settings.SUPABASE_PRODUCT_BUCKET, current_path):
+                if val != current_path:
+                    setattr(p, attr, current_path)
+                    repaired_any = True
+                    old_values[attr] = val
+                    new_values[attr] = current_path
+                continue
+                
+            # Check 2: Does it exist at reconstructed_path?
+            if check_object_exists(settings.SUPABASE_PRODUCT_BUCKET, reconstructed_path):
+                setattr(p, attr, reconstructed_path)
+                repaired_any = True
+                old_values[attr] = val
+                new_values[attr] = reconstructed_path
+                
+        if p.gallery_images:
+            new_gallery = []
+            gallery_repaired = False
+            for img in p.gallery_images:
+                if not img:
+                    continue
+                if "placeholder-product" in img:
+                    continue
+                    
+                filename, current_path = _extract_filename_and_path(img, settings.SUPABASE_PRODUCT_BUCKET)
+                if not filename:
+                    new_gallery.append(img)
+                    continue
+                    
+                reconstructed_path = f"products/{category_slug}/{product_slug}/{filename}"
+                
+                if current_path and current_path.startswith("products/"):
+                    new_gallery.append(current_path)
+                    if img != current_path:
+                        gallery_repaired = True
+                    continue
+                    
+                if current_path and check_object_exists(settings.SUPABASE_PRODUCT_BUCKET, current_path):
+                    new_gallery.append(current_path)
+                    if img != current_path:
+                        gallery_repaired = True
+                    continue
+                    
+                if check_object_exists(settings.SUPABASE_PRODUCT_BUCKET, reconstructed_path):
+                    new_gallery.append(reconstructed_path)
+                    gallery_repaired = True
+                else:
+                    new_gallery.append(img)
+                    
+            if gallery_repaired:
+                p.gallery_images = new_gallery
+                repaired_any = True
+                old_values["gallery_images"] = p.gallery_images
+                new_values["gallery_images"] = new_gallery
+                
+        if repaired_any:
+            stats["total_repaired"] += 1
+            stats["details"].append({
+                "product_id": p.id,
+                "title": p.title,
+                "old": old_values,
+                "new": new_values
+            })
+            
+    if stats["total_repaired"] > 0:
+        try:
+            db.commit()
+            logger.info(f"Successfully repaired paths for {stats['total_repaired']} products.")
+        except Exception as exc:
+            db.rollback()
+            logger.error(f"Failed to commit repaired paths: {exc}")
+            
+    return stats
+
+
+

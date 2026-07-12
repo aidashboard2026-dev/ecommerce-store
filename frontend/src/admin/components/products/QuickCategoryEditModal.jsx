@@ -55,7 +55,7 @@ export default function QuickCategoryEditModal({ isOpen, onClose, product }) {
   const filteredCollections = React.useMemo(() => {
     if (!categoryId) return []
     const selectedCat = categories.find(c => String(c.id) === String(categoryId));
-    const isMainProduct = selectedCat && ["T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"].includes(selectedCat.name);
+    const isMainProduct = selectedCat && ["T-Shirt", "T Shirt", "Track Pant", "Track-Pant", "Jersey", "Shirt", "Trouser"].includes(selectedCat.name);
     if (isMainProduct) {
       return collections.filter(c => {
         const norm = getNormalizedCollectionName(c.name);
@@ -82,7 +82,7 @@ export default function QuickCategoryEditModal({ isOpen, onClose, product }) {
 
   const handleSave = () => {
     const selectedCat = categories.find(c => String(c.id) === String(categoryId));
-    const isMainProduct = selectedCat && ["T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"].includes(selectedCat.name);
+    const isMainProduct = selectedCat && ["T-Shirt", "T Shirt", "Track Pant", "Track-Pant", "Jersey", "Shirt", "Trouser"].includes(selectedCat.name);
     if (isMainProduct) {
       if (!collectionId) {
         toast.error("Collection is required for Main Products.");
@@ -116,7 +116,7 @@ export default function QuickCategoryEditModal({ isOpen, onClose, product }) {
           <select value={categoryId} onChange={handleCategoryChange}
             className="w-full text-xs bg-app border border-app rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
             <option value="">— None —</option>
-            {categories.filter(c => ["T-Shirt", "Track Pant", "Jersey", "Shirt", "Trouser"].includes(c.name)).map(c => (
+            {categories.map(c => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>

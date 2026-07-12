@@ -1078,6 +1078,27 @@ export default function CheckoutPage() {
           return;
         }
 
+        if (errInfo.code === "ORDER_ALREADY_PAID") {
+          toast.success("Order already paid!");
+          updatePhase(CHECKOUT_PHASE.SUCCESS);
+          for (const item of items) {
+            dispatch(removeFromCart({ productId: item.productId, size: item.size, color: item.color }));
+          }
+          dispatch(clearCart());
+          sessionStorage.removeItem("aurastore_active_cart_session_id");
+          try {
+            const res = await storefrontAPI.getOrders();
+            const customerOrders = res.data?.items || [];
+            const sessionOrders = customerOrders.filter((o) => o.cart_session_id === currentSessionId);
+            dispatch(setLastOrder({ orders: sessionOrders, totals, paymentMethod: "ONLINE" }));
+            navigate("/order-success", { state: { orders: sessionOrders, totals, paymentMethod: "ONLINE" }, replace: true });
+          } catch (e) {
+            dispatch(setLastOrder({ orders: currentOrders, totals, paymentMethod: "ONLINE" }));
+            navigate("/order-success", { state: { orders: currentOrders, totals, paymentMethod: "ONLINE" }, replace: true });
+          }
+          return;
+        }
+
         if (errInfo.code === "ORDER_NOT_FOUND") {
           setCheckoutState({ cartSessionId: null, orders: [] });
           sessionStorage.removeItem("aurastore_active_cart_session_id");
@@ -1114,7 +1135,7 @@ export default function CheckoutPage() {
 
       logStep("STEP 10: Creating Razorpay instance", { prereqChecks: prereqCheck.checks });
       const options = {
-        key: rzpOrder.key,
+        key: rzpOrder.key || import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: rzpOrder.amount,
         currency: rzpOrder.currency,
         name: import.meta.env.VITE_STORE_NAME || "My Designers",
@@ -1213,6 +1234,16 @@ export default function CheckoutPage() {
       };
 
       const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", (response) => {
+        logFailure({
+          step: "Razorpay payment.failed event",
+          error: response.error,
+          sessionId: currentSessionId,
+          ordersCount: currentOrders.length,
+        });
+        toast.error(response.error.description || "Payment failed. Please try again.");
+        setPhase(CHECKOUT_PHASE.FAILED);
+      });
       updatePhase(CHECKOUT_PHASE.AWAITING_PAYMENT);
       logStep("STEP 11: Opening Razorpay popup");
       rzp.open();

@@ -148,6 +148,29 @@ async def lifespan(app: FastAPI):
                 "lost on every container restart. Set these env vars and redeploy."
             )
 
+        # ── Run Product Image Paths Auto-Repair ───────────────────────────────────
+        try:
+            from app.core.database import SessionLocal
+            from app.shared.storage.supabase_storage import repair_database_images
+            db = SessionLocal()
+            try:
+                stats = repair_database_images(db)
+                logger.info(
+                    "[Startup] Product image paths auto-repair complete. Scanned: %d, Repaired: %d",
+                    stats["total_scanned"], stats["total_repaired"]
+                )
+            finally:
+                db.close()
+        except Exception as e:
+            logger.error("[Startup] Failed to run product image paths auto-repair: %s", e, exc_info=True)
+
+        # ── Validate Email Configuration ──────────────────────────────────────────
+        try:
+            from app.shared.email.service import validate_email_configuration_at_startup
+            validate_email_configuration_at_startup()
+        except Exception as e:
+            logger.error("[Startup] Failed to validate email configuration: %s", e)
+
         logger.info("[Startup] Application Started Successfully")
         yield
 

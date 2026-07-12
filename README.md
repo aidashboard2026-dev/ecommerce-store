@@ -35,8 +35,11 @@ The platform ships two complete applications in a single codebase:
 cd ecommerce-store
 
 # 2. Configure environment
-cp .env.example .env
-# Edit .env — set your SECRET_KEY, admin credentials, and database connection
+# Copy backend and frontend environment files from templates:
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+# Edit the files with your credentials (database, secrets, payment keys).
+# For a full reference of every configuration variable, see docs/ENVIRONMENT_VARIABLES.md.
 
 # 3. Start all services (database + backend + frontend)
 docker compose up --build
@@ -49,17 +52,15 @@ docker compose up --build
 
 The backend seeds one superadmin account automatically using your `.env` values.
 
-| Variable                | Purpose                              |
-| ----------------------- | ------------------------------------ |
-| `SECRET_KEY`            | JWT signing key (use a random hex)   |
-| `INITIAL_ADMIN_NAME`    | Display name for the seed admin      |
-| `INITIAL_ADMIN_EMAIL`   | Login email for the seed admin       |
-| `INITIAL_ADMIN_PASSWORD`| Login password for the seed admin    |
-| `POSTGRES_SERVER`       | PostgreSQL host                      |
-| `POSTGRES_PORT`         | PostgreSQL port (default: 5432)      |
-| `POSTGRES_USER`         | Database user                        |
-| `POSTGRES_PASSWORD`     | Database password                    |
-| `POSTGRES_DB`           | Database name                        |
+---
+
+## Environment Configuration & Reference
+
+The platform decouples configuration by component:
+- **Backend Configurations**: Managed in [backend/.env.example](file:///d:/freelance/ecommerce-store/backend/.env.example) and loaded by the `Settings` schema.
+- **Frontend Configurations**: Managed in [frontend/.env.example](file:///d:/freelance/ecommerce-store/frontend/.env.example) and prefixed with `VITE_`.
+
+For a complete detail on security classifications, client-editable switches, default values, and deployment checklists, please refer to the official [docs/ENVIRONMENT_VARIABLES.md](file:///d:/freelance/ecommerce-store/docs/ENVIRONMENT_VARIABLES.md) reference.
 
 ---
 

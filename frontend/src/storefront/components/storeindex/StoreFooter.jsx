@@ -7,7 +7,12 @@ import { Phone, Instagram, Facebook, Mail } from "lucide-react";
 import useStoreSettings from "@/shared/hooks/useStoreSettings";
 
 import ContactModal from "../storefooter/ContactModal";
-
+import AboutPage from "@/storefront/components/storefooter/about";
+import ContactPage from "@/storefront/components/storefooter/contact";
+import ShippingPage from "@/storefront/components/storefooter/ShippingPage";
+import ReturnsPage from "@/storefront/components/storefooter/ReturnsPage";
+import PrivacyPolicy from "@/storefront/components/storefooter/PrivacyPolicy";
+import TermsConditions from "@/storefront/components/storefooter/TermsConditions";
 const StoreFooterComponent = function StoreFooter() {
   const { settings } = useStoreSettings();
 
@@ -164,17 +169,47 @@ const StoreFooterComponent = function StoreFooter() {
             <h4 className={headingBase}>Quick Links</h4>
             <Link to="/" className={linkBase}>Home</Link>
             <Link to="/products" className={linkBase}>Shop</Link>
-            <Link to="/about" className={linkBase}>About</Link>
-            <Link to="/contact" className={linkBase}>Contact</Link>
+            <Link
+                to="/about"
+                className={linkBase}
+            >
+                About
+            </Link>
+            <Link
+              to="/contact"
+              className={linkBase}
+            >
+              Contact
+            </Link>
           </div>
 
           {/* ================= Customer Care ================= */}
           <div className="flex flex-col items-start lg:items-center h-full mt-5 md:mt-5 lg:mt-0 gap-3">
             <h4 className={headingBase}>Customer Care</h4>
-            <Link to="/shipping-policy" className={linkBase}>Shipping</Link>
-            <Link to="/returns" className={linkBase}>Returns</Link>
-            <Link to="/privacy-policy" className={linkBase}>Privacy Policy</Link>
-            <Link to="/terms" className={linkBase}>Terms &amp; Conditions</Link>
+            <Link
+              to="/shipping"
+              className={linkBase}
+            >
+              Shipping
+            </Link>
+            <Link
+              to="/returns"
+              className={linkBase}
+            >
+              Returns
+            </Link>
+            <Link
+              to="/privacy-policy"
+              className={linkBase}
+            >
+              Privacy Policy
+            </Link>
+            <Link
+              to="/terms-conditions"
+              className={linkBase}
+            >
+              Terms & Conditions
+            </Link>
           </div>
 
           {/* ================= Contact ================= */}

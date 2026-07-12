@@ -17,7 +17,7 @@ import html
 from collections import defaultdict
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, HTTPException, Request
+from fastapi import APIRouter, Depends, Query, HTTPException, Request, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
 from sqlalchemy.orm import Session
@@ -112,6 +112,7 @@ def _strip_html(text: str) -> str:
 def create_contact_message(
     request: Request,
     data: ContactMessageCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     """
@@ -143,7 +144,7 @@ def create_contact_message(
     data.message = _strip_html(data.message)
 
     try:
-        response = contact_service.ContactService.create_contact_message(db, data)
+        response = contact_service.ContactService.create_contact_message(db, data, background_tasks=background_tasks)
         _record_contact_attempt(ip)
         return {
             "success": True,
@@ -263,6 +264,7 @@ def update_contact_status(
 def send_reply(
     message_id: int,
     reply_data: ContactMessageReply,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_admin),
 ):
@@ -289,6 +291,7 @@ def send_reply(
         message_id,
         reply_data.reply_message,
         admin_id=current_admin.id,
+        background_tasks=background_tasks,
     )
     if not message:
         raise HTTPException(status_code=404, detail="Contact message not found")
