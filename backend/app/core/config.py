@@ -51,6 +51,7 @@ class Settings(BaseSettings):
             f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}"
             f"/{self.POSTGRES_DB}"
+            f"?sslmode=require"
         )
 
     # ------------------------------------------------------------------
@@ -267,6 +268,13 @@ class Settings(BaseSettings):
                     f"Application refuses to start in production without these secrets."
                 )
         return self
+
+    # ------------------------------------------------------------------
+    # Firebase Integration
+    # ------------------------------------------------------------------
+    FIREBASE_PROJECT_ID: str = ""
+    FIREBASE_CREDENTIALS_PATH: str = ""
+    FIREBASE_SERVICE_ACCOUNT_JSON: str = ""
 
 
 settings = Settings()

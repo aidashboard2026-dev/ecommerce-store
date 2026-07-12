@@ -6,9 +6,9 @@ import { authAPI } from '@/shared/services/api'
 // Without this, token is always null on page load → fetchMeThunk never fires →
 // initialized stays false → every ProtectedRoute spins forever.
 
-const _persistedToken = localStorage.getItem('token')
+const _persistedToken = localStorage.getItem('admin_token')
 const _persistedAdmin = (() => {
-  try { return JSON.parse(localStorage.getItem('admin')) } catch { return null }
+  try { return JSON.parse(localStorage.getItem('admin_user')) } catch { return null }
 })()
 
 // ── Thunks ────────────────────────────────────────────────────────────────────
@@ -85,11 +85,12 @@ const authSlice = createSlice({
   },
   reducers: {
     logout(state) {
+      console.log("[Auth Isolation: Admin] Logout. Clearing admin session.");
       state.token = null
       state.admin = null
       state.error = null
-      localStorage.removeItem('token')
-      localStorage.removeItem('admin')
+      localStorage.removeItem('admin_token')
+      localStorage.removeItem('admin_user')
     },
     clearError(state) {
       state.error = null
@@ -109,12 +110,12 @@ const authSlice = createSlice({
           state.admin=action.payload.admin
 
           localStorage.setItem(
-              "token",
+              "admin_token",
               action.payload.access_token
           )
 
           localStorage.setItem(
-              "admin",
+              "admin_user",
               JSON.stringify(action.payload.admin)
           )
         }
@@ -127,7 +128,7 @@ const authSlice = createSlice({
         state.admin       = action.payload
         state.initialized = true
         // Keep admin cache fresh in case name/role was updated server-side
-        localStorage.setItem('admin', JSON.stringify(action.payload))
+        localStorage.setItem('admin_user', JSON.stringify(action.payload))
       })
       .addCase(fetchMeThunk.rejected, (state, action) => {
         state.initialized = true
@@ -135,8 +136,8 @@ const authSlice = createSlice({
           // Token is genuinely invalid/expired — clear everything
           state.token = null
           state.admin = null
-          localStorage.removeItem('token')
-          localStorage.removeItem('admin')
+          localStorage.removeItem('admin_token')
+          localStorage.removeItem('admin_user')
         }
         // Otherwise (network/server error): keep the existing session as-is
         // and let the next authenticated request retry naturally.

@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, status, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.modules.auth.dependencies import get_current_admin, get_current_customer
@@ -80,11 +80,12 @@ def customer_analytics(
 @router.post("/", response_model=CustomerResponse, status_code=status.HTTP_201_CREATED)
 def create_customer_endpoint(
     data: CustomerCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_admin: Admin = Depends(get_current_admin),
 ):
     """Admin-creates a customer. No public self-registration."""
-    return create_customer(db, data)
+    return create_customer(db, data, background_tasks=background_tasks)
 
 
 # ─── Profile (detail) ─────────────────────────────────────────────────────────

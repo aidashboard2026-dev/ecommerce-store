@@ -144,7 +144,15 @@ def create_contact_message(
     data.message = _strip_html(data.message)
 
     try:
-        response = contact_service.ContactService.create_contact_message(db, data, background_tasks=background_tasks)
+        user_agent = request.headers.get("user-agent", "unknown")
+        response = contact_service.ContactService.create_contact_message(
+            db=db,
+            contact_data=data,
+            background_tasks=background_tasks,
+            phone=data.phone,
+            ip_address=ip,
+            user_agent=user_agent
+        )
         _record_contact_attempt(ip)
         return {
             "success": True,

@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta, timezone
+import logging
+from typing import Optional
 from urllib.parse import urlparse
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, BackgroundTasks
 from firebase_admin import auth as firebase_auth
 from sqlalchemy.orm import Session
 
@@ -10,6 +12,8 @@ from app.core.firebase import verify_firebase_token
 from app.core.security import create_access_token
 from app.modules.customers.models import Customer
 from app.shared.normalization import normalize_email
+
+logger = logging.getLogger(__name__)
 
 
 def _clean_string(value) -> str | None:
@@ -60,7 +64,7 @@ def _customer_payload(customer: Customer) -> dict:
     }
 
 
-def firebase_login(db: Session, id_token: str):
+def firebase_login(db: Session, id_token: str, background_tasks: Optional[BackgroundTasks] = None):
     """
     Verify Firebase ID Token.
     Create customer if first login.
@@ -77,11 +81,14 @@ def firebase_login(db: Session, id_token: str):
         firebase_auth.get_user(decoded["uid"])
 
     except Exception as error:
-        print(
-            "FIREBASE VERIFY ERROR:",
-            repr(error),
-            flush=True,
-        )
+        import traceback
+        error_details = f"FIREBASE VERIFY ERROR:\n{repr(error)}\nTraceback:\n{traceback.format_exc()}\n"
+        print(error_details, flush=True)
+        try:
+            with open("firebase_error.log", "a") as f:
+                f.write(error_details)
+        except Exception:
+            pass
 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -134,7 +141,9 @@ def firebase_login(db: Session, id_token: str):
     # ------------------------------------------------------------------
     # Create Customer if not exists
     # ------------------------------------------------------------------
+    is_new_registration = False
     if not customer:
+        is_new_registration = True
 
         first_name, last_name = _split_display_name(google_name)
 
@@ -192,6 +201,26 @@ def firebase_login(db: Session, id_token: str):
 
     db.commit()
     db.refresh(customer)
+
+    if is_new_registration:
+        from app.shared.email.service import send_welcome_email_background, send_welcome_email
+        customer_name = f"{customer.first_name} {customer.last_name}".strip() or "Valued Customer"
+        if background_tasks:
+            background_tasks.add_task(
+                send_welcome_email_background,
+                to_email=email,
+                customer_name=customer_name
+            )
+        else:
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(send_welcome_email(email, customer_name))
+                else:
+                    asyncio.run(send_welcome_email(email, customer_name))
+            except Exception as e:
+                logger.error(f"Failed to send welcome email for {email}: {e}", exc_info=True)
 
     # ------------------------------------------------------------------
     # Create JWT

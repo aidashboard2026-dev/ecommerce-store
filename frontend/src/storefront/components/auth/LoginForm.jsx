@@ -43,6 +43,7 @@ export default function LoginForm() {
 
   const saveCustomerSession = (responseData) => {
     const accessToken = responseData.access_token;
+    console.log("[Auth Isolation: Customer] Saving customer session for:", responseData.customer?.email);
 
     axios.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
 
@@ -181,11 +182,7 @@ export default function LoginForm() {
       if (loginThunk.fulfilled.match(resultAction)) {
         const data = resultAction.payload;
         if (data.auth_type === "admin") {
-          // Clear customer session to prevent cross-session contamination
-          localStorage.removeItem("customer_token");
-          localStorage.removeItem("customer");
-          dispatch(customerLogout());
-
+          console.log("[Auth Isolation: Admin] Login Success. Redirecting to admin dashboard.");
           toast.success("Welcome back, Admin!");
           navigate("/admin/dashboard", { replace: true });
           return;
@@ -197,9 +194,7 @@ export default function LoginForm() {
         return;
       }
 
-      // Clear admin session before logging in as customer
-      const { logout: adminLogout } = await import("@/admin/store/authSlice");
-      dispatch(adminLogout());
+      console.log("[Auth Isolation: Customer] Admin check bypassed. Initializing Firebase customer login flow.");
 
       // 2. Firebase email login (Customer flow)
       const userCredential = await login(

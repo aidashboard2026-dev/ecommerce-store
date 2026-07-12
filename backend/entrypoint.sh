@@ -35,6 +35,7 @@ for attempt in range(max_retries):
             user=user,
             password=password,
             dbname=dbname,
+            sslmode="require",
         )
         conn.close()
         print("[Startup] PostgreSQL Ready")

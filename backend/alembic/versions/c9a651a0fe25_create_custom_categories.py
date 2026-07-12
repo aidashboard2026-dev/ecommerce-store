@@ -93,10 +93,21 @@ def upgrade() -> None:
         ["sort_order"],
     )
 
-    # ----------------------------------
-    # Add FK only if column exists
-    # ----------------------------------
+    # -------------------------------------------------------------
+    # Add custom_category_id column to custom_products if missing
+    # -------------------------------------------------------------
+    op.execute(
+        "ALTER TABLE custom_products "
+        "ADD COLUMN IF NOT EXISTS custom_category_id INTEGER"
+    )
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_custom_products_custom_category_id "
+        "ON custom_products (custom_category_id)"
+    )
 
+    # ----------------------------------
+    # Add FK
+    # ----------------------------------
     op.create_foreign_key(
         "fk_custom_category",
         "custom_products",
@@ -114,6 +125,9 @@ def downgrade() -> None:
         "custom_products",
         type_="foreignkey",
     )
+
+    op.execute("DROP INDEX IF EXISTS ix_custom_products_custom_category_id")
+    op.execute("ALTER TABLE custom_products DROP COLUMN IF EXISTS custom_category_id")
 
     op.drop_index(
         "ix_custom_categories_sort_order",

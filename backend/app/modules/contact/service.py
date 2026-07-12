@@ -34,6 +34,9 @@ class ContactService:
         db: Session,
         contact_data: ContactMessageCreate,
         background_tasks: Optional[BackgroundTasks] = None,
+        phone: Optional[str] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
     ) -> ContactMessageResponse:
         """
         Create a new contact message with automatic email notifications.
@@ -59,6 +62,8 @@ class ContactService:
             message=contact_data.message,
         )
 
+        visitor_phone = phone or contact_data.phone
+
         if background_tasks:
             # Send admin notification in the background
             background_tasks.add_task(
@@ -68,6 +73,9 @@ class ContactService:
                 subject=contact_data.subject,
                 message=contact_data.message,
                 submitted_at=message.created_at,
+                phone=visitor_phone,
+                ip_address=ip_address,
+                user_agent=user_agent
             )
             # Send customer auto-reply in the background
             background_tasks.add_task(
@@ -83,6 +91,9 @@ class ContactService:
                 subject=contact_data.subject,
                 message=contact_data.message,
                 submitted_at=message.created_at,
+                phone=visitor_phone,
+                ip_address=ip_address,
+                user_agent=user_agent
             )
             # Send customer auto-reply synchronously
             send_customer_auto_reply(

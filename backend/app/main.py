@@ -140,6 +140,14 @@ async def lifespan(app: FastAPI):
             logger.critical("[startup] FATAL: Normalization registry initialization failed:\n%s", traceback.format_exc())
             raise
 
+        # ── Initialize Firebase Admin SDK ─────────────────────────────────────────
+        try:
+            from app.core.firebase import initialize_firebase
+            initialize_firebase()
+        except Exception as e:
+            logger.critical("[Startup] FATAL: Firebase initialization failed:\n%s", traceback.format_exc())
+            raise
+
         # ── Supabase Credentials Check (production guard) ─────────────────────────
         if _IS_PRODUCTION and not (settings.SUPABASE_URL and settings.SUPABASE_SERVICE_ROLE_KEY):
             raise RuntimeError(

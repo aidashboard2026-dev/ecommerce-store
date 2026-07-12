@@ -280,39 +280,29 @@ def build_contact_auto_reply(branding: dict, customer_name: str, submitted_subje
     store_url = branding.get("store_url", "")
     
     html_content = f"""
-    <h2 style="margin: 0 0 16px; color: #111827; font-size: 20px; font-weight: bold;">Hello {customer_name},</h2>
-    <p style="margin: 0 0 16px;">We have received your message successfully. Thank you for reaching out to us!</p>
-    
-    <div class="card-item" style="background-color: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; padding: 20px; margin: 24px 0;">
-      <h3 style="margin: 0 0 12px; color: #111827; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Message Details</h3>
-      <p style="margin: 0 0 8px; font-size: 14px;"><strong>Subject:</strong> {submitted_subject}</p>
-      <p style="margin: 0; font-size: 14px;"><strong>Submitted On:</strong> {submitted_date}</p>
-    </div>
-    
-    <div style="border-left: 4px solid #2563EB; padding: 15px; margin: 24px 0;">
-      <p style="margin: 0; font-size: 14px; color: #374151;"><strong>⏱️ What's Next?</strong></p>
-      <p style="margin: 4px 0 0; font-size: 14px; color: #6B7280;" class="text-muted">Our dedicated support team will review your inquiry and respond within <strong>24 hours</strong>.</p>
-    </div>
-    
-    <p style="margin: 0 0 16px;">In the meantime, feel free to visit our online store to explore our latest collections.</p>
+    <p style="margin: 0 0 16px; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #374151;">Hi {customer_name},</p>
+    <p style="margin: 0 0 16px; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #374151;">Thank you for contacting {store_name}.</p>
+    <p style="margin: 0 0 16px; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #374151;">We have received your enquiry successfully.</p>
+    <p style="margin: 0 0 24px; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #374151;">Our support team will get back to you as soon as possible.</p>
+    <p style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #374151;">Regards,</p>
+    <p style="margin: 4px 0 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; font-weight: bold; color: #111827;">{store_name} Team</p>
     """
     
     html = wrap_in_design_system(
         branding=branding,
         content_html=html_content,
-        title="Message Received",
-        tagline="Thank you for contacting us",
+        title="We've received your message",
+        tagline="Inquiry Confirmation",
         action_button={"text": "Visit Store", "url": f"https://{store_url}"},
         reference_id=reference_id
     )
 
-    text = f"Hello {customer_name},\n\n" \
-           f"We have received your message successfully. Thank you for reaching out to us!\n\n" \
-           f"MESSAGE DETAILS:\n" \
-           f"- Subject: {submitted_subject}\n" \
-           f"- Date: {submitted_date}\n\n" \
-           f"Our support team will review your inquiry and respond within 24 hours.\n\n" \
-           f"Explore our online store: https://{store_url}" \
+    text = f"Hi {customer_name},\n\n" \
+           f"Thank you for contacting {store_name}.\n\n" \
+           f"We have received your enquiry successfully.\n\n" \
+           f"Our support team will get back to you as soon as possible.\n\n" \
+           f"Regards,\n" \
+           f"{store_name} Team" \
            + build_shared_footer_text(branding, reference_id)
            
     return html, text
@@ -320,10 +310,46 @@ def build_contact_auto_reply(branding: dict, customer_name: str, submitted_subje
 
 # ── Template 2: Contact Us Admin Notification ────────────────────────────────
 
-def build_contact_admin_notification(branding: dict, customer_name: str, customer_email: str, subject: str, message: str, submitted_date: str, submitted_time: str, reference_id: str) -> Tuple[str, str]:
+def build_contact_admin_notification(
+    branding: dict,
+    customer_name: str,
+    customer_email: str,
+    subject: str,
+    message: str,
+    submitted_date: str,
+    submitted_time: str,
+    reference_id: str,
+    phone: str = None,
+    ip_address: str = None,
+    user_agent: str = None,
+) -> Tuple[str, str]:
     """
     Renders (HTML, Plain Text) for Admin warning of contact form submission.
     """
+    phone_html = ""
+    if phone:
+        phone_html = f"""
+        <tr>
+          <td style="padding: 12px 0; border-bottom: 1px solid #E5E7EB;">
+            <span class="text-muted" style="color: #6B7280; font-size: 11px; font-weight: bold; text-transform: uppercase;">Phone</span><br/>
+            <strong>{phone}</strong>
+          </td>
+        </tr>
+        """
+
+    ip_ua_html = ""
+    if ip_address or user_agent:
+        ip_ua_parts = []
+        if ip_address:
+            ip_ua_parts.append(f"<strong>IP</strong>: {ip_address}")
+        if user_agent:
+            ip_ua_parts.append(f"<strong>UA</strong>: {user_agent}")
+        ip_ua_html = f"""
+        <p style="margin: 12px 0 0 0; font-size: 11px; color: #9CA3AF;" class="text-muted">
+          {' | '.join(ip_ua_parts)}
+        </p>
+        """
+
     html_content = f"""
     <h2 style="margin: 0 0 16px; color: #111827; font-size: 20px; font-weight: bold;">New Contact Form Submission</h2>
     <p style="margin: 0 0 24px;">A visitor has submitted a message via the Contact Us form on your website.</p>
@@ -336,6 +362,7 @@ def build_contact_admin_notification(branding: dict, customer_name: str, custome
             <strong>{customer_name}</strong> (&lt;<a href="mailto:{customer_email}" style="color: #2563EB; text-decoration: none;">{customer_email}</a>&gt;)
           </td>
         </tr>
+        {phone_html}
         <tr>
           <td style="padding: 12px 0; border-bottom: 1px solid #E5E7EB;">
             <span class="text-muted" style="color: #6B7280; font-size: 11px; font-weight: bold; text-transform: uppercase;">Subject</span><br/>
@@ -352,6 +379,7 @@ def build_contact_admin_notification(branding: dict, customer_name: str, custome
     </div>
     
     <p style="margin: 0; font-size: 13px; color: #6B7280;" class="text-muted">Submitted on {submitted_date} at {submitted_time}.</p>
+    {ip_ua_html}
     """
     
     admin_reply_url = f"mailto:{customer_email}?subject=Re:%20{subject}"
@@ -364,10 +392,17 @@ def build_contact_admin_notification(branding: dict, customer_name: str, custome
         reference_id=reference_id
     )
 
+    phone_text = f"Phone: {phone}\n" if phone else ""
+    ip_text = f"IP Address: {ip_address}\n" if ip_address else ""
+    ua_text = f"User Agent: {user_agent}\n" if user_agent else ""
+
     text = f"New Contact Form Submission Alert\n" \
            f"From: {customer_name} ({customer_email})\n" \
+           f"{phone_text}" \
            f"Subject: {subject}\n" \
-           f"Date: {submitted_date} at {submitted_time}\n\n" \
+           f"Date: {submitted_date} at {submitted_time}\n" \
+           f"{ip_text}" \
+           f"{ua_text}\n" \
            f"MESSAGE:\n{message}\n\n" \
            f"Reply URL: {admin_reply_url}" \
            + build_shared_footer_text(branding, reference_id)
@@ -758,6 +793,65 @@ def build_low_stock_alert(branding: dict, product_name: str, stock: int, sku: st
            f"- Current Stock: {stock} units\n" \
            f"- Alert Threshold: {threshold} units\n\n" \
            f"Manage stock in Admin: {manage_url}" \
+           + build_shared_footer_text(branding, reference_id)
+
+    return html, text
+
+
+# ── Template 9: Customer Welcome Email ───────────────────────────────────────
+
+def build_welcome_email(branding: dict, customer_name: str) -> Tuple[str, str]:
+    """
+    Renders (HTML, Plain Text) for Customer Welcome Email.
+    """
+    store_name = branding.get("store_name", "My Designers")
+    store_url = branding.get("store_url", "")
+    
+    import time
+    timestamp = datetime.now().strftime("%Y%m%d")
+    unique_suffix = f"{int(time.time() * 1000) % 1000000:06d}"
+    reference_id = f"WLC-{timestamp}-{unique_suffix}"
+
+    html_content = f"""
+    <h2 style="margin: 0 0 16px; color: #111827; font-size: 20px; font-weight: bold;">Welcome to {store_name}, {customer_name}!</h2>
+    <p style="margin: 0 0 16px;">We are absolutely thrilled to welcome you to our community. Thank you for creating an account with us!</p>
+    
+    <p style="margin: 0 0 16px;">At {store_name}, we are dedicated to providing you with the best shopping experience, featuring curated collections, custom designs, and premium quality products.</p>
+    
+    <div class="card-item" style="background-color: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; padding: 20px; margin: 24px 0;">
+      <h3 style="margin: 0 0 12px; color: #111827; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Here is how to get started</h3>
+      <ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.6; color: #374151;">
+        <li style="margin-bottom: 8px;"><strong>Explore Collections:</strong> Browse our latest apparel, designs, and accessories.</li>
+        <li style="margin-bottom: 8px;"><strong>Custom Orders:</strong> Upload your own designs or graphics for custom printing.</li>
+        <li style="margin-bottom: 0;"><strong>Track Orders:</strong> View your order history and live tracking in your dashboard.</li>
+      </ul>
+    </div>
+    
+    <p style="margin: 0 0 16px;">If you ever have any questions or need assistance, our support team is always here to help. Just reply to this email or reach out to us at <a href="mailto:{branding.get('support_email', '')}" style="color: #2563EB; text-decoration: none;">{branding.get('support_email', '')}</a>.</p>
+    
+    <p style="margin: 32px 0 0 0;">Happy shopping!<br/><strong>The {store_name} Team</strong></p>
+    """
+
+    html = wrap_in_design_system(
+        branding=branding,
+        content_html=html_content,
+        title=f"Welcome to {store_name}",
+        tagline="Thank you for joining us",
+        action_button={"text": "Start Shopping", "url": f"https://{store_url}"},
+        reference_id=reference_id
+    )
+
+    text = f"Welcome to {store_name}, {customer_name}!\n\n" \
+           f"We are absolutely thrilled to welcome you to our community. Thank you for creating an account with us!\n\n" \
+           f"At {store_name}, we are dedicated to providing you with the best shopping experience, featuring curated collections, custom designs, and premium quality products.\n\n" \
+           f"Here is how to get started:\n" \
+           f"1. Explore Collections: Browse our latest apparel, designs, and accessories.\n" \
+           f"2. Custom Orders: Upload your own designs or graphics for custom printing.\n" \
+           f"3. Track Orders: View your order history and live tracking in your dashboard.\n\n" \
+           f"If you ever have any questions or need assistance, our support team is always here to help. Reach out to us at {branding.get('support_email', '')}.\n\n" \
+           f"Start Shopping: https://{store_url}\n\n" \
+           f"Happy shopping!\n" \
+           f"The {store_name} Team\n" \
            + build_shared_footer_text(branding, reference_id)
 
     return html, text

@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from typing import Any, Dict, List, Optional
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, BackgroundTasks
 from sqlalchemy import Integer, cast, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -61,7 +61,7 @@ def _build_order_stats_subquery(db: Session):
 # CRUD
 # ─────────────────────────────────────────────────────────────────────────────
 
-def create_customer(db: Session, data: CustomerCreate) -> Customer:
+def create_customer(db: Session, data: CustomerCreate, background_tasks: Optional[BackgroundTasks] = None) -> Customer:
     from app.shared.normalization import normalize_email, normalize_name
     norm_email = normalize_email(data.email)
     existing = db.query(Customer).filter(Customer.email == norm_email).first()
@@ -117,6 +117,28 @@ def create_customer(db: Session, data: CustomerCreate) -> Customer:
             detail="Email already registered.",
         )
     db.refresh(customer)
+
+    # Send welcome email notification
+    from app.shared.email.service import send_welcome_email_background, send_welcome_email
+    customer_name = f"{customer.first_name} {customer.last_name}".strip() or "Valued Customer"
+    if background_tasks:
+        background_tasks.add_task(
+            send_welcome_email_background,
+            to_email=customer.email,
+            customer_name=customer_name
+        )
+    else:
+        import asyncio
+        import logging
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(send_welcome_email(customer.email, customer_name))
+            else:
+                asyncio.run(send_welcome_email(customer.email, customer_name))
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Failed to send welcome email for {customer.email}: {e}", exc_info=True)
+
     return customer
 
 
