@@ -29,17 +29,17 @@ export default {
       },
       colors: {
         brand: {
-          50:  '#fff1ecff',
-          100: '#fbb9e1ff',
-          200: '#f78bd5ff',
-          300: '#ef46c2ff',
-          400: '#db2fe8ff',
-          500: '#f15dc5ff', // Premium Indigo
-          600: '#e016b2ff',
-          700: '#a24b84ff',
-          800: '#744165ff',
-          900: '#4c2a3bff',
-          950: '#321e2bff',
+          50:  'rgb(0, 0, 0)',
+          100: 'rgb(0, 0, 0)',
+          200: 'rgb(0, 0, 0)',
+          300: 'rgb(0, 0, 0)',
+          400: 'rgb(0, 0, 0)',
+          500: 'rgb(0, 0, 0)', // Premium Indigo
+          600: 'rgb(0, 0, 0)',
+          700: 'rgb(0, 0, 0)',
+          800: 'rgb(0, 0, 0)',
+          900: 'rgb(0, 0, 0)',
+          950: 'rgb(0, 0, 0)',
         },
         // Mapped to CSS variables for dark/light mode
         app: 'var(--color-bg)',

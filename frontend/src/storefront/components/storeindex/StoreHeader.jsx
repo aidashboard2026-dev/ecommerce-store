@@ -256,7 +256,22 @@ const StoreHeaderComponent = function StoreHeader({
             >
               <Heart size={18} />
               {wishlistCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] font-bold h-4 w-4 rounded-full flex items-center justify-center">
+                <span
+                  className="
+                    absolute -top-1 -right-1
+                    flex items-center justify-center
+                    min-w-[18px] h-[18px]
+                    px-1.5
+                    rounded-full
+                    bg-[#111827]
+                    text-white
+                    text-[10px]
+                    font-bold
+                    border-2 border-white dark:border-[#111827]
+                    shadow-lg
+                    leading-none
+                  "
+                >
                   {wishlistCount}
                 </span>
               )}
