@@ -18,6 +18,8 @@ import StorefrontLayout from "@/storefront/layouts/StorefrontLayout";
 import ProductDetails from "@/storefront/components/product/ProductDetails";
 import OrderSuccess from "@/storefront/components/checkout/OrderSuccess";
 import ReturnsPolicy from "@/storefront/pages/policys/ReturnsPolicy";
+
+import EmailVerifiedPage from "@/storefront/pages/emailverified/EmailVerifiedPage";
 // import OrderTimelinePage from "@/storefront/components/order/components/OrderTimeline";
 
 // Lazy loaded pages/components to optimize bundle sizes
@@ -28,26 +30,45 @@ const CategoriesPage = lazy(() => import("@/admin/pages/CategoriesPage"));
 const AdminOrdersPage = lazy(() => import("@/admin/pages/OrdersPage"));
 const OffersPage = lazy(() => import("@/admin/pages/OffersPage"));
 const CustomersPage = lazy(() => import("@/admin/pages/CustomersPage"));
-const ContactMessagesPage = lazy(() => import("@/admin/pages/ContactMessagesPage"));
+const ContactMessagesPage = lazy(
+  () => import("@/admin/pages/ContactMessagesPage"),
+);
 const SettingsPage = lazy(() => import("@/admin/pages/SettingsPage"));
 const BannerPage = lazy(() => import("@/admin/pages/BannerPage"));
-const CustomProductsPage = lazy(() => import("@/admin/pages/CustomProductsPage"),);
+const CustomProductsPage = lazy(
+  () => import("@/admin/pages/CustomProductsPage"),
+);
 
 // Storefront Pages
 const HomePage = lazy(() => import("@/storefront/pages/main/HomePage"));
 const ProductsPage = lazy(() => import("@/storefront/pages/main/ProductsPage"));
 const CartPage = lazy(() => import("@/storefront/pages/CartPage"));
-const CheckoutPage = lazy(() => import("@/storefront/pages/ordercheckout/CheckoutPage"),);
-const OrdersPage = lazy(() => import("@/storefront/pages/ordercheckout/OrdersPage"));
+const CheckoutPage = lazy(
+  () => import("@/storefront/pages/ordercheckout/CheckoutPage"),
+);
+const OrdersPage = lazy(
+  () => import("@/storefront/pages/ordercheckout/OrdersPage"),
+);
 const ProfilePage = lazy(() => import("@/storefront/pages/users/ProfilePage"));
 const AuthPage = lazy(() => import("@/storefront/pages/users/AuthPage"));
-const ResetPasswordPage = lazy(() => import("@/storefront/pages/users/ResetPasswordPage"));
-const SupportPage = lazy(() => import("@/storefront/pages/policys/SupportPage"));
+const ResetPasswordPage = lazy(
+  () => import("@/storefront/pages/users/ResetPasswordPage"),
+);
+const SupportPage = lazy(
+  () => import("@/storefront/pages/policys/SupportPage"),
+);
 const CustomPage = lazy(() => import("@/storefront/pages/main/CustomPage"));
-const StorefrontOffersPage = lazy(() => import("@/storefront/pages/main/OffersPage"));
-const NotFoundPage = lazy(() => import("@/storefront/pages/empty/NotFoundPage"));
+const StorefrontOffersPage = lazy(
+  () => import("@/storefront/pages/main/OffersPage"),
+);
+const NotFoundPage = lazy(
+  () => import("@/storefront/pages/empty/NotFoundPage"),
+);
 const WishlistGrid = lazy(() => import("@/storefront/pages/main/WishlistPage"));
-const ProductDetailsPage = lazy(() => import("@/storefront/components/Customproduct/CustomProductDetailsPage"));
+const ProductDetailsPage = lazy(
+  () =>
+    import("@/storefront/components/Customproduct/CustomProductDetailsPage"),
+);
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-app">
@@ -57,13 +78,9 @@ const Spinner = () => (
 
 // ── ADMIN AUTH STATE ──────────────────────────────────────────────────────────
 function useAdminAuthState() {
-  const isAuthenticated = useSelector(
-    (state) => !!state.auth.admin
-  );
+  const isAuthenticated = useSelector((state) => !!state.auth.admin);
 
-  const initialized = useSelector(
-    (state) => state.auth.initialized
-  );
+  const initialized = useSelector((state) => state.auth.initialized);
 
   return {
     isAuthenticated,
@@ -125,14 +142,14 @@ function CategoryRedirect() {
     const mapping = {
       "t-shirt": "t-shirt",
       "track-pant": "track-pant",
-      "jersey": "jersey",
-      "shirt": "shirt",
-      "trouser": "trouser",
+      jersey: "jersey",
+      shirt: "shirt",
+      trouser: "trouser",
       "t-shirts": "t-shirt",
       "track-pants": "track-pant",
-      "jerseys": "jersey",
-      "shirts": "shirt",
-      "trousers": "trouser",
+      jerseys: "jersey",
+      shirts: "shirt",
+      trousers: "trouser",
     };
     return mapping[slug.toLowerCase()] || slug.toLowerCase();
   }, [slug]);
@@ -183,9 +200,18 @@ export default function AppRoutes() {
     <Suspense fallback={<Spinner />}>
       <Routes>
         {/* ── BACKWARD COMPATIBILITY REDIRECTS ─────────────────────────────── */}
-        <Route path="/login" element={<NavigateToCustomerAuth target="/auth/login" />} />
-        <Route path="/register" element={<NavigateToCustomerAuth target="/auth/register" />} />
-        <Route path="/signup" element={<NavigateToCustomerAuth target="/auth/register" />} />
+        <Route
+          path="/login"
+          element={<NavigateToCustomerAuth target="/auth/login" />}
+        />
+        <Route
+          path="/register"
+          element={<NavigateToCustomerAuth target="/auth/register" />}
+        />
+        <Route
+          path="/signup"
+          element={<NavigateToCustomerAuth target="/auth/register" />}
+        />
 
         {/* ── ADMIN AUTH ROUTES (structure unchanged) ───────────────────────── */}
         <Route
@@ -302,6 +328,8 @@ export default function AppRoutes() {
               </CustomerPublicRoute>
             }
           />
+
+          <Route path="/auth/email-verified" element={<EmailVerifiedPage />} />
 
           <Route path="auth/reset-password" element={<ResetPasswordPage />} />
 
