@@ -12,11 +12,10 @@ import {
   EyeOff,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { signup } from "@/firebase/auth";
+import { signup, logout } from "@/firebase/auth";
 
 export default function RegisterForm() {
   const navigate = useNavigate();
-  const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -68,16 +67,23 @@ export default function RegisterForm() {
         JSON.stringify({
           first_name: form.first_name.trim(),
           last_name: form.last_name.trim(),
-          phone: form.phone || null,
+          email: form.email.trim().toLowerCase(),
+          phone: form.phone.trim() || null,
           dob: form.dob || null,
         }),
       );
-
+      await logout();
+      
       toast.success(
-        "Verification email sent. Please verify your email before login.",
+        "Account created! Please check your email and verify your account.",
       );
 
-      navigate("/auth/login", { state: location.state });
+      navigate("/auth/login", {
+        replace: true,
+        state: {
+          verificationEmail: form.email.trim().toLowerCase(),
+        },
+      });
     } catch (err) {
       console.error(err);
 
@@ -108,7 +114,7 @@ export default function RegisterForm() {
           Create Account
         </h1>
         <p className="text-sm text-muted text-center mb-6">
-          Join {import.meta.env.VITE_STORE_NAME || "My Designers"} for exclusive perks
+          Join AuraStore for exclusive perks
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -256,7 +262,6 @@ export default function RegisterForm() {
           Already have an account?{" "}
           <Link
             to="/auth/login"
-            state={location.state}
             className="text-brand-500 font-semibold hover:text-brand-600"
           >
             Sign in
