@@ -12,6 +12,7 @@ import {
 import AppRoutes from "@/shared/routes/AppRoutes";
 import useStoreSettings from "@/shared/hooks/useStoreSettings";
 
+import { loadCustomerCollectionsThunk } from "@/storefront/store/customerCollectionThunks";
 function App() {
   const dispatch = useDispatch();
 
@@ -35,7 +36,8 @@ function App() {
   useEffect(() => {
     // Browser title is set statically in index.html — do NOT overwrite document.title here.
     const envStoreName = import.meta.env.VITE_STORE_NAME || "My Designers";
-    const envStoreUrl = import.meta.env.VITE_STORE_URL || "https://mydesigners.com";
+    const envStoreUrl =
+      import.meta.env.VITE_STORE_URL || "https://mydesigners.com";
 
     // Keep localStorage in sync for invoice generator and price formatter utilities.
     localStorage.setItem("store_name", envStoreName);
@@ -67,6 +69,38 @@ function App() {
       dispatch(fetchMeThunk());
     }
   }, [adminToken, dispatch]);
+
+  // --------------------------------------------------
+  // Customer authentication + collection initialization
+  // --------------------------------------------------
+
+  useEffect(() => {
+    const initializeCustomer = async () => {
+      if (!customerToken) {
+        delete axios.defaults.headers.common.Authorization;
+
+        dispatch(initializeCustomerAuth());
+
+        return;
+      }
+
+      axios.defaults.headers.common.Authorization = `Bearer ${customerToken}`;
+
+      try {
+        // Verify JWT and get latest customer profile
+
+        await dispatch(fetchCustomerMeThunk()).unwrap();
+
+        // Restore current account cart and wishlist from DB
+
+        await dispatch(loadCustomerCollectionsThunk()).unwrap();
+      } catch (error) {
+        console.error("Customer session initialization failed:", error);
+      }
+    };
+
+    initializeCustomer();
+  }, [customerToken, dispatch]);
 
   // --------------------------------------------------
   // Customer authentication initialization

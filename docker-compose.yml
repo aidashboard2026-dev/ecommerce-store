@@ -62,7 +62,7 @@ services:
         condition: service_started
     volumes:
       - ./backend:/app
-      - product_uploads:/app/uploads
+      - ./uploads:/app/uploads
     networks:
       - admindash_network
     healthcheck:

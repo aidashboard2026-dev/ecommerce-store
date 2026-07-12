@@ -1,23 +1,42 @@
 import { useState, useEffect } from 'react'
-const _BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL || '').replace(/\/$/, '')
+const BACKEND_ORIGIN = (
+  import.meta.env.VITE_BACKEND_URL ||
+  "http://localhost:8000"
+).replace(/\/$/, "");
 
-export function getImageUrl(thumbnail) {
-  if (!thumbnail) return null
-  // Blob URL, Supabase Storage URL, or any other absolute URL — return as-is
+export function getImageUrl(path) {
+  if (!path) return "";
+
+  const imagePath = String(path).trim();
+
+  // Firebase, Supabase, Cloudinary or other external URL
   if (
-    thumbnail.startsWith('blob:') ||
-    thumbnail.startsWith('http://') ||
-    thumbnail.startsWith('https://')
+    imagePath.startsWith("http://") ||
+    imagePath.startsWith("https://") ||
+    imagePath.startsWith("blob:") ||
+    imagePath.startsWith("data:")
   ) {
-    return thumbnail
+    return imagePath;
   }
-  // Legacy root-relative path from before the Supabase migration (e.g. /uploads/products/1_abc.png)
-  if (thumbnail.startsWith('/')) return `${_BACKEND_ORIGIN}${thumbnail}`
-  // Legacy bare filename — prefix with the products upload path
-  return `${_BACKEND_ORIGIN}/uploads/products/${thumbnail}`
+
+  // Remove starting slashes
+  const cleanPath = imagePath.replace(/^\/+/, "");
+
+  // Already contains uploads/
+  if (cleanPath.startsWith("uploads/")) {
+    return `${BACKEND_ORIGIN}/${cleanPath}`;
+  }
+
+  // DB value:
+  // products/shirt/product-name/thumbnail.jpg
+  if (cleanPath.startsWith("products/")) {
+    return `${BACKEND_ORIGIN}/uploads/${cleanPath}`;
+  }
+
+  // DB value:
+  // shirt/product-name/thumbnail.jpg
+  return `${BACKEND_ORIGIN}/uploads/products/${cleanPath}`;
 }
-
-
 
 /** Revoke all blob object URLs in an array of { previewUrl } items */
 export function revokeObjectURLs(items) {

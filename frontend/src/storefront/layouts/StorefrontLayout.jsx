@@ -1,4 +1,10 @@
-import React, { Suspense, useCallback, createContext, useContext, useState } from "react";
+import React, {
+  Suspense,
+  useCallback,
+  createContext,
+  useContext,
+  useState,
+} from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 
@@ -9,6 +15,9 @@ import StoreHeader from "@/storefront/components/storeindex/StoreHeader";
 import StoreFooter from "@/storefront/components/storeindex/StoreFooter";
 import CartDrawer from "@/storefront/components/shoppingcart/CartDrawer";
 import GuestAuthModal from "@/storefront/components/checkout/GuestAuthModal";
+import { clearCart } from "@/storefront/store/cartSlice";
+
+import { clearWishlist } from "@/storefront/store/wishlistSlice";
 
 export const CheckoutAuthModalContext = createContext(null);
 
@@ -39,10 +48,30 @@ export default function StorefrontLayout() {
   }, []);
 
   // Track page scroll to toggle header background glassmorphism
-  const handleLogout = useCallback(() => {
-    dispatch(customerLogoutThunk());
-    navigate("/");
-  }, [dispatch, navigate]);
+  const handleLogout = async () => {
+    try {
+      await dispatch(customerLogoutThunk()).unwrap();
+    } catch (error) {
+      console.error("Logout API failed:", error);
+    } finally {
+      // Clear Redux cart/wishlist UI
+      dispatch(clearCart());
+      dispatch(clearWishlist());
+
+      // Clear browser authentication data
+      localStorage.removeItem("customer_token");
+
+      localStorage.removeItem("customer");
+
+      localStorage.removeItem("aurastore_cart");
+
+      localStorage.removeItem("aurastore_wishlist");
+
+      sessionStorage.removeItem("aurastore_guest_added_toast_shown");
+
+      navigate("/");
+    }
+  };
 
   // Close mobile menu on route change
 
@@ -50,7 +79,9 @@ export default function StorefrontLayout() {
   const wishlistCount = wishlistItems.length;
 
   return (
-    <CheckoutAuthModalContext.Provider value={{ openCheckoutAuthModal, closeCheckoutAuthModal }}>
+    <CheckoutAuthModalContext.Provider
+      value={{ openCheckoutAuthModal, closeCheckoutAuthModal }}
+    >
       <div className="min-h-screen w-full store-bg flex flex-col transition-colors duration-300">
         {/* Top Promotional Banner */}
         {/* <div className="bg-gradient-to-r from-brand-600 to-indigo-600 text-white text-xs py-2 px-4 text-center font-medium tracking-wide">
@@ -75,9 +106,7 @@ export default function StorefrontLayout() {
           <Suspense
             fallback={
               <div className="flex items-center justify-center min-h-[60vh]">
-                <div className="text-gray-500 text-lg">
-                  Loading...
-                </div>
+                <div className="text-gray-500 text-lg">Loading...</div>
               </div>
             }
           >

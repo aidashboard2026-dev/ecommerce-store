@@ -3,6 +3,8 @@ import axios from "axios";
 
 import { login, signup } from "@/firebase/auth";
 import { storefrontAPI } from "@/shared/services/api";
+import { clearCart } from "@/storefront/store/cartSlice";
+import { clearWishlist } from "@/storefront/store/wishlistSlice";
 
 const TOKEN_KEY = "customer_token";
 const CUSTOMER_KEY = "customer";
