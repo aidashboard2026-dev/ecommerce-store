@@ -23,6 +23,7 @@ import ShippingPage from "@/storefront/components/storefooter/ShippingPage";
 import ReturnsPage from "@/storefront/components/storefooter/ReturnsPage";
 import PrivacyPolicy from "@/storefront/components/storefooter/PrivacyPolicy";
 import ReturnsPolicy from "@/storefront/pages/policys/ReturnsPolicy";
+import TermsConditions from "@/storefront/components/storefooter/TermsConditions";
 
 import EmailVerifiedPage from "@/storefront/pages/emailverified/EmailVerifiedPage";
 // import OrderTimelinePage from "@/storefront/components/order/components/OrderTimeline";

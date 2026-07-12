@@ -1,11 +1,25 @@
-import { createSlice, createSelector } from "@reduxjs/toolkit";
-const STORAGE_KEY = "aurastore_cart";
+// cartSlice.js
+import { createSelector, createSlice } from "@reduxjs/toolkit";
+
+import {
+  addCustomerCartItemThunk,
+  removeCustomerCartItemThunk,
+  updateCustomerCartQuantityThunk,
+} from "./customerCartThunks";
+
+// const STORAGE_KEY = "aurastore_cart";
+const GUEST_CART_KEY = "aurastore_guest_cart";
 
 function loadCart() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
+    const raw = localStorage.getItem(GUEST_CART_KEY);
+
+    if (!raw) {
+      return [];
+    }
+
     const parsed = JSON.parse(raw);
+
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
@@ -14,7 +28,7 @@ function loadCart() {
 
 function persist(items) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    localStorage.setItem(GUEST_CART_KEY, JSON.stringify(items));
   } catch {
     /* storage full or unavailable — ignore */
   }
@@ -22,8 +36,21 @@ function persist(items) {
 
 // A cart line is uniquely identified by productId + size + color
 function sameLine(a, b) {
+  const aVariantId = a.variantId ?? a.variant_id;
+
+  const bVariantId = b.variantId ?? b.variant_id;
+
+  // Variant ID is the primary cart identity
+  if (aVariantId != null && bVariantId != null) {
+    return String(aVariantId) === String(bVariantId);
+  }
+
+  // Fallback for old guest cart items
   return (
-    a.productId === b.productId && a.size === b.size && a.color === b.color
+    String(a.productId ?? a.product_id) ===
+      String(b.productId ?? b.product_id) &&
+    String(a.size ?? "") === String(b.size ?? "") &&
+    String(a.color ?? "") === String(b.color ?? "")
   );
 }
 
@@ -34,8 +61,9 @@ const cartSlice = createSlice({
     couponCode: null,
     couponDiscount: 0, // percentage 0-100
     couponError: null,
-
     isDrawerOpen: false,
+    syncLoading: false,
+    syncError: null,
   },
   reducers: {
     addToCart(state, action) {
@@ -76,7 +104,21 @@ const cartSlice = createSlice({
       state.couponCode = null;
       state.couponDiscount = 0;
       state.couponError = null;
+
       persist(state.items);
+    },
+    replaceCartItems(state, action) {
+      state.items = Array.isArray(action.payload) ? action.payload : [];
+
+      persist(state.items);
+    },
+
+    clearCartState(state) {
+      state.items = [];
+
+      state.couponCode = null;
+      state.couponDiscount = 0;
+      state.couponError = null;
     },
     applyCoupon(state, action) {
       const { code, discount } = action.payload;
@@ -98,10 +140,109 @@ const cartSlice = createSlice({
     openCartDrawer(state) {
       state.isDrawerOpen = true;
     },
+    setCartItems(state, action) {
+      const incomingItems = Array.isArray(action.payload) ? action.payload : [];
 
+      const uniqueItems = [];
+
+      for (const item of incomingItems) {
+        const existing = uniqueItems.find((currentItem) =>
+          sameLine(currentItem, item),
+        );
+
+        if (existing) {
+          existing.quantity =
+            Number(item.quantity) || Number(existing.quantity) || 1;
+
+          Object.assign(existing, item);
+        } else {
+          uniqueItems.push(item);
+        }
+      }
+
+      state.items = uniqueItems;
+
+      persist(state.items);
+    },
     closeCartDrawer(state) {
       state.isDrawerOpen = false;
     },
+  },
+  extraReducers: (builder) => {
+    builder
+
+      // Add customer DB cart item
+
+      .addCase(
+        addCustomerCartItemThunk.pending,
+
+        (state) => {
+          state.syncLoading = true;
+
+          state.syncError = null;
+        },
+      )
+
+      .addCase(
+        addCustomerCartItemThunk.fulfilled,
+
+        (state, action) => {
+          state.syncLoading = false;
+
+          const incoming = action.payload;
+
+          const index = state.items.findIndex(
+            (item) => Number(item.cartItemId) === Number(incoming.cartItemId),
+          );
+
+          if (index >= 0) {
+            state.items[index] = incoming;
+          } else {
+            state.items.push(incoming);
+          }
+        },
+      )
+
+      .addCase(
+        addCustomerCartItemThunk.rejected,
+
+        (state, action) => {
+          state.syncLoading = false;
+
+          state.syncError = action.payload;
+        },
+      )
+
+      // Update DB quantity
+
+      .addCase(
+        updateCustomerCartQuantityThunk.fulfilled,
+
+        (state, action) => {
+          const updatedItem = action.payload;
+
+          const index = state.items.findIndex(
+            (item) =>
+              Number(item.cartItemId) === Number(updatedItem.cartItemId),
+          );
+
+          if (index >= 0) {
+            state.items[index] = updatedItem;
+          }
+        },
+      )
+
+      // Remove DB cart item
+
+      .addCase(
+        removeCustomerCartItemThunk.fulfilled,
+
+        (state, action) => {
+          state.items = state.items.filter(
+            (item) => Number(item.cartItemId) !== Number(action.payload),
+          );
+        },
+      );
   },
 });
 
@@ -110,6 +251,10 @@ export const {
   updateQuantity,
   removeFromCart,
   clearCart,
+  setCartItems,
+  replaceCartItems,
+  clearCartState,
+
   applyCoupon,
   setCouponError,
   removeCoupon,
@@ -171,7 +316,7 @@ export const selectCartTotals = createSelector(
     const discountAmount = (subtotal * (couponDiscount || 0)) / 100;
     const discountedSubtotal = subtotal - discountAmount;
     // const tax = discountedSubtotal * TAX_RATE;
-    const total = discountedSubtotal + shipping ;
+    const total = discountedSubtotal + shipping;
 
     return {
       subtotal,

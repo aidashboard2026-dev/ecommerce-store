@@ -9,6 +9,7 @@ import {
   selectIsWishlisted,
 } from "@/storefront/store/wishlistSlice";
 import { addToCart } from "@/storefront/store/cartSlice";
+import { addCustomerCartItemThunk } from "@/storefront/store/customerCartThunks";
 import toast from "react-hot-toast";
 
 function ProductCard({ product }) {
@@ -28,8 +29,7 @@ function ProductCard({ product }) {
 
   const hasDiscount =
     priceVariant &&
-    Number(priceVariant.original_price) >
-    Number(priceVariant.selling_price);
+    Number(priceVariant.original_price) > Number(priceVariant.selling_price);
   const discountPct = hasDiscount
     ? Math.round(
         ((Number(firstVariant.original_price) -
@@ -54,69 +54,137 @@ function ProductCard({ product }) {
     toast.success(isWishlisted ? "Removed from wishlist" : "Added to wishlist");
   };
 
-  const handleQuickAdd = (e) => {
+  const handleQuickAdd = async (e) => {
     e.preventDefault();
     e.stopPropagation();
+
     if (!availableVariant) {
       toast.error("Out of stock");
       return;
     }
-    dispatch(
-      addToCart({
-        productId: product.id,
-        slug: product.slug,
-        title: product.title,
-        thumbnail: product.thumbnail,
-        size: availableVariant.size,
-        color: availableVariant.color || null,
-        colorHex: availableVariant.color_hex || null,
-        sellingPrice: Number(availableVariant.selling_price),
-        originalPrice: Number(availableVariant.original_price),
-        stockQuantity: availableVariant.stock_quantity,
-        quantity: 1,
-      }),
-    );
-    const isAuthenticated = !!(token && customer);
-    const toastShown = sessionStorage.getItem("aurastore_guest_added_toast_shown");
-    if (!isAuthenticated && !toastShown) {
-      sessionStorage.setItem("aurastore_guest_added_toast_shown", "true");
-      toast.custom((t) => (
-        <div
-          className={clsx(
-            "max-w-md w-full bg-app border border-app shadow-lg rounded-2xl pointer-events-auto flex overflow-hidden transition-all duration-350",
-            t.visible ? "animate-fade-in opacity-100 translate-y-0" : "opacity-0 translate-y-2"
-          )}
-        >
-          <div className="flex-1 p-4">
-            <div className="flex items-start">
-              <div className="flex-shrink-0 pt-0.5 text-green-500 font-bold text-base">
-                ✓
+
+    const cartItem = {
+      productId: product.id,
+
+      // Important: DB cart needs variant ID
+      variantId: availableVariant.id,
+
+      slug: product.slug,
+      title: product.title,
+      thumbnail: product.thumbnail,
+
+      size: availableVariant.size,
+
+      color: availableVariant.color || null,
+
+      colorHex: availableVariant.color_hex || null,
+
+      sellingPrice: Number(availableVariant.selling_price),
+
+      originalPrice: Number(availableVariant.original_price),
+
+      stockQuantity: Number(availableVariant.stock_quantity),
+
+      quantity: 1,
+    };
+
+    const isAuthenticated = Boolean(token && customer);
+
+    console.log("QUICK ADD DEBUG:", {
+      token,
+      customer,
+      isAuthenticated,
+      productId: product.id,
+      variantId: availableVariant.id,
+    });
+
+    try {
+      // =================================================
+      // Logged-in customer → Database → Redux
+      // =================================================
+
+      if (isAuthenticated) {
+        await dispatch(addCustomerCartItemThunk(cartItem)).unwrap();
+
+        toast.success("Added to your cart");
+
+        return;
+      }
+
+      // =================================================
+      // Guest customer → Redux → Guest localStorage
+      // =================================================
+
+      dispatch(addToCart(cartItem));
+
+      const toastShown = sessionStorage.getItem(
+        "aurastore_guest_added_toast_shown",
+      );
+
+      if (!toastShown) {
+        sessionStorage.setItem("aurastore_guest_added_toast_shown", "true");
+
+        toast.custom(
+          (t) => (
+            <div
+              className={clsx(
+                "max-w-md w-full bg-app border border-app shadow-lg rounded-2xl pointer-events-auto flex overflow-hidden transition-all duration-350",
+
+                t.visible
+                  ? "animate-fade-in opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-2",
+              )}
+            >
+              <div className="flex-1 p-4">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0 pt-0.5 text-green-500 font-bold text-base">
+                    ✓
+                  </div>
+
+                  <div className="ml-3 flex-1">
+                    <p className="text-sm font-semibold text-app">
+                      Added to Cart
+                    </p>
+
+                    <p className="mt-0.5 text-xs text-muted leading-relaxed">
+                      Sign in to save your cart across devices and enjoy faster
+                      checkout.
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="ml-3 flex-1">
-                <p className="text-sm font-semibold text-app">
-                  Added to Cart
-                </p>
-                <p className="mt-0.5 text-xs text-muted leading-relaxed">
-                  Sign in to save your cart across devices and enjoy faster checkout.
-                </p>
+
+              <div className="flex border-l border-app shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    toast.dismiss(t.id);
+
+                    navigate("/auth/login");
+                  }}
+                  className="w-24 border border-transparent rounded-none p-4 flex items-center justify-center text-xs font-semibold text-brand-500 hover:bg-surface hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                >
+                  Sign In
+                </button>
               </div>
             </div>
-          </div>
-          <div className="flex border-l border-app shrink-0">
-            <button
-              onClick={() => {
-                toast.dismiss(t.id);
-                navigate("/login");
-              }}
-              className="w-24 border border-transparent rounded-none p-4 flex items-center justify-center text-xs font-semibold text-brand-500 hover:bg-surface hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-            >
-              Sign In
-            </button>
-          </div>
-        </div>
-      ), { duration: 5000 });
-    } else {
+          ),
+
+          {
+            duration: 5000,
+          },
+        );
+
+        return;
+      }
+
       toast.success("Added to cart");
+    } catch (error) {
+      console.error("Add to cart failed:", error);
+
+      toast.error(
+        typeof error === "string" ? error : "Unable to add item to cart.",
+      );
     }
   };
 
@@ -131,10 +199,21 @@ function ProductCard({ product }) {
       <div className="flex relative w-full aspect-[8/9] rounded-0 bg-surface overflow-hidden">
         {product.thumbnail && !imageError ? (
           <img
-            src={getImageUrl(product.thumbnail)}
+            src={
+              imageError || !product.thumbnail
+                ? getImageUrl("/uploads/placeholder-product.png")
+                : getImageUrl(product.thumbnail)
+            }
             alt={product.title}
             loading="lazy"
-            onError={() => setImageError(true)}
+            onError={(event) => {
+              if (!imageError) {
+                setImageError(true);
+                return;
+              }
+
+              event.currentTarget.style.display = "none";
+            }}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
@@ -147,7 +226,6 @@ function ProductCard({ product }) {
         <div className="absolute flex flex-wrap flex-row w-full items-center justify-between mt-2 px-2">
           {/* Badges */}
           <div className="flex flex-col gap-1.5">
-
             {!inStock && (
               <span className="bg-gray-700/20 text-white text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full">
                 Out of Stock
@@ -170,8 +248,6 @@ function ProductCard({ product }) {
             />
           </button>
         </div>
-
-        
       </div>
 
       {/* Info */}
@@ -214,7 +290,7 @@ function ProductCard({ product }) {
           )}
         </div>
       </div>
-          {/* Quick add */}
+      {/* Quick add */}
       <button
         onClick={handleQuickAdd}
         disabled={!inStock}

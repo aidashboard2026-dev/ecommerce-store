@@ -10,6 +10,9 @@ import { useDispatch } from "react-redux";
 import { setCustomerSession } from "@/storefront/store/customerSlice";
 
 import { googleLogin, login, logout } from "@/firebase/auth";
+import {
+  syncCustomerCollectionsThunk,
+} from "@/storefront/store/customerCollectionThunks";
 
 const FIREBASE_BACKEND_URL = "/api/v1/auth/firebase/login";
 
@@ -191,6 +194,7 @@ export default function LoginForm() {
       // account to backend
 
       await connectFirebaseToBackend(firebaseUser);
+      await dispatch(syncCustomerCollectionsThunk(),).unwrap();
 
       toast.success("Welcome back!");
 
@@ -228,6 +232,7 @@ export default function LoginForm() {
       // account to backend
 
       await connectFirebaseToBackend(userCredential.user);
+      await dispatch(syncCustomerCollectionsThunk(),).unwrap();
 
       toast.success("Welcome!");
 
