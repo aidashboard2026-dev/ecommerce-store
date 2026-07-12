@@ -28,6 +28,8 @@ from app.modules.cart.schemas import (
     CartResponse,
 )
 
+from app.shared.storage.supabase_storage import get_product_image_url
+
 
 router = APIRouter(
     prefix="/customer/cart",
@@ -65,7 +67,7 @@ def _cart_item_payload(
             product.slug
         ),
         "thumbnail": (
-            product.thumbnail
+            get_product_image_url(product.thumbnail)
         ),
 
         # Variant fields

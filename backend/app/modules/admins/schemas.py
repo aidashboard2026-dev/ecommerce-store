@@ -44,9 +44,10 @@ class AdminResponse(AdminBase):
 
 
 class Token(BaseModel):
-    access_token: str
-    token_type: str
-    admin: AdminResponse
+    access_token: Optional[str] = None
+    token_type: Optional[str] = None
+    admin: Optional[AdminResponse] = None
+    auth_type: Optional[str] = "admin"
 
 
 class TokenData(BaseModel):

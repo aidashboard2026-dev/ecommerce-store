@@ -38,6 +38,14 @@ export const fetchMeThunk = createAsyncThunk(
       // should not log the admin out of a session that may still be valid.
       return rejectWithValue({ sessionExpired: status === 401 || status === 403 })
     }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { auth } = getState();
+      if (auth.loading) {
+        return false;
+      }
+    }
   }
 )
 
@@ -96,18 +104,20 @@ const authSlice = createSlice({
         state.error=null
         state.initialized=true
 
-        state.token=action.payload.access_token
-        state.admin=action.payload.admin
+        if (action.payload?.auth_type === "admin") {
+          state.token=action.payload.access_token
+          state.admin=action.payload.admin
 
-        localStorage.setItem(
-            "token",
-            action.payload.access_token
-        )
+          localStorage.setItem(
+              "token",
+              action.payload.access_token
+          )
 
-        localStorage.setItem(
-            "admin",
-            JSON.stringify(action.payload.admin)
-        )
+          localStorage.setItem(
+              "admin",
+              JSON.stringify(action.payload.admin)
+          )
+        }
 
       })
       .addCase(loginThunk.rejected,  (state, action) => { state.loading = false; state.error = action.payload })

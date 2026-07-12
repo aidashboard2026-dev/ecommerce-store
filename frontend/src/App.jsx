@@ -78,9 +78,7 @@ function App() {
     const initializeCustomer = async () => {
       if (!customerToken) {
         delete axios.defaults.headers.common.Authorization;
-
         dispatch(initializeCustomerAuth());
-
         return;
       }
 
@@ -88,11 +86,9 @@ function App() {
 
       try {
         // Verify JWT and get latest customer profile
-
         await dispatch(fetchCustomerMeThunk()).unwrap();
 
         // Restore current account cart and wishlist from DB
-
         await dispatch(loadCustomerCollectionsThunk()).unwrap();
       } catch (error) {
         console.error("Customer session initialization failed:", error);
@@ -101,26 +97,6 @@ function App() {
 
     initializeCustomer();
   }, [customerToken, dispatch]);
-
-  // --------------------------------------------------
-  // Customer authentication initialization
-  // --------------------------------------------------
-
-  useEffect(() => {
-    if (customerInitialized) {
-      return;
-    }
-
-    if (customerToken) {
-      axios.defaults.headers.common.Authorization = `Bearer ${customerToken}`;
-
-      dispatch(fetchCustomerMeThunk());
-    } else {
-      delete axios.defaults.headers.common.Authorization;
-
-      dispatch(initializeCustomerAuth());
-    }
-  }, [customerToken, customerInitialized, dispatch]);
 
   // --------------------------------------------------
   // Application loading

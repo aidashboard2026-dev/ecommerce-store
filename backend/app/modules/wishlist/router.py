@@ -35,6 +35,8 @@ from app.modules.wishlist.schemas import (
     WishlistResponse,
 )
 
+from app.shared.storage.supabase_storage import get_product_image_url
+
 
 # ============================================================
 # Router
@@ -72,7 +74,7 @@ def _wishlist_item_payload(
         "slug": product.slug,
 
         "thumbnail": (
-            product.thumbnail
+            get_product_image_url(product.thumbnail)
         ),
 
         "min_price": (

@@ -118,6 +118,10 @@ def _check_rate_limit(
             len(_attempts[ip])
             >= MAX_ATTEMPTS
         ):
+            logger.warning(
+                "Rate Limit Event | IP: %s",
+                ip,
+            )
 
             raise HTTPException(
                 status_code=(
@@ -199,6 +203,19 @@ def admin_login(
         else "unknown"
     )
 
+    from app.shared.normalization import normalize_email
+    norm_email = normalize_email(login_data.email)
+
+    admin_exists = db.query(Admin).filter(Admin.email == norm_email).first()
+
+    if not admin_exists:
+        return {
+            "auth_type": "customer",
+            "access_token": None,
+            "token_type": None,
+            "admin": None
+        }
+
     _check_rate_limit(
         ip
     )
@@ -215,13 +232,19 @@ def admin_login(
             ip
         )
 
+        logger.warning(
+            "Admin Login Failure | IP: %s | Email: %s | Error: Invalid email or password",
+            ip,
+            login_data.email,
+        )
+
         raise HTTPException(
             status_code=(
                 status
                 .HTTP_401_UNAUTHORIZED
             ),
             detail=(
-                "Invalid credentials."
+                "Invalid email or password."
             ),
         )
 
@@ -263,13 +286,12 @@ def admin_login(
 
 
     logger.info(
-        (
-            "Admin login "
-            "successful: %s"
-        ),
-        login_data.email,
+        "Admin Login Success | IP: %s | User ID: %s",
+        ip,
+        result["admin"].id,
     )
 
+    result["auth_type"] = "admin"
 
     return result
 
@@ -299,11 +321,18 @@ def get_admin_profile(
     "/logout"
 )
 def admin_logout(
+    request: Request,
     response: Response,
     current_admin: Admin = Depends(
         get_current_admin
     ),
 ):
+
+    ip = (
+        request.client.host
+        if request.client
+        else "unknown"
+    )
 
     response.delete_cookie(
         key=(
@@ -315,10 +344,8 @@ def admin_logout(
 
 
     logger.info(
-        (
-            "Admin logout: "
-            "id=%s"
-        ),
+        "Admin Logout | IP: %s | User ID: %s",
+        ip,
         current_admin.id,
     )
 
@@ -337,11 +364,18 @@ def admin_logout(
     "/firebase/login"
 )
 def firebase_customer_login(
+    request: Request,
     body: FirebaseLoginRequest,
     db: Session = Depends(
         get_db
     ),
 ):
+
+    ip = (
+        request.client.host
+        if request.client
+        else "unknown"
+    )
 
     print(
         (
@@ -370,13 +404,24 @@ def firebase_customer_login(
             flush=True,
         )
 
+        customer_id = result.get("customer", {}).get("id")
+        logger.info(
+            "Customer Login Success | IP: %s | User ID: %s",
+            ip,
+            customer_id,
+        )
 
         return result
 
 
-    except HTTPException:
+    except HTTPException as http_exc:
 
         db.rollback()
+        logger.warning(
+            "Customer Login Failure | IP: %s | Error: %s",
+            ip,
+            http_exc.detail,
+        )
 
         raise
 
@@ -386,12 +431,16 @@ def firebase_customer_login(
         db.rollback()
 
 
-        # print(("FIREBASE""LOGIN ERROR:"),  type(error).__name__,  str(error),  flush=True,)
         logger.exception(
             (
                 "Firebase customer "
                 "login failed"
             )
+        )
+        logger.warning(
+            "Customer Login Failure | IP: %s | Error: %s",
+            ip,
+            str(error),
         )
 
 

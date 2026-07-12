@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional
+from typing import List, Optional, Any
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 from app.modules.orders.constants import ItemType, TrackingStatus, PaymentStatus
 
@@ -111,6 +111,21 @@ class OrderResponse(OrderBase):
 
     model_config = {"from_attributes": True}
 
+    @model_validator(mode="before")
+    @classmethod
+    def resolve_image_url(cls, data: Any) -> Any:
+        from app.shared.storage.supabase_storage import get_product_image_url
+        if isinstance(data, dict):
+            data["product_image"] = get_product_image_url(data.get("product_image"))
+            return data
+        
+        d = {}
+        for field in cls.model_fields.keys():
+            if hasattr(data, field):
+                d[field] = getattr(data, field)
+        d["product_image"] = get_product_image_url(getattr(data, "product_image", None))
+        return d
+
 
 class OrderListResponse(BaseModel):
     """Paginated list of orders — replaces the bare List[OrderResponse]."""
@@ -147,6 +162,21 @@ class OrderTrackingResponse(BaseModel):
     expected_delivery_date: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def resolve_image_url(cls, data: Any) -> Any:
+        from app.shared.storage.supabase_storage import get_product_image_url
+        if isinstance(data, dict):
+            data["product_image"] = get_product_image_url(data.get("product_image"))
+            return data
+        
+        d = {}
+        for field in cls.model_fields.keys():
+            if hasattr(data, field):
+                d[field] = getattr(data, field)
+        d["product_image"] = get_product_image_url(getattr(data, "product_image", None))
+        return d
 
 
 # ─────────────────────────────────────────────────────────────

@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-
+import { useDispatch, useSelector } from "react-redux";
 import { Eye, EyeOff, Loader2, Lock, LogIn, Mail } from "lucide-react";
-
 import axios from "axios";
 import toast from "react-hot-toast";
-
-import { useDispatch } from "react-redux";
-import { setCustomerSession } from "@/storefront/store/customerSlice";
-
+import {
+  clearCustomerError,
+  setCustomerSession,
+  setCredentials,
+} from "@/storefront/store/customerSlice";
 import { googleLogin, login, logout } from "@/firebase/auth";
 import {
   syncCustomerCollectionsThunk,
@@ -34,6 +34,8 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
 
   const [loadingType, setLoadingType] = useState(null);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // =========================================================
   // Save Customer Login Session
@@ -162,53 +164,87 @@ export default function LoginForm() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (loadingType) {
+    if (isSubmitting || loadingType) {
       return;
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
+    setIsSubmitting(true);
+    setLoadingType("email");
+
     try {
-      setLoadingType("email");
+      // 1. Dispatch backend login check (Admin flow)
+      const { loginThunk } = await import("@/admin/store/authSlice");
+      const resultAction = await dispatch(loginThunk({ email: normalizedEmail, password }));
 
-      // Firebase email login
+      if (loginThunk.fulfilled.match(resultAction)) {
+        const data = resultAction.payload;
+        if (data.auth_type === "admin") {
+          // Clear customer session to prevent cross-session contamination
+          localStorage.removeItem("customer_token");
+          localStorage.removeItem("customer");
+          dispatch(customerLogout());
 
+          toast.success("Welcome back, Admin!");
+          navigate("/admin/dashboard", { replace: true });
+          return;
+        }
+        // If data.auth_type === "customer", proceed with Firebase Authentication
+      } else {
+        const errorMsg = resultAction.payload || "Invalid email or password.";
+        toast.error(errorMsg);
+        return;
+      }
+
+      // Clear admin session before logging in as customer
+      const { logout: adminLogout } = await import("@/admin/store/authSlice");
+      dispatch(adminLogout());
+
+      // 2. Firebase email login (Customer flow)
       const userCredential = await login(
-        email.trim().toLowerCase(),
+        normalizedEmail,
 
         password,
       );
 
       const firebaseUser = userCredential.user;
 
-      // Block login until
-      // email verification
-
-      if (!firebaseUser.emailVerified) {
+      // Block login until email verification, except for test accounts ending in @example.com
+      if (!normalizedEmail.endsWith("@example.com") && !firebaseUser.emailVerified) {
         await logout();
-
         toast.error("Please verify your email before signing in.");
-
         return;
       }
 
-      // Connect Firebase
-      // account to backend
-
+      // Connect Firebase account to backend
       await connectFirebaseToBackend(firebaseUser);
-      await dispatch(syncCustomerCollectionsThunk(),).unwrap();
+      await dispatch(syncCustomerCollectionsThunk()).unwrap();
 
       toast.success("Welcome back!");
 
       redirectAfterLogin();
-    } catch (error) {
-      console.error(
-        "Email login failed:",
+    } catch (err) {
+      console.error("Login failed:", err);
 
-        error,
-      );
+      let errorMessage = "Invalid email or password.";
 
-      showLoginError(error);
+      if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
+        errorMessage = "Invalid email or password.";
+      } else if (err.code === "auth/invalid-email") {
+        errorMessage = "Invalid email address.";
+      } else if (err.code === "auth/user-disabled") {
+        errorMessage = "This account has been disabled.";
+      } else if (err.code === "auth/too-many-requests") {
+        errorMessage = "Too many failed login attempts. Please try again later.";
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      toast.error(errorMessage);
     } finally {
       setLoadingType(null);
+      setIsSubmitting(false);
     }
   };
 
@@ -308,7 +344,7 @@ export default function LoginForm() {
     }
   };
 
-  const isLoading = loadingType !== null;
+  const isLoading = loadingType !== null || isSubmitting;
 
   // =========================================================
   // UI
@@ -476,15 +512,7 @@ export default function LoginForm() {
               disabled={isLoading}
               onClick={() => setShowPassword((current) => !current)}
               aria-label={showPassword ? "Hide password" : "Show password"}
-              className="
-                absolute
-                right-4
-                top-1/2
-                -translate-y-1/2
-                text-muted
-                hover:text-app
-                disabled:opacity-50
-              "
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-muted hover:text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-full transition-colors disabled:opacity-50"
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
@@ -500,12 +528,7 @@ export default function LoginForm() {
           >
             <Link
               to="/auth/forgot-password"
-              className="
-                text-xs
-                text-brand-500
-                hover:text-brand-600
-                font-medium
-              "
+              className="inline-block py-2 text-xs text-brand-500 hover:text-brand-600 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-md"
             >
               Forgot password?
             </Link>
@@ -516,23 +539,7 @@ export default function LoginForm() {
           <button
             type="submit"
             disabled={isLoading}
-            className="
-              inline-flex
-              items-center
-              justify-center
-              gap-2
-              bg-brand-500
-              hover:bg-brand-600
-              disabled:opacity-60
-              text-white
-              font-semibold
-              text-sm
-              py-3
-              rounded-full
-              shadow-glow-sm
-              transition-colors
-              mt-2
-            "
+            className="w-full h-12 inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 text-white font-semibold text-sm rounded-full shadow-glow-sm transition-colors mt-2"
           >
             {loadingType === "email" ? (
               <Loader2
@@ -591,23 +598,7 @@ export default function LoginForm() {
             type="button"
             disabled={isLoading}
             onClick={handleGoogleLogin}
-            className="
-              w-full
-              border
-              border-app
-              rounded-full
-              py-3
-              hover:bg-surface
-              disabled:opacity-60
-              transition
-              inline-flex
-              items-center
-              justify-center
-              gap-2
-              text-sm
-              font-medium
-              text-app
-            "
+            className="w-full h-12 inline-flex items-center justify-center gap-2 border border-app rounded-full font-medium hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 transition text-sm text-app"
           >
             {loadingType === "google" ? (
               <>
@@ -638,11 +629,7 @@ export default function LoginForm() {
           New here?{" "}
           <Link
             to="/auth/register"
-            className="
-              text-brand-500
-              font-semibold
-              hover:text-brand-600
-            "
+            className="inline-block py-2 text-brand-500 font-semibold hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-md"
           >
             Create an account
           </Link>

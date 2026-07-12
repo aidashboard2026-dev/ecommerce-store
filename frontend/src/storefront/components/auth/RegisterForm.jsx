@@ -114,7 +114,7 @@ export default function RegisterForm() {
           Create Account
         </h1>
         <p className="text-sm text-muted text-center mb-6">
-          Join AuraStore for exclusive perks
+          Join {import.meta.env.VITE_STORE_NAME || "My Designers"} for exclusive perks
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
