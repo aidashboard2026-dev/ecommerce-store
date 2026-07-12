@@ -1,4 +1,4 @@
-import React, {useMemo, useEffect, useRef, useState } from "react";
+import React, { useMemo, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useQuery } from "@tanstack/react-query";
@@ -99,6 +99,10 @@ const logGroupedApi = (apiName, isSuccess, elapsedMs, error = null) => {
   console.log(`Duration ${elapsedMs} ms`);
   console.groupEnd();
 };
+
+// ============================================================================
+// SDK & ERROR HELPERS
+// ============================================================================
 
 // ============================================================================
 // SDK & ERROR HELPERS
@@ -716,7 +720,6 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!customer || !token) return;
-
     let isMounted = true;
     setPhase(CHECKOUT_PHASE.RECOVERING, { source: "mount" });
 
@@ -864,7 +867,6 @@ export default function CheckoutPage() {
       toast.error("No payment methods are currently available. Please contact the store administrator.");
       return;
     }
-
     if (!selectedAddress) {
       logExit({
         step: "STEP 2 (address check)",
@@ -1098,7 +1100,6 @@ export default function CheckoutPage() {
           }
           return;
         }
-
         if (errInfo.code === "ORDER_NOT_FOUND") {
           setCheckoutState({ cartSessionId: null, orders: [] });
           sessionStorage.removeItem("aurastore_active_cart_session_id");
@@ -1172,7 +1173,6 @@ export default function CheckoutPage() {
             
             // Short delay (600ms) for polished user experience
             await new Promise((resolve) => setTimeout(resolve, 600));
-
             setPhase(CHECKOUT_PHASE.SUCCESS);
             logStep("STEP 15: Navigating to Order Success");
             navigate("/order-success", { state: { orders: verifiedOrders, totals, paymentMethod } });
@@ -1405,7 +1405,6 @@ export default function CheckoutPage() {
             </div>
           </div>
         )}
-
       {recoveryState.isRecovering && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" />

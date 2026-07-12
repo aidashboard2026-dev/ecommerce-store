@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Bell, Check, ShoppingCart, CreditCard, AlertTriangle, XCircle, Inbox } from "lucide-react";
-import { notificationsAPI } from "@/services/api";
+import { notificationsAPI } from "@/shared/services/api";
 import clsx from "clsx";
 
 export default function NotificationBell() {

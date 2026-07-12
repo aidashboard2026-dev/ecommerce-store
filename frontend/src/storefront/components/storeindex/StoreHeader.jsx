@@ -67,7 +67,6 @@ const StoreHeaderComponent = function StoreHeader({
   const storeName = import.meta.env.VITE_STORE_NAME || "My Designers";
   const navigate = useNavigate();
   const location = useLocation();
-
   const searchRef = useRef(null);
   const profileRef = useRef(null);
 
@@ -116,7 +115,7 @@ const StoreHeaderComponent = function StoreHeader({
       if (showSearch) setShowSearch(false);
     };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => document.keydown || document.removeEventListener("keydown", onKey);
   }, [mobileMenuOpen, profileMenuOpen, showSearch]);
 
   // ── Click outside (profile dropdown + desktop search) ─────────────────────
@@ -443,6 +442,7 @@ const StoreHeaderComponent = function StoreHeader({
                   {link.label}
                 </Link>
               ))}
+
               {/* Auth Section */}
               {token && customer ? (
                 <>
@@ -500,6 +500,31 @@ const StoreHeaderComponent = function StoreHeader({
                   <User size={16} /> Login / Sign Up
                 </Link>
               )}
+            </div>
+
+            {/* Mobile Actions Drawer Footer */}
+            <div className="mt-auto p-5 border-t border-app flex items-center justify-around md:hidden">
+              <button
+                onClick={toggleTheme}
+                className="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors"
+                aria-label="Toggle Theme"
+              >
+                {isDark ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+
+              <Link
+                to="/wishlist"
+                onClick={closeMobileMenu}
+                className="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors relative"
+                aria-label="Wishlist"
+              >
+                <Heart size={20} />
+                {wishlistCount > 0 && (
+                  <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold h-4 w-4 rounded-full flex items-center justify-center">
+                    {wishlistCount}
+                  </span>
+                )}
+              </Link>
             </div>
           </nav>
         </>

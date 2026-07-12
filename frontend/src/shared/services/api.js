@@ -402,3 +402,9 @@ export const routesAPI = {
   search: (q) => api.get('/admin/routes/search', { params: { q } }),
 }
 
+export const notificationsAPI = {
+  list: () => api.get('/admin/notifications'),
+  read: (id) => api.put(`/admin/notifications/read?notification_id=${id}`),
+  readAll: () => api.put('/admin/notifications/read-all'),
+}
+

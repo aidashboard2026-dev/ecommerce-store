@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuth, useTheme } from '@/shared/hooks/useAuth'
-import { logout } from '@/admin/store/authSlice'
+import { logoutThunk } from '@/admin/store/authSlice'
 // import { toggleSidebar } from '@/admin/store/uiSlice'
 import Avatar from "@/shared/components/ui/Avatar";
 import ProfileCard from "@/shared/components/ui/ProfileCard";
@@ -97,11 +97,7 @@ const HeaderComponent = function Header() {
 
   const handleLogout = async () => {
     try {
-      await logout(); // Firebase logout
-
-      localStorage.removeItem("customer_token");
-      localStorage.removeItem("customer");
-
+      await dispatch(logoutThunk()).unwrap();
       navigate("/auth/login");
     } catch (err) {
       console.error(err);

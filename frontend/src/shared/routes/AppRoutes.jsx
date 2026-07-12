@@ -99,7 +99,7 @@ function AdminProtectedRoute({ children }) {
 
   if (!initialized) return <Spinner />;
 
-  return isAuthenticated ? children : <Navigate to="/admin/login" replace />;
+  return isAuthenticated ? children : <Navigate to="/auth/login" replace />;
 }
 
 function AdminPublicRoute({ children }) {
@@ -107,7 +107,23 @@ function AdminPublicRoute({ children }) {
 
   if (!initialized) return <Spinner />;
 
-  return isAuthenticated ? <Navigate to="/admin" replace /> : children;
+  return isAuthenticated ? <Navigate to="/admin/dashboard" replace /> : children;
+}
+
+// ── UNIFIED PUBLIC ROUTE ─────────────────────────────────────────────────────
+function UnifiedPublicRoute({ children }) {
+  const { token: adminToken, admin } = useSelector((state) => state.auth);
+  const { token: customerToken, customer } = useSelector((state) => state.customer);
+
+  if (adminToken && admin) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
+  if (customerToken && customer) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
 }
 
 // ── CUSTOMER AUTH STATE ──────────────────────────────────────────────────────
@@ -131,12 +147,6 @@ function CustomerProtectedRoute({ children }) {
 function NavigateToCustomerAuth({ target }) {
   const location = useLocation();
   return <Navigate to={target} replace state={location.state} />;
-}
-
-function CustomerPublicRoute({ children }) {
-  const { token, customer } = useSelector((s) => s.customer);
-
-  return token && customer ? <Navigate to="/profile" replace /> : children;
 }
 
 // Helper component to redirect legacy category URLs to storefront catalog search
@@ -178,7 +188,10 @@ export default function AppRoutes() {
   useEffect(() => {
     const handle = () => {
       dispatch(logoutThunk());
-      navigate("/admin/login", { replace: true });
+      const hasCustomer = localStorage.getItem("customer_token");
+      if (!hasCustomer) {
+        navigate("/auth/login", { replace: true });
+      }
     };
 
     window.addEventListener("auth:unauthorized", handle);
@@ -192,7 +205,10 @@ export default function AppRoutes() {
   useEffect(() => {
     const handle = () => {
       dispatch(customerLogout());
-      navigate("/auth/login", { replace: true });
+      const hasAdmin = localStorage.getItem("token");
+      if (!hasAdmin) {
+        navigate("/auth/login", { replace: true });
+      }
     };
 
     window.addEventListener("customer:unauthorized", handle);
@@ -222,11 +238,7 @@ export default function AppRoutes() {
         {/* ── ADMIN AUTH ROUTES (structure unchanged) ───────────────────────── */}
         <Route
           path="/admin/login"
-          element={
-            <AdminPublicRoute>
-              <AdminLoginPage />
-            </AdminPublicRoute>
-          }
+          element={<Navigate to="/auth/login" replace />}
         />
 
         {/* ── ADMIN DASHBOARD (structure unchanged) ──────────────────────────── */}
@@ -238,7 +250,8 @@ export default function AppRoutes() {
             </AdminProtectedRoute>
           }
         >
-          <Route index element={<DashboardPage />} />
+          <Route index element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardPage />} />
           <Route path="products" element={<AdminProductsPage />} />
           <Route path="products/new" element={<AdminProductsPage />} />
           <Route path="products/:id/edit" element={<AdminProductsPage />} />
@@ -314,36 +327,36 @@ export default function AppRoutes() {
           <Route
             path="auth/login"
             element={
-              <CustomerPublicRoute>
+              <UnifiedPublicRoute>
                 <AuthPage />
-              </CustomerPublicRoute>
+              </UnifiedPublicRoute>
             }
           />
 
           <Route
             path="auth/register"
             element={
-              <CustomerPublicRoute>
+              <UnifiedPublicRoute>
                 <AuthPage />
-              </CustomerPublicRoute>
+              </UnifiedPublicRoute>
             }
           />
 
           <Route
             path="auth/signup"
             element={
-              <CustomerPublicRoute>
+              <UnifiedPublicRoute>
                 <AuthPage />
-              </CustomerPublicRoute>
+              </UnifiedPublicRoute>
             }
           />
 
           <Route
             path="auth/forgot-password"
             element={
-              <CustomerPublicRoute>
+              <UnifiedPublicRoute>
                 <AuthPage />
-              </CustomerPublicRoute>
+              </UnifiedPublicRoute>
             }
           />
 

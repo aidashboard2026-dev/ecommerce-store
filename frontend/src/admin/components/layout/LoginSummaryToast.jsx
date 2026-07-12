@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { X, Bell, ShoppingCart, CreditCard, AlertTriangle, XCircle } from "lucide-react";
-import { notificationsAPI } from "@/services/api";
+import { notificationsAPI } from "@/shared/services/api";
 import clsx from "clsx";
 
 export default function LoginSummaryToast() {
