@@ -8,7 +8,7 @@ import Select from '@/shared/components/ui/Select'
 import Button from '@/shared/components/ui/Button'
 import { productsAPI as productsApi } from '@/shared/services/api'
 import useBusinessLimits from '@/shared/hooks/useBusinessLimits'
-import { getImageUrl } from '@/shared/utils/productUtils'
+import { getImageUrl, getApiErrorMessage } from '@/shared/utils/productUtils'
 
 
 const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
@@ -78,7 +78,7 @@ export default function VariantFormModal({ isOpen, onClose, productId, product, 
       qc.invalidateQueries({ queryKey: ['product'] })
       onClose()
     },
-    onError: e => toast.error(e.response?.data?.detail || 'SKU may already exist'),
+    onError: e => toast.error(getApiErrorMessage(e, 'SKU may already exist')),
   })
 
   const handleImageUpload = async (e) => {
@@ -91,7 +91,7 @@ export default function VariantFormModal({ isOpen, onClose, productId, product, 
       set('image_url', url)
       toast.success('Variant image uploaded successfully.')
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to upload image')
+      toast.error(getApiErrorMessage(err, 'Failed to upload image'))
     } finally {
       setUploadingImage(false)
     }

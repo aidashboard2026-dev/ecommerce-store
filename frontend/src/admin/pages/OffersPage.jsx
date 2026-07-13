@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import useBusinessLimits from "@/shared/hooks/useBusinessLimits";
 import { useTheme } from "@/shared/hooks/useAuth";
 import { BannerPreviewModal } from "./BannerPage";
+import { getApiErrorMessage } from "@/shared/utils/productUtils";
 
 import {
   Search,
@@ -73,7 +74,7 @@ export default function OffersPage() {
       setOffers(response.data || []);
     } catch (error) {
       console.error(error);
-      toast.error("Failed to load promotional offers");
+      toast.error(getApiErrorMessage(error, "Failed to load promotional offers"));
     } finally {
       setLoading(false);
     }
@@ -312,18 +313,7 @@ export default function OffersPage() {
       setShowAddOffer(false);
     } catch (error) {
       console.log(error);
-
-      const detail = error.response?.data?.detail;
-
-      let message = "Unable to save offer.";
-
-      if (Array.isArray(detail)) {
-        message = detail.map((e) => e.msg).join(", ");
-      } else if (typeof detail === "string") {
-        message = detail;
-      }
-
-      toast.error(message);
+      toast.error(getApiErrorMessage(error, "Unable to save offer."));
     } finally {
       setSaving(false);
       setPublishing(false);
@@ -337,7 +327,7 @@ export default function OffersPage() {
       fetchOffers();
     } catch (error) {
       console.error(error);
-      toast.error("Failed to publish offer.");
+      toast.error(getApiErrorMessage(error, "Failed to publish offer."));
     }
   };
 
@@ -348,7 +338,7 @@ export default function OffersPage() {
       fetchOffers();
     } catch (error) {
       console.error(error);
-      toast.error("Failed to delete offer.");
+      toast.error(getApiErrorMessage(error, "Failed to delete offer."));
     }
   };
 

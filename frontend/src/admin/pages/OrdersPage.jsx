@@ -18,7 +18,7 @@ import {
   updateOrderStatus,
   updateOrder,
 } from "@/admin/services/order_Service";
-import { useDebounce } from "@/shared/utils/productUtils";
+import { useDebounce, getApiErrorMessage } from "@/shared/utils/productUtils";
 import { generateInvoice } from "@/shared/utils/invoiceGenerator";
 
 export default function OrdersPage() {
@@ -146,7 +146,7 @@ export default function OrdersPage() {
       toast.success("Order updated successfully");
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.detail || "Failed to update order");
+      toast.error(getApiErrorMessage(err, "Failed to update order"));
     }
   };
 

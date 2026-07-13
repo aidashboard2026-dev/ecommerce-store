@@ -14,6 +14,7 @@ import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Modal from '@/shared/components/ui/Modal'
 import { customProductsAPI, customCategoriesAPI } from '@/shared/services/api'
+import { getApiErrorMessage } from '@/shared/utils/productUtils'
 
 export default function QuickCustomCategoryEditModal({ isOpen, onClose, product }) {
   const qc = useQueryClient()
@@ -39,7 +40,7 @@ export default function QuickCustomCategoryEditModal({ isOpen, onClose, product 
       qc.invalidateQueries({ queryKey: ['custom-products'] })
       onClose()
     },
-    onError: e => toast.error(e.response?.data?.detail || 'Failed to update custom product'),
+    onError: e => toast.error(getApiErrorMessage(e, 'Failed to update custom product')),
   })
 
   const handleSave = () => {

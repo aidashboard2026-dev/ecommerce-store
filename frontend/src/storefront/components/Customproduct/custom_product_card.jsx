@@ -16,8 +16,8 @@ import toast from "react-hot-toast";
 
 function CustomProductCard({ product }) {
   const dispatch = useDispatch();
-  const isWishlisted = useSelector(selectIsWishlisted(product.id));
   const { settings } = useStoreSettings();
+  const isWishlisted = useSelector(selectIsWishlisted(product.id));
 
   /* =====================================================
     PRICE
@@ -121,10 +121,31 @@ ${productUrl}`;
   return (
     <Link
       to={`/custom/${product.slug || product.id}`}
-      className="group relative flex flex-col w-full justify-between overflow-hidden rounded-none transition-all duration-300 hover:-translate-y-1"
+      className={clsx(
+        "group relative",
+        "flex flex-col",
+        "w-full",
+        "justify-between",
+        "overflow-hidden",
+        "rounded-none",
+        "transition-all duration-300",
+        "hover:-translate-y-1",
+      )}
     >
-      {/* Image */}
-      <div className="flex relative w-full aspect-[8/9] rounded-none bg-surface overflow-hidden">
+      {/* =================================================
+          PRODUCT IMAGE
+      ================================================= */}
+
+      <div
+        className={clsx(
+          "relative flex",
+          "w-full",
+          "aspect-[8/9]",
+          "overflow-hidden",
+          "rounded-none",
+          "bg-surface",
+        )}
+      >
         {product.thumbnail && !imageError ? (
           <img
             src={getImageUrl(product.thumbnail)}
@@ -223,9 +244,7 @@ ${productUrl}`;
           >
             <Heart
               size={16}
-              className={clsx(
-                isWishlisted ? "fill-red-500 text-red-500" : "text-app",
-              )}
+              className={clsx(isWishlisted ? "fill-red-500 text-red-500" : "text-app")}
             />
           </button>
         </div>

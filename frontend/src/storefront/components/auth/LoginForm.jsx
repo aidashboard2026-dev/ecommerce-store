@@ -6,7 +6,6 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import {
   clearCustomerError,
-  setCustomerSession,
   setCredentials,
 } from "@/storefront/store/customerSlice";
 import { googleLogin, login, logout } from "@/firebase/auth";
@@ -48,7 +47,7 @@ export default function LoginForm() {
     axios.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
 
     dispatch(
-      setCustomerSession({
+      setCredentials({
         customer: responseData.customer,
         token: accessToken,
       }),
@@ -507,7 +506,7 @@ export default function LoginForm() {
               disabled={isLoading}
               onClick={() => setShowPassword((current) => !current)}
               aria-label={showPassword ? "Hide password" : "Show password"}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-muted hover:text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-full transition-colors disabled:opacity-50"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-muted hover:text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-full transition-colors"
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
@@ -534,7 +533,7 @@ export default function LoginForm() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full h-12 inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 text-white font-semibold text-sm rounded-full shadow-glow-sm transition-colors mt-2"
+            className="w-full h-12 flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 text-white font-semibold text-sm rounded-full shadow-glow-sm transition-colors mt-2"
           >
             {loadingType === "email" ? (
               <Loader2

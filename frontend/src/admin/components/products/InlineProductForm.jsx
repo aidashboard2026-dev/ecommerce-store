@@ -441,7 +441,7 @@ function LocalVariantForm({ onAdd, existingVariants = [], limits }) {
         </FormField>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <FormField label="Original Price" required>
           {/* Branch: added number spinner suppression classes */}
           <StyledInput
@@ -485,6 +485,14 @@ function LocalVariantForm({ onAdd, existingVariants = [], limits }) {
             value={form.stock_quantity}
             onChange={(e) => set("stock_quantity", e.target.value)}
             placeholder="Enter Stock Quantity"
+            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+        </FormField>
+        <FormField label="Low Stock Alert">
+          <StyledInput
+            type="number" min="0"
+            value={form.low_stock_threshold} onChange={e => set('low_stock_threshold', e.target.value)}
+            placeholder="5"
             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
         </FormField>

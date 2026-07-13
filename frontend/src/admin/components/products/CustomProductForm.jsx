@@ -11,6 +11,7 @@ import {
 } from "@/shared/services/api"
 import {
   formatPrice, getImageUrl, revokeObjectURLs, genLocalId, isDuplicateFile,
+  getApiErrorMessage,
 } from '@/shared/utils/productUtils'
 import useBusinessLimits from '@/shared/hooks/useBusinessLimits'
 
@@ -356,21 +357,13 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
   const editMutation = useMutation({
     mutationFn: data => customProductsAPI.update(product.id, data),
     onSuccess: () => { toast.success('Product updated successfully.'); qc.invalidateQueries({queryKey: ['custom-products']}); onClose() },
-    onError: e => toast.error(
-      e?.response?.data?.detail ||
-      e?.message ||
-      'Something went wrong'
-    )
+    onError: e => toast.error(getApiErrorMessage(e, 'Something went wrong')),
   })
 
   const editPubMutation = useMutation({
     mutationFn: data => customProductsAPI.update(product.id, { ...data, status: 'published' }),
     onSuccess: () => { toast.success('Product published successfully.'); qc.invalidateQueries({queryKey: ['custom-products']}); onClose() },
-    onError: e => toast.error(
-      e?.response?.data?.detail ||
-      e?.message ||
-      'Something went wrong'
-    )
+    onError: e => toast.error(getApiErrorMessage(e, 'Something went wrong')),
   })
 
   // ─── Variant delete mutation (edit mode) ──────────────────────────────────────

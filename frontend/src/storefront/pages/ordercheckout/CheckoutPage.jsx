@@ -157,10 +157,6 @@ const logGroupedApi = (apiName, isSuccess, elapsedMs, error = null) => {
 // SDK & ERROR HELPERS
 // ============================================================================
 
-// ============================================================================
-// SDK & ERROR HELPERS
-// ============================================================================
-
 let rzpScriptPromise = null;
 
 const loadRazorpayScript = () => {

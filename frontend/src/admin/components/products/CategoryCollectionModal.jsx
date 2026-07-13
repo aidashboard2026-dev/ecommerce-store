@@ -8,6 +8,7 @@ import { categoriesAPI, collectionsAPI } from '@/shared/services/api'
 import useBusinessLimits from '@/shared/hooks/useBusinessLimits'
 import useDefaultCatalog from '@/shared/hooks/useDefaultCatalog'
 import { getStructuralLimitMessage } from '@/shared/utils/limitMessages'
+import { getApiErrorMessage } from '@/shared/utils/productUtils'
 
 
 const isMainCategory = (name, defaults) => {
@@ -242,7 +243,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
   const createCategory = useMutation({
     mutationFn: (name) => categoriesAPI.create({ name }),
     onSuccess: () => { toast.success('Category created successfully.'); invalidateCatCol() },
-    onError: e => toast.error(e.response?.data?.detail || 'Failed to create category'),
+    onError: e => toast.error(getApiErrorMessage(e, 'Failed to create category')),
   })
 
   const updateCategory = useMutation({
@@ -250,7 +251,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
     onMutate:  ({ id }) => setSavingCatId(id),
     onSettled: ()       => setSavingCatId(null),
     onSuccess: () => { toast.success('Category updated successfully.'); invalidateCatCol() },
-    onError: e => toast.error(e.response?.data?.detail || 'Failed to update category'),
+    onError: e => toast.error(getApiErrorMessage(e, 'Failed to update category')),
   })
 
   const deleteCategory = useMutation({
@@ -261,7 +262,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
       toast.success('Category deleted successfully.')
       invalidateCatCol()
     },
-    onError: e => toast.error(e.response?.data?.detail || 'Failed to delete category'),
+    onError: e => toast.error(getApiErrorMessage(e, 'Failed to delete category')),
   })
 
   // ── Collection mutations ────────────────────────────────────────────────────
@@ -279,7 +280,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
       setNewCollectionCategoryId('')
       invalidateCatCol()
     },
-    onError: e => toast.error(e.response?.data?.detail || 'Failed to create collection'),
+    onError: e => toast.error(getApiErrorMessage(e, 'Failed to create collection')),
   })
 
   const updateCollection = useMutation({
@@ -287,7 +288,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
     onMutate:  ({ id }) => setSavingColId(id),
     onSettled: ()       => setSavingColId(null),
     onSuccess: () => { toast.success('Collection updated successfully.'); invalidateCatCol() },
-    onError: e => toast.error(e.response?.data?.detail || 'Failed to update collection'),
+    onError: e => toast.error(getApiErrorMessage(e, 'Failed to update collection')),
   })
 
   const deleteCollection = useMutation({
@@ -298,7 +299,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
       toast.success('Collection deleted successfully.')
       invalidateCatCol()
     },
-    onError: e => toast.error(e.response?.data?.detail || 'Failed to delete collection'),
+    onError: e => toast.error(getApiErrorMessage(e, 'Failed to delete collection')),
   })
 
   return (

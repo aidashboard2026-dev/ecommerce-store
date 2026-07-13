@@ -10,7 +10,7 @@ import {
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
 import { productsAPI as productsApi, categoriesAPI, collectionsAPI } from '@/shared/services/api'
-import { formatPrice, getImageUrl, useDebounce } from '@/shared/utils/productUtils'
+import { formatPrice, getImageUrl, useDebounce, getApiErrorMessage } from '@/shared/utils/productUtils'
 import InlineProductForm from '@/admin/components/products/InlineProductForm'
 import ImageUploadModal from '@/admin/components/products/ImageUploadModal'
 import VariantFormModal from '@/admin/components/products/VariantFormModal'
@@ -535,7 +535,7 @@ export default function ProductsPage() {
       const isLastOnPage = (data?.items?.length ?? 0) === 1
       if (isLastOnPage && page > 1) setPage(p => p - 1)
     },
-    onError: e => toast.error(e.response?.data?.detail || 'Delete failed'),
+    onError: e => toast.error(getApiErrorMessage(e, 'Delete failed')),
   })
 
   const bulkMutation = useMutation({
@@ -545,7 +545,7 @@ export default function ProductsPage() {
       setSelectedIds(new Set())
       invalidate()
     },
-    onError: e => toast.error(e.response?.data?.detail || 'Bulk action failed'),
+    onError: e => toast.error(getApiErrorMessage(e, 'Bulk action failed')),
   })
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
