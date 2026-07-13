@@ -126,6 +126,7 @@ async def lifespan(app: FastAPI):
     try:
         logger.info("[Startup] Initializing Services")
 
+
         # ── Bootstrap Normalization Registry ──────────────────────────────────────
         try:
             from app.shared.normalization.rules.aliases import default_registry

@@ -47,8 +47,10 @@ const StoreFooterComponent = function StoreFooter() {
   // Social links from environment — never hardcoded
   const facebookUrl = import.meta.env.VITE_FACEBOOK_URL || "";
   const instagramUrl = import.meta.env.VITE_INSTAGRAM_URL || "";
-  // WhatsApp business number (digits only, e.g. 919876543210) from env
-  const whatsappNumber = import.meta.env.VITE_WHATSAPP_NUMBER || "";
+  // WhatsApp business number resolved dynamically from settings
+  const rawWaPhone = settings?.support_phone || import.meta.env.VITE_WHATSAPP_NUMBER || "";
+  const cleanWaNumber = rawWaPhone.replace(/\D/g, "");
+  const whatsappNumber = cleanWaNumber.length === 10 ? `91${cleanWaNumber}` : cleanWaNumber;
 
   const waMessage = encodeURIComponent(
     "Hello! I would like to know more about your products.",
