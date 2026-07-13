@@ -79,7 +79,7 @@ function CustomProductCard({ product }) {
 
   return (
     <Link
-      to={`/custom/${product.id}`}
+      to={`/custom/${product.slug || product.id}`}
       className="group relative flex flex-col w-full justify-between overflow-hidden rounded-none transition-all duration-300 hover:-translate-y-1"
     >
       {/* Image */}
@@ -217,7 +217,7 @@ function CustomProductCard({ product }) {
             const productName = product.title || "";
             const categoryName = product.custom_category_name || product.category_name || "";
             const productCode = product.sku || product.code || "";
-            const productUrl = product.id ? `${window.location.origin}/custom/${product.id}` : "";
+            const productUrl = (product.slug || product.id) ? `${window.location.origin}/custom/${product.slug || product.id}` : "";
 
             let message = `Hi ${storeName},\n\nI'm interested in this custom product.\n\nProduct:\n${productName}`;
 

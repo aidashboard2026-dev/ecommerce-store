@@ -5,7 +5,7 @@ __pycache__/
 *.pyo
 .venv/
 venv/
-env/
+# env/
 
 # Build outputs
 dist/
@@ -13,9 +13,9 @@ build/
 *.egg-info/
 
 # Environment files (keep .env.example, not actual .env)
-.env
-.env.local
-.env.production
+# .env
+# .env.local
+# .env.production
 
 # Docker volumes
 postgres_data/
@@ -47,7 +47,7 @@ backend/uploads/products/*
 !backend/uploads/products/.gitkeep
 
 # Secrets
-backend/secrets/
+# backend/secrets/
 
 # Reports
 reports/

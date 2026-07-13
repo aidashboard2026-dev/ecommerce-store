@@ -66,7 +66,7 @@ export default function CustomPage() {
 
   const product =
       data?.items?.find(
-          (p) => String(p.id) === productType
+          (p) => String(p.id) === productType || String(p.slug) === productType
       )
   if (!product) {
     return (

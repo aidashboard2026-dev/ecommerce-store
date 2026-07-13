@@ -234,6 +234,7 @@ export const productsAPI = {
 
 export const storefrontAPI = {
   getProducts:      (params = {}) => storefrontClient.get('/products/', { params }),
+  getProductById:   (id)          => storefrontClient.get(`/products/id/${id}`),
   getProductBySlug: (slug)        => storefrontClient.get(`/products/slug/${slug}`),
   getRelated:       (slug, limit = 6) => storefrontClient.get(`/products/slug/${slug}/related`, { params: { limit } }),
   getCategories:    ()            => storefrontClient.get('/products/categories'),

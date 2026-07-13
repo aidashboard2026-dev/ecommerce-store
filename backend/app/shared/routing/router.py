@@ -6,7 +6,7 @@ from sqlalchemy import or_
 from app.core.database import get_db
 from app.modules.admins.models import Admin
 from app.modules.auth.dependencies import get_current_admin
-from app.modules.products.models import Category
+from app.modules.products.models import Category, Collection, Product, ProductStatus
 from app.shared.normalization import get_search_terms
 
 router = APIRouter()
@@ -18,10 +18,15 @@ def search_routes(
     _: Admin = Depends(get_current_admin),
 ):
     """
-    Search available internal destinations (standard active categories).
+    Search available internal destinations:
+    - Active Categories
+    - Active Collections
+    - Published Products
     Uses the Central Normalization Engine to parse aliases and terms.
     """
-    query = db.query(Category).filter(Category.status == "active")
+    cat_query = db.query(Category).filter(Category.status == "active")
+    col_query = db.query(Collection).filter(Collection.status == "active")
+    prod_query = db.query(Product).filter(Product.status == ProductStatus.published)
     
     if q is not None:
         q_stripped = q.strip()
@@ -30,33 +35,60 @@ def search_routes(
             if terms:
                 for term in terms:
                     w = f"%{term}%"
-                    query = query.filter(
-                        or_(
-                            Category.name.ilike(w),
-                            Category.slug.ilike(w)
-                        )
-                    )
+                    cat_query = cat_query.filter(or_(Category.name.ilike(w), Category.slug.ilike(w)))
+                    col_query = col_query.filter(or_(Collection.name.ilike(w), Collection.slug.ilike(w)))
+                    prod_query = prod_query.filter(or_(Product.title.ilike(w), Product.slug.ilike(w)))
             else:
-                # Fallback to direct match if normalization returns empty terms
                 w = f"%{q_stripped}%"
-                query = query.filter(
-                    or_(
-                        Category.name.ilike(w),
-                        Category.slug.ilike(w)
-                    )
-                )
-    
-    # Sort categories to provide a consistent order
-    categories = query.order_by(Category.sort_order, Category.name).all()
+                cat_query = cat_query.filter(or_(Category.name.ilike(w), Category.slug.ilike(w)))
+                col_query = col_query.filter(or_(Collection.name.ilike(w), Collection.slug.ilike(w)))
+                prod_query = prod_query.filter(or_(Product.title.ilike(w), Product.slug.ilike(w)))
+                
+    categories = cat_query.order_by(Category.sort_order, Category.name).limit(20).all()
+    collections = col_query.order_by(Collection.name).limit(20).all()
+    products = prod_query.order_by(Product.title).limit(20).all()
     
     results = []
+    
+    # Homepage option if search matches "home" or is empty
+    if not q or "home" in q.lower():
+        results.append({
+            "type": "home",
+            "id": None,
+            "title": "Homepage",
+            "name": "Homepage",
+            "slug": "",
+            "route": "/"
+        })
+        
     for cat in categories:
         results.append({
             "type": "category",
             "id": cat.id,
-            "title": cat.name,
+            "title": f"Category: {cat.name}",
+            "name": f"Category: {cat.name}",
             "slug": cat.slug,
-            "route": f"/{cat.slug}"
+            "route": f"/products?category={cat.slug}"
+        })
+        
+    for col in collections:
+        results.append({
+            "type": "collection",
+            "id": col.id,
+            "title": f"Collection: {col.name}",
+            "name": f"Collection: {col.name}",
+            "slug": col.slug,
+            "route": f"/products?collection={col.slug}"
+        })
+        
+    for prod in products:
+        results.append({
+            "type": "product",
+            "id": prod.id,
+            "title": f"Product: {prod.title}",
+            "name": f"Product: {prod.title}",
+            "slug": prod.slug,
+            "route": f"/products/{prod.slug}"
         })
         
     return results

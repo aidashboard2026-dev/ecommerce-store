@@ -164,6 +164,24 @@ function NavigateToCustomerAuth({ target }) {
   return <Navigate to={target} replace state={location.state} />;
 }
 
+import { useProductById } from "@/storefront/hooks/useProducts";
+
+// Helper component to redirect legacy product URLs to storefront slug-based product details
+function LegacyProductRedirect() {
+  const { id } = useParams();
+  const { data: product, isLoading, error } = useProductById(id);
+
+  if (isLoading) {
+    return <Spinner />;
+  }
+
+  if (error || !product) {
+    return <Navigate to="/products" replace />;
+  }
+
+  return <Navigate to={`/products/${product.slug}`} replace />;
+}
+
 // Helper component to redirect legacy category URLs to storefront catalog search
 function CategoryRedirect() {
   const { slug } = useParams();
@@ -337,7 +355,7 @@ export default function AppRoutes() {
             element={<TermsConditions />}
           />
           <Route path="wishlist" element={<WishlistGrid />} />
-          <Route path="/product/:id" element={<ProductDetailsPage />} />
+          <Route path="/product/:id" element={<LegacyProductRedirect />} />
           {/* Customer Auth — login/register/forgot-password consolidated;
               /auth/signup kept as a legacy alias for /auth/register */}
           <Route

@@ -130,7 +130,7 @@ export default function CustomProductDetailsPage({ product }) {
         const productName = product.title || "";
         const categoryName = product.custom_category_name || product.category_name || "";
         const productCode = product.sku || product.code || "";
-        const productUrl = product.id ? `${window.location.origin}/custom/${product.id}` : "";
+        const productUrl = (product.slug || product.id) ? `${window.location.origin}/custom/${product.slug || product.id}` : "";
 
         let message = `Hi ${storeName},\n\nI'm interested in this custom product.\n\nProduct:\n${productName}`;
 
