@@ -66,10 +66,10 @@ function App() {
 
   useEffect(() => {
     if (adminToken) {
-      console.log("[Auth Isolation: Admin] Admin token detected. Restoring session.");
+      // console.log("[Auth Isolation: Admin] Admin token detected. Restoring session.");
       dispatch(fetchMeThunk());
     } else {
-      console.log("[Auth Isolation: Admin] No admin token detected.");
+      // console.log("[Auth Isolation: Admin] No admin token detected.");
     }
   }, [adminToken, dispatch]);
 
@@ -80,13 +80,13 @@ function App() {
   useEffect(() => {
     const initializeCustomer = async () => {
       if (!customerToken) {
-        console.log("[Auth Isolation: Customer] No customer token detected.");
+        // console.log("[Auth Isolation: Customer] No customer token detected.");
         delete axios.defaults.headers.common.Authorization;
         dispatch(initializeCustomerAuth());
         return;
       }
 
-      console.log("[Auth Isolation: Customer] Customer token detected. Restoring session and loading collections.");
+      // console.log("[Auth Isolation: Customer] Customer token detected. Restoring session and loading collections.");
       axios.defaults.headers.common.Authorization = `Bearer ${customerToken}`;
 
       try {
