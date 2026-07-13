@@ -96,33 +96,45 @@ function useAdminAuthState() {
 
 function AdminProtectedRoute({ children }) {
   const { isAuthenticated, initialized } = useAdminAuthState();
+  const location = useLocation();
 
   if (!initialized) return <Spinner />;
 
-  return isAuthenticated ? children : <Navigate to="/auth/login" replace />;
+  if (isAuthenticated) {
+    console.log(`[Auth Isolation: Admin Guard] Allowing access to protected admin route: ${location.pathname}`);
+    return children;
+  }
+
+  console.log(`[Auth Isolation: Admin Guard] Access denied to ${location.pathname}. Redirecting to login.`);
+  return <Navigate to="/auth/login" replace />;
 }
 
 function AdminPublicRoute({ children }) {
   const { isAuthenticated, initialized } = useAdminAuthState();
+  const location = useLocation();
 
   if (!initialized) return <Spinner />;
 
-  return isAuthenticated ? <Navigate to="/admin/dashboard" replace /> : children;
-}
-
-// ── UNIFIED PUBLIC ROUTE ─────────────────────────────────────────────────────
-function UnifiedPublicRoute({ children }) {
-  const { token: adminToken, admin } = useSelector((state) => state.auth);
-  const { token: customerToken, customer } = useSelector((state) => state.customer);
-
-  if (adminToken && admin) {
+  if (isAuthenticated) {
+    console.log(`[Auth Isolation: Admin Public Guard] Redirecting to admin dashboard from public admin route: ${location.pathname}`);
     return <Navigate to="/admin/dashboard" replace />;
   }
 
+  console.log(`[Auth Isolation: Admin Public Guard] Allowing access to admin public route: ${location.pathname}`);
+  return children;
+}
+
+// ── Unified Public Route ─────────────────────────────────────────────────────
+function UnifiedPublicRoute({ children }) {
+  const { token: customerToken, customer } = useSelector((state) => state.customer);
+  const location = useLocation();
+
   if (customerToken && customer) {
+    console.log(`[Auth Isolation: Public Route Guard] Redirecting to storefront home because customer session is active for route: ${location.pathname}`);
     return <Navigate to="/" replace />;
   }
 
+  console.log(`[Auth Isolation: Public Route Guard] Allowing access to public auth page: ${location.pathname}`);
   return children;
 }
 
@@ -133,20 +145,41 @@ function CustomerProtectedRoute({ children }) {
   const location = useLocation();
 
   if (token && customer) {
+    console.log(`[Auth Isolation: Customer Guard] Allowing access to protected customer route: ${location.pathname}`);
     return children;
   }
 
   // Allow guest checkout if cart is not empty
   if (location.pathname === "/checkout" && cartItems.length > 0) {
+    console.log("[Auth Isolation: Customer Guard] Allowing guest checkout access.");
     return children;
   }
 
+  console.log(`[Auth Isolation: Customer Guard] Access denied to ${location.pathname}. Redirecting to customer login.`);
   return <Navigate to="/auth/login" replace state={{ from: location }} />;
 }
 
 function NavigateToCustomerAuth({ target }) {
   const location = useLocation();
   return <Navigate to={target} replace state={location.state} />;
+}
+
+import { useProductById } from "@/storefront/hooks/useProducts";
+
+// Helper component to redirect legacy product URLs to storefront slug-based product details
+function LegacyProductRedirect() {
+  const { id } = useParams();
+  const { data: product, isLoading, error } = useProductById(id);
+
+  if (isLoading) {
+    return <Spinner />;
+  }
+
+  if (error || !product) {
+    return <Navigate to="/products" replace />;
+  }
+
+  return <Navigate to={`/products/${product.slug}`} replace />;
 }
 
 // Helper component to redirect legacy category URLs to storefront catalog search
@@ -188,8 +221,7 @@ export default function AppRoutes() {
   useEffect(() => {
     const handle = () => {
       dispatch(logoutThunk());
-      const hasCustomer = localStorage.getItem("customer_token");
-      if (!hasCustomer) {
+      if (window.location.pathname.startsWith("/admin")) {
         navigate("/auth/login", { replace: true });
       }
     };
@@ -205,8 +237,10 @@ export default function AppRoutes() {
   useEffect(() => {
     const handle = () => {
       dispatch(customerLogout());
-      const hasAdmin = localStorage.getItem("token");
-      if (!hasAdmin) {
+      const isProtectedRoute = ["/profile", "/checkout", "/payment", "/orders"].some(
+        (path) => window.location.pathname.startsWith(path)
+      );
+      if (isProtectedRoute) {
         navigate("/auth/login", { replace: true });
       }
     };
@@ -321,7 +355,7 @@ export default function AppRoutes() {
             element={<TermsConditions />}
           />
           <Route path="wishlist" element={<WishlistGrid />} />
-          <Route path="/product/:id" element={<ProductDetailsPage />} />
+          <Route path="/product/:id" element={<LegacyProductRedirect />} />
           {/* Customer Auth — login/register/forgot-password consolidated;
               /auth/signup kept as a legacy alias for /auth/register */}
           <Route

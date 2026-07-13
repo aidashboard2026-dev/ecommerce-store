@@ -36,6 +36,9 @@ def get_admin_email_html(
     message: str,
     submitted_at: datetime,
     reference_id: str,
+    phone: str = None,
+    ip_address: str = None,
+    user_agent: str = None,
 ) -> Tuple[str, str]:
     """Generate professional HTML and plain-text templates for admin notification."""
     from app.shared.email.builder import build_contact_admin_notification
@@ -52,7 +55,10 @@ def get_admin_email_html(
         message=message,
         submitted_date=submitted_date,
         submitted_time=submitted_time,
-        reference_id=reference_id
+        reference_id=reference_id,
+        phone=phone,
+        ip_address=ip_address,
+        user_agent=user_agent
     )
 
 
@@ -95,6 +101,9 @@ def send_admin_notification(
     subject: str,
     message: str,
     submitted_at: datetime,
+    phone: str = None,
+    ip_address: str = None,
+    user_agent: str = None,
 ) -> bool:
     """Send HTML and plain-text email notification to admin about new contact message."""
     reference_id = generate_msg_reference_id()
@@ -105,12 +114,15 @@ def send_admin_notification(
         support_email = branding.get("support_email", settings.SUPPORT_EMAIL)
 
         html_content, text_content = get_admin_email_html(
-            customer_name,
-            customer_email,
-            subject,
-            message,
-            submitted_at,
-            reference_id
+            customer_name=customer_name,
+            customer_email=customer_email,
+            subject=subject,
+            message=message,
+            submitted_at=submitted_at,
+            reference_id=reference_id,
+            phone=phone,
+            ip_address=ip_address,
+            user_agent=user_agent
         )
 
         full_subject = f"[{store_name}] New Contact: {subject}"
@@ -121,7 +133,9 @@ def send_admin_notification(
                 subject=full_subject,
                 html_body=html_content,
                 text_body=text_content,
-                reference_id=reference_id
+                reference_id=reference_id,
+                reply_to=customer_email,
+                provider_override="RESEND"
             )
         )
     except Exception as e:
@@ -141,7 +155,7 @@ def send_customer_auto_reply(customer_name: str, customer_email: str) -> bool:
         store_name = branding.get("store_name", "My Designers")
 
         html_content, text_content = get_customer_reply_html(customer_name, reference_id)
-        full_subject = f"Thank you for contacting {store_name}"
+        full_subject = "We've received your message"
 
         return _run_async_in_sync(
             send_email_unified(
@@ -149,7 +163,8 @@ def send_customer_auto_reply(customer_name: str, customer_email: str) -> bool:
                 subject=full_subject,
                 html_body=html_content,
                 text_body=text_content,
-                reference_id=reference_id
+                reference_id=reference_id,
+                provider_override="RESEND"
             )
         )
     except Exception as e:
@@ -185,7 +200,8 @@ def send_admin_reply_to_customer(
                 subject=full_subject,
                 html_body=html_content,
                 text_body=text_content,
-                reference_id=reference_id
+                reference_id=reference_id,
+                provider_override="RESEND"
             )
         )
     except Exception as e:
@@ -198,13 +214,30 @@ def send_admin_reply_to_customer(
 
 # ── Legacy function for backward compatibility ────────────────────────────────
 
-def send_contact_email(name: str, email: str, subject: str, message: str) -> bool:
+def send_contact_email(
+    name: str,
+    email: str,
+    subject: str,
+    message: str,
+    phone: str = None,
+    ip_address: str = None,
+    user_agent: str = None,
+) -> bool:
     """Legacy function - calls the new separate email functions."""
     from datetime import datetime, timezone
 
     submitted_at = datetime.now(timezone.utc)
 
-    admin_ok = send_admin_notification(name, email, subject, message, submitted_at)
+    admin_ok = send_admin_notification(
+        customer_name=name,
+        customer_email=email,
+        subject=subject,
+        message=message,
+        submitted_at=submitted_at,
+        phone=phone,
+        ip_address=ip_address,
+        user_agent=user_agent
+    )
     customer_ok = send_customer_auto_reply(name, email)
 
     return admin_ok and customer_ok

@@ -15,6 +15,7 @@ class ContactMessageBase(BaseModel):
     email: EmailStr
     subject: str = Field(..., min_length=1, max_length=500)
     message: str = Field(..., min_length=1, max_length=5000)
+    phone: Optional[str] = Field(None, max_length=50)
 
 
 class ContactMessageCreate(ContactMessageBase):

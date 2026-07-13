@@ -183,7 +183,7 @@ function CategoryModal({ category, onClose, onSaved }) {
               value={form.path}
               onChange={(event) => setField("path", event.target.value)}
               className="input-field"
-              placeholder="/products/t-shirts"
+              placeholder="/products/t-shirt"
               maxLength={500}
             />
           </div>

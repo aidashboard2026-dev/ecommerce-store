@@ -10,6 +10,7 @@ from fastapi import (
     Request,
     Response,
     status,
+    BackgroundTasks,
 )
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -366,6 +367,7 @@ def admin_logout(
 def firebase_customer_login(
     request: Request,
     body: FirebaseLoginRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(
         get_db
     ),
@@ -393,6 +395,7 @@ def firebase_customer_login(
             id_token=(
                 body.id_token
             ),
+            background_tasks=background_tasks,
         )
 
 
@@ -427,22 +430,20 @@ def firebase_customer_login(
 
 
     except Exception as error:
-
         db.rollback()
-
-
-        logger.exception(
-            (
-                "Firebase customer "
-                "login failed"
-            )
-        )
+        import traceback
+        error_details = f"ROUTER GENERIC ERROR:\n{repr(error)}\nTraceback:\n{traceback.format_exc()}\n"
+        logger.exception("Firebase customer login failed")
         logger.warning(
             "Customer Login Failure | IP: %s | Error: %s",
             ip,
             str(error),
         )
-
+        try:
+            with open("firebase_error.log", "a") as f:
+                f.write(error_details)
+        except Exception:
+            pass
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -181,6 +181,7 @@ const customerSlice = createSlice({
       state.loading = false;
     },
     customerLogout(state) {
+      console.log("[Auth Isolation: Customer] Logout. Clearing customer session.");
       state.token = null;
       state.customer = null;
       state.error = null;

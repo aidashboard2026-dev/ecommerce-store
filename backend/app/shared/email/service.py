@@ -18,6 +18,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
+from email.header import Header
 from typing import Optional, List, Tuple
 
 import httpx
@@ -373,8 +374,8 @@ def _send_via_smtp_raw(
     sender_info: dict,
 ) -> None:
     msg = MIMEMultipart("mixed")
-    msg["Subject"] = subject
-    msg["From"] = f"{sender_info['from_name']} <{sender_info['from_email']}>"
+    msg["Subject"] = Header(subject, "utf-8")
+    msg["From"] = f"{Header(sender_info['from_name'], 'utf-8').encode()} <{sender_info['from_email']}>"
     msg["To"] = to_email
     if sender_info.get("reply_to"):
         msg["Reply-To"] = sender_info["reply_to"]
@@ -405,6 +406,8 @@ async def send_email_unified(
     text_body: str,
     attachments: Optional[List[dict]] = None,
     reference_id: Optional[str] = None,
+    reply_to: Optional[str] = None,
+    provider_override: Optional[str] = None,
 ) -> bool:
     """
     Production-grade Unified Email Delivery Engine.
@@ -426,6 +429,12 @@ async def send_email_unified(
     try_resend = settings.RESEND_ENABLED and resend_configured
     try_smtp = settings.SMTP_ENABLED and smtp_configured
 
+    if provider_override:
+        if provider_override.upper() == "RESEND":
+            try_smtp = False
+        elif provider_override.upper() == "SMTP":
+            try_resend = False
+
     provider_selected = "SIMULATION"
     success = False
 
@@ -433,6 +442,8 @@ async def send_email_unified(
     if try_resend:
         provider_selected = "RESEND"
         sender_info = get_sender_identity("RESEND")
+        if reply_to:
+            sender_info["reply_to"] = reply_to
         for attempt in range(1, 3):
             try:
                 logger.info(
@@ -445,7 +456,7 @@ async def send_email_unified(
                     METRICS["resend_success"] += 1
                 break
             except Exception as e:
-                logger.warning("Resend attempt %d failed: %s", attempt, str(e))
+                logger.error("Resend attempt %d failed due to error: %s", attempt, str(e), exc_info=True)
                 with METRICS_LOCK:
                     METRICS["provider_errors"] += 1
                 if "timeout" in str(e).lower() or isinstance(e, httpx.TimeoutException):
@@ -462,6 +473,8 @@ async def send_email_unified(
             logger.info("Failing over to SMTP fallback for recipient: %s", to_email)
         provider_selected = "SMTP"
         sender_info = get_sender_identity("SMTP")
+        if reply_to:
+            sender_info["reply_to"] = reply_to
         for attempt in range(1, 3):
             try:
                 logger.info(
@@ -478,7 +491,7 @@ async def send_email_unified(
                     METRICS["smtp_success"] += 1
                 break
             except Exception as e:
-                logger.warning("SMTP attempt %d failed: %s", attempt, str(e))
+                logger.error("SMTP attempt %d failed due to error: %s", attempt, str(e), exc_info=True)
                 with METRICS_LOCK:
                     METRICS["provider_errors"] += 1
                 if "timeout" in str(e).lower() or "timed out" in str(e).lower():
@@ -551,6 +564,34 @@ async def send_password_reset_email(to_email: str, reset_url: str) -> None:
         text_body=text_body,
         reference_id=reference_id
     )
+
+
+async def send_welcome_email(to_email: str, customer_name: str) -> None:
+    branding = compile_email_branding()
+    store_name = branding.get("store_name", "My Designers")
+    subject = f"Welcome to {store_name}! 🎉"
+    
+    from app.shared.email.builder import build_welcome_email
+    html_body, text_body = build_welcome_email(branding, customer_name)
+    reference_id = f"WLC-{to_email}"
+    
+    await send_email_unified(
+        to_email=to_email,
+        subject=subject,
+        html_body=html_body,
+        text_body=text_body,
+        reference_id=reference_id
+    )
+
+
+async def send_welcome_email_background(to_email: str, customer_name: str) -> None:
+    try:
+        await send_welcome_email(to_email, customer_name)
+    except Exception as exc:
+        logger.error(
+            "Background Welcome Email Failed - Email: %s, Error: %s",
+            to_email, str(exc), exc_info=True
+        )
 
 # ── Order Confirmation with Invoice Attachment ─────────────────────────────────
 

@@ -1,22 +1,8 @@
 services:
-  db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - admindash_network
+  # ─── Local PostgreSQL removed ────────────────────────────────────────────────
+  # The application now connects to Supabase PostgreSQL (db.ebhcfggtfepgromoincc.supabase.co).
+  # No local 'db' container is needed. The backend healthcheck probe and Alembic
+  # both reach Supabase directly over TLS (sslmode=require).
 
   redis:
     image: redis:7-alpine
@@ -53,15 +39,31 @@ services:
       SUPABASE_BANNER_BUCKET: ${SUPABASE_BANNER_BUCKET:-banners}
       SUPABASE_CATEGORY_BUCKET: ${SUPABASE_CATEGORY_BUCKET:-category-images}
       REDIS_URL: redis://redis:6379
+      # ── Email ──────────────────────────────────────────────────────────────────
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_ENABLED: ${RESEND_ENABLED:-true}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
+      RESEND_FROM_NAME: ${RESEND_FROM_NAME:-My Designers}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
+      STORE_NAME: ${STORE_NAME:-My Designers}
+      STORE_URL: ${STORE_URL:-}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      # ── Razorpay ──────────────────────────────────────────────────────────────
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+      # ── Firebase ──────────────────────────────────────────────────────────────
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_CREDENTIALS_PATH: ${FIREBASE_CREDENTIALS_PATH:-}
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON:-}
     ports:
       - "8000:8000"
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_started
     volumes:
       - ./backend:/app
+      - ./backend/secrets:/app/secrets:ro
       - ./uploads:/app/uploads
     networks:
       - admindash_network
@@ -98,6 +100,7 @@ services:
 
     networks:
     - admindash_network
+
   nginx:
     image: nginx:alpine
     restart: unless-stopped
@@ -112,22 +115,15 @@ services:
         condition: service_started
     networks:
       - admindash_network
-  
+
   adminer:
     image: adminer:latest
     restart: unless-stopped
     ports:
       - "8080:8080"
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - admindash_network
-
 
 
 volumes:
-  postgres_data:
   product_uploads:
 
 networks:

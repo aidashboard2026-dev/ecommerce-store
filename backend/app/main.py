@@ -126,6 +126,7 @@ async def lifespan(app: FastAPI):
     try:
         logger.info("[Startup] Initializing Services")
 
+
         # ── Bootstrap Normalization Registry ──────────────────────────────────────
         try:
             from app.shared.normalization.rules.aliases import default_registry
@@ -138,6 +139,14 @@ async def lifespan(app: FastAPI):
             logger.info("[startup] Normalization registry initialized (%d aliases).", len(AURASTORE_COMPOUND_MAPPINGS))
         except Exception:
             logger.critical("[startup] FATAL: Normalization registry initialization failed:\n%s", traceback.format_exc())
+            raise
+
+        # ── Initialize Firebase Admin SDK ─────────────────────────────────────────
+        try:
+            from app.core.firebase import initialize_firebase
+            initialize_firebase()
+        except Exception as e:
+            logger.critical("[Startup] FATAL: Firebase initialization failed:\n%s", traceback.format_exc())
             raise
 
         # ── Supabase Credentials Check (production guard) ─────────────────────────

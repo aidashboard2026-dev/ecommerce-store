@@ -22,10 +22,10 @@ import useStoreSettings from "@/shared/hooks/useStoreSettings";
 // ─── Static nav config ───────────────────────────────────────────────────────
 const MOBILE_NAV_LINKS = [
   { label: "Home", to: "/" },
-  { label: "T-Shirts for Mens", to: "/products?category=t-shirt&gender=Men" },
-  { label: "Track Pants for Mens", to: "/products?category=track-pant&gender=Men" },
-  { label: "Trousers for Mens", to: "/products?category=trouser&gender=Men" },
-  { label: "Shirts for Mens", to: "/products?category=shirt&gender=Men" },
+  { label: "T-Shirts for Mens", to: "/products?category=t-shirts&gender=Men" },
+  { label: "Track Pants for Mens", to: "/products?category=track-pants&gender=Men" },
+  { label: "Trousers for Mens", to: "/products?category=trousers&gender=Men" },
+  { label: "Shirts for Mens", to: "/products?category=shirts&gender=Men" },
   { label: "Custom product", to: "/custom" },
   { label: "Offers", to: "/offers" },
   { label: "Track Order", to: "/tracking" },
@@ -256,7 +256,22 @@ const StoreHeaderComponent = function StoreHeader({
             >
               <Heart size={18} />
               {wishlistCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[9px] font-bold h-4 w-4 rounded-full flex items-center justify-center">
+                <span
+                  className="
+                    absolute -top-1 -right-1
+                    flex items-center justify-center
+                    min-w-[18px] h-[18px]
+                    px-1.5
+                    rounded-full
+                    bg-[#111827]
+                    text-white
+                    text-[10px]
+                    font-bold
+                    border-2 border-white dark:border-[#111827]
+                    shadow-lg
+                    leading-none
+                  "
+                >
                   {wishlistCount}
                 </span>
               )}

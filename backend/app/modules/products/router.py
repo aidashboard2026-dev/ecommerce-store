@@ -774,6 +774,12 @@ def get_product_by_slug_endpoint(slug: str, db: Session = Depends(get_db)):
     return get_product_by_slug(db, slug)
 
 
+@router.get("/id/{product_id}", response_model=ProductResponse)
+def get_product_by_id_public(product_id: int, db: Session = Depends(get_db)):
+    """Public endpoint to fetch a product by ID, e.g. for legacy redirects."""
+    return get_product_response(db, product_id)
+
+
 @router.get("/slug/{slug}/related", response_model=List[ProductResponse])
 def get_related_products_endpoint(
     slug:  str,
@@ -782,3 +788,4 @@ def get_related_products_endpoint(
 ):
     product = get_product_by_slug(db, slug)
     return get_related_products(db, product, limit=limit)
+

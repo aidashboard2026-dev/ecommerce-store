@@ -30,7 +30,7 @@ const api = axios.create({
 
 // ── Attach JWT token to every request ────────────────────────────────────────
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
+  const token = localStorage.getItem('admin_token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
@@ -40,8 +40,8 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('admin')
+      localStorage.removeItem('admin_token')
+      localStorage.removeItem('admin_user')
       window.dispatchEvent(new CustomEvent('auth:unauthorized'))
     }
     return Promise.reject(error)
@@ -234,6 +234,7 @@ export const productsAPI = {
 
 export const storefrontAPI = {
   getProducts:      (params = {}) => storefrontClient.get('/products/', { params }),
+  getProductById:   (id)          => storefrontClient.get(`/products/id/${id}`),
   getProductBySlug: (slug)        => storefrontClient.get(`/products/slug/${slug}`),
   getRelated:       (slug, limit = 6) => storefrontClient.get(`/products/slug/${slug}/related`, { params: { limit } }),
   getCategories:    ()            => storefrontClient.get('/products/categories'),

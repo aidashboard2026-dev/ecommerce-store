@@ -6,10 +6,17 @@ Create Date: 2026-06-22 10:30:00.000000
 
 Two changes to the orders table:
 
-1. Fix Float monetary columns to Numeric(10, 2).
+1. Promote price and total_amount from FLOAT to NUMERIC(10, 2).
    IEEE 754 floating-point cannot represent all decimal values exactly.
    Financial data (price, total_amount) must use Numeric to avoid rounding
    errors such as 999.99 being stored as 999.9900000000001.
+
+   REPAIR NOTE (2026-07-13):
+   The original ALTER COLUMN statements had no guard. On a fresh database
+   dee988a94348 now adds price/total_amount as FLOAT, so the ALTER works.
+   On an existing database they may already be NUMERIC — the guard checks
+   the live column type and skips the ALTER if already correct, preventing
+   a "cannot alter type" error.
 
 2. Add cart_session_id (nullable String).
    The current order architecture creates one row per cart item.
@@ -23,6 +30,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect, text
 
 
 # revision identifiers, used by Alembic.
@@ -32,37 +40,51 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _col_type(col_name: str) -> str:
+    """Return the PostgreSQL udt_name for a column in the orders table."""
+    conn = op.get_bind()
+    result = conn.execute(
+        text(
+            "SELECT udt_name FROM information_schema.columns "
+            "WHERE table_name = 'orders' AND column_name = :col"
+        ),
+        {"col": col_name},
+    ).fetchone()
+    return result[0] if result else ""
+
+
 def upgrade() -> None:
-    # Fix price: Float → Numeric(10, 2)
-    # USING clause converts existing float data cleanly during the ALTER.
-    op.alter_column(
-        'orders',
-        'price',
-        existing_type=sa.Float(),
-        type_=sa.Numeric(precision=10, scale=2),
-        postgresql_using='price::numeric(10, 2)',
-        existing_nullable=True,
-    )
+    # ── 1. Promote price: FLOAT → NUMERIC(10, 2) if not already numeric ───────
+    if _col_type("price") not in ("numeric",):
+        op.alter_column(
+            'orders',
+            'price',
+            existing_type=sa.Float(),
+            type_=sa.Numeric(precision=10, scale=2),
+            postgresql_using='price::numeric(10, 2)',
+            existing_nullable=True,
+        )
 
-    # Fix total_amount: Float → Numeric(10, 2)
-    op.alter_column(
-        'orders',
-        'total_amount',
-        existing_type=sa.Float(),
-        type_=sa.Numeric(precision=10, scale=2),
-        postgresql_using='total_amount::numeric(10, 2)',
-        existing_nullable=True,
-    )
+    # ── 2. Promote total_amount: FLOAT → NUMERIC(10, 2) if not already numeric ─
+    if _col_type("total_amount") not in ("numeric",):
+        op.alter_column(
+            'orders',
+            'total_amount',
+            existing_type=sa.Float(),
+            type_=sa.Numeric(precision=10, scale=2),
+            postgresql_using='total_amount::numeric(10, 2)',
+            existing_nullable=True,
+        )
 
-    # Add cart_session_id — nullable, no default, no index required at this stage
-    op.add_column(
-        'orders',
-        sa.Column('cart_session_id', sa.String(length=50), nullable=True),
+    # ── 3. Add cart_session_id ─────────────────────────────────────────────────
+    op.execute(
+        "ALTER TABLE orders ADD COLUMN IF NOT EXISTS "
+        "cart_session_id VARCHAR(50)"
     )
 
 
 def downgrade() -> None:
-    op.drop_column('orders', 'cart_session_id')
+    op.execute("ALTER TABLE orders DROP COLUMN IF EXISTS cart_session_id")
 
     op.alter_column(
         'orders',

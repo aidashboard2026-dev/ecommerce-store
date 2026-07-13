@@ -948,10 +948,10 @@ export default function SettingsPage() {
                 })}
               />
 
-              {/* +91 Indian Phone Prefix Input */}
+              {/* +91 Indian Phone Prefix Input (reused as WhatsApp Number) */}
               <div>
                 <label className="block space-y-1.5">
-                  <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">Support Phone</span>
+                  <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">WhatsApp Number</span>
                   <div className="flex rounded-lg border border-gray-200 bg-white overflow-hidden focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/10 dark:border-zinc-800 dark:bg-zinc-950">
                     <span className="inline-flex items-center px-3 bg-gray-50 border-r border-gray-200 text-sm text-zinc-500 font-medium shrink-0 select-none dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-400">
                       +91
@@ -966,7 +966,7 @@ export default function SettingsPage() {
                         validate: (val) => {
                           if (!val || val.trim() === "") return true;
                           const digits = val.replace(/[^0-9]/g, "");
-                          if (digits.length !== 10) return "Enter exactly 10 digits";
+                          if (digits.length !== 10) return "WhatsApp number must be exactly 10 digits";
                           if (!/^[6-9]/.test(digits)) return "Indian mobile numbers start with 6, 7, 8, or 9";
                           return true;
                         },
@@ -978,7 +978,7 @@ export default function SettingsPage() {
                       {profileForm.formState.errors.support_phone.message}
                     </span>
                   )}
-                  <span className="text-[10px] text-zinc-400">Enter 10-digit mobile number without country code</span>
+                  <span className="text-[10px] text-zinc-400">Enter 10-digit WhatsApp number without country code</span>
                 </label>
               </div>
             </div>

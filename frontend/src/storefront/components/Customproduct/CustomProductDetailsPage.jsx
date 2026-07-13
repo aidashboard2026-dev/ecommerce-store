@@ -26,8 +26,10 @@ import {
 } from "@/storefront/store/wishlistSlice";
 import CustomProductCard from "./custom_product_card";
 import { useCustomProducts } from "@/storefront/hooks/useProducts";
+import useStoreSettings from "@/shared/hooks/useStoreSettings";
 
 export default function CustomProductDetailsPage({ product }) {
+  const { settings } = useStoreSettings();
 
   const dispatch = useDispatch();
 
@@ -124,32 +126,45 @@ export default function CustomProductDetailsPage({ product }) {
         : 0;
 
     const handleWhatsApp = () => {
-        const price =
-            product.selling_price_max &&
-            Number(product.selling_price_max) > Number(product.selling_price_min)
-            ? `₹${product.selling_price_min} - ₹${product.selling_price_max} (Based on Size)`
-            : `₹${product.selling_price_min}`;
+        const storeName = settings?.store_name || "My Designers";
+        const productName = product.title || "";
+        const categoryName = product.custom_category_name || product.category_name || "";
+        const productCode = product.sku || product.code || "";
+        const productUrl = (product.slug || product.id) ? `${window.location.origin}/custom/${product.slug || product.id}` : "";
 
-        const message = `Hi, I want to customize "${product.title}".
+        let message = `Hi ${storeName},\n\nI'm interested in this custom product.\n\nProduct:\n${productName}`;
 
-        Price: ${price}
+        if (categoryName) {
+            message += `\n\nCategory:\n${categoryName}`;
+        }
 
-        Product:
-        ${window.location.href}`;
+        if (productCode) {
+            message += `\n\nProduct Code:\n${productCode}`;
+        }
 
-        const waNumber = import.meta.env.VITE_WHATSAPP_NUMBER || "";
-        if (!waNumber) return;
+        if (productUrl) {
+            message += `\n\nProduct URL:\n${productUrl}`;
+        }
+
+        message += `\n\nPlease share the quotation.\n\nThank you.`;
+
+        const rawNumber = settings?.support_phone || import.meta.env.VITE_WHATSAPP_NUMBER || "";
+        const cleanNumber = rawNumber.replace(/\D/g, "");
+        const formattedNumber = cleanNumber.length === 10 ? `91${cleanNumber}` : cleanNumber;
+
+        if (!formattedNumber) {
+            toast.error("WhatsApp contact number is not configured.");
+            return;
+        }
 
         const isMobile =
             /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-        if (isMobile) {
-            window.location.href =
-            `https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`;
-        } else {
-            window.location.href =
-            `https://web.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent(message)}`;
-        }
+        const targetUrl = isMobile
+            ? `https://wa.me/${formattedNumber}?text=${encodeURIComponent(message)}`
+            : `https://web.whatsapp.com/send?phone=${formattedNumber}&text=${encodeURIComponent(message)}`;
+
+        window.open(targetUrl, "_blank", "noopener,noreferrer");
     };
   const handleWishlist = () => {
     dispatch(

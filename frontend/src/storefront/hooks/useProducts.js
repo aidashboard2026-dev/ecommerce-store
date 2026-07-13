@@ -32,6 +32,15 @@ export function useProductBySlug(slug) {
   })
 }
 
+export function useProductById(id) {
+  return useQuery({
+    queryKey: ['product-id', id],
+    queryFn: () => storefrontAPI.getProductById(id).then(r => r.data),
+    enabled: !!id,
+    staleTime: 60_000,
+  })
+}
+
 export function useRelatedProducts(slug, limit = 6) {
   return useQuery({
     queryKey: ['product', slug, 'related', limit],

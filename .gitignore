@@ -5,7 +5,7 @@ __pycache__/
 *.pyo
 .venv/
 venv/
-env/
+.env/
 
 # Build outputs
 dist/
@@ -47,7 +47,7 @@ backend/uploads/products/*
 !backend/uploads/products/.gitkeep
 
 # Secrets
-backend/secrets/firebase-service-account.json
+backend/secrets/
 
 # Reports
 reports/

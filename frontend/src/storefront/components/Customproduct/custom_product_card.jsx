@@ -14,10 +14,13 @@ import {
   selectIsWishlisted,
 } from "@/storefront/store/wishlistSlice";
 
+import useStoreSettings from "@/shared/hooks/useStoreSettings";
 import toast from "react-hot-toast";
 
 function CustomProductCard({ product }) {
   const dispatch = useDispatch();
+  const isWishlisted = useSelector(selectIsWishlisted(product.id));
+  const { settings } = useStoreSettings();
 
   const isWishlisted = useSelector(
     selectIsWishlisted(product.id),
@@ -141,31 +144,11 @@ ${productUrl}`;
 
   return (
     <Link
-      to={`/custom/${product.id}`}
-      className={clsx(
-        "group relative",
-        "flex flex-col",
-        "w-full",
-        "justify-between",
-        "overflow-hidden",
-        "transition-all duration-300",
-        "hover:-translate-y-1",
-      )}
+      to={`/custom/${product.slug || product.id}`}
+      className="group relative flex flex-col w-full justify-between overflow-hidden rounded-none transition-all duration-300 hover:-translate-y-1"
     >
-      {/* =================================================
-          PRODUCT IMAGE
-      ================================================= */}
-
-      <div
-        className={clsx(
-          "relative flex",
-          "w-full",
-          "aspect-[8/9]",
-          "overflow-hidden",
-          "rounded-none",
-          "bg-surface",
-        )}
-      >
+      {/* Image */}
+      <div className="flex relative w-full aspect-[8/9] rounded-none bg-surface overflow-hidden">
         {product.thumbnail && !imageError ? (
           <img
             src={getImageUrl(product.thumbnail)}
@@ -358,16 +341,25 @@ ${productUrl}`;
             Same row layout as ProductCard
         =============================================== */}
 
-        <div
-          className={clsx(
-            "flex flex-wrap",
-            "items-center",
-            "justify-between",
-          )}
-        >
-          {minPrice != null ? (
-            <>
-              {/* Selling price */}
+                            </span>
+
+                        )}
+
+                    </div>
+
+                    {hasDiscount && (
+
+                        <span className="text-red-500 w-fit text-[13px] font-extralight uppercase tracking-wide px-2 py-1 rounded-full">
+
+                            {discountPct}% 
+
+                        </span>
+
+                    )}
+
+                </>
+
+            ) : (
 
               <span className="text-xl font-bold text-app">
                 {formatPrice(minPrice)}
@@ -434,36 +426,65 @@ ${productUrl}`;
       ================================================= */}
 
       <button
-        type="button"
-        onClick={handleWhatsApp}
-        className={clsx(
-          "absolute",
-          "bottom-0",
-          "right-0",
-          "flex",
-          "w-full",
-          "translate-y-12",
-          "flex-row",
-          "items-center",
-          "justify-center",
-          "gap-3",
-          "rounded-md",
-          "bg-green-600",
-          "p-2.5",
-          "text-sm",
-          "uppercase",
-          "text-white",
-          "opacity-0",
-          "duration-300",
-          "hover:bg-green-700",
-          "group-hover:translate-y-0",
-          "group-hover:opacity-100",
-        )}
-        aria-label="Chat about this product on WhatsApp"
-      >
-        <MessageCircle size={16} />
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
 
-        Chat on WhatsApp
+            const storeName = settings?.store_name || "My Designers";
+            const productName = product.title || "";
+            const categoryName = product.custom_category_name || product.category_name || "";
+            const productCode = product.sku || product.code || "";
+            const productUrl = (product.slug || product.id) ? `${window.location.origin}/custom/${product.slug || product.id}` : "";
+
+            let message = `Hi ${storeName},\n\nI'm interested in this custom product.\n\nProduct:\n${productName}`;
+
+            if (categoryName) {
+              message += `\n\nCategory:\n${categoryName}`;
+            }
+
+            if (productCode) {
+              message += `\n\nProduct Code:\n${productCode}`;
+            }
+
+            if (productUrl) {
+              message += `\n\nProduct URL:\n${productUrl}`;
+            }
+
+            message += `\n\nPlease share the quotation.\n\nThank you.`;
+
+            const rawNumber = settings?.support_phone || import.meta.env.VITE_WHATSAPP_NUMBER || "";
+            const cleanNumber = rawNumber.replace(/\D/g, "");
+            const formattedNumber = cleanNumber.length === 10 ? `91${cleanNumber}` : cleanNumber;
+
+            if (!formattedNumber) {
+              toast.error("WhatsApp contact number is not configured.");
+              return;
+            }
+
+            const isMobile =
+              /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+            const targetUrl = isMobile
+              ? `https://wa.me/${formattedNumber}?text=${encodeURIComponent(message)}`
+              : `https://web.whatsapp.com/send?phone=${formattedNumber}&text=${encodeURIComponent(message)}`;
+
+            window.open(targetUrl, "_blank", "noopener,noreferrer");
+          }}
+          className={clsx(
+            "absolute bottom-0 right-0",
+            "w-full p-2.5",
+            "flex items-center justify-center gap-3",
+            "bg-green-600 hover:bg-green-700 text-white",
+            "uppercase text-sm",
+            "rounded-none",
+            "translate-y-12 opacity-0",
+            "group-hover:translate-y-0 group-hover:opacity-100",
+            "duration-300"
+          )}
+        >
+          <ShoppingBag size={16} />
+          Chat on WhatsApp
       </button>
     </Link>
   );
