@@ -1,9 +1,14 @@
 import React, { memo } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { Heart, ShoppingBag, Star } from "lucide-react";
+import { Heart, MessageCircle, ShoppingBag, Star } from "lucide-react";
 import clsx from "clsx";
-import { getImageUrl, formatPrice } from "@/shared/utils/productUtils";
+
+import {
+  getImageUrl,
+  formatPrice,
+} from "@/shared/utils/productUtils";
+
 import {
   toggleWishlist,
   selectIsWishlisted,
@@ -13,8 +18,14 @@ import toast from "react-hot-toast";
 
 function CustomProductCard({ product }) {
   const dispatch = useDispatch();
-  const isWishlisted = useSelector(selectIsWishlisted(product.id));
 
+  const isWishlisted = useSelector(
+    selectIsWishlisted(product.id),
+  );
+
+  /* =====================================================
+     PRICE
+  ===================================================== */
 
   const minPrice = product.selling_price_min;
   const maxPrice = product.selling_price_max;
@@ -23,261 +34,468 @@ function CustomProductCard({ product }) {
   const originalMax = product.original_price_max;
 
   const hasDiscount =
-  Number(originalMin) > Number(minPrice);
+    minPrice != null &&
+    originalMin != null &&
+    Number(originalMin) > Number(minPrice);
+
+  const calculatedDiscount = hasDiscount
+    ? Math.round(
+        ((Number(originalMin) - Number(minPrice)) /
+          Number(originalMin)) *
+          100,
+      )
+    : 0;
 
   const discountPct =
     product.discount_percentage ??
     product.discount ??
-    (hasDiscount
-      ? Math.round(
-          ((Number(originalMin) - Number(minPrice)) /
-            Number(originalMin)) *
-            100
-        )
-      : 0);
+    calculatedDiscount;
 
-//   const discountPct =
-//     product.discount_percentage ??
-//     product.discount ??
-//     (
-//         hasDiscount
-//         ? Math.round(
-//             ((Number(originalMin) - Number(minPrice)) /
-//                 Number(originalMin)) *
-//                 100
-//             )
-//         : 0
-//     );
-  
-  
+  /* =====================================================
+     IMAGE
+  ===================================================== */
+
+  const [imageError, setImageError] =
+    React.useState(false);
+
+  /* =====================================================
+     WISHLIST
+  ===================================================== */
 
   const handleWishlist = (e) => {
     e.preventDefault();
     e.stopPropagation();
+
     dispatch(
       toggleWishlist({
         productId: product.id,
         title: product.title,
         slug: product.slug,
         thumbnail: product.thumbnail,
-        minPrice: product.selling_price_min
+        minPrice: product.selling_price_min,
       }),
     );
-    toast.success(isWishlisted ? "Removed from wishlist" : "Added to wishlist");
+
+    toast.success(
+      isWishlisted
+        ? "Removed from wishlist"
+        : "Added to wishlist",
+    );
   };
 
+  /* =====================================================
+     WHATSAPP
+  ===================================================== */
 
+  const handleWhatsApp = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-  const [imageError, setImageError] = React.useState(false);
-  console.log(product);
-  console.log("Discount %:", product.discount_percentage);
-  console.log("Discount:", product.discount);
-  console.log("Original Min:", product.original_price_min);
-  console.log("Selling Min:", product.selling_price_min);
+    const waNumber =
+      import.meta.env.VITE_WHATSAPP_NUMBER || "";
+
+    if (!waNumber) {
+      toast.error("WhatsApp number is unavailable");
+      return;
+    }
+
+    /*
+     Use the real product page URL.
+
+     Do not use window.location.href because it may return
+     the current home page or collection page.
+    */
+
+    const productUrl =
+      `${window.location.origin}/custom/${product.id}`;
+
+    const priceText = maxPrice
+      ? `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`
+      : formatPrice(minPrice);
+
+    const message = `Hi, I want to customize "${product.title}".
+
+Price: ${priceText}
+
+Product:
+${productUrl}`;
+
+    const encodedMessage =
+      encodeURIComponent(message);
+
+    const isMobile =
+      /Android|iPhone|iPad|iPod/i.test(
+        navigator.userAgent,
+      );
+
+    if (isMobile) {
+      window.location.href =
+        `https://wa.me/${waNumber}?text=${encodedMessage}`;
+
+      return;
+    }
+
+    window.location.href =
+      `https://web.whatsapp.com/send?phone=${waNumber}&text=${encodedMessage}`;
+  };
 
   return (
     <Link
       to={`/custom/${product.id}`}
-      className="group relative flex flex-col w-full justify-between overflow-hidden transition-all duration-300 hover:-translate-y-1"
+      className={clsx(
+        "group relative",
+        "flex flex-col",
+        "w-full",
+        "justify-between",
+        "overflow-hidden",
+        "transition-all duration-300",
+        "hover:-translate-y-1",
+      )}
     >
-      {/* Image */}
-      <div className="flex relative w-full aspect-[8/9] rounded-2xl bg-surface overflow-hidden">
+      {/* =================================================
+          PRODUCT IMAGE
+      ================================================= */}
+
+      <div
+        className={clsx(
+          "relative flex",
+          "w-full",
+          "aspect-[8/9]",
+          "overflow-hidden",
+          "rounded-none",
+          "bg-surface",
+        )}
+      >
         {product.thumbnail && !imageError ? (
           <img
             src={getImageUrl(product.thumbnail)}
             alt={product.title}
             loading="lazy"
-            onError={() => setImageError(true)}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            onError={() => {
+              setImageError(true);
+            }}
+            className={clsx(
+              "h-full w-full",
+              "object-cover",
+              "transition-transform",
+              "duration-500",
+              "group-hover:scale-105",
+            )}
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-950 text-zinc-400 p-4 text-center text-[10px] uppercase font-bold tracking-wider">
-            <ShoppingBag className="w-6 h-6 mb-1 text-zinc-500" />
-            <span className="line-clamp-2">{product.title}</span>
+          <div
+            className={clsx(
+              "flex h-full w-full",
+              "flex-col",
+              "items-center",
+              "justify-center",
+              "bg-gradient-to-br",
+              "from-zinc-800",
+              "to-zinc-950",
+              "p-4",
+              "text-center",
+              "text-[10px]",
+              "font-bold",
+              "uppercase",
+              "tracking-wider",
+              "text-zinc-400",
+            )}
+          >
+            <ShoppingBag
+              className="mb-1 h-6 w-6 text-zinc-500"
+            />
+
+            <span className="line-clamp-2">
+              {product.title}
+            </span>
           </div>
         )}
 
-        <div className="absolute flex flex-wrap flex-row w-full items-center justify-between mt-2 px-2">
-          {/* Badges */}
+        {/* ===============================================
+            TOP BADGE AND WISHLIST
+        =============================================== */}
+
+        <div
+          className={clsx(
+            "absolute",
+            "mt-2",
+            "flex w-full",
+            "flex-row",
+            "items-center",
+            "justify-between",
+            "px-2",
+          )}
+        >
+          {/* Featured badge */}
+
           <div className="flex flex-col gap-1.5">
             {product.is_featured && (
-              <span className="bg-brand-500 text-white text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full">
+              <span
+                className={clsx(
+                  "rounded-full",
+                  "bg-brand-500",
+                  "px-2 py-1",
+                  "text-[10px]",
+                  "font-bold",
+                  "uppercase",
+                  "tracking-wide",
+                  "text-white",
+                )}
+              >
                 Featured
               </span>
             )}
-
-            
           </div>
 
           {/* Wishlist */}
+
           <button
+            type="button"
             onClick={handleWishlist}
             aria-label="Toggle wishlist"
             aria-pressed={isWishlisted}
-            className="p-2 rounded-full bg-app/80 backdrop-blur-sm hover:bg-gray-200/20 text-app transition-colors duration-200 shadow-sm"
+            className={clsx(
+              "rounded-full",
+              "bg-app/80",
+              "p-2",
+              "text-app",
+              "shadow-sm",
+              "backdrop-blur-sm",
+              "transition-colors",
+              "duration-200",
+              "hover:bg-gray-200/20",
+            )}
           >
             <Heart
               size={16}
               className={clsx(
-                isWishlisted ? "fill-red-500 text-red-500" : "text-app",
+                isWishlisted
+                  ? "fill-red-500 text-red-500"
+                  : "text-app",
               )}
             />
           </button>
         </div>
-
-        
       </div>
 
-      {/* Info */}
-      <div className="flex flex-col flex-1 flex-wrap h-full justify-between gap-1 py-3">
-        {(product.collection_name || product.collection) && (
-          <span className="text-[10px] uppercase tracking-wider text-muted font-semibold">
-            {product.collection_name || product.collection}
+      {/* =================================================
+          PRODUCT INFORMATION
+      ================================================= */}
+
+      <div
+        className={clsx(
+          "flex h-full flex-1",
+          "flex-col",
+          "justify-between",
+          "gap-1",
+          "py-3",
+        )}
+      >
+        {/* Collection */}
+
+        {(product.collection_name ||
+          product.collection) && (
+          <span
+            className={clsx(
+              "text-[10px]",
+              "font-semibold",
+              "uppercase",
+              "tracking-wider",
+              "text-muted",
+            )}
+          >
+            {product.collection_name ||
+              product.collection}
           </span>
         )}
-        <div className="flex flex-row flex-wrap items-center justify-between">
-          <h3 className="text-lg font-thin text-app line-clamp-2 leading-snug">
+
+        {/* Product name and rating */}
+
+        <div
+          className={clsx(
+            "flex flex-row",
+            "flex-wrap",
+            "items-center",
+            "justify-between",
+          )}
+        >
+          <h3
+            className={clsx(
+              "line-clamp-2",
+              "text-lg",
+              "font-thin",
+              "leading-snug",
+              "text-app",
+            )}
+          >
             {product.title}
           </h3>
 
-          <div className="flex items-center border rounded-md w-fit gap-1.5 p-1">
-            <span className="text-[13px] text-app">4.5</span>
-            <Star size={13} className="fill-green-600 text-green-600" />
+          <div
+            className={clsx(
+              "flex w-fit",
+              "items-center",
+              "gap-1.5",
+              "rounded-md",
+              "border",
+              "p-1",
+            )}
+          >
+            <span className="text-[13px] text-app">
+              4.5
+            </span>
+
+            <Star
+              size={13}
+              className="fill-green-600 text-green-600"
+            />
           </div>
         </div>
 
-        <div className="flex items-start justify-between">
+        {/* ===============================================
+            PRICE
 
-            {minPrice != null ? (
+            Same row layout as ProductCard
+        =============================================== */}
 
-                <>
-
-                    <div className="flex flex-col gap-1">
-
-                        <span className="text-xl font-bold text-app">
-
-                            {formatPrice(minPrice)}
-
-                            {maxPrice &&
-                                ` - ${formatPrice(maxPrice)}`}
-
-                        </span>
-
-                        {hasDiscount && (
-
-                            <span className="text-xs line-through text-muted">
-
-                                {formatPrice(originalMin)}
-
-                                {originalMax &&
-                                    ` - ${formatPrice(originalMax)}`}
-
-                            </span>
-
-                        )}
-
-                    </div>
-
-                    {hasDiscount && (
-
-                        <span className="text-red-500 text-sm font-semibold">
-
-                            {discountPct}% OFF
-
-                        </span>
-
-                    )}
-
-                </>
-
-            ) : (
-
-                <span className="text-xs text-muted">
-
-                    Price unavailable
-
-                </span>
-
-            )}
-
-        </div>
-      </div>
-          {/* Quick add */}
-
-      
-      <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-
-            const message = `Hi, I want to customize "${product.title}".
-
-        Price: ₹${product.selling_price_min}${
-              product.selling_price_max
-                ? ` - ₹${product.selling_price_max}`
-                : ""
-            }
-
-        Product:
-        ${window.location.href}`;
-
-            const waNumber = import.meta.env.VITE_WHATSAPP_NUMBER || "";
-            if (!waNumber) return;
-
-            const isMobile =
-              /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-            if (isMobile) {
-              // Mobile → WhatsApp App / wa.me
-              window.location.href =
-                `https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`;
-            } else {
-              // Desktop → WhatsApp Web
-              window.location.href =
-                `https://web.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent(message)}`;
-            }
-          }}
+        <div
           className={clsx(
-            "absolute bottom-0 right-0 w-full p-2.5",
-            "flex items-center justify-center gap-3",
-            "bg-green-600 hover:bg-green-700 text-white",
-            "uppercase text-sm rounded-md",
-            "translate-y-12 opacity-0",
-            "group-hover:translate-y-0",
-            "group-hover:opacity-100",
-            "duration-300"
+            "flex flex-wrap",
+            "items-center",
+            "justify-between",
           )}
         >
-          <ShoppingBag size={16} />
-          Chat on WhatsApp
+          {minPrice != null ? (
+            <>
+              {/* Selling price */}
+
+              <span className="text-xl font-bold text-app">
+                {formatPrice(minPrice)}
+
+                {maxPrice != null &&
+                  Number(maxPrice) !==
+                    Number(minPrice) &&
+                  ` - ${formatPrice(maxPrice)}`}
+              </span>
+
+              {/* Original price */}
+
+              {hasDiscount && (
+                <span
+                  className={clsx(
+                    "text-xs",
+                    "text-muted",
+                    "line-through",
+                  )}
+                >
+                  {formatPrice(originalMin)}
+
+                  {originalMax != null &&
+                    Number(originalMax) !==
+                      Number(originalMin) &&
+                    ` - ${formatPrice(
+                      originalMax,
+                    )}`}
+                </span>
+              )}
+
+              {/* Discount */}
+
+              {hasDiscount &&
+                Number(discountPct) > 0 && (
+                  <span
+                    className={clsx(
+                      "w-fit",
+                      "rounded-full",
+                      "px-2 py-1",
+                      "text-[13px]",
+                      "font-extralight",
+                      "uppercase",
+                      "tracking-wide",
+                      "text-red-500",
+                    )}
+                  >
+                    {discountPct}%
+                  </span>
+                )}
+            </>
+          ) : (
+            <span className="text-xs text-muted">
+              Price unavailable
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* =================================================
+          WHATSAPP BUTTON
+
+          Same position, size and animation as Add to Cart
+      ================================================= */}
+
+      <button
+        type="button"
+        onClick={handleWhatsApp}
+        className={clsx(
+          "absolute",
+          "bottom-0",
+          "right-0",
+          "flex",
+          "w-full",
+          "translate-y-12",
+          "flex-row",
+          "items-center",
+          "justify-center",
+          "gap-3",
+          "rounded-md",
+          "bg-green-600",
+          "p-2.5",
+          "text-sm",
+          "uppercase",
+          "text-white",
+          "opacity-0",
+          "duration-300",
+          "hover:bg-green-700",
+          "group-hover:translate-y-0",
+          "group-hover:opacity-100",
+        )}
+        aria-label="Chat about this product on WhatsApp"
+      >
+        <MessageCircle size={16} />
+
+        Chat on WhatsApp
       </button>
     </Link>
   );
 }
 
-export default memo(CustomProductCard,(prev,next)=>{
+/* =====================================================
+   MEMO COMPARISON
+===================================================== */
 
-const a=prev.product;
-const b=next.product;
+export default memo(
+  CustomProductCard,
 
-return(
+  (prev, next) => {
+    const a = prev.product;
+    const b = next.product;
 
-a.id===b.id &&
-
-a.title===b.title &&
-
-a.thumbnail===b.thumbnail &&
-
-a.selling_price_min===b.selling_price_min &&
-
-a.selling_price_max===b.selling_price_max &&
-
-a.original_price_min===b.original_price_min &&
-
-a.original_price_max===b.original_price_max
-
+    return (
+      a.id === b.id &&
+      a.slug === b.slug &&
+      a.title === b.title &&
+      a.thumbnail === b.thumbnail &&
+      a.selling_price_min ===
+        b.selling_price_min &&
+      a.selling_price_max ===
+        b.selling_price_max &&
+      a.original_price_min ===
+        b.original_price_min &&
+      a.original_price_max ===
+        b.original_price_max &&
+      a.discount_percentage ===
+        b.discount_percentage &&
+      a.is_featured === b.is_featured
+    );
+  },
 );
-
-});
-
