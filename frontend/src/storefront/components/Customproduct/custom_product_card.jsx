@@ -4,10 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Heart, MessageCircle, ShoppingBag, Star } from "lucide-react";
 import clsx from "clsx";
 
-import {
-  getImageUrl,
-  formatPrice,
-} from "@/shared/utils/productUtils";
+import { getImageUrl, formatPrice } from "@/shared/utils/productUtils";
 
 import {
   toggleWishlist,
@@ -22,12 +19,8 @@ function CustomProductCard({ product }) {
   const isWishlisted = useSelector(selectIsWishlisted(product.id));
   const { settings } = useStoreSettings();
 
-  const isWishlisted = useSelector(
-    selectIsWishlisted(product.id),
-  );
-
   /* =====================================================
-     PRICE
+    PRICE
   ===================================================== */
 
   const minPrice = product.selling_price_min;
@@ -43,26 +36,21 @@ function CustomProductCard({ product }) {
 
   const calculatedDiscount = hasDiscount
     ? Math.round(
-        ((Number(originalMin) - Number(minPrice)) /
-          Number(originalMin)) *
-          100,
+        ((Number(originalMin) - Number(minPrice)) / Number(originalMin)) * 100,
       )
     : 0;
 
   const discountPct =
-    product.discount_percentage ??
-    product.discount ??
-    calculatedDiscount;
+    product.discount_percentage ?? product.discount ?? calculatedDiscount;
 
   /* =====================================================
-     IMAGE
+    IMAGE
   ===================================================== */
 
-  const [imageError, setImageError] =
-    React.useState(false);
+  const [imageError, setImageError] = React.useState(false);
 
   /* =====================================================
-     WISHLIST
+    WISHLIST
   ===================================================== */
 
   const handleWishlist = (e) => {
@@ -79,23 +67,18 @@ function CustomProductCard({ product }) {
       }),
     );
 
-    toast.success(
-      isWishlisted
-        ? "Removed from wishlist"
-        : "Added to wishlist",
-    );
+    toast.success(isWishlisted ? "Removed from wishlist" : "Added to wishlist");
   };
 
   /* =====================================================
-     WHATSAPP
+    WHATSAPP
   ===================================================== */
 
   const handleWhatsApp = (e) => {
     e.preventDefault();
     e.stopPropagation();
 
-    const waNumber =
-      import.meta.env.VITE_WHATSAPP_NUMBER || "";
+    const waNumber = import.meta.env.VITE_WHATSAPP_NUMBER || "";
 
     if (!waNumber) {
       toast.error("WhatsApp number is unavailable");
@@ -103,14 +86,13 @@ function CustomProductCard({ product }) {
     }
 
     /*
-     Use the real product page URL.
+    Use the real product page URL.
 
-     Do not use window.location.href because it may return
-     the current home page or collection page.
+    Do not use window.location.href because it may return
+    the current home page or collection page.
     */
 
-    const productUrl =
-      `${window.location.origin}/custom/${product.id}`;
+    const productUrl = `${window.location.origin}/custom/${product.id}`;
 
     const priceText = maxPrice
       ? `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`
@@ -123,23 +105,17 @@ Price: ${priceText}
 Product:
 ${productUrl}`;
 
-    const encodedMessage =
-      encodeURIComponent(message);
+    const encodedMessage = encodeURIComponent(message);
 
-    const isMobile =
-      /Android|iPhone|iPad|iPod/i.test(
-        navigator.userAgent,
-      );
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     if (isMobile) {
-      window.location.href =
-        `https://wa.me/${waNumber}?text=${encodedMessage}`;
+      window.location.href = `https://wa.me/${waNumber}?text=${encodedMessage}`;
 
       return;
     }
 
-    window.location.href =
-      `https://web.whatsapp.com/send?phone=${waNumber}&text=${encodedMessage}`;
+    window.location.href = `https://web.whatsapp.com/send?phone=${waNumber}&text=${encodedMessage}`;
   };
 
   return (
@@ -184,13 +160,9 @@ ${productUrl}`;
               "text-zinc-400",
             )}
           >
-            <ShoppingBag
-              className="mb-1 h-6 w-6 text-zinc-500"
-            />
+            <ShoppingBag className="mb-1 h-6 w-6 text-zinc-500" />
 
-            <span className="line-clamp-2">
-              {product.title}
-            </span>
+            <span className="line-clamp-2">{product.title}</span>
           </div>
         )}
 
@@ -252,9 +224,7 @@ ${productUrl}`;
             <Heart
               size={16}
               className={clsx(
-                isWishlisted
-                  ? "fill-red-500 text-red-500"
-                  : "text-app",
+                isWishlisted ? "fill-red-500 text-red-500" : "text-app",
               )}
             />
           </button>
@@ -265,156 +235,62 @@ ${productUrl}`;
           PRODUCT INFORMATION
       ================================================= */}
 
-      <div
-        className={clsx(
-          "flex h-full flex-1",
-          "flex-col",
-          "justify-between",
-          "gap-1",
-          "py-3",
-        )}
-      >
+      {/* PRODUCT INFORMATION */}
+
+      <div className="flex h-full flex-1 flex-col justify-between gap-1 py-3">
         {/* Collection */}
 
-        {(product.collection_name ||
-          product.collection) && (
-          <span
-            className={clsx(
-              "text-[10px]",
-              "font-semibold",
-              "uppercase",
-              "tracking-wider",
-              "text-muted",
-            )}
-          >
-            {product.collection_name ||
-              product.collection}
+        {(product.collection_name || product.collection) && (
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+            {product.collection_name || product.collection}
           </span>
         )}
 
-        {/* Product name and rating */}
+        {/* Product title and rating */}
 
-        <div
-          className={clsx(
-            "flex flex-row",
-            "flex-wrap",
-            "items-center",
-            "justify-between",
-          )}
-        >
-          <h3
-            className={clsx(
-              "line-clamp-2",
-              "text-lg",
-              "font-thin",
-              "leading-snug",
-              "text-app",
-            )}
-          >
+        <div className="flex flex-row flex-wrap items-center justify-between">
+          <h3 className="line-clamp-2 text-lg font-thin leading-snug text-app">
             {product.title}
           </h3>
 
-          <div
-            className={clsx(
-              "flex w-fit",
-              "items-center",
-              "gap-1.5",
-              "rounded-md",
-              "border",
-              "p-1",
-            )}
-          >
-            <span className="text-[13px] text-app">
-              4.5
-            </span>
+          <div className="flex w-fit items-center gap-1.5 rounded-md border p-1">
+            <span className="text-[13px] text-app">4.5</span>
 
-            <Star
-              size={13}
-              className="fill-green-600 text-green-600"
-            />
+            <Star size={13} className="fill-green-600 text-green-600" />
           </div>
         </div>
 
-        {/* ===============================================
-            PRICE
+        {/* Price */}
 
-            Same row layout as ProductCard
-        =============================================== */}
-
-                            </span>
-
-                        )}
-
-                    </div>
-
-                    {hasDiscount && (
-
-                        <span className="text-red-500 w-fit text-[13px] font-extralight uppercase tracking-wide px-2 py-1 rounded-full">
-
-                            {discountPct}% 
-
-                        </span>
-
-                    )}
-
-                </>
-
-            ) : (
-
+        <div className="flex flex-wrap items-center justify-between">
+          {minPrice != null ? (
+            <>
               <span className="text-xl font-bold text-app">
                 {formatPrice(minPrice)}
 
                 {maxPrice != null &&
-                  Number(maxPrice) !==
-                    Number(minPrice) &&
+                  Number(maxPrice) !== Number(minPrice) &&
                   ` - ${formatPrice(maxPrice)}`}
               </span>
 
-              {/* Original price */}
-
               {hasDiscount && (
-                <span
-                  className={clsx(
-                    "text-xs",
-                    "text-muted",
-                    "line-through",
-                  )}
-                >
+                <span className="text-xs text-muted line-through">
                   {formatPrice(originalMin)}
 
                   {originalMax != null &&
-                    Number(originalMax) !==
-                      Number(originalMin) &&
-                    ` - ${formatPrice(
-                      originalMax,
-                    )}`}
+                    Number(originalMax) !== Number(originalMin) &&
+                    ` - ${formatPrice(originalMax)}`}
                 </span>
               )}
 
-              {/* Discount */}
-
-              {hasDiscount &&
-                Number(discountPct) > 0 && (
-                  <span
-                    className={clsx(
-                      "w-fit",
-                      "rounded-full",
-                      "px-2 py-1",
-                      "text-[13px]",
-                      "font-extralight",
-                      "uppercase",
-                      "tracking-wide",
-                      "text-red-500",
-                    )}
-                  >
-                    {discountPct}%
-                  </span>
-                )}
+              {hasDiscount && Number(discountPct) > 0 && (
+                <span className="w-fit rounded-full px-2 py-1 text-[13px] font-extralight uppercase tracking-wide text-red-500">
+                  {discountPct}%
+                </span>
+              )}
             </>
           ) : (
-            <span className="text-xs text-muted">
-              Price unavailable
-            </span>
+            <span className="text-xs text-muted">Price unavailable</span>
           )}
         </div>
       </div>
@@ -426,65 +302,74 @@ ${productUrl}`;
       ================================================= */}
 
       <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
 
-            const storeName = settings?.store_name || "My Designers";
-            const productName = product.title || "";
-            const categoryName = product.custom_category_name || product.category_name || "";
-            const productCode = product.sku || product.code || "";
-            const productUrl = (product.slug || product.id) ? `${window.location.origin}/custom/${product.slug || product.id}` : "";
+          const storeName = settings?.store_name || "My Designers";
+          const productName = product.title || "";
+          const categoryName =
+            product.custom_category_name || product.category_name || "";
+          const productCode = product.sku || product.code || "";
+          const productUrl =
+            product.slug || product.id
+              ? `${window.location.origin}/custom/${product.slug || product.id}`
+              : "";
 
-            let message = `Hi ${storeName},\n\nI'm interested in this custom product.\n\nProduct:\n${productName}`;
+          let message = `Hi ${storeName},\n\nI'm interested in this custom product.\n\nProduct:\n${productName}`;
 
-            if (categoryName) {
-              message += `\n\nCategory:\n${categoryName}`;
-            }
+          if (categoryName) {
+            message += `\n\nCategory:\n${categoryName}`;
+          }
 
-            if (productCode) {
-              message += `\n\nProduct Code:\n${productCode}`;
-            }
+          if (productCode) {
+            message += `\n\nProduct Code:\n${productCode}`;
+          }
 
-            if (productUrl) {
-              message += `\n\nProduct URL:\n${productUrl}`;
-            }
+          if (productUrl) {
+            message += `\n\nProduct URL:\n${productUrl}`;
+          }
 
-            message += `\n\nPlease share the quotation.\n\nThank you.`;
+          message += `\n\nPlease share the quotation.\n\nThank you.`;
 
-            const rawNumber = settings?.support_phone || import.meta.env.VITE_WHATSAPP_NUMBER || "";
-            const cleanNumber = rawNumber.replace(/\D/g, "");
-            const formattedNumber = cleanNumber.length === 10 ? `91${cleanNumber}` : cleanNumber;
+          const rawNumber =
+            settings?.support_phone ||
+            import.meta.env.VITE_WHATSAPP_NUMBER ||
+            "";
+          const cleanNumber = rawNumber.replace(/\D/g, "");
+          const formattedNumber =
+            cleanNumber.length === 10 ? `91${cleanNumber}` : cleanNumber;
 
-            if (!formattedNumber) {
-              toast.error("WhatsApp contact number is not configured.");
-              return;
-            }
+          if (!formattedNumber) {
+            toast.error("WhatsApp contact number is not configured.");
+            return;
+          }
 
-            const isMobile =
-              /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+          const isMobile = /Android|iPhone|iPad|iPod/i.test(
+            navigator.userAgent,
+          );
 
-            const targetUrl = isMobile
-              ? `https://wa.me/${formattedNumber}?text=${encodeURIComponent(message)}`
-              : `https://web.whatsapp.com/send?phone=${formattedNumber}&text=${encodeURIComponent(message)}`;
+          const targetUrl = isMobile
+            ? `https://wa.me/${formattedNumber}?text=${encodeURIComponent(message)}`
+            : `https://web.whatsapp.com/send?phone=${formattedNumber}&text=${encodeURIComponent(message)}`;
 
-            window.open(targetUrl, "_blank", "noopener,noreferrer");
-          }}
-          className={clsx(
-            "absolute bottom-0 right-0",
-            "w-full p-2.5",
-            "flex items-center justify-center gap-3",
-            "bg-green-600 hover:bg-green-700 text-white",
-            "uppercase text-sm",
-            "rounded-none",
-            "translate-y-12 opacity-0",
-            "group-hover:translate-y-0 group-hover:opacity-100",
-            "duration-300"
-          )}
-        >
-          <ShoppingBag size={16} />
-          Chat on WhatsApp
+          window.open(targetUrl, "_blank", "noopener,noreferrer");
+        }}
+        className={clsx(
+          "absolute bottom-0 right-0",
+          "w-full p-2.5",
+          "flex items-center justify-center gap-3",
+          "bg-green-600 hover:bg-green-700 text-white",
+          "uppercase text-sm",
+          "rounded-none",
+          "translate-y-12 opacity-0",
+          "group-hover:translate-y-0 group-hover:opacity-100",
+          "duration-300",
+        )}
+      >
+        <ShoppingBag size={16} />
+        Chat on WhatsApp
       </button>
     </Link>
   );
@@ -506,16 +391,11 @@ export default memo(
       a.slug === b.slug &&
       a.title === b.title &&
       a.thumbnail === b.thumbnail &&
-      a.selling_price_min ===
-        b.selling_price_min &&
-      a.selling_price_max ===
-        b.selling_price_max &&
-      a.original_price_min ===
-        b.original_price_min &&
-      a.original_price_max ===
-        b.original_price_max &&
-      a.discount_percentage ===
-        b.discount_percentage &&
+      a.selling_price_min === b.selling_price_min &&
+      a.selling_price_max === b.selling_price_max &&
+      a.original_price_min === b.original_price_min &&
+      a.original_price_max === b.original_price_max &&
+      a.discount_percentage === b.discount_percentage &&
       a.is_featured === b.is_featured
     );
   },

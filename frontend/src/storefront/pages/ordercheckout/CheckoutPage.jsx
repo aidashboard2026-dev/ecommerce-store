@@ -9,6 +9,7 @@ import ContactSection from "@/storefront/components/checkout/ContactSection";
 import DeliveryAddress from "@/storefront/components/checkout/DeliveryAddress";
 import PaymentSection from "@/storefront/components/checkout/PaymentSection";
 import { getImageUrl, formatPrice } from "@/shared/utils/productUtils";
+import { removeCustomerCartItemThunk } from "@/storefront/store/customerCartThunks";
 import {
   selectSelectedAddress,
   setLastOrder,
@@ -16,8 +17,12 @@ import {
   setPlacingOrder,
   setPaymentMethod,
 } from "@/storefront/store/checkoutStore";
-import { clearCart, removeFromCart, selectCartTotals } from "@/storefront/store/cartSlice";
-import { useCreateOrder, useCreateRazorpayOrder, useVerifyRazorpayPayment } from "@/storefront/hooks/useOrders";
+import { clearCart, selectCartTotals } from "@/storefront/store/cartSlice";
+import {
+  useCreateOrder,
+  useCreateRazorpayOrder,
+  useVerifyRazorpayPayment,
+} from "@/storefront/hooks/useOrders";
 import { storefrontAPI } from "@/shared/services/api";
 import GuestAuthModal from "@/storefront/components/checkout/GuestAuthModal";
 
@@ -54,7 +59,14 @@ const logApiResult = (apiName, result, elapsedMs, details = {}) => {
   // Suppressed to avoid scattered logs, since we use logGroupedApi
 };
 
-const logExit = ({ step, reason, sessionId, ordersCount, paymentMethod, nextApi }) => {
+const logExit = ({
+  step,
+  reason,
+  sessionId,
+  ordersCount,
+  paymentMethod,
+  nextApi,
+}) => {
   debugLog("EXIT");
   debugLog("Current Step:", step);
   debugLog("Reason:", reason);
@@ -64,12 +76,27 @@ const logExit = ({ step, reason, sessionId, ordersCount, paymentMethod, nextApi 
   debugLog("Next API That Will NOT Execute:", nextApi);
 };
 
-const logFailure = ({ step, error, sessionId, ordersCount, nextApiSkipped }) => {
+const logFailure = ({
+  step,
+  error,
+  sessionId,
+  ordersCount,
+  nextApiSkipped,
+}) => {
   debugError("CHECKOUT FAILURE");
   debugError("Current Step:", step);
   debugError("HTTP Status:", error?.response?.status ?? "N/A");
-  debugError("Backend Code:", error?.response?.data?.code ?? error?.code ?? "N/A");
-  debugError("Backend Message:", error?.response?.data?.message || error?.response?.data?.detail || error?.message || "N/A");
+  debugError(
+    "Backend Code:",
+    error?.response?.data?.code ?? error?.code ?? "N/A",
+  );
+  debugError(
+    "Backend Message:",
+    error?.response?.data?.message ||
+      error?.response?.data?.detail ||
+      error?.message ||
+      "N/A",
+  );
   debugError("Stack Trace:", error?.stack);
   debugError("Session ID:", sessionId);
   debugError("Current Orders:", ordersCount);
@@ -78,12 +105,36 @@ const logFailure = ({ step, error, sessionId, ordersCount, nextApiSkipped }) => 
 
 // Centralized grouped API logger for DEV environment
 const apiMeta = {
-  "createOrderMutation": { method: "POST", path: "/orders/customer", successStatus: 201 },
-  "createRazorpayOrderMutation": { method: "POST", path: "/orders/customer/razorpay/create", successStatus: 200 },
-  "verifyRazorpayPaymentMutation": { method: "POST", path: "/orders/customer/razorpay/verify", successStatus: 200 },
-  "getOrders (recovery)": { method: "GET", path: "/orders/customer/all", successStatus: 200 },
-  "getOrders (mount)": { method: "GET", path: "/orders/customer/all", successStatus: 200 },
-  "getOrders (dedupe check)": { method: "GET", path: "/orders/customer/all", successStatus: 200 },
+  createOrderMutation: {
+    method: "POST",
+    path: "/orders/customer",
+    successStatus: 201,
+  },
+  createRazorpayOrderMutation: {
+    method: "POST",
+    path: "/orders/customer/razorpay/create",
+    successStatus: 200,
+  },
+  verifyRazorpayPaymentMutation: {
+    method: "POST",
+    path: "/orders/customer/razorpay/verify",
+    successStatus: 200,
+  },
+  "getOrders (recovery)": {
+    method: "GET",
+    path: "/orders/customer/all",
+    successStatus: 200,
+  },
+  "getOrders (mount)": {
+    method: "GET",
+    path: "/orders/customer/all",
+    successStatus: 200,
+  },
+  "getOrders (dedupe check)": {
+    method: "GET",
+    path: "/orders/customer/all",
+    successStatus: 200,
+  },
 };
 
 const logGroupedApi = (apiName, isSuccess, elapsedMs, error = null) => {
@@ -91,7 +142,9 @@ const logGroupedApi = (apiName, isSuccess, elapsedMs, error = null) => {
   const meta = apiMeta[apiName];
   if (!meta) return;
 
-  const status = isSuccess ? meta.successStatus : (error?.response?.status || 500);
+  const status = isSuccess
+    ? meta.successStatus
+    : error?.response?.status || 500;
 
   console.group("Checkout API");
   console.log(`${meta.method} ${meta.path}`);
@@ -128,7 +181,8 @@ const loadRazorpayScript = () => {
         if (window.Razorpay) {
           clearInterval(interval);
           resolve(true);
-        } else if (attempts >= 50) { // 5 seconds max wait
+        } else if (attempts >= 50) {
+          // 5 seconds max wait
           clearInterval(interval);
           rzpScriptPromise = null; // Allow retry
           resolve(false);
@@ -151,26 +205,42 @@ const getPaymentErrorMessage = (error) => {
     debugError("[Checkout Error] response.data:", error.response?.data);
   }
 
-  if (error instanceof TypeError && /circular structure/i.test(error.message || "")) {
+  if (
+    error instanceof TypeError &&
+    /circular structure/i.test(error.message || "")
+  ) {
     debugError(
       "[Checkout Error] Non-serializable payload was sent to the API (circular structure). " +
-      "This is almost always caused by passing a DOM/React event where session/order data was expected."
+        "This is almost always caused by passing a DOM/React event where session/order data was expected.",
     );
     return {
       code: "CLIENT_SERIALIZATION_ERROR",
-      message: "Something went wrong preparing your payment request. Please refresh and try again.",
+      message:
+        "Something went wrong preparing your payment request. Please refresh and try again.",
     };
   }
 
   if (!error?.response) {
-    if (error?.code === "ECONNABORTED" || error?.message?.toLowerCase().includes("timeout")) {
-      return { code: "TIMEOUT", message: "Payment request timed out. Please retry." };
+    if (
+      error?.code === "ECONNABORTED" ||
+      error?.message?.toLowerCase().includes("timeout")
+    ) {
+      return {
+        code: "TIMEOUT",
+        message: "Payment request timed out. Please retry.",
+      };
     }
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
-      return { code: "NETWORK_ERROR", message: "Please check your internet connection and try again." };
+      return {
+        code: "NETWORK_ERROR",
+        message: "Please check your internet connection and try again.",
+      };
     }
     if (error?.request) {
-      return { code: "NETWORK_ERROR", message: "Please check your internet connection and try again." };
+      return {
+        code: "NETWORK_ERROR",
+        message: "Please check your internet connection and try again.",
+      };
     }
     return {
       code: "CLIENT_ERROR",
@@ -188,19 +258,46 @@ const getPaymentErrorMessage = (error) => {
     TIMEOUT: "Payment request timed out. Please retry.",
     UNAUTHORIZED: "Your session has expired. Please sign in again.",
     FORBIDDEN: "You are not authorized to perform this action.",
-    VALIDATION_ERROR: "Some checkout information is invalid. Please review your details.",
+    VALIDATION_ERROR:
+      "Some checkout information is invalid. Please review your details.",
   };
 
   if (backendCode) {
-    return { code: backendCode, message: backendMessage || fallbackByCode[backendCode] || backendCode };
+    return {
+      code: backendCode,
+      message: backendMessage || fallbackByCode[backendCode] || backendCode,
+    };
   }
 
-  if (status === 401) return { code: "UNAUTHORIZED", message: backendMessage || fallbackByCode.UNAUTHORIZED };
-  if (status === 403) return { code: "FORBIDDEN", message: backendMessage || fallbackByCode.FORBIDDEN };
-  if (status === 422) return { code: "VALIDATION_ERROR", message: backendMessage || fallbackByCode.VALIDATION_ERROR };
-  if (status >= 500) return { code: `HTTP_${status}`, message: backendMessage || "The server ran into a problem processing your payment. Please try again." };
+  if (status === 401)
+    return {
+      code: "UNAUTHORIZED",
+      message: backendMessage || fallbackByCode.UNAUTHORIZED,
+    };
+  if (status === 403)
+    return {
+      code: "FORBIDDEN",
+      message: backendMessage || fallbackByCode.FORBIDDEN,
+    };
+  if (status === 422)
+    return {
+      code: "VALIDATION_ERROR",
+      message: backendMessage || fallbackByCode.VALIDATION_ERROR,
+    };
+  if (status >= 500)
+    return {
+      code: `HTTP_${status}`,
+      message:
+        backendMessage ||
+        "The server ran into a problem processing your payment. Please try again.",
+    };
 
-  return { code: `HTTP_${status}`, message: backendMessage || "Something went wrong while processing your payment. Please try again." };
+  return {
+    code: `HTTP_${status}`,
+    message:
+      backendMessage ||
+      "Something went wrong while processing your payment. Please try again.",
+  };
 };
 
 // ============================================================================
@@ -257,8 +354,8 @@ const cartMatchesOrders = (orderList, items) =>
         item.productId === pending.product_id &&
         item.quantity === pending.quantity &&
         item.size === pending.size &&
-        item.color === pending.color
-    )
+        item.color === pending.color,
+    ),
   );
 
 const validateRazorpayPrerequisites = ({ sessionId, orders, rzpOrder }) => {
@@ -270,7 +367,9 @@ const validateRazorpayPrerequisites = ({ sessionId, orders, rzpOrder }) => {
     "amount exists": !!rzpOrder?.amount,
     "key exists": !!rzpOrder?.key,
   };
-  const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+  const failed = Object.entries(checks)
+    .filter(([, ok]) => !ok)
+    .map(([name]) => name);
   return { passed: failed.length === 0, failed, checks };
 };
 
@@ -309,7 +408,7 @@ const buildOrderPayload = ({
   quantity: item.quantity,
   price: item.sellingPrice,
   shipping_fee: shippingFee,
-  total_amount: (item.sellingPrice * item.quantity) + shippingFee,
+  total_amount: item.sellingPrice * item.quantity + shippingFee,
   payment_method: paymentMethod,
   payment_status: "PENDING",
   tracking_status: "PLACED",
@@ -320,7 +419,12 @@ const buildOrderPayload = ({
 // API & TIMING HELPERS
 // ============================================================================
 
-const measureApi = async (apiName, apiCall, getSuccessDetails = () => ({}), getFailureDetails = () => ({})) => {
+const measureApi = async (
+  apiName,
+  apiCall,
+  getSuccessDetails = () => ({}),
+  getFailureDetails = () => ({}),
+) => {
   const start = Date.now();
   try {
     const result = await apiCall();
@@ -370,7 +474,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (paymentMethodsList.length > 0) {
       const activeValues = paymentMethodsList.map((m) =>
-        m.name.toLowerCase() === "online payment" ? "ONLINE" : "COD"
+        m.name.toLowerCase() === "online payment" ? "ONLINE" : "COD",
       );
       if (!activeValues.includes(paymentMethod)) {
         dispatch(setPaymentMethod(activeValues[0]));
@@ -378,10 +482,45 @@ export default function CheckoutPage() {
     }
   }, [paymentMethodsList, paymentMethod, dispatch]);
 
+  const clearCompletedCustomerCart = async () => {
+    const databaseCartItems = items.filter(
+      (item) => item.cartItemId !== null && item.cartItemId !== undefined,
+    );
+
+    if (databaseCartItems.length > 0) {
+      const results = await Promise.allSettled(
+        databaseCartItems.map((item) =>
+          dispatch(removeCustomerCartItemThunk(item.cartItemId)).unwrap(),
+        ),
+      );
+
+      const failedDeletes = results.filter(
+        (result) => result.status === "rejected",
+      );
+
+      if (failedDeletes.length > 0) {
+        debugError(
+          "[Checkout] Some customer DB cart items could not be removed:",
+          failedDeletes,
+        );
+      }
+    }
+
+    // Clear Redux cart and save [] in guest localStorage.
+    dispatch(clearCart());
+
+    // Extra cleanup for old guest cart data.
+    localStorage.removeItem("aurastore_guest_cart");
+
+    // Remove completed checkout session.
+    sessionStorage.removeItem("aurastore_active_cart_session_id");
+  };
+
   const totals = useMemo(() => {
-    const nameToFind = paymentMethod === "ONLINE" ? "Online Payment" : "Cash On Delivery";
+    const nameToFind =
+      paymentMethod === "ONLINE" ? "Online Payment" : "Cash On Delivery";
     const selectedMethod = paymentMethodsList.find(
-      (m) => m.name.toLowerCase() === nameToFind.toLowerCase()
+      (m) => m.name.toLowerCase() === nameToFind.toLowerCase(),
     );
     const shipping = selectedMethod ? parseFloat(selectedMethod.fee || 0) : 0;
     const subtotal = cartTotals.subtotal;
@@ -422,7 +561,12 @@ export default function CheckoutPage() {
       shipping,
       total,
     };
-  }, [paymentMethod, paymentMethodsList, cartTotals.subtotal, cartTotals.discountAmount]);
+  }, [
+    paymentMethod,
+    paymentMethodsList,
+    cartTotals.subtotal,
+    cartTotals.discountAmount,
+  ]);
 
   const createOrderMutation = useCreateOrder();
   const createRazorpayOrderMutation = useCreateRazorpayOrder();
@@ -448,12 +592,12 @@ export default function CheckoutPage() {
   });
 
   useEffect(() => {
-    const isOverlayActive = paymentMethod === "ONLINE" && (
-      checkoutPhase === CHECKOUT_PHASE.CREATING_ORDERS ||
-      checkoutPhase === CHECKOUT_PHASE.CREATING_RAZORPAY_ORDER ||
-      checkoutPhase === CHECKOUT_PHASE.VERIFYING ||
-      checkoutPhase === CHECKOUT_PHASE.VERIFY_SUCCESS
-    );
+    const isOverlayActive =
+      paymentMethod === "ONLINE" &&
+      (checkoutPhase === CHECKOUT_PHASE.CREATING_ORDERS ||
+        checkoutPhase === CHECKOUT_PHASE.CREATING_RAZORPAY_ORDER ||
+        checkoutPhase === CHECKOUT_PHASE.VERIFYING ||
+        checkoutPhase === CHECKOUT_PHASE.VERIFY_SUCCESS);
     if (isOverlayActive) {
       document.body.style.overflow = "hidden";
     } else {
@@ -514,12 +658,16 @@ export default function CheckoutPage() {
       sessionId,
       shippingFee: itemShippingFee,
     });
-    logApiCall("createOrderMutation", { sessionId, ordersCount: undefined, paymentMethod });
+    logApiCall("createOrderMutation", {
+      sessionId,
+      ordersCount: undefined,
+      paymentMethod,
+    });
     return measureApi(
       "createOrderMutation",
       () => createOrderMutation.mutateAsync(payload),
       (created) => ({ orderId: created?.id, item: item.title }),
-      () => ({ item: item.title })
+      () => ({ item: item.title }),
     );
   };
 
@@ -529,9 +677,13 @@ export default function CheckoutPage() {
   };
 
   const cleanupStaleSession = async (ordersList) => {
-    logStep("Cleaning up confirmed-stale session", { orderIds: ordersList.map((o) => o.id) });
+    logStep("Cleaning up confirmed-stale session", {
+      orderIds: ordersList.map((o) => o.id),
+    });
     try {
-      await Promise.all(ordersList.map((order) => storefrontAPI.cancelOrder(order.id)));
+      await Promise.all(
+        ordersList.map((order) => storefrontAPI.cancelOrder(order.id)),
+      );
     } catch (err) {
       logFailure({
         step: "cleanupStaleSession",
@@ -548,28 +700,41 @@ export default function CheckoutPage() {
   // ============================================================================
 
   const isPaidSession = (sessionOrders) => {
-    return sessionOrders.length > 0 && sessionOrders.every((o) => o.payment_status === "PAID");
+    return (
+      sessionOrders.length > 0 &&
+      sessionOrders.every((o) => o.payment_status === "PAID")
+    );
   };
 
   const findMatchingSession = (customerOrders, activeSessionId) => {
     if (activeSessionId) {
       const sessionOrders = customerOrders.filter(
-        (o) => o.cart_session_id === activeSessionId && o.tracking_status !== "CANCELLED"
+        (o) =>
+          o.cart_session_id === activeSessionId &&
+          o.tracking_status !== "CANCELLED",
       );
       if (sessionOrders.length > 0 && cartMatchesOrders(sessionOrders, items)) {
-        return { sessionId: activeSessionId, orders: sessionOrders, type: "active" };
+        return {
+          sessionId: activeSessionId,
+          orders: sessionOrders,
+          type: "active",
+        };
       }
     }
 
     const otherPendingOrders = customerOrders.filter(
-      (o) => isActivePendingOrder(o) && o.cart_session_id
+      (o) => isActivePendingOrder(o) && o.cart_session_id,
     );
     if (otherPendingOrders.length > 0) {
       const sessions = groupOrdersBySession(otherPendingOrders);
       const recoveredSessionId = Object.keys(sessions)[0];
       const sessionOrders = sessions[recoveredSessionId];
       if (cartMatchesOrders(sessionOrders, items)) {
-        return { sessionId: recoveredSessionId, orders: sessionOrders, type: "other" };
+        return {
+          sessionId: recoveredSessionId,
+          orders: sessionOrders,
+          type: "other",
+        };
       }
     }
     return null;
@@ -578,17 +743,33 @@ export default function CheckoutPage() {
   const resumeExistingCheckout = (customerOrders, activeSessionId) => {
     if (activeSessionId) {
       const sessionOrders = customerOrders.filter(
-        (o) => o.cart_session_id === activeSessionId && o.tracking_status !== "CANCELLED"
+        (o) =>
+          o.cart_session_id === activeSessionId &&
+          o.tracking_status !== "CANCELLED",
       );
       if (isPaidSession(sessionOrders)) {
-        dispatch(setLastOrder({ orders: sessionOrders, totals, paymentMethod: "ONLINE" }));
+        dispatch(
+          setLastOrder({
+            orders: sessionOrders,
+            totals,
+            paymentMethod: "ONLINE",
+          }),
+        );
+        dispatch(
+          removeCustomerCartItemThunk({
+            cartItemId: item.cartItemId,
+          }),
+        );
         dispatch(clearCart());
+        localStorage.removeItem("aurastore_guest_cart");
         sessionStorage.removeItem("aurastore_active_cart_session_id");
         navigate("/order-success", {
           state: { orders: sessionOrders, totals, paymentMethod: "ONLINE" },
           replace: true,
         });
-        logStep("Mount recovery: existing session already PAID, navigated to order-success");
+        logStep(
+          "Mount recovery: existing session already PAID, navigated to order-success",
+        );
         return true;
       }
     }
@@ -596,36 +777,56 @@ export default function CheckoutPage() {
     const match = findMatchingSession(customerOrders, activeSessionId);
     if (match) {
       if (match.type === "active") {
-        setCheckoutState({ cartSessionId: match.sessionId, orders: match.orders });
-        logStep("Mount recovery: resumed matching pending session", { sessionId: match.sessionId });
+        setCheckoutState({
+          cartSessionId: match.sessionId,
+          orders: match.orders,
+        });
+        logStep("Mount recovery: resumed matching pending session", {
+          sessionId: match.sessionId,
+        });
       } else {
-        sessionStorage.setItem("aurastore_active_cart_session_id", match.sessionId);
-        setCheckoutState({ cartSessionId: match.sessionId, orders: match.orders });
+        sessionStorage.setItem(
+          "aurastore_active_cart_session_id",
+          match.sessionId,
+        );
+        setCheckoutState({
+          cartSessionId: match.sessionId,
+          orders: match.orders,
+        });
         toast.success("Resumed your previous pending checkout session.");
-        logStep("Mount recovery: resumed other-tab pending session", { sessionId: match.sessionId });
+        logStep("Mount recovery: resumed other-tab pending session", {
+          sessionId: match.sessionId,
+        });
       }
       return true;
     }
 
     if (activeSessionId) {
       const sessionOrders = customerOrders.filter(
-        (o) => o.cart_session_id === activeSessionId && o.tracking_status !== "CANCELLED"
+        (o) =>
+          o.cart_session_id === activeSessionId &&
+          o.tracking_status !== "CANCELLED",
       );
       if (sessionOrders.length > 0) {
         setCheckoutState({ cartSessionId: null, orders: [] });
         sessionStorage.removeItem("aurastore_active_cart_session_id");
-        logStep("Mount recovery: local session cleared (cart no longer matches); no backend mutation performed");
+        logStep(
+          "Mount recovery: local session cleared (cart no longer matches); no backend mutation performed",
+        );
       }
     }
 
     const otherPendingOrders = customerOrders.filter(
-      (o) => isActivePendingOrder(o) && o.cart_session_id
+      (o) => isActivePendingOrder(o) && o.cart_session_id,
     );
     if (otherPendingOrders.length > 0) {
       const sessions = groupOrdersBySession(otherPendingOrders);
-      logStep("Mount recovery: other pending sessions found but do not match cart — leaving untouched (no cleanup on mount)", {
-        sessionIds: Object.keys(sessions),
-      });
+      logStep(
+        "Mount recovery: other pending sessions found but do not match cart — leaving untouched (no cleanup on mount)",
+        {
+          sessionIds: Object.keys(sessions),
+        },
+      );
     }
     return false;
   };
@@ -637,13 +838,12 @@ export default function CheckoutPage() {
       error: null,
     });
     try {
-      const res = await measureApi(
-        "getOrders (recovery)",
-        () => storefrontAPI.getOrders()
+      const res = await measureApi("getOrders (recovery)", () =>
+        storefrontAPI.getOrders(),
       );
       const customerOrders = res.data?.items || [];
       const otherPendingOrders = customerOrders.filter(
-        (o) => isActivePendingOrder(o) && o.cart_session_id
+        (o) => isActivePendingOrder(o) && o.cart_session_id,
       );
 
       if (otherPendingOrders.length === 0) {
@@ -658,15 +858,25 @@ export default function CheckoutPage() {
       if (cartMatchesOrders(sessionOrders, items)) {
         commitCheckoutSession(recoveredSessionId, sessionOrders);
         setRecoveryState((prev) => ({ ...prev, isRecovering: false }));
-        return { status: "resumed", sessionId: recoveredSessionId, orders: sessionOrders };
+        return {
+          status: "resumed",
+          sessionId: recoveredSessionId,
+          orders: sessionOrders,
+        };
       }
 
       setRecoveryState((prev) => ({ ...prev, isRecovering: false }));
       return { status: "mismatch", staleSessions: sessions };
     } catch (recoveryErr) {
       const recErrInfo = getPaymentErrorMessage(recoveryErr);
-      setRecoveryState({ isRecovering: true, message: "", error: recErrInfo.message });
-      throw Object.assign(new Error(recErrInfo.message), { code: recErrInfo.code });
+      setRecoveryState({
+        isRecovering: true,
+        message: "",
+        error: recErrInfo.message,
+      });
+      throw Object.assign(new Error(recErrInfo.message), {
+        code: recErrInfo.code,
+      });
     }
   };
 
@@ -675,7 +885,9 @@ export default function CheckoutPage() {
   // ============================================================================
 
   const buildInputsSignature = () => {
-    const itemsPart = items.map((i) => `${i.productId}:${i.size}:${i.color}:${i.quantity}`).join("|");
+    const itemsPart = items
+      .map((i) => `${i.productId}:${i.size}:${i.color}:${i.quantity}`)
+      .join("|");
     const addressPart = selectedAddress
       ? `${selectedAddress.id || ""}:${selectedAddress.address_line1 || selectedAddress.address || ""}:${selectedAddress.pincode || ""}`
       : "null";
@@ -695,7 +907,10 @@ export default function CheckoutPage() {
     }
     if (newSignature !== inputsSignatureRef.current) {
       inputsSignatureRef.current = newSignature;
-      logStep("Checkout inputs changed — invalidating LOCAL session reference only (no backend mutation)", {});
+      logStep(
+        "Checkout inputs changed — invalidating LOCAL session reference only (no backend mutation)",
+        {},
+      );
       setCheckoutState({ cartSessionId: null, orders: [] });
       sessionStorage.removeItem("aurastore_active_cart_session_id");
     }
@@ -717,27 +932,48 @@ export default function CheckoutPage() {
   // ============================================================================
   // MOUNT ORCHESTRATION
   // ============================================================================
+  const itemsRef = useRef(items);
+  const totalsRef = useRef(totals);
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  useEffect(() => {
+    totalsRef.current = totals;
+  }, [totals]);
 
   useEffect(() => {
     if (!customer || !token) return;
-    let isMounted = true;
-    setPhase(CHECKOUT_PHASE.RECOVERING, { source: "mount" });
 
-    const activeSessionId = sessionStorage.getItem("aurastore_active_cart_session_id");
+    let cancelled = false;
 
-    measureApi(
-      "getOrders (mount)",
-      () => storefrontAPI.getOrders()
-    )
-      .then((res) => {
-        if (!isMounted) {
-          logStep("Mount recovery: component unmounted before getOrders resolved, aborting");
+    setPhase(CHECKOUT_PHASE.RECOVERING, {
+      source: "mount",
+    });
+
+    const activeSessionId = sessionStorage.getItem(
+      "aurastore_active_cart_session_id",
+    );
+
+    const recoverCheckoutOnMount = async () => {
+      try {
+        const res = await measureApi("getOrders (mount)", () =>
+          storefrontAPI.getOrders(),
+        );
+
+        if (cancelled) {
           return;
         }
+
         const customerOrders = res.data?.items || [];
+
         resumeExistingCheckout(customerOrders, activeSessionId);
-      })
-      .catch((err) => {
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+
         logFailure({
           step: "Mount session recovery",
           error: err,
@@ -745,18 +981,24 @@ export default function CheckoutPage() {
           ordersCount: 0,
           nextApiSkipped: "none — this is a background reconciliation read",
         });
-      })
-      .finally(() => {
-        if (isMounted) {
-          setPhase(CHECKOUT_PHASE.IDLE, { source: "mount" });
+      } finally {
+        if (!cancelled) {
+          setPhase(CHECKOUT_PHASE.IDLE, {
+            source: "mount",
+          });
         }
-      });
+      }
+    };
+
+    recoverCheckoutOnMount();
 
     return () => {
-      isMounted = false;
+      cancelled = true;
     };
+
+    // Run only when customer authentication changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch, navigate, items, totals]);
+  }, [customer?.id, token]);
 
   useEffect(() => {
     if (!customer?.email) return;
@@ -785,10 +1027,18 @@ export default function CheckoutPage() {
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
+
+      // Shipping fee first order item-க்கு மட்டும் add ஆகும்
       const itemShippingFee = i === 0 ? totals.shipping : 0;
-      let created;
+
       try {
-        created = await persistOrderItem(item, currentSessionId, itemShippingFee);
+        const created = await persistOrderItem(
+          item,
+          currentSessionId,
+          itemShippingFee,
+        );
+
+        currentOrders.push(created);
       } catch (itemErr) {
         const errInfo = getPaymentErrorMessage(itemErr);
 
@@ -799,32 +1049,56 @@ export default function CheckoutPage() {
             sessionId: currentSessionId,
             ordersCount: currentOrders.length,
             paymentMethod,
-            nextApi: "createRazorpayOrderMutation / verifyRazorpayPaymentMutation",
+            nextApi:
+              "createRazorpayOrderMutation / verifyRazorpayPaymentMutation",
           });
 
           const recovery = await recoverActiveSession();
 
           if (recovery.status === "resumed") {
-            return { retry: true, sessionId: recovery.sessionId, orders: recovery.orders };
+            return {
+              retry: true,
+              sessionId: recovery.sessionId,
+              orders: recovery.orders,
+            };
           }
 
           if (recovery.status === "mismatch") {
             for (const sid of Object.keys(recovery.staleSessions)) {
               await cleanupStaleSession(recovery.staleSessions[sid]);
             }
-            return { retry: true, sessionId: null, orders: [] };
+
+            return {
+              retry: true,
+              sessionId: null,
+              orders: [],
+            };
           }
 
-          return { retry: true, sessionId: null, orders: [] };
+          return {
+            retry: true,
+            sessionId: null,
+            orders: [],
+          };
         }
 
         if (errInfo.code === "ORDER_NOT_FOUND") {
-          setCheckoutState({ cartSessionId: null, orders: [] });
+          setCheckoutState({
+            cartSessionId: null,
+            orders: [],
+          });
+
           sessionStorage.removeItem("aurastore_active_cart_session_id");
         }
 
         if (currentOrders.length > 0) {
-          dispatch(setLastOrder({ orders: currentOrders, totals, paymentMethod }));
+          dispatch(
+            setLastOrder({
+              orders: currentOrders,
+              totals,
+              paymentMethod,
+            }),
+          );
         }
 
         logFailure({
@@ -832,24 +1106,29 @@ export default function CheckoutPage() {
           error: itemErr,
           sessionId: currentSessionId,
           ordersCount: currentOrders.length,
-          nextApiSkipped: "createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
+          nextApiSkipped:
+            "createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
         });
 
         throw Object.assign(new Error(errInfo.message), {
           partialSuccessCount: currentOrders.length,
+
           failedItemTitle: item.title,
+
           code: errInfo.code,
         });
       }
-
-      currentOrders.push(created);
-      if (paymentMethod === "COD") {
-        dispatch(removeFromCart({ productId: item.productId, size: item.size, color: item.color }));
-      }
     }
 
+    // All cart products successfully created
     commitCheckoutSession(currentSessionId, currentOrders);
-    return { retry: false, sessionId: currentSessionId, orders: currentOrders, justCreated: true };
+
+    return {
+      retry: false,
+      sessionId: currentSessionId,
+      orders: currentOrders,
+      justCreated: true,
+    };
   };
 
   const handlePlaceOrder = async () => {
@@ -862,9 +1141,12 @@ export default function CheckoutPage() {
         sessionId: checkoutState.cartSessionId,
         ordersCount: checkoutState.orders.length,
         paymentMethod,
-        nextApi: "createOrderMutation, createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
+        nextApi:
+          "createOrderMutation, createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
       });
-      toast.error("No payment methods are currently available. Please contact the store administrator.");
+      toast.error(
+        "No payment methods are currently available. Please contact the store administrator.",
+      );
       return;
     }
     if (!selectedAddress) {
@@ -874,7 +1156,8 @@ export default function CheckoutPage() {
         sessionId: checkoutState.cartSessionId,
         ordersCount: checkoutState.orders.length,
         paymentMethod,
-        nextApi: "createOrderMutation, createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
+        nextApi:
+          "createOrderMutation, createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
       });
       toast.error("Please select or add a delivery address");
       return;
@@ -888,7 +1171,8 @@ export default function CheckoutPage() {
         sessionId: checkoutState.cartSessionId,
         ordersCount: checkoutState.orders.length,
         paymentMethod,
-        nextApi: "createOrderMutation, createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
+        nextApi:
+          "createOrderMutation, createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
       });
       toast.error("Customer session not found. Please log in.");
       return;
@@ -898,7 +1182,10 @@ export default function CheckoutPage() {
     if (paymentMethod === "ONLINE") {
       logStep("STEP 4: Loading Razorpay SDK");
       const loaded = await loadRazorpayScript();
-      logStep("STEP 5: SDK Ready", { loaded, razorpayType: typeof window.Razorpay });
+      logStep("STEP 5: SDK Ready", {
+        loaded,
+        razorpayType: typeof window.Razorpay,
+      });
       if (!loaded) {
         logExit({
           step: "STEP 4-5 (SDK load)",
@@ -906,9 +1193,12 @@ export default function CheckoutPage() {
           sessionId: checkoutState.cartSessionId,
           ordersCount: checkoutState.orders.length,
           paymentMethod,
-          nextApi: "createOrderMutation, createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
+          nextApi:
+            "createOrderMutation, createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
         });
-        toast.error("Failed to load Razorpay Checkout SDK. Please check your internet connection.");
+        toast.error(
+          "Failed to load Razorpay Checkout SDK. Please check your internet connection.",
+        );
         return;
       }
     } else if (paymentMethod !== "COD") {
@@ -918,7 +1208,8 @@ export default function CheckoutPage() {
         sessionId: checkoutState.cartSessionId,
         ordersCount: checkoutState.orders.length,
         paymentMethod,
-        nextApi: "createOrderMutation, createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
+        nextApi:
+          "createOrderMutation, createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
       });
       toast.error("Invalid payment method.");
       return;
@@ -953,8 +1244,14 @@ export default function CheckoutPage() {
         const MAX_SESSION_ATTEMPTS = 3;
         let sessionResolved = false;
 
-        for (let attempt = 1; attempt <= MAX_SESSION_ATTEMPTS && !sessionResolved; attempt++) {
-          logStep(`STEP 6: createOrderSession attempt ${attempt}/${MAX_SESSION_ATTEMPTS}`);
+        for (
+          let attempt = 1;
+          attempt <= MAX_SESSION_ATTEMPTS && !sessionResolved;
+          attempt++
+        ) {
+          logStep(
+            `STEP 6: createOrderSession attempt ${attempt}/${MAX_SESSION_ATTEMPTS}`,
+          );
           const result = await createOrderSession();
 
           if (!result.retry) {
@@ -975,41 +1272,89 @@ export default function CheckoutPage() {
         }
 
         if (!sessionResolved) {
-          throw Object.assign(new Error("Could not establish a checkout session after multiple attempts. Please try again."), {
-            code: "SESSION_RESOLUTION_FAILED",
-          });
+          throw Object.assign(
+            new Error(
+              "Could not establish a checkout session after multiple attempts. Please try again.",
+            ),
+            {
+              code: "SESSION_RESOLUTION_FAILED",
+            },
+          );
         }
       } else {
-        logStep("STEP 6: Reusing existing checkout session, createOrderMutation skipped", { sessionId: currentSessionId });
+        logStep(
+          "STEP 6: Reusing existing checkout session, createOrderMutation skipped",
+          { sessionId: currentSessionId },
+        );
       }
 
       if (paymentMethod === "COD") {
-        dispatch(setLastOrder({ orders: currentOrders, totals, paymentMethod }));
+        dispatch(
+          setLastOrder({
+            orders: currentOrders,
+            totals,
+            paymentMethod,
+          }),
+        );
+
+        // Login customer DB cart items clear
+        const customerCartItems = items.filter(
+          (item) => item.cartItemId != null,
+        );
+
+        await Promise.allSettled(
+          customerCartItems.map((item) =>
+            dispatch(removeCustomerCartItemThunk(item.cartItemId)).unwrap(),
+          ),
+        );
+
+        // Redux cart clear
         dispatch(clearCart());
+
+        // Guest localStorage cart clear
+        localStorage.removeItem("aurastore_guest_cart");
+
+        // Checkout session clear
+        sessionStorage.removeItem("aurastore_active_cart_session_id");
+
+        await clearCompletedCustomerCart();
+
         toast.success("Order placed successfully!");
+
         updatePhase(CHECKOUT_PHASE.SUCCESS);
-        logExit({
-          step: "STEP 7 (COD complete)",
-          reason: "COD order placed, no online payment needed",
-          sessionId: currentSessionId,
-          ordersCount: currentOrders.length,
-          paymentMethod,
-          nextApi: "createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
+
+        navigate("/order-success", {
+          state: {
+            orders: currentOrders,
+            totals,
+            paymentMethod,
+          },
+          replace: true,
         });
-        navigate("/order-success", { state: { orders: currentOrders, totals, paymentMethod } });
+
         return;
       }
 
       if (!sessionFreshlyVerified) {
         try {
-          const res = await measureApi(
-            "getOrders (dedupe check)",
-            () => storefrontAPI.getOrders()
+          const res = await measureApi("getOrders (dedupe check)", () =>
+            storefrontAPI.getOrders(),
           );
           const customerOrders = res.data?.items || [];
-          const sessionOrders = customerOrders.filter((o) => o.cart_session_id === currentSessionId);
-          if (sessionOrders.length > 0 && sessionOrders.every((o) => o.payment_status === "PAID")) {
-            dispatch(setLastOrder({ orders: sessionOrders, totals, paymentMethod: "ONLINE" }));
+          const sessionOrders = customerOrders.filter(
+            (o) => o.cart_session_id === currentSessionId,
+          );
+          if (
+            sessionOrders.length > 0 &&
+            sessionOrders.every((o) => o.payment_status === "PAID")
+          ) {
+            dispatch(
+              setLastOrder({
+                orders: sessionOrders,
+                totals,
+                paymentMethod: "ONLINE",
+              }),
+            );
             dispatch(clearCart());
             toast.success("Payment already completed!");
             updatePhase(CHECKOUT_PHASE.SUCCESS);
@@ -1019,9 +1364,13 @@ export default function CheckoutPage() {
               sessionId: currentSessionId,
               ordersCount: sessionOrders.length,
               paymentMethod,
-              nextApi: "createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
+              nextApi:
+                "createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
             });
-            navigate("/order-success", { state: { orders: sessionOrders, totals, paymentMethod: "ONLINE" }, replace: true });
+            navigate("/order-success", {
+              state: { orders: sessionOrders, totals, paymentMethod: "ONLINE" },
+              replace: true,
+            });
             return;
           }
         } catch (checkErr) {
@@ -1034,7 +1383,10 @@ export default function CheckoutPage() {
           });
         }
       } else {
-        logStep("STEP 7: Skipping dedupe getOrders() call — session was freshly created/recovered this run", { sessionId: currentSessionId });
+        logStep(
+          "STEP 7: Skipping dedupe getOrders() call — session was freshly created/recovered this run",
+          { sessionId: currentSessionId },
+        );
       }
 
       updatePhase(CHECKOUT_PHASE.CREATING_RAZORPAY_ORDER);
@@ -1047,15 +1399,30 @@ export default function CheckoutPage() {
         customerEmail: customer?.email,
         razorpayExists: typeof window.Razorpay !== "undefined",
       });
-      logApiCall("createRazorpayOrderMutation", { sessionId: currentSessionId, ordersCount: currentOrders.length, paymentMethod });
+      logApiCall("createRazorpayOrderMutation", {
+        sessionId: currentSessionId,
+        ordersCount: currentOrders.length,
+        paymentMethod,
+      });
 
       try {
         rzpOrder = await measureApi(
           "createRazorpayOrderMutation",
-          () => createRazorpayOrderMutation.mutateAsync({ cart_session_id: currentSessionId }),
-          (order) => ({ order_id: order.id, amount: order.amount, currency: order.currency })
+          () =>
+            createRazorpayOrderMutation.mutateAsync({
+              cart_session_id: currentSessionId,
+            }),
+          (order) => ({
+            order_id: order.id,
+            amount: order.amount,
+            currency: order.currency,
+          }),
         );
-        logStep("STEP 9: Received Razorpay Order", { order_id: rzpOrder.id, amount: rzpOrder.amount, currency: rzpOrder.currency });
+        logStep("STEP 9: Received Razorpay Order", {
+          order_id: rzpOrder.id,
+          amount: rzpOrder.amount,
+          currency: rzpOrder.currency,
+        });
       } catch (rzpErr) {
         const errInfo = getPaymentErrorMessage(rzpErr);
         logFailure({
@@ -1076,27 +1443,56 @@ export default function CheckoutPage() {
 
         if (errInfo.code === "UNAUTHORIZED") {
           toast.error(errInfo.message);
-          setTimeout(() => navigate("/login", { state: { from: "/checkout" } }), 3000);
+          setTimeout(
+            () => navigate("/login", { state: { from: "/checkout" } }),
+            3000,
+          );
           return;
         }
 
         if (errInfo.code === "ORDER_ALREADY_PAID") {
           toast.success("Order already paid!");
           updatePhase(CHECKOUT_PHASE.SUCCESS);
-          for (const item of items) {
-            dispatch(removeFromCart({ productId: item.productId, size: item.size, color: item.color }));
-          }
+          // for (const item of items) {
+          //   dispatch(
+          //     removeFromCart({
+          //       productId: item.productId,
+          //       size: item.size,
+          //       color: item.color,
+          //     }),
+          //   );
+          // }
           dispatch(clearCart());
           sessionStorage.removeItem("aurastore_active_cart_session_id");
           try {
             const res = await storefrontAPI.getOrders();
             const customerOrders = res.data?.items || [];
-            const sessionOrders = customerOrders.filter((o) => o.cart_session_id === currentSessionId);
-            dispatch(setLastOrder({ orders: sessionOrders, totals, paymentMethod: "ONLINE" }));
-            navigate("/order-success", { state: { orders: sessionOrders, totals, paymentMethod: "ONLINE" }, replace: true });
+            const sessionOrders = customerOrders.filter(
+              (o) => o.cart_session_id === currentSessionId,
+            );
+            dispatch(
+              setLastOrder({
+                orders: sessionOrders,
+                totals,
+                paymentMethod: "ONLINE",
+              }),
+            );
+            navigate("/order-success", {
+              state: { orders: sessionOrders, totals, paymentMethod: "ONLINE" },
+              replace: true,
+            });
           } catch (e) {
-            dispatch(setLastOrder({ orders: currentOrders, totals, paymentMethod: "ONLINE" }));
-            navigate("/order-success", { state: { orders: currentOrders, totals, paymentMethod: "ONLINE" }, replace: true });
+            dispatch(
+              setLastOrder({
+                orders: currentOrders,
+                totals,
+                paymentMethod: "ONLINE",
+              }),
+            );
+            navigate("/order-success", {
+              state: { orders: currentOrders, totals, paymentMethod: "ONLINE" },
+              replace: true,
+            });
           }
           return;
         }
@@ -1121,7 +1517,11 @@ export default function CheckoutPage() {
         });
       }
 
-      const prereqCheck = validateRazorpayPrerequisites({ sessionId: currentSessionId, orders: currentOrders, rzpOrder });
+      const prereqCheck = validateRazorpayPrerequisites({
+        sessionId: currentSessionId,
+        orders: currentOrders,
+        rzpOrder,
+      });
       if (!prereqCheck.passed) {
         logExit({
           step: "STEP 10 (Razorpay instance)",
@@ -1134,7 +1534,9 @@ export default function CheckoutPage() {
         throw new Error("Razorpay SDK is not initialized. Please try again.");
       }
 
-      logStep("STEP 10: Creating Razorpay instance", { prereqChecks: prereqCheck.checks });
+      logStep("STEP 10: Creating Razorpay instance", {
+        prereqChecks: prereqCheck.checks,
+      });
       const options = {
         key: rzpOrder.key || import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: rzpOrder.amount,
@@ -1147,35 +1549,51 @@ export default function CheckoutPage() {
           setPhase(CHECKOUT_PHASE.VERIFYING);
           try {
             logStep("STEP 13: Calling Verify API");
-            logApiCall("verifyRazorpayPaymentMutation", { sessionId: currentSessionId, ordersCount: currentOrders.length, paymentMethod });
-            
+            logApiCall("verifyRazorpayPaymentMutation", {
+              sessionId: currentSessionId,
+              ordersCount: currentOrders.length,
+              paymentMethod,
+            });
+
             const verifiedOrders = await measureApi(
               "verifyRazorpayPaymentMutation",
-              () => verifyRazorpayPaymentMutation.mutateAsync({
-                cart_session_id: currentSessionId,
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-              })
+              () =>
+                verifyRazorpayPaymentMutation.mutateAsync({
+                  cart_session_id: currentSessionId,
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                }),
             );
-            
+
             logStep("STEP 14: Verification Success", verifiedOrders);
 
             for (const item of items) {
-              dispatch(removeFromCart({ productId: item.productId, size: item.size, color: item.color }));
-            }
-            dispatch(setLastOrder({ orders: verifiedOrders, totals, paymentMethod }));
-            dispatch(clearCart());
-            toast.success("Payment verified and order confirmed!");
+              dispatch(
+                setLastOrder({
+                  orders: verifiedOrders,
+                  totals,
+                  paymentMethod,
+                }),
+              );
+              // Customer DB + Redux + localStorage cart clear
+              await clearCompletedCustomerCart();
+              toast.success("Payment verified and order confirmed!");
 
-            // Transition to VERIFY_SUCCESS phase to show confirmation state
-            setPhase(CHECKOUT_PHASE.VERIFY_SUCCESS);
-            
-            // Short delay (600ms) for polished user experience
-            await new Promise((resolve) => setTimeout(resolve, 600));
-            setPhase(CHECKOUT_PHASE.SUCCESS);
-            logStep("STEP 15: Navigating to Order Success");
-            navigate("/order-success", { state: { orders: verifiedOrders, totals, paymentMethod } });
+              setPhase(CHECKOUT_PHASE.VERIFY_SUCCESS);
+
+              await new Promise((resolve) => setTimeout(resolve, 600));
+              setPhase(CHECKOUT_PHASE.SUCCESS);
+
+              navigate("/order-success", {
+                state: {
+                  orders: verifiedOrders,
+                  totals,
+                  paymentMethod,
+                },
+                replace: true,
+              });
+            }
           } catch (verifyErr) {
             const errInfo = getPaymentErrorMessage(verifyErr);
             logFailure({
@@ -1197,7 +1615,10 @@ export default function CheckoutPage() {
             if (errInfo.code === "UNAUTHORIZED") {
               toast.error(errInfo.message);
               setPhase(CHECKOUT_PHASE.FAILED);
-              setTimeout(() => navigate("/login", { state: { from: "/checkout" } }), 3000);
+              setTimeout(
+                () => navigate("/login", { state: { from: "/checkout" } }),
+                3000,
+              );
               return;
             }
 
@@ -1241,7 +1662,9 @@ export default function CheckoutPage() {
           sessionId: currentSessionId,
           ordersCount: currentOrders.length,
         });
-        toast.error(response.error.description || "Payment failed. Please try again.");
+        toast.error(
+          response.error.description || "Payment failed. Please try again.",
+        );
         setPhase(CHECKOUT_PHASE.FAILED);
       });
       updatePhase(CHECKOUT_PHASE.AWAITING_PAYMENT);
@@ -1267,7 +1690,8 @@ export default function CheckoutPage() {
       const detail =
         err?.partialSuccessCount > 0
           ? `${finalMessage} The other ${err.partialSuccessCount} item(s) were ordered successfully and have been removed from your cart.`
-          : finalMessage || "Something went wrong while processing your payment. Please try again.";
+          : finalMessage ||
+            "Something went wrong while processing your payment. Please try again.";
       dispatch(setOrderError(detail));
       toast.error(detail);
       updatePhase(CHECKOUT_PHASE.FAILED);
@@ -1324,21 +1748,32 @@ export default function CheckoutPage() {
     <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       {/* Screen Reader Live Announcements */}
       <div className="sr-only" role="status" aria-live="polite">
-        {checkoutPhase === CHECKOUT_PHASE.CREATING_ORDERS || checkoutPhase === CHECKOUT_PHASE.CREATING_RAZORPAY_ORDER
+        {checkoutPhase === CHECKOUT_PHASE.CREATING_ORDERS ||
+        checkoutPhase === CHECKOUT_PHASE.CREATING_RAZORPAY_ORDER
           ? "Preparing payment"
           : checkoutPhase === CHECKOUT_PHASE.VERIFYING
-          ? "Verifying payment"
-          : checkoutPhase === CHECKOUT_PHASE.VERIFY_SUCCESS
-          ? "Order confirmed"
-          : ""}
+            ? "Verifying payment"
+            : checkoutPhase === CHECKOUT_PHASE.VERIFY_SUCCESS
+              ? "Order confirmed"
+              : ""}
       </div>
 
       {/* Subtle Awaiting Payment Banner */}
       {checkoutPhase === CHECKOUT_PHASE.AWAITING_PAYMENT && (
         <div className="mb-6 p-4 rounded-xl bg-brand-500/5 border border-brand-500/20 flex items-start gap-3 animate-fade-in">
           <div className="p-1.5 bg-brand-500/10 rounded-lg text-brand-500 shrink-0">
-            <svg className="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            <svg
+              className="w-5 h-5 animate-pulse"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+              />
             </svg>
           </div>
           <div>
@@ -1356,7 +1791,12 @@ export default function CheckoutPage() {
       {paymentMethod === "ONLINE" &&
         (checkoutPhase === CHECKOUT_PHASE.CREATING_ORDERS ||
           checkoutPhase === CHECKOUT_PHASE.CREATING_RAZORPAY_ORDER) && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Preparing secure payment">
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Preparing secure payment"
+          >
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" />
             <div className="relative w-full max-w-md bg-app border border-app rounded-2xl p-8 shadow-2xl flex flex-col items-center text-center gap-4 animate-slide-up">
               <div className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
@@ -1374,7 +1814,16 @@ export default function CheckoutPage() {
       {paymentMethod === "ONLINE" &&
         (checkoutPhase === CHECKOUT_PHASE.VERIFYING ||
           checkoutPhase === CHECKOUT_PHASE.VERIFY_SUCCESS) && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={checkoutPhase === CHECKOUT_PHASE.VERIFYING ? "Verifying payment" : "Order confirmed"}>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label={
+              checkoutPhase === CHECKOUT_PHASE.VERIFYING
+                ? "Verifying payment"
+                : "Order confirmed"
+            }
+          >
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" />
             <div className="relative w-full max-w-md bg-app border border-app rounded-2xl p-8 shadow-2xl flex flex-col items-center text-center gap-4 animate-slide-up">
               {checkoutPhase === CHECKOUT_PHASE.VERIFYING ? (
@@ -1390,16 +1839,24 @@ export default function CheckoutPage() {
               ) : (
                 <>
                   <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center text-green-500">
-                    <svg className="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-6 h-6 animate-pulse"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2.5"
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                   </div>
                   <h3 className="font-display font-bold text-lg text-app mt-2">
                     Order Confirmed
                   </h3>
-                  <p className="text-sm text-muted">
-                    Redirecting...
-                  </p>
+                  <p className="text-sm text-muted">Redirecting...</p>
                 </>
               )}
             </div>
@@ -1422,19 +1879,33 @@ export default function CheckoutPage() {
             ) : (
               <>
                 <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
                   </svg>
                 </div>
                 <h3 className="font-display font-bold text-lg text-app">
                   Recovery Failed
                 </h3>
-                <p className="text-sm text-muted">
-                  {recoveryState.error}
-                </p>
+                <p className="text-sm text-muted">{recoveryState.error}</p>
                 <button
                   type="button"
-                  onClick={() => setRecoveryState({ isRecovering: false, message: "", error: null })}
+                  onClick={() =>
+                    setRecoveryState({
+                      isRecovering: false,
+                      message: "",
+                      error: null,
+                    })
+                  }
                   className="mt-2 h-10 px-6 bg-brand-500 hover:bg-brand-600 focus-visible:outline-none text-white font-semibold text-sm rounded-full transition-colors"
                 >
                   Close & Try Again
@@ -1538,8 +2009,12 @@ export default function CheckoutPage() {
           <button
             type="button"
             onClick={() => handlePlaceOrder()}
-            disabled={submitting || placingOrder || paymentMethodsList.length === 0}
-            aria-disabled={submitting || placingOrder || paymentMethodsList.length === 0}
+            disabled={
+              submitting || placingOrder || paymentMethodsList.length === 0
+            }
+            aria-disabled={
+              submitting || placingOrder || paymentMethodsList.length === 0
+            }
             className="w-full h-12 flex items-center justify-center bg-brand-500 hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 text-white font-semibold text-sm rounded-full shadow-glow-sm transition-colors"
           >
             {getButtonText()}
