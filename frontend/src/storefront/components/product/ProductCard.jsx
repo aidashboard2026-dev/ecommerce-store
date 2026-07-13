@@ -3,17 +3,23 @@ import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Heart, ShoppingBag, Star } from "lucide-react";
 import clsx from "clsx";
+
 import { getImageUrl, formatPrice } from "@/shared/utils/productUtils";
+
 import {
   toggleWishlist,
   selectIsWishlisted,
 } from "@/storefront/store/wishlistSlice";
+
 import { addToCart } from "@/storefront/store/cartSlice";
+
 import { addCustomerCartItemThunk } from "@/storefront/store/customerCartThunks";
+
 import {
   addCustomerWishlistItemThunk,
   removeCustomerWishlistItemThunk,
 } from "@/storefront/store/customerWishlistThunks";
+
 import toast from "react-hot-toast";
 
 function ProductCard({ product }) {
