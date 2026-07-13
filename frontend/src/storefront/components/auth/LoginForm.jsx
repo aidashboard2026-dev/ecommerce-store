@@ -6,10 +6,6 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import {
   clearCustomerError,
-<<<<<<< Updated upstream
-  setCustomerSession,
-=======
->>>>>>> Stashed changes
   setCredentials,
 } from "@/storefront/store/customerSlice";
 import { googleLogin, login, logout } from "@/firebase/auth";
@@ -51,7 +47,7 @@ export default function LoginForm() {
     axios.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
 
     dispatch(
-      setCustomerSession({
+      setCredentials({
         customer: responseData.customer,
         token: accessToken,
       }),
@@ -91,7 +87,6 @@ export default function LoginForm() {
     try {
       // Convert saved JSON to object
 
-<<<<<<< Updated upstream
       const profile = JSON.parse(pendingProfile);
 
       // Save customer details
@@ -195,11 +190,6 @@ export default function LoginForm() {
       } else {
         const errorMsg = resultAction.payload || "Invalid email or password.";
         toast.error(errorMsg);
-=======
-      // Email Verification Check
-      if (!email.endsWith("@example.com") && !credential.user.emailVerified) {
-        toast.error("Please verify your email before login.");
->>>>>>> Stashed changes
         return;
       }
 
@@ -209,16 +199,8 @@ export default function LoginForm() {
       const userCredential = await login(
         normalizedEmail,
 
-<<<<<<< Updated upstream
         password,
       );
-=======
-      // Dispatch credentials to Redux (which also saves to localStorage)
-      dispatch(setCredentials({
-        token: res.data.access_token,
-        customer: res.data.customer
-      }));
->>>>>>> Stashed changes
 
       const firebaseUser = userCredential.user;
 
@@ -276,16 +258,8 @@ export default function LoginForm() {
 
       const userCredential = await googleLogin();
 
-<<<<<<< Updated upstream
       // Connect Firebase
       // account to backend
-=======
-      // Dispatch credentials to Redux (which also saves to localStorage)
-      dispatch(setCredentials({
-        token: res.data.access_token,
-        customer: res.data.customer
-      }));
->>>>>>> Stashed changes
 
       await connectFirebaseToBackend(userCredential.user);
       await dispatch(syncCustomerCollectionsThunk(),).unwrap();
@@ -532,11 +506,7 @@ export default function LoginForm() {
               disabled={isLoading}
               onClick={() => setShowPassword((current) => !current)}
               aria-label={showPassword ? "Hide password" : "Show password"}
-<<<<<<< Updated upstream
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-muted hover:text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-full transition-colors disabled:opacity-50"
-=======
               className="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-muted hover:text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-full transition-colors"
->>>>>>> Stashed changes
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
@@ -562,13 +532,8 @@ export default function LoginForm() {
 
           <button
             type="submit"
-<<<<<<< Updated upstream
             disabled={isLoading}
-            className="w-full h-12 inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 text-white font-semibold text-sm rounded-full shadow-glow-sm transition-colors mt-2"
-=======
-            disabled={loading}
             className="w-full h-12 flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 text-white font-semibold text-sm rounded-full shadow-glow-sm transition-colors mt-2"
->>>>>>> Stashed changes
           >
             {loadingType === "email" ? (
               <Loader2
@@ -627,11 +592,7 @@ export default function LoginForm() {
             type="button"
             disabled={isLoading}
             onClick={handleGoogleLogin}
-<<<<<<< Updated upstream
             className="w-full h-12 inline-flex items-center justify-center gap-2 border border-app rounded-full font-medium hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 transition text-sm text-app"
-=======
-            className="w-full h-12 flex items-center justify-center mt-3 border border-app rounded-xl font-medium hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition"
->>>>>>> Stashed changes
           >
             {loadingType === "google" ? (
               <>
