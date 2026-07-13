@@ -123,11 +123,14 @@ export const fetchCustomerMeThunk = createAsyncThunk(
   {
     condition: (_, { getState }) => {
       const { customer } = getState();
+
       if (customer.loading) {
         return false;
       }
-    }
-  }
+
+      return true;
+    },
+  },
 );
 
 export const updateCustomerProfileThunk = createAsyncThunk(
@@ -154,17 +157,6 @@ const customerSlice = createSlice({
   name: "customer",
   initialState,
   reducers: {
-    setCustomerSession(state, action) {
-      const { customer, token } = action.payload;
-
-      state.customer = customer;
-      state.token = token;
-      state.initialized = true;
-      state.loading = false;
-      state.error = null;
-
-      persistSession({ customer, token });
-    },
     setCredentials(state, action) {
       const { customer, token } = action.payload;
 
@@ -276,7 +268,6 @@ export const {
   clearCustomerError,
   customerLogout,
   initializeCustomerAuth,
-  setCustomerSession,
   setCredentials,
 } = customerSlice.actions;
 

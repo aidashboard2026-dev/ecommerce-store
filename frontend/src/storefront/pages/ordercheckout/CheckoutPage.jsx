@@ -1,4 +1,8 @@
+<<<<<<< Updated upstream
 import React, { useMemo, useEffect, useRef, useState } from "react";
+=======
+import React, { useEffect, useRef, useState } from "react";
+>>>>>>> Stashed changes
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useQuery } from "@tanstack/react-query";
@@ -103,6 +107,71 @@ const logGroupedApi = (apiName, isSuccess, elapsedMs, error = null) => {
 // ============================================================================
 // SDK & ERROR HELPERS
 // ============================================================================
+
+// ============================================================================
+// SDK & ERROR HELPERS
+// ============================================================================
+
+// ============================================================================
+// LOGGING HELPERS
+// ============================================================================
+
+const debugLog = (...args) => {
+  if (import.meta.env.DEV) {
+    console.log(...args);
+  }
+};
+
+const debugError = (...args) => {
+  if (import.meta.env.DEV) {
+    console.error(...args);
+  }
+};
+
+const debugApi = (...args) => {
+  if (import.meta.env.DEV) {
+    console.log(...args);
+  }
+};
+
+const logStep = (step, details = {}) => {
+  debugLog(`[Checkout STEP] ${step}`, details);
+};
+
+const logApiCall = (apiName, { sessionId, ordersCount, paymentMethod }) => {
+  debugApi("[Checkout API CALL]", {
+    "API Being Called": apiName,
+    "Current Session": sessionId,
+    "Orders Count": ordersCount,
+    "Payment Method": paymentMethod,
+  });
+};
+
+const logApiResult = (apiName, result, elapsedMs, details = {}) => {
+  debugApi(`[Checkout API RESULT] ${apiName} -> ${result} (${elapsedMs}ms)`, details);
+};
+
+const logExit = ({ step, reason, sessionId, ordersCount, paymentMethod, nextApi }) => {
+  debugLog("EXIT");
+  debugLog("Current Step:", step);
+  debugLog("Reason:", reason);
+  debugLog("Session ID:", sessionId);
+  debugLog("Orders Created:", ordersCount);
+  debugLog("Payment Method:", paymentMethod);
+  debugLog("Next API That Will NOT Execute:", nextApi);
+};
+
+const logFailure = ({ step, error, sessionId, ordersCount, nextApiSkipped }) => {
+  debugError("CHECKOUT FAILURE");
+  debugError("Current Step:", step);
+  debugError("HTTP Status:", error?.response?.status ?? "N/A");
+  debugError("Backend Code:", error?.response?.data?.code ?? error?.code ?? "N/A");
+  debugError("Backend Message:", error?.response?.data?.message || error?.response?.data?.detail || error?.message || "N/A");
+  debugError("Stack Trace:", error?.stack);
+  debugError("Session ID:", sessionId);
+  debugError("Current Orders:", ordersCount);
+  debugError("Next API Skipped:", nextApiSkipped);
+};
 
 // ============================================================================
 // SDK & ERROR HELPERS
@@ -214,7 +283,10 @@ const CHECKOUT_PHASE = {
   CREATING_RAZORPAY_ORDER: "CREATING_RAZORPAY_ORDER",
   AWAITING_PAYMENT: "AWAITING_PAYMENT",
   VERIFYING: "VERIFYING",
+<<<<<<< Updated upstream
   VERIFY_SUCCESS: "VERIFY_SUCCESS",
+=======
+>>>>>>> Stashed changes
   SUCCESS: "SUCCESS",
   FAILED: "FAILED",
 };
@@ -225,7 +297,10 @@ const LOADING_PHASES = new Set([
   CHECKOUT_PHASE.CREATING_RAZORPAY_ORDER,
   CHECKOUT_PHASE.AWAITING_PAYMENT,
   CHECKOUT_PHASE.VERIFYING,
+<<<<<<< Updated upstream
   CHECKOUT_PHASE.VERIFY_SUCCESS,
+=======
+>>>>>>> Stashed changes
 ]);
 
 const EMPTY_CHECKOUT_FORM = {
@@ -290,7 +365,10 @@ const buildOrderPayload = ({
   paymentMethod,
   form,
   sessionId,
+<<<<<<< Updated upstream
   shippingFee = 0,
+=======
+>>>>>>> Stashed changes
 }) => ({
   customer_name: selectedAddress.full_name,
   customer_email: customer?.email || form.email || null,
@@ -308,8 +386,12 @@ const buildOrderPayload = ({
   color: item.color,
   quantity: item.quantity,
   price: item.sellingPrice,
+<<<<<<< Updated upstream
   shipping_fee: shippingFee,
   total_amount: (item.sellingPrice * item.quantity) + shippingFee,
+=======
+  total_amount: item.sellingPrice * item.quantity,
+>>>>>>> Stashed changes
   payment_method: paymentMethod,
   payment_status: "PENDING",
   tracking_status: "PLACED",
@@ -326,12 +408,18 @@ const measureApi = async (apiName, apiCall, getSuccessDetails = () => ({}), getF
     const result = await apiCall();
     const elapsed = Date.now() - start;
     logApiResult(apiName, "SUCCESS", elapsed, getSuccessDetails(result));
+<<<<<<< Updated upstream
     logGroupedApi(apiName, true, elapsed);
+=======
+>>>>>>> Stashed changes
     return result;
   } catch (error) {
     const elapsed = Date.now() - start;
     logApiResult(apiName, "FAILED", elapsed, getFailureDetails(error));
+<<<<<<< Updated upstream
     logGroupedApi(apiName, false, elapsed, error);
+=======
+>>>>>>> Stashed changes
     throw error;
   }
 };
@@ -447,6 +535,7 @@ export default function CheckoutPage() {
     email: customer?.email || "",
   });
 
+<<<<<<< Updated upstream
   useEffect(() => {
     const isOverlayActive = paymentMethod === "ONLINE" && (
       checkoutPhase === CHECKOUT_PHASE.CREATING_ORDERS ||
@@ -687,6 +776,203 @@ export default function CheckoutPage() {
   const isFirstInputsCheckRef = useRef(true);
 
   useEffect(() => {
+=======
+  // Single point of truth for loading state.
+  const setPhase = (phase, meta = {}) => {
+    setCheckoutPhase(phase);
+    const isLoading = LOADING_PHASES.has(phase);
+    setSubmitting(isLoading);
+    dispatch(setPlacingOrder(isLoading));
+    debugLog(`[Checkout PHASE] -> ${phase}`, meta);
+  };
+
+  // ============================================================================
+  // API & STATE HELPERS (COMPONENT BOUND)
+  // ============================================================================
+
+  const persistOrderItem = async (item, sessionId) => {
+    const payload = buildOrderPayload({
+      item,
+      customer,
+      selectedAddress,
+      paymentMethod,
+      form,
+      sessionId,
+    });
+    logApiCall("createOrderMutation", { sessionId, ordersCount: undefined, paymentMethod });
+    return measureApi(
+      "createOrderMutation",
+      () => createOrderMutation.mutateAsync(payload),
+      (created) => ({ orderId: created?.id, item: item.title }),
+      () => ({ item: item.title })
+    );
+  };
+
+  const commitCheckoutSession = (sessionId, orders) => {
+    setCheckoutState({ cartSessionId: sessionId, orders });
+    sessionStorage.setItem("aurastore_active_cart_session_id", sessionId);
+  };
+
+  const cleanupStaleSession = async (ordersList) => {
+    logStep("Cleaning up confirmed-stale session", { orderIds: ordersList.map((o) => o.id) });
+    try {
+      await Promise.all(ordersList.map((order) => storefrontAPI.cancelOrder(order.id)));
+    } catch (err) {
+      logFailure({
+        step: "cleanupStaleSession",
+        error: err,
+        sessionId: null,
+        ordersCount: ordersList.length,
+        nextApiSkipped: "none — cleanup is best-effort",
+      });
+    }
+  };
+
+  // ============================================================================
+  // MOUNT RECOVERY & SESSION MANAGEMENT
+  // ============================================================================
+
+  const isPaidSession = (sessionOrders) => {
+    return sessionOrders.length > 0 && sessionOrders.every((o) => o.payment_status === "PAID");
+  };
+
+  const findMatchingSession = (customerOrders, activeSessionId) => {
+    if (activeSessionId) {
+      const sessionOrders = customerOrders.filter(
+        (o) => o.cart_session_id === activeSessionId && o.tracking_status !== "CANCELLED"
+      );
+      if (sessionOrders.length > 0 && cartMatchesOrders(sessionOrders, items)) {
+        return { sessionId: activeSessionId, orders: sessionOrders, type: "active" };
+      }
+    }
+
+    const otherPendingOrders = customerOrders.filter(
+      (o) => isActivePendingOrder(o) && o.cart_session_id
+    );
+    if (otherPendingOrders.length > 0) {
+      const sessions = groupOrdersBySession(otherPendingOrders);
+      const recoveredSessionId = Object.keys(sessions)[0];
+      const sessionOrders = sessions[recoveredSessionId];
+      if (cartMatchesOrders(sessionOrders, items)) {
+        return { sessionId: recoveredSessionId, orders: sessionOrders, type: "other" };
+      }
+    }
+    return null;
+  };
+
+  const resumeExistingCheckout = (customerOrders, activeSessionId) => {
+    if (activeSessionId) {
+      const sessionOrders = customerOrders.filter(
+        (o) => o.cart_session_id === activeSessionId && o.tracking_status !== "CANCELLED"
+      );
+      if (isPaidSession(sessionOrders)) {
+        dispatch(setLastOrder({ orders: sessionOrders, totals, paymentMethod: "ONLINE" }));
+        dispatch(clearCart());
+        sessionStorage.removeItem("aurastore_active_cart_session_id");
+        navigate("/order-success", {
+          state: { orders: sessionOrders, totals, paymentMethod: "ONLINE" },
+          replace: true,
+        });
+        logStep("Mount recovery: existing session already PAID, navigated to order-success");
+        return true;
+      }
+    }
+
+    const match = findMatchingSession(customerOrders, activeSessionId);
+    if (match) {
+      if (match.type === "active") {
+        setCheckoutState({ cartSessionId: match.sessionId, orders: match.orders });
+        logStep("Mount recovery: resumed matching pending session", { sessionId: match.sessionId });
+      } else {
+        sessionStorage.setItem("aurastore_active_cart_session_id", match.sessionId);
+        setCheckoutState({ cartSessionId: match.sessionId, orders: match.orders });
+        toast.success("Resumed your previous pending checkout session.");
+        logStep("Mount recovery: resumed other-tab pending session", { sessionId: match.sessionId });
+      }
+      return true;
+    }
+
+    if (activeSessionId) {
+      const sessionOrders = customerOrders.filter(
+        (o) => o.cart_session_id === activeSessionId && o.tracking_status !== "CANCELLED"
+      );
+      if (sessionOrders.length > 0) {
+        setCheckoutState({ cartSessionId: null, orders: [] });
+        sessionStorage.removeItem("aurastore_active_cart_session_id");
+        logStep("Mount recovery: local session cleared (cart no longer matches); no backend mutation performed");
+      }
+    }
+
+    const otherPendingOrders = customerOrders.filter(
+      (o) => isActivePendingOrder(o) && o.cart_session_id
+    );
+    if (otherPendingOrders.length > 0) {
+      const sessions = groupOrdersBySession(otherPendingOrders);
+      logStep("Mount recovery: other pending sessions found but do not match cart — leaving untouched (no cleanup on mount)", {
+        sessionIds: Object.keys(sessions),
+      });
+    }
+    return false;
+  };
+
+  const recoverActiveSession = async () => {
+    setRecoveryState({
+      isRecovering: true,
+      message: "Reconnecting to your previous checkout. Please wait...",
+      error: null,
+    });
+    try {
+      const res = await measureApi(
+        "getOrders (recovery)",
+        () => storefrontAPI.getOrders()
+      );
+      const customerOrders = res.data?.items || [];
+      const otherPendingOrders = customerOrders.filter(
+        (o) => isActivePendingOrder(o) && o.cart_session_id
+      );
+
+      if (otherPendingOrders.length === 0) {
+        setRecoveryState((prev) => ({ ...prev, isRecovering: false }));
+        return { status: "none" };
+      }
+
+      const sessions = groupOrdersBySession(otherPendingOrders);
+      const recoveredSessionId = Object.keys(sessions)[0];
+      const sessionOrders = sessions[recoveredSessionId];
+
+      if (cartMatchesOrders(sessionOrders, items)) {
+        commitCheckoutSession(recoveredSessionId, sessionOrders);
+        setRecoveryState((prev) => ({ ...prev, isRecovering: false }));
+        return { status: "resumed", sessionId: recoveredSessionId, orders: sessionOrders };
+      }
+
+      setRecoveryState((prev) => ({ ...prev, isRecovering: false }));
+      return { status: "mismatch", staleSessions: sessions };
+    } catch (recoveryErr) {
+      const recErrInfo = getPaymentErrorMessage(recoveryErr);
+      setRecoveryState({ isRecovering: true, message: "", error: recErrInfo.message });
+      throw Object.assign(new Error(recErrInfo.message), { code: recErrInfo.code });
+    }
+  };
+
+  // ============================================================================
+  // CHECKSUM & SIGNATURE GENERATION
+  // ============================================================================
+
+  const buildInputsSignature = () => {
+    const itemsPart = items.map((i) => `${i.productId}:${i.size}:${i.color}:${i.quantity}`).join("|");
+    const addressPart = selectedAddress
+      ? `${selectedAddress.id || ""}:${selectedAddress.address_line1 || selectedAddress.address || ""}:${selectedAddress.pincode || ""}`
+      : "null";
+    const paymentPart = paymentMethod || "";
+    return `${itemsPart}#${addressPart}#${paymentPart}`;
+  };
+
+  const inputsSignatureRef = useRef(buildInputsSignature());
+  const isFirstInputsCheckRef = useRef(true);
+
+  useEffect(() => {
+>>>>>>> Stashed changes
     const newSignature = buildInputsSignature();
     if (isFirstInputsCheckRef.current) {
       isFirstInputsCheckRef.current = false;
@@ -719,7 +1005,10 @@ export default function CheckoutPage() {
   // ============================================================================
 
   useEffect(() => {
+<<<<<<< Updated upstream
     if (!customer || !token) return;
+=======
+>>>>>>> Stashed changes
     let isMounted = true;
     setPhase(CHECKOUT_PHASE.RECOVERING, { source: "mount" });
 
@@ -783,12 +1072,19 @@ export default function CheckoutPage() {
     const currentSessionId = crypto.randomUUID();
     const currentOrders = [];
 
+<<<<<<< Updated upstream
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const itemShippingFee = i === 0 ? totals.shipping : 0;
       let created;
       try {
         created = await persistOrderItem(item, currentSessionId, itemShippingFee);
+=======
+    for (const item of items) {
+      let created;
+      try {
+        created = await persistOrderItem(item, currentSessionId);
+>>>>>>> Stashed changes
       } catch (itemErr) {
         const errInfo = getPaymentErrorMessage(itemErr);
 
@@ -855,6 +1151,7 @@ export default function CheckoutPage() {
   const handlePlaceOrder = async () => {
     logStep("STEP 1: Entered handlePlaceOrder()");
 
+<<<<<<< Updated upstream
     if (paymentMethodsList.length === 0) {
       logExit({
         step: "STEP 1.5 (payment method availability check)",
@@ -867,6 +1164,8 @@ export default function CheckoutPage() {
       toast.error("No payment methods are currently available. Please contact the store administrator.");
       return;
     }
+=======
+>>>>>>> Stashed changes
     if (!selectedAddress) {
       logExit({
         step: "STEP 2 (address check)",
@@ -1080,6 +1379,7 @@ export default function CheckoutPage() {
           return;
         }
 
+<<<<<<< Updated upstream
         if (errInfo.code === "ORDER_ALREADY_PAID") {
           toast.success("Order already paid!");
           updatePhase(CHECKOUT_PHASE.SUCCESS);
@@ -1100,6 +1400,8 @@ export default function CheckoutPage() {
           }
           return;
         }
+=======
+>>>>>>> Stashed changes
         if (errInfo.code === "ORDER_NOT_FOUND") {
           setCheckoutState({ cartSessionId: null, orders: [] });
           sessionStorage.removeItem("aurastore_active_cart_session_id");
@@ -1136,10 +1438,17 @@ export default function CheckoutPage() {
 
       logStep("STEP 10: Creating Razorpay instance", { prereqChecks: prereqCheck.checks });
       const options = {
+<<<<<<< Updated upstream
         key: rzpOrder.key || import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: rzpOrder.amount,
         currency: rzpOrder.currency,
         name: import.meta.env.VITE_STORE_NAME || "My Designers",
+=======
+        key: rzpOrder.key,
+        amount: rzpOrder.amount,
+        currency: rzpOrder.currency,
+        name: "AuraStore",
+>>>>>>> Stashed changes
         description: "Order Checkout Payment",
         order_id: rzpOrder.id,
         handler: async (response) => {
@@ -1168,11 +1477,14 @@ export default function CheckoutPage() {
             dispatch(clearCart());
             toast.success("Payment verified and order confirmed!");
 
+<<<<<<< Updated upstream
             // Transition to VERIFY_SUCCESS phase to show confirmation state
             setPhase(CHECKOUT_PHASE.VERIFY_SUCCESS);
             
             // Short delay (600ms) for polished user experience
             await new Promise((resolve) => setTimeout(resolve, 600));
+=======
+>>>>>>> Stashed changes
             setPhase(CHECKOUT_PHASE.SUCCESS);
             logStep("STEP 15: Navigating to Order Success");
             navigate("/order-success", { state: { orders: verifiedOrders, totals, paymentMethod } });
@@ -1234,6 +1546,7 @@ export default function CheckoutPage() {
       };
 
       const rzp = new window.Razorpay(options);
+<<<<<<< Updated upstream
       rzp.on("payment.failed", (response) => {
         logFailure({
           step: "Razorpay payment.failed event",
@@ -1244,6 +1557,8 @@ export default function CheckoutPage() {
         toast.error(response.error.description || "Payment failed. Please try again.");
         setPhase(CHECKOUT_PHASE.FAILED);
       });
+=======
+>>>>>>> Stashed changes
       updatePhase(CHECKOUT_PHASE.AWAITING_PAYMENT);
       logStep("STEP 11: Opening Razorpay popup");
       rzp.open();
@@ -1322,6 +1637,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+<<<<<<< Updated upstream
       {/* Screen Reader Live Announcements */}
       <div className="sr-only" role="status" aria-live="polite">
         {checkoutPhase === CHECKOUT_PHASE.CREATING_ORDERS || checkoutPhase === CHECKOUT_PHASE.CREATING_RAZORPAY_ORDER
@@ -1405,6 +1721,8 @@ export default function CheckoutPage() {
             </div>
           </div>
         )}
+=======
+>>>>>>> Stashed changes
       {recoveryState.isRecovering && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" />
@@ -1538,8 +1856,12 @@ export default function CheckoutPage() {
           <button
             type="button"
             onClick={() => handlePlaceOrder()}
+<<<<<<< Updated upstream
             disabled={submitting || placingOrder || paymentMethodsList.length === 0}
             aria-disabled={submitting || placingOrder || paymentMethodsList.length === 0}
+=======
+            disabled={submitting || placingOrder}
+>>>>>>> Stashed changes
             className="w-full h-12 flex items-center justify-center bg-brand-500 hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 text-white font-semibold text-sm rounded-full shadow-glow-sm transition-colors"
           >
             {getButtonText()}

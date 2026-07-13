@@ -115,7 +115,7 @@ const StoreHeaderComponent = function StoreHeader({
       if (showSearch) setShowSearch(false);
     };
     document.addEventListener("keydown", onKey);
-    return () => document.keydown || document.removeEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, [mobileMenuOpen, profileMenuOpen, showSearch]);
 
   // ── Click outside (profile dropdown + desktop search) ─────────────────────
@@ -317,7 +317,6 @@ const StoreHeaderComponent = function StoreHeader({
                   )}
                 </button>
 
-                {/* ✅ Fixed: now driven by profileMenuOpen state */}
                 {profileMenuOpen && (
                   <div
                     className="absolute right-0 mt-1.5 w-56 bg-app border border-app rounded-xl shadow-lg py-2 animate-fade-in z-50"
