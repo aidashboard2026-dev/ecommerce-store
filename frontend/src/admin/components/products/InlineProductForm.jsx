@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 import { productsAPI as productsApi, categoriesAPI, collectionsAPI } from '@/shared/services/api'
 import {
   formatPrice, getImageUrl, revokeObjectURLs, genLocalId, isDuplicateFile,
+  getApiErrorMessage,
 } from '@/shared/utils/productUtils'
 import useBusinessLimits from '@/shared/hooks/useBusinessLimits'
 import ImageUploadModal from './ImageUploadModal'
@@ -89,9 +90,9 @@ function StyledSelect({ children, className, ...props }) {
 
 // ─── Stock badge ──────────────────────────────────────────────────────────────
 
-function StockBadge({ stock }) {
+function StockBadge({ stock, threshold = 5 }) {
   if (stock === 0) return <Badge label="Out"             variant="danger"  dot />
-  if (stock <= 5)  return <Badge label={`${stock} Low`}  variant="warning" dot />
+  if (stock <= threshold)  return <Badge label={`${stock} Low`}  variant="warning" dot />
   return                   <Badge label={`${stock} stock`} variant="success" />
 }
 
@@ -173,6 +174,8 @@ function LocalVariantForm({ onAdd, existingVariants = [], limits }) {
     if (priceErr) { toast.error('Selling price cannot exceed original price'); return }
     const stockQty = parseInt(form.stock_quantity || 0, 10)
     if (stockQty < 0) { toast.error('Stock cannot be negative'); return }
+    const lowStockAlert = parseInt(form.low_stock_threshold || 0, 10)
+    if (lowStockAlert < 0) { toast.error('Low stock alert cannot be negative'); return }
     const dupExists = existingVariants.some(
       v => v.size === form.size && (v.color || '') === (form.color || '')
     )
@@ -249,7 +252,7 @@ function LocalVariantForm({ onAdd, existingVariants = [], limits }) {
         </FormField>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <FormField label="Original Price" required>
           {/* Branch: added number spinner suppression classes */}
           <StyledInput
@@ -281,6 +284,14 @@ function LocalVariantForm({ onAdd, existingVariants = [], limits }) {
             type="number" min="0"
             value={form.stock_quantity} onChange={e => set('stock_quantity', e.target.value)}
             placeholder="Enter Stock Quantity"
+            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+        </FormField>
+        <FormField label="Low Stock Alert">
+          <StyledInput
+            type="number" min="0"
+            value={form.low_stock_threshold} onChange={e => set('low_stock_threshold', e.target.value)}
+            placeholder="5"
             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
         </FormField>
@@ -513,13 +524,13 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
   const editMutation = useMutation({
     mutationFn: data => productsApi.update(product.id, data),
     onSuccess: () => { toast.success('Product updated successfully.'); qc.invalidateQueries({ queryKey: ['products'] }); qc.invalidateQueries({ queryKey: ['product'] }); onClose() },
-    onError: e => toast.error(e.response?.data?.detail || 'Something went wrong'),
+    onError: e => toast.error(getApiErrorMessage(e, 'Something went wrong')),
   })
 
   const editPubMutation = useMutation({
     mutationFn: data => productsApi.update(product.id, { ...data, status: 'published' }),
     onSuccess: () => { toast.success('Product published successfully.'); qc.invalidateQueries({ queryKey: ['products'] }); qc.invalidateQueries({ queryKey: ['product'] }); onClose() },
-    onError: e => toast.error(e.response?.data?.detail || 'Something went wrong'),
+    onError: e => toast.error(getApiErrorMessage(e, 'Something went wrong')),
   })
 
   // ─── Variant delete mutation (edit mode) ──────────────────────────────────────
@@ -531,7 +542,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
       const s = new Set(prev); s.delete(variantId); return s
     }),
     onSuccess: () => { toast.success('Variant deleted successfully.'); qc.invalidateQueries({ queryKey: ['products'] }); qc.invalidateQueries({ queryKey: ['product'] }) },
-    onError: e => toast.error(e.response?.data?.detail || 'Failed to delete variant'),
+    onError: e => toast.error(getApiErrorMessage(e, 'Failed to delete variant')),
   })
 
   // ─── New product: batch save ──────────────────────────────────────────────────
@@ -595,8 +606,9 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
       updateStep('create-product', { status: 'done' })
     } catch (e) {
       isCriticalFailureRef.current = true
-      updateStep('create-product', { status: 'error', details: e.response?.data?.detail || 'Failed to create product' })
-      toast.error(e.response?.data?.detail || 'Failed to create product')
+      const errorMsg = getApiErrorMessage(e, 'Failed to create product')
+      updateStep('create-product', { status: 'error', details: errorMsg })
+      toast.error(errorMsg)
       isSavingRef.current = false
       return
     }
@@ -660,11 +672,12 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
         }
       } catch (e) {
         hadPartialFailure = true
+        const errorMsg = getApiErrorMessage(e, 'Variant creation failed')
         updateStep('create-variants', {
           status:  'error',
-          details: e.response?.data?.detail || 'Variant creation failed',
+          details: errorMsg,
         })
-        toast.error('Variant creation failed — add them later via Edit')
+        toast.error(`Product created successfully. However, variants could not be created. Reason: ${errorMsg}`)
       }
     }
 
@@ -1000,7 +1013,7 @@ export default function InlineProductForm({ product, onClose, onOpenVariant, onO
                           {v.discount_percentage ? `${parseFloat(v.discount_percentage).toFixed(0)}%` : '—'}
                         </TableCell>
                         <TableCell className="font-semibold">
-                          {isEdit ? <StockBadge stock={v.stock_quantity} /> : <span>{v.stock_quantity}</span>}
+                          <StockBadge stock={v.stock_quantity} threshold={v.low_stock_threshold} />
                         </TableCell>
                         <TableCell>
                           {isEdit ? (

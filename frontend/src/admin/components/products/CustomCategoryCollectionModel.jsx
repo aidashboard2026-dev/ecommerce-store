@@ -19,6 +19,7 @@ import Modal from '@/shared/components/ui/Modal'
 import { customCategoriesAPI } from '@/shared/services/api'
 import useBusinessLimits from '@/shared/hooks/useBusinessLimits'
 import { getStructuralLimitMessage } from '@/shared/utils/limitMessages'
+import { getApiErrorMessage } from '@/shared/utils/productUtils'
 
 // ─── Editable row ──────────────────────────────────────────────────────────────
 
@@ -195,7 +196,7 @@ export default function CustomCategoryCollectionModel({ isOpen, onClose }) {
   const createCategory = useMutation({
     mutationFn: (name) => customCategoriesAPI.create({ name, status: 'active' }),
     onSuccess: () => { toast.success('Category created successfully.'); invalidate() },
-    onError: e => toast.error(e.response?.data?.detail || 'Failed to create category'),
+    onError: e => toast.error(getApiErrorMessage(e, 'Failed to create category')),
   })
 
   const updateCategory = useMutation({
@@ -203,7 +204,7 @@ export default function CustomCategoryCollectionModel({ isOpen, onClose }) {
     onMutate:  ({ id }) => setSavingId(id),
     onSettled: ()       => setSavingId(null),
     onSuccess: () => { toast.success('Category updated.'); invalidate() },
-    onError: e => toast.error(e.response?.data?.detail || 'Failed to update category'),
+    onError: e => toast.error(getApiErrorMessage(e, 'Failed to update category')),
   })
 
   const deleteCategory = useMutation({
@@ -211,7 +212,7 @@ export default function CustomCategoryCollectionModel({ isOpen, onClose }) {
     onMutate:  (id) => setDeletingId(id),
     onSettled: ()   => setDeletingId(null),
     onSuccess: () => { toast.success('Category deleted.'); invalidate() },
-    onError: e => toast.error(e.response?.data?.detail || 'Failed to delete category'),
+    onError: e => toast.error(getApiErrorMessage(e, 'Failed to delete category')),
   })
 
   // ── Derived state ─────────────────────────────────────────────────────────

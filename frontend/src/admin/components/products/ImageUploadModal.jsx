@@ -7,7 +7,7 @@ import {
 import toast from 'react-hot-toast'
 import Modal from '@/shared/components/ui/Modal'
 import { productsAPI as productsApi } from '@/shared/services/api'
-import { getImageUrl } from '@/shared/utils/productUtils'
+import { getImageUrl, getApiErrorMessage } from '@/shared/utils/productUtils'
 import useBusinessLimits from '@/shared/hooks/useBusinessLimits'
 
 /**
@@ -401,7 +401,7 @@ export default function ImageUploadModal({
       invalidateEntityQueries()
       clearSelection()
     },
-    onError: e => toast.error(e.response?.data?.detail || 'Upload failed'),
+    onError: e => toast.error(getApiErrorMessage(e, 'Upload failed')),
   })
 
   // ── Delete single image mutation ──────────────────────────────────────────────

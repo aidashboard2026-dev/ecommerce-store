@@ -92,3 +92,50 @@ export function useDebounce(value, delay = 400) {
   }, [value, delay])
   return debounced
 }
+
+export function getApiErrorMessage(error, fallback = "Something went wrong") {
+  if (!error) return fallback;
+
+  // Extract from Axios/Fetch response data
+  const responseData = error.response?.data;
+  const detail = responseData?.detail;
+
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  if (Array.isArray(detail)) {
+    return detail.map(item => {
+      if (typeof item === 'string') return item;
+      if (item && typeof item === 'object') {
+        return item.msg || JSON.stringify(item);
+      }
+      return String(item);
+    }).join(", ");
+  }
+
+  if (detail && typeof detail === "object") {
+    if (Array.isArray(detail.errors)) {
+      return detail.errors.join(", ");
+    }
+    if (typeof detail.message === "string") {
+      return detail.message;
+    }
+  }
+
+  if (responseData && typeof responseData === "object") {
+    if (Array.isArray(responseData.errors)) {
+      return responseData.errors.join(", ");
+    }
+    if (typeof responseData.message === "string") {
+      return responseData.message;
+    }
+  }
+
+  // Fallback to standard Error message
+  if (typeof error.message === "string" && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}

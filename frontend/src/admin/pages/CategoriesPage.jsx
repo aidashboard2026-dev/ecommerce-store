@@ -5,6 +5,7 @@ import "react-toastify/dist/ReactToastify.css";
 
 import { homepageCategoriesAPI } from "@/shared/services/api";
 import { useTheme } from "@/shared/hooks/useAuth";
+import { getApiErrorMessage } from "@/shared/utils/productUtils";
 
 const BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "");
 
@@ -107,7 +108,7 @@ function CategoryModal({ category, onClose, onSaved }) {
       onSaved();
       onClose();
     } catch (error) {
-      toast.error(error?.response?.data?.detail || "Failed to save category.");
+      toast.error(getApiErrorMessage(error, "Failed to save category."));
     } finally {
       setSaving(false);
     }
@@ -226,7 +227,7 @@ export default function CategoriesPage() {
       const response = await homepageCategoriesAPI.list();
       setCategories(response.data);
     } catch (error) {
-      toast.error(error?.response?.data?.detail || "Failed to load categories.");
+      toast.error(getApiErrorMessage(error, "Failed to load categories."));
     } finally {
       setLoading(false);
     }
@@ -261,7 +262,7 @@ export default function CategoriesPage() {
       toast.success("Category deleted.");
       loadCategories();
     } catch (error) {
-      toast.error(error?.response?.data?.detail || "Failed to delete category.");
+      toast.error(getApiErrorMessage(error, "Failed to delete category."));
     } finally {
       setDeletingId(null);
     }

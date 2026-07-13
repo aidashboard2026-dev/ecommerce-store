@@ -5,7 +5,7 @@ import useBusinessLimits from "@/shared/hooks/useBusinessLimits";
 import { ImagePlus, Plus, Search, X, Pencil, Eye, EyeOff, AlertTriangle, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTheme } from "@/shared/hooks/useAuth";
-import { getImageUrl } from "@/shared/utils/productUtils";
+import { getImageUrl, getApiErrorMessage } from "@/shared/utils/productUtils";
 import RoutePicker from "@/shared/components/ui/RoutePicker";
 
 // ─── Placement options ───────────────────────────────────────────────────────
@@ -113,7 +113,7 @@ function BannerFormModal({ initial, onClose, onSaved, isDark }) {
       onClose();
     } catch (err) {
       console.error(err);
-      toast.error("❌ " + (err?.response?.data?.detail ?? "Operation failed"));
+      toast.error(getApiErrorMessage(err, "Operation failed"));
     } finally {
       setSubmitting(false);
     }
@@ -384,7 +384,7 @@ export default function BannerPage() {
       setBanners(res.data);
     } catch (err) {
       console.error(err);
-      toast.error("❌ Failed to load banners");
+      toast.error(getApiErrorMessage(err, "Failed to load banners"));
     } finally {
       setLoading(false);
     }
@@ -404,7 +404,7 @@ export default function BannerPage() {
       refresh();
     } catch (err) {
       console.error(err);
-      toast.error("❌ Failed to update banner status");
+      toast.error(getApiErrorMessage(err, "Failed to update banner status"));
     }
   };
 
@@ -416,7 +416,7 @@ export default function BannerPage() {
       refresh();
     } catch (err) {
       console.error(err);
-      toast.error("❌ Failed to delete banner");
+      toast.error(getApiErrorMessage(err, "Failed to delete banner"));
     }
   };
 

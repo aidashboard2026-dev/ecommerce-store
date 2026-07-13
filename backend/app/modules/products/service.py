@@ -150,12 +150,50 @@ def _sku_color_code(color: Optional[str]) -> str:
     return letters[:3].upper() if letters else "XXX"
 
 
-def generate_sku(product_title: str, size: str, color: Optional[str] = None) -> str:
-    prefix      = _sku_prefix(product_title)
-    color_code  = _sku_color_code(color)
-    size_code   = size.upper().replace(" ", "")
-    rand_suffix = uuid.uuid4().hex[:6].upper()
-    return f"{prefix}-{color_code}-{size_code}-{rand_suffix}"
+def generate_sku(
+    product_title: str,
+    size: str,
+    color: Optional[str] = None,
+    product_id: Optional[int] = None,
+    product_slug: Optional[str] = None,
+    attempt: int = 0
+) -> str:
+    # 1. Determine prefix/base
+    if product_slug:
+        base = product_slug.upper().replace("_", "-")
+    elif product_id:
+        base = f"P{product_id}"
+    else:
+        base = _sku_prefix(product_title)
+
+    # 2. Size code
+    size_code = size.upper().strip().replace(" ", "")
+
+    # 3. Color code
+    color_code = _sku_color_code(color)
+
+    # 4. Suffix (first attempt: sequence/deterministic, subsequent: random)
+    if attempt == 0:
+        suffix = "001"
+    else:
+        # Use a random 4-character hex suffix to keep total SKU length short
+        suffix = uuid.uuid4().hex[:4].upper()
+
+    # Combine
+    sku = f"{base}-{size_code}-{color_code}-{suffix}"
+
+    # Ensure total length never exceeds 20 characters
+    if len(sku) > 20:
+        # Shorten base to fit within 20 chars
+        # Total allowed length for base: 20 - (len(size_code) + len(color_code) + len(suffix) + 3 hyphens)
+        allowed_base_len = 20 - len(size_code) - len(color_code) - len(suffix) - 3
+        if allowed_base_len > 0:
+            short_base = base[:allowed_base_len]
+            sku = f"{short_base}-{size_code}-{color_code}-{suffix}"
+        else:
+            sku = sku[:20]
+
+    return sku
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1102,7 +1140,7 @@ def add_variant(db: Session, product_id: int, variant_in: VariantCreate) -> Prod
     _validate_variant_input(variant_in)
     validate_product_variant_limits(product, [variant_in])
 
-    # Trim and case-insensitive check SKU
+    # ── Manual SKU: validate uniqueness against the database ────────────────
     if variant_in.sku:
         norm_sku = variant_in.sku.strip().lower()
         existing_sku = db.query(ProductVariant).filter(
@@ -1127,11 +1165,49 @@ def add_variant(db: Session, product_id: int, variant_in: VariantCreate) -> Prod
                 detail=f"Variant with size='{variant_in.size}' and color='{variant_in.color or ''}' already exists.",
             )
 
-    sku = variant_in.sku or generate_sku(product.title, variant_in.size, variant_in.color)
-    for _attempt in range(5):
-        if not db.query(ProductVariant).filter(ProductVariant.sku == sku).first():
-            break
-        sku = generate_sku(product.title, variant_in.size, variant_in.color)
+    # ── SKU resolution: use provided SKU or generate + deduplicate ──────────
+    # Strategy: iterate attempts 0..9 (attempt=0 → deterministic suffix "001",
+    # attempts 1..9 → random hex suffix). For each candidate, check the DB.
+    # Only raise after ALL attempts are exhausted — never reject the first
+    # candidate without checking it first.
+    if variant_in.sku:
+        sku = variant_in.sku.strip()
+    else:
+        _MAX_SKU_ATTEMPTS = 10
+        sku = None
+        for attempt in range(_MAX_SKU_ATTEMPTS):
+            candidate = generate_sku(
+                product_title=product.title,
+                size=variant_in.size,
+                color=variant_in.color,
+                product_id=product.id,
+                product_slug=product.slug,
+                attempt=attempt,
+            )
+            candidate_lower = candidate.lower()
+            in_db = db.query(ProductVariant.id).filter(
+                sqla_func.lower(ProductVariant.sku) == candidate_lower
+            ).first()
+            if not in_db:
+                sku = candidate
+                logger.debug(
+                    "SKU resolved for product_id=%s size=%s color=%s: '%s' (attempt %d)",
+                    product_id, variant_in.size, variant_in.color, sku, attempt,
+                )
+                break
+        if sku is None:
+            logger.error(
+                "SKU exhaustion for product_id=%s size=%s color=%s after %d attempts",
+                product_id, variant_in.size, variant_in.color, _MAX_SKU_ATTEMPTS,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"Could not generate a unique SKU for {variant_in.size}/"
+                    f"{variant_in.color or ''} after {_MAX_SKU_ATTEMPTS} attempts. "
+                    "Please supply a manual SKU."
+                ),
+            )
 
     variant = ProductVariant(
         product_id=product_id,
@@ -1157,78 +1233,256 @@ def add_variant(db: Session, product_id: int, variant_in: VariantCreate) -> Prod
 
 
 def add_variants_bulk(db: Session, product_id: int, variants_in: list) -> ProductResponse:
+    """
+    Bulk-create variants for a product.
+
+    Design — three clean phases:
+      Phase 1 (validate):  For each variant, validate fields, check size+color
+                           uniqueness, resolve/generate SKU.  All checks use
+                           db.execute(select(...)) — bypassing the ORM identity
+                           map — so only committed DB rows are seen.  Valid
+                           variants are accumulated into `pending_variants`;
+                           failed ones append to `errors` and are skipped.
+      Phase 2 (add):       db.add_all(pending_variants) — no flush, no savepoint.
+      Phase 3 (commit):    Single db.commit().  If a race-condition IntegrityError
+                           occurs here, it is caught, rolled back, and re-raised
+                           as an HTTPException with an actionable message.
+
+    This avoids the SQLAlchemy identity-map poisoning that occurs when
+    begin_nested()+flush() raises an IntegrityError: after a savepoint
+    rollback the failed ORM objects remain in the session's unit-of-work,
+    causing subsequent db.query() calls to see them (via autoflush or the
+    in-memory identity map) and falsely report SKU collisions that do not
+    exist in the committed database.
+    """
+    _MAX_SKU_ATTEMPTS = 10
+
     product = get_product(db, product_id)
     validate_product_variant_limits(product, variants_in)
-    succeeded = 0
     errors: list[str] = []
 
+    # Track SKUs and size+color combos accepted in this request (in-memory only).
+    # The DB cannot see uncommitted rows; this set bridges that gap.
+    session_skus: set[str] = set()           # lower-cased for case-insensitive compare
+    session_combos: set[tuple[str, str]] = set()
+    pending_variants: list[ProductVariant] = []  # built during Phase 1
+
+    # ------------------------------------------------------------------
+    # Phase 1 — validate every variant and resolve its SKU
+    # ------------------------------------------------------------------
     for v in variants_in:
+        # ── Field-level validation ────────────────────────────────────
         try:
             _validate_variant_input(v)
-        except HTTPException as e:
-            errors.append(str(e.detail))
+        except (HTTPException, DomainValidationError) as e:
+            msg = e.detail if hasattr(e, 'detail') else str(e)
+            errors.append(str(msg))
+            logger.warning(
+                "Variant validation failed — product_id=%s size=%s color=%s: %s",
+                product_id, v.size, v.color, msg,
+            )
             continue
 
-        # Trim and case-insensitive check SKU
-        if v.sku:
+        norm_size  = v.size.strip().upper()
+        norm_color = (v.color or "").strip().lower()
+        combo_key  = (norm_size, norm_color)
+
+        # ── Duplicate size+color guard (in-session + DB) ──────────────
+        if combo_key in session_combos:
+            errors.append(f"Duplicate size+color in this request: {v.size}/{v.color or ''}")
+            logger.warning(
+                "Duplicate size+color in-session — product_id=%s size=%s color=%s",
+                product_id, v.size, v.color,
+            )
+            continue
+
+        # Use core SELECT to skip ORM identity map and query committed rows only.
+        existing_combo_row = db.execute(
+            select(ProductVariant.id).where(
+                ProductVariant.product_id == product_id,
+                sqla_func.upper(ProductVariant.size)  == norm_size,
+                sqla_func.lower(
+                    sqla_func.coalesce(ProductVariant.color, "")
+                ) == norm_color,
+            )
+        ).first()
+        if existing_combo_row:
+            errors.append(f"Duplicate size+color already exists: {v.size}/{v.color or ''}")
+            logger.warning(
+                "Duplicate size+color in DB — product_id=%s size=%s color=%s",
+                product_id, v.size, v.color,
+            )
+            continue
+
+        # ── SKU resolution ────────────────────────────────────────────
+        if v.sku:  # caller supplied a manual SKU
             norm_sku = v.sku.strip().lower()
-            existing_sku = db.query(ProductVariant).filter(
-                sqla_func.lower(ProductVariant.sku) == norm_sku
+            if norm_sku in session_skus:
+                errors.append(
+                    f"SKU conflict: '{v.sku}' is already staged in this request."
+                )
+                logger.warning(
+                    "Manual SKU '%s' already staged — product_id=%s size=%s color=%s",
+                    v.sku, product_id, v.size, v.color,
+                )
+                continue
+            # Core SELECT — bypasses identity map.
+            in_db_row = db.execute(
+                select(ProductVariant.id).where(
+                    sqla_func.lower(ProductVariant.sku) == norm_sku
+                )
             ).first()
-            if existing_sku:
+            if in_db_row:
                 errors.append(f"SKU conflict: '{v.sku}' is already in use.")
+                logger.warning(
+                    "Manual SKU '%s' already in DB — product_id=%s size=%s color=%s",
+                    v.sku, product_id, v.size, v.color,
+                )
+                continue
+            sku = v.sku.strip()
+            logger.info(
+                "[SKU] Manual '%s' accepted — product_id=%s size=%s color=%s",
+                sku, product_id, v.size, v.color,
+            )
+
+        else:  # auto-generate SKU
+            sku = None
+            for attempt in range(_MAX_SKU_ATTEMPTS):
+                candidate = generate_sku(
+                    product_title=product.title,
+                    size=v.size,
+                    color=v.color,
+                    product_id=product.id,
+                    product_slug=product.slug,
+                    attempt=attempt,
+                )
+                candidate_lower = candidate.lower()
+                logger.debug(
+                    "[SKU] Candidate '%s' attempt=%d — product_id=%s size=%s color=%s",
+                    candidate, attempt, product_id, v.size, v.color,
+                )
+
+                # in-session check first (cheap)
+                if candidate_lower in session_skus:
+                    logger.debug(
+                        "[SKU] '%s' found in session_skus, retrying", candidate
+                    )
+                    continue
+
+                # Core SELECT — bypasses ORM identity map entirely.
+                in_db_row = db.execute(
+                    select(ProductVariant.id).where(
+                        sqla_func.lower(ProductVariant.sku) == candidate_lower
+                    )
+                ).first()
+                if in_db_row:
+                    logger.debug(
+                        "[SKU] '%s' found in committed DB (id=%s), retrying",
+                        candidate, in_db_row[0],
+                    )
+                    continue
+
+                # Candidate is free — accept it.
+                sku = candidate
+                logger.info(
+                    "[SKU] Auto-generated '%s' accepted (attempt=%d) — "
+                    "product_id=%s size=%s color=%s",
+                    sku, attempt, product_id, v.size, v.color,
+                )
+                break
+
+            if sku is None:
+                errors.append(
+                    f"Could not generate a unique SKU for {v.size}/{v.color or ''} "
+                    f"after {_MAX_SKU_ATTEMPTS} attempts. Please supply a manual SKU."
+                )
+                logger.error(
+                    "[SKU] Exhausted %d attempts — product_id=%s size=%s color=%s",
+                    _MAX_SKU_ATTEMPTS, product_id, v.size, v.color,
+                )
                 continue
 
-        norm_size = v.size.strip().upper()
-        norm_color = v.color.strip().lower() if v.color else ""
+        # ── Variant accepted: register in session sets and queue for add ───
+        session_skus.add(sku.lower())
+        session_combos.add(combo_key)
+        pending_variants.append(
+            ProductVariant(
+                product_id=product_id,
+                sku=sku,
+                size=v.size,
+                color=v.color,
+                color_hex=v.color_hex,
+                original_price=v.original_price,
+                selling_price=v.selling_price,
+                discount_percentage=v.discount_percentage,
+                stock_quantity=v.stock_quantity,
+                reserved_stock=0,
+                low_stock_threshold=v.low_stock_threshold,
+            )
+        )
+        logger.info(
+            "[Bulk] Variant queued: product_id=%s size=%s color=%s sku='%s'",
+            product_id, v.size, v.color, sku,
+        )
 
-        existing_combo = False
-        for ev in db.query(ProductVariant).filter(ProductVariant.product_id == product_id).all():
-            ev_size = ev.size.strip().upper()
-            ev_color = ev.color.strip().lower() if ev.color else ""
-            if ev_size == norm_size and ev_color == norm_color:
-                existing_combo = True
-                break
-        if existing_combo:
-            errors.append(f"Duplicate size+color: {v.size}/{v.color or ''}")
-            continue
+    # ------------------------------------------------------------------
+    # Reject entirely only when no variant could be accepted.
+    # ------------------------------------------------------------------
+    if not pending_variants and errors:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"errors": errors},
+        )
 
-        sku = v.sku or generate_sku(product.title, v.size, v.color)
-        for _attempt in range(5):
-            if not db.query(ProductVariant).filter(ProductVariant.sku == sku).first():
-                break
-            sku = generate_sku(product.title, v.size, v.color)
+    # ------------------------------------------------------------------
+    # Phase 2 — add all accepted variants to the session (no flush).
+    # ------------------------------------------------------------------
+    db.add_all(pending_variants)
 
-        try:
-            with db.begin_nested():
-                variant = ProductVariant(
-                    product_id=product_id, sku=sku, size=v.size, color=v.color,
-                    color_hex=v.color_hex, original_price=v.original_price,
-                    selling_price=v.selling_price, discount_percentage=v.discount_percentage,
-                    stock_quantity=v.stock_quantity, reserved_stock=0,
-                    low_stock_threshold=v.low_stock_threshold,
-                )
-                db.add(variant)
-                db.flush()
-            succeeded += 1
-        except IntegrityError as exc:
-            db.expire_all()
-            if "uq_variant_product_size_color" in str(exc):
-                errors.append(f"Duplicate size+color: {v.size}/{v.color or ''}")
-            elif "sku" in str(exc).lower():
-                errors.append(f"SKU conflict for {v.size}/{v.color or ''}")
-            else:
-                errors.append(f"Integrity error on size={v.size}, color={v.color}")
-
-    if succeeded == 0 and errors:
-        db.rollback()
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail={"errors": errors})
-
+    # ------------------------------------------------------------------
+    # Phase 3 — single commit; handle any last-moment race conditions.
+    # ------------------------------------------------------------------
     try:
         db.commit()
-    except Exception as e:
+        logger.info(
+            "[Bulk] Commit OK — product_id=%s queued=%d errors=%d",
+            product_id, len(pending_variants), len(errors),
+        )
+    except IntegrityError as exc:
         db.rollback()
-        raise e
+        exc_str = str(exc).lower()
+        logger.error(
+            "[Bulk] IntegrityError on final commit — product_id=%s: %r",
+            product_id, exc, exc_info=True,
+        )
+        if "uq_variant_product_size_color" in exc_str or "size_color" in exc_str:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                detail=(
+                    "A concurrent request created a variant with the same "
+                    "size+color combination. Please retry."
+                ),
+            )
+        if "sku" in exc_str:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                detail=(
+                    "A concurrent request created a variant with the same SKU. "
+                    "Please retry."
+                ),
+            )
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database integrity error during variant creation. Please retry.",
+        )
+    except Exception as exc:
+        db.rollback()
+        logger.error(
+            "[Bulk] Unexpected commit error — product_id=%s: %r",
+            product_id, exc, exc_info=True,
+        )
+        raise
+
     return get_product_response(db, product_id)
 
 

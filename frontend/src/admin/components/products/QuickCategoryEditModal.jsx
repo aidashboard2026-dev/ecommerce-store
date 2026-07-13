@@ -11,6 +11,8 @@ import toast from 'react-hot-toast'
 import Modal from '@/shared/components/ui/Modal'
 import { productsAPI as productsApi, categoriesAPI, collectionsAPI } from '@/shared/services/api'
 
+import { getApiErrorMessage } from '@/shared/utils/productUtils'
+
 function getNormalizedCollectionName(name) {
   if (!name) return null;
   const val = name.trim().toLowerCase().replace(/[\s_\-'"]+/g, '');
@@ -72,7 +74,7 @@ export default function QuickCategoryEditModal({ isOpen, onClose, product }) {
       qc.invalidateQueries({ queryKey: ['products'] })
       onClose()
     },
-    onError: e => toast.error(e.response?.data?.detail || 'Failed to update product'),
+    onError: e => toast.error(getApiErrorMessage(e, 'Failed to update product')),
   })
 
   const handleCategoryChange = (e) => {

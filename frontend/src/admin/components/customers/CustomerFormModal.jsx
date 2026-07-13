@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import Modal from '@/shared/components/ui/Modal'
 import Input from '@/shared/components/ui/Input'
 import { customersAPI } from '@/shared/services/api'
+import { getApiErrorMessage } from '@/shared/utils/productUtils'
 
 const DEFAULT = {
   first_name: '', last_name: '', email: '', phone: '',
@@ -69,8 +70,7 @@ export default function CustomerFormModal({ open, onClose, customer = null }) {
       onClose()
     },
     onError: (err) => {
-      const msg = err.response?.data?.detail || 'Something went wrong'
-      toast.error(msg)
+      toast.error(getApiErrorMessage(err, 'Something went wrong'))
     },
   })
 

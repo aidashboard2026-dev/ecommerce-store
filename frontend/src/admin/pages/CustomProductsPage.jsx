@@ -19,7 +19,7 @@ import {
   customCategoriesAPI,
   // customCollectionsAPI
 } from '@/shared/services/api'
-import { formatPrice, getImageUrl, useDebounce } from '@/shared/utils/productUtils'
+import { formatPrice, getImageUrl, useDebounce, getApiErrorMessage } from '@/shared/utils/productUtils'
 import CustomProductForm from '@/admin/components/products/CustomProductForm'
 import ImageUploadModal from '@/admin/components/products/ImageUploadModal'
 // VariantFormModal intentionally not wired here — Custom Products are
@@ -410,7 +410,7 @@ export default function ProductsPage() {
       const isLastOnPage = (data?.items?.length ?? 0) === 1
       if (isLastOnPage && page > 1) setPage(p => p - 1)
     },
-    onError: e => toast.error(e.response?.data?.detail || 'Delete failed'),
+    onError: e => toast.error(getApiErrorMessage(e, 'Delete failed')),
   })
 
   const bulkMutation = useMutation({
@@ -420,7 +420,7 @@ export default function ProductsPage() {
       setSelectedIds(new Set())
       invalidate()
     },
-    onError: e => toast.error(e.response?.data?.detail || 'Bulk action failed'),
+    onError: e => toast.error(getApiErrorMessage(e, 'Bulk action failed')),
   })
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
