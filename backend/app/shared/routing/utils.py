@@ -35,7 +35,7 @@ def is_valid_route(db: Session, route: str) -> bool:
             
         # 1. Static storefront routes
         static_routes = {
-            "custom", "custom-products", "offers", "tracking", "track-order", "wishlist", "cart",
+            "products", "custom", "custom-products", "offers", "tracking", "track-order", "wishlist", "cart",
             "about", "contact", "shipping", "returns", "privacy-policy", "terms-conditions"
         }
         if path.lower() in static_routes:

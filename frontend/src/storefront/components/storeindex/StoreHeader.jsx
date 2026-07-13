@@ -22,10 +22,10 @@ import useStoreSettings from "@/shared/hooks/useStoreSettings";
 // ─── Static nav config ───────────────────────────────────────────────────────
 const MOBILE_NAV_LINKS = [
   { label: "Home", to: "/" },
-  { label: "T-Shirts for Mens", to: "/products?category=t-shirt&gender=Men" },
-  { label: "Track Pants for Mens", to: "/products?category=track-pant&gender=Men" },
-  { label: "Trousers for Mens", to: "/products?category=trouser&gender=Men" },
-  { label: "Shirts for Mens", to: "/products?category=shirt&gender=Men" },
+  { label: "T-Shirts for Mens", to: "/products?category=t-shirts&gender=Men" },
+  { label: "Track Pants for Mens", to: "/products?category=track-pants&gender=Men" },
+  { label: "Trousers for Mens", to: "/products?category=trousers&gender=Men" },
+  { label: "Shirts for Mens", to: "/products?category=shirts&gender=Men" },
   { label: "Custom product", to: "/custom" },
   { label: "Offers", to: "/offers" },
   { label: "Track Order", to: "/tracking" },

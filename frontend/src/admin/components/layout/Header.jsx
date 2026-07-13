@@ -30,7 +30,7 @@ import NotificationBell from "@/admin/components/layout/NotificationBell";
 
 
 const navItems = [
-  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/admin/products", label: "Products", icon: Package },
   { to: "/admin/categories", label: "Categories", icon: Grid2X2 },
   { to: "/admin/custom-products", label: "Custom Products", icon: Package },
