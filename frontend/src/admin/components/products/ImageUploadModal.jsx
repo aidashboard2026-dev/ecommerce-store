@@ -33,8 +33,8 @@ const ALLOWED_ACCEPT = 'image/jpeg,image/png,image/webp'
 // chart). Keeping these as standalone constants avoids coupling the fixed
 // product requirement to configuration that may change per store.
 const GALLERY_MAX_IMAGES            = 4
-const GALLERY_MAX_FILE_SIZE_BYTES   = 4 * 1024 * 1024 // 4 MB
-const GALLERY_MAX_FILE_SIZE_LABEL   = '4 MB'
+const GALLERY_MAX_FILE_SIZE_BYTES   = 10 * 1024 * 1024 // 10 MB
+const GALLERY_MAX_FILE_SIZE_LABEL   = '10 MB'
 const GALLERY_ALLOWED_FORMATS_LABEL = 'JPG, PNG, WEBP'
 
 // ─── Tab configuration ────────────────────────────────────────────────────────

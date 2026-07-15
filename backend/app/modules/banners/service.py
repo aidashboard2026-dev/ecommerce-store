@@ -20,13 +20,9 @@ def create_banner(
             detail=f"You have reached the maximum allowed limit of {MAX_BANNERS} banners. Please delete an existing banner before creating a new one."
         )
 
-    # Check duplicate sort_order
-    existing_sort = db.query(Banner).filter(Banner.sort_order == banner.sort_order).first()
-    if existing_sort:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Banner sort order {banner.sort_order} is already in use."
-        )
+    # Automatically manage sort_order for creation: assign max + 1
+    max_sort_order = db.query(Banner).order_by(Banner.sort_order.desc()).first()
+    next_order = (max_sort_order.sort_order + 1) if max_sort_order else 1
 
     db_banner = Banner(
         title=banner.title,
@@ -39,7 +35,7 @@ def create_banner(
         destination_id=banner.destination_id,
 
         placement=banner.placement,
-        sort_order=banner.sort_order,
+        sort_order=next_order,
         is_active=banner.is_active,
     )
 
@@ -69,14 +65,8 @@ def update_banner(
     if not banner:
         return None
 
-    if "sort_order" in update_data:
-        so = update_data["sort_order"]
-        existing_sort = db.query(Banner).filter(Banner.sort_order == so, Banner.id != banner_id).first()
-        if existing_sort:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Banner sort order {so} is already in use."
-            )
+    # Editing a banner must not change its sort position
+    update_data.pop("sort_order", None)
 
     for field, value in update_data.items():
         setattr(banner, field, value)
@@ -123,6 +113,16 @@ def delete_banner(
     if banner:
         db.delete(banner)
         try:
+            db.commit()
+            
+            # Re-sequence all remaining banners automatically
+            remaining_banners = (
+                db.query(Banner)
+                .order_by(Banner.sort_order.asc(), Banner.id.asc())
+                .all()
+            )
+            for idx, b in enumerate(remaining_banners, start=1):
+                b.sort_order = idx
             db.commit()
         except Exception as e:
             db.rollback()
