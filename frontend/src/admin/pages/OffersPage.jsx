@@ -4,6 +4,7 @@ import useBusinessLimits from "@/shared/hooks/useBusinessLimits";
 import { useTheme } from "@/shared/hooks/useAuth";
 import { BannerPreviewModal } from "./BannerPage";
 import { getApiErrorMessage } from "@/shared/utils/productUtils";
+import { compressImage } from "@/shared/utils/imageCompression";
 
 import {
   Search,
@@ -284,7 +285,8 @@ export default function OffersPage() {
       formData.append("status", status);
 
       if (bannerFile) {
-        formData.append("banner_image", bannerFile);
+        const compressed = await compressImage(bannerFile);
+        formData.append("banner_image", compressed);
       }
 
       if (editingOffer) {
