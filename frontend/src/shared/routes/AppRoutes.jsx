@@ -101,11 +101,11 @@ function AdminProtectedRoute({ children }) {
   if (!initialized) return <Spinner />;
 
   if (isAuthenticated) {
-    console.log(`[Auth Isolation: Admin Guard] Allowing access to protected admin route: ${location.pathname}`);
+    // console.log(`[Auth Isolation: Admin Guard] Allowing access to protected admin route: ${location.pathname}`);
     return children;
   }
-
-  console.log(`[Auth Isolation: Admin Guard] Access denied to ${location.pathname}. Redirecting to login.`);
+// 
+  // console.log(`[Auth Isolation: Admin Guard] Access denied to ${location.pathname}. Redirecting to login.`);
   return <Navigate to="/auth/login" replace />;
 }
 
@@ -116,11 +116,11 @@ function AdminPublicRoute({ children }) {
   if (!initialized) return <Spinner />;
 
   if (isAuthenticated) {
-    console.log(`[Auth Isolation: Admin Public Guard] Redirecting to admin dashboard from public admin route: ${location.pathname}`);
+    // console.log(`[Auth Isolation: Admin Public Guard] Redirecting to admin dashboard from public admin route: ${location.pathname}`);
     return <Navigate to="/admin/dashboard" replace />;
   }
 
-  console.log(`[Auth Isolation: Admin Public Guard] Allowing access to admin public route: ${location.pathname}`);
+   // console.log(`[Auth Isolation: Admin Public Guard] Allowing access to admin public route: ${location.pathname}`);
   return children;
 }
 
@@ -130,11 +130,11 @@ function UnifiedPublicRoute({ children }) {
   const location = useLocation();
 
   if (customerToken && customer) {
-    console.log(`[Auth Isolation: Public Route Guard] Redirecting to storefront home because customer session is active for route: ${location.pathname}`);
+    // console.log(`[Auth Isolation: Public Route Guard] Redirecting to storefront home because customer session is active for route: ${location.pathname}`);
     return <Navigate to="/" replace />;
   }
 
-  console.log(`[Auth Isolation: Public Route Guard] Allowing access to public auth page: ${location.pathname}`);
+  // console.log(`[Auth Isolation: Public Route Guard] Allowing access to public auth page: ${location.pathname}`);
   return children;
 }
 
@@ -145,17 +145,17 @@ function CustomerProtectedRoute({ children }) {
   const location = useLocation();
 
   if (token && customer) {
-    console.log(`[Auth Isolation: Customer Guard] Allowing access to protected customer route: ${location.pathname}`);
+    // console.log(`[Auth Isolation: Customer Guard] Allowing access to protected customer route: ${location.pathname}`);
     return children;
   }
 
   // Allow guest checkout if cart is not empty
   if (location.pathname === "/checkout" && cartItems.length > 0) {
-    console.log("[Auth Isolation: Customer Guard] Allowing guest checkout access.");
+    // console.log("[Auth Isolation: Customer Guard] Allowing guest checkout access.");
     return children;
   }
 
-  console.log(`[Auth Isolation: Customer Guard] Access denied to ${location.pathname}. Redirecting to customer login.`);
+  // console.log(`[Auth Isolation: Customer Guard] Access denied to ${location.pathname}. Redirecting to customer login.`);
   return <Navigate to="/auth/login" replace state={{ from: location }} />;
 }
 
