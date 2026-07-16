@@ -27,8 +27,23 @@ MAX_HOMEPAGE_CATEGORIES = 4
 MAX_BANNERS = 5
 MAX_OFFERS = 5
 
+
+# ==============================================================================
 # Custom Printing
+# ==============================================================================
+
+# Maximum Custom Categories
 MAX_CUSTOM_CATEGORIES = 20
+
+# Maximum Custom Products per Category
+MAX_CUSTOM_PRODUCTS_PER_CATEGORY = 5
+
+# Maximum Images per Custom Product
+MAX_CUSTOM_PRODUCT_IMAGES = 2
+
+#================================================================================
+# Product Vareint
+#================================================================================
 
 # Product
 MAX_PRODUCT_IMAGES = 8

@@ -52,7 +52,7 @@ const logStep = (step, details = {}) => {
 };
 
 const logApiCall = (apiName, { sessionId, ordersCount, paymentMethod }) => {
-  // Suppressed to avoid scattered logs in DEV and production
+  // Suppressed to avoid scattered logs in DEV and production; see logGroupedApi
 };
 
 const logApiResult = (apiName, result, elapsedMs, details = {}) => {
@@ -751,14 +751,8 @@ export default function CheckoutPage() {
             paymentMethod: "ONLINE",
           }),
         );
-        dispatch(
-          removeCustomerCartItemThunk({
-            cartItemId: item.cartItemId,
-          }),
-        );
-        dispatch(clearCart());
-        localStorage.removeItem("aurastore_guest_cart");
-        sessionStorage.removeItem("aurastore_active_cart_session_id");
+        // Customer DB + Redux + localStorage cart clear + session cleanup
+        clearCompletedCustomerCart();
         navigate("/order-success", {
           state: { orders: sessionOrders, totals, paymentMethod: "ONLINE" },
           replace: true,
@@ -1024,7 +1018,7 @@ export default function CheckoutPage() {
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
 
-      // Shipping fee first order item-க்கு மட்டும் add ஆகும்
+      // Shipping fee is only added to the first order item in the session
       const itemShippingFee = i === 0 ? totals.shipping : 0;
 
       try {
@@ -1108,9 +1102,7 @@ export default function CheckoutPage() {
 
         throw Object.assign(new Error(errInfo.message), {
           partialSuccessCount: currentOrders.length,
-
           failedItemTitle: item.title,
-
           code: errInfo.code,
         });
       }
@@ -1145,6 +1137,7 @@ export default function CheckoutPage() {
       );
       return;
     }
+
     if (!selectedAddress) {
       logExit({
         step: "STEP 2 (address check)",
@@ -1293,32 +1286,19 @@ export default function CheckoutPage() {
           }),
         );
 
-        // Login customer DB cart items clear
-        const customerCartItems = items.filter(
-          (item) => item.cartItemId != null,
-        );
-
-        await Promise.allSettled(
-          customerCartItems.map((item) =>
-            dispatch(removeCustomerCartItemThunk(item.cartItemId)).unwrap(),
-          ),
-        );
-
-        // Redux cart clear
-        dispatch(clearCart());
-
-        // Guest localStorage cart clear
-        localStorage.removeItem("aurastore_guest_cart");
-
-        // Checkout session clear
-        sessionStorage.removeItem("aurastore_active_cart_session_id");
-
+        // Customer DB + Redux + localStorage cart clear + session cleanup
         await clearCompletedCustomerCart();
 
         toast.success("Order placed successfully!");
-
         updatePhase(CHECKOUT_PHASE.SUCCESS);
-
+        logExit({
+          step: "STEP 7 (COD complete)",
+          reason: "COD order placed, no online payment needed",
+          sessionId: currentSessionId,
+          ordersCount: currentOrders.length,
+          paymentMethod,
+          nextApi: "createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
+        });
         navigate("/order-success", {
           state: {
             orders: currentOrders,
@@ -1327,7 +1307,6 @@ export default function CheckoutPage() {
           },
           replace: true,
         });
-
         return;
       }
 
@@ -1449,15 +1428,6 @@ export default function CheckoutPage() {
         if (errInfo.code === "ORDER_ALREADY_PAID") {
           toast.success("Order already paid!");
           updatePhase(CHECKOUT_PHASE.SUCCESS);
-          // for (const item of items) {
-          //   dispatch(
-          //     removeFromCart({
-          //       productId: item.productId,
-          //       size: item.size,
-          //       color: item.color,
-          //     }),
-          //   );
-          // }
           dispatch(clearCart());
           sessionStorage.removeItem("aurastore_active_cart_session_id");
           try {
@@ -1564,32 +1534,31 @@ export default function CheckoutPage() {
 
             logStep("STEP 14: Verification Success", verifiedOrders);
 
-            for (const item of items) {
-              dispatch(
-                setLastOrder({
-                  orders: verifiedOrders,
-                  totals,
-                  paymentMethod,
-                }),
-              );
-              // Customer DB + Redux + localStorage cart clear
-              await clearCompletedCustomerCart();
-              toast.success("Payment verified and order confirmed!");
+            dispatch(
+              setLastOrder({
+                orders: verifiedOrders,
+                totals,
+                paymentMethod,
+              }),
+            );
+            // Customer DB + Redux + localStorage cart clear
+            await clearCompletedCustomerCart();
+            toast.success("Payment verified and order confirmed!");
 
-              setPhase(CHECKOUT_PHASE.VERIFY_SUCCESS);
+            setPhase(CHECKOUT_PHASE.VERIFY_SUCCESS);
 
-              await new Promise((resolve) => setTimeout(resolve, 600));
-              setPhase(CHECKOUT_PHASE.SUCCESS);
+            await new Promise((resolve) => setTimeout(resolve, 600));
+            setPhase(CHECKOUT_PHASE.SUCCESS);
 
-              navigate("/order-success", {
-                state: {
-                  orders: verifiedOrders,
-                  totals,
-                  paymentMethod,
-                },
-                replace: true,
-              });
-            }
+            logStep("STEP 15: Navigating to Order Success");
+            navigate("/order-success", {
+              state: {
+                orders: verifiedOrders,
+                totals,
+                paymentMethod,
+              },
+              replace: true,
+            });
           } catch (verifyErr) {
             const errInfo = getPaymentErrorMessage(verifyErr);
             logFailure({

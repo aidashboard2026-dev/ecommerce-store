@@ -165,15 +165,12 @@ export default function CustomersPage() {
       />
 
       {/* ── Pagination ────────────────────────────────────────────────────── */}
-      {!isLoading && total > 0 && (
-        <CustomerPagination
-          page={page}
-          pages={pages}
-          perPage={perPage}
-          total={total}
-          onPage={setPage}
-          onPerPage={(n) => { setPerPage(n); setPage(1) }}
-        />
+      {!isLoading && pages > 1 && (
+          <CustomerPagination
+              page={page}
+              pages={pages}
+              onPage={setPage}
+          />
       )}
 
       {/* ── Customer profile drawer ───────────────────────────────────────── */}

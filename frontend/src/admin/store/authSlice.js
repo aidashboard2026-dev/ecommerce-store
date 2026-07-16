@@ -20,7 +20,10 @@ export const loginThunk = createAsyncThunk(
       const res = await authAPI.login({ email, password })
       return res.data
     } catch (err) {
-      return rejectWithValue(err.response?.data?.detail || 'Login failed')
+      return rejectWithValue({
+        detail: err.response?.data?.detail || 'Login failed',
+        status: err.response?.status
+      })
     }
   }
 )
@@ -121,7 +124,10 @@ const authSlice = createSlice({
         }
 
       })
-      .addCase(loginThunk.rejected,  (state, action) => { state.loading = false; state.error = action.payload })
+      .addCase(loginThunk.rejected,  (state, action) => {
+        state.loading = false;
+        state.error = action.payload && typeof action.payload === 'object' ? action.payload.detail : action.payload;
+      })
 
       // ── fetchMe ────────────────────────────────────────────────────────────
       .addCase(fetchMeThunk.fulfilled, (state, action) => {

@@ -40,7 +40,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isAuthRoute = error.config?.url?.endsWith('/auth/login') ||
+                        error.config?.url?.endsWith('/auth/logout') ||
+                        error.config?.url?.endsWith('/auth/signup')
+    if (error.response?.status === 401 && !isAuthRoute) {
       localStorage.removeItem('admin_token')
       localStorage.removeItem('admin_user')
       window.dispatchEvent(new CustomEvent('auth:unauthorized'))
@@ -72,7 +75,8 @@ storefrontClient.interceptors.request.use((config) => {
 storefrontClient.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    const isAuthRoute = err.config?.url?.endsWith('/auth/firebase/login')
+    if (err.response?.status === 401 && !isAuthRoute) {
       localStorage.removeItem('customer_token')
       localStorage.removeItem('customer')
       window.dispatchEvent(new CustomEvent('customer:unauthorized'))

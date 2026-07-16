@@ -1123,6 +1123,23 @@ export default function SettingsPage() {
               </Button>
             </div>
           </div>
+          {/* ------------------------------------------------------------------
+          TODO (Future Release)
+
+          Complete 2FA implementation.
+
+          Pending
+          - Google Authenticator
+          - QR Code
+          - Secret Key
+          - OTP Verification
+          - Login Challenge
+          - Middleware Enforcement
+          - Recovery Codes
+
+          UI intentionally hidden until implementation is complete.
+          Do not delete. Enable this section once full 2FA implementation is completed.
+          ------------------------------------------------------------------
           <div className="flex flex-col flex-wrap justify-between gap-4">
             <div className="border-b-2 border-gray-200 dark:border-zinc-800">
               <h1 className="uppercase text-xs sm:text-sm md:text-base p-3 pb-2 text-zinc-500 dark:text-zinc-400">
@@ -1166,8 +1183,9 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
-
+          
           <AlertBox>Changing login email requires verification.</AlertBox>
+        ------------------------------------------------------------------ */}
         </div>
 
         {activeModal && (

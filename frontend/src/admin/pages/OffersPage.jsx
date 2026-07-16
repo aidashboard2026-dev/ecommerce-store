@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import toast from "react-hot-toast";
 import useBusinessLimits from "@/shared/hooks/useBusinessLimits";
 import { useTheme } from "@/shared/hooks/useAuth";
@@ -19,6 +19,8 @@ import {
   Image as ImageIcon,
   Loader2,
   AlertTriangle,
+  Upload,
+  Download,
 } from "lucide-react";
 import api from "@/shared/services/api";
 import clsx from "clsx";
@@ -29,6 +31,22 @@ import Drawer from "@/shared/components/ui/Drawer";
 import Badge from "@/shared/components/ui/Badge";
 import Button from "@/shared/components/ui/Button";
 
+// --- Constants -------------------------------------------------------------
+// Centralising status literals avoids typo-based bugs and documents intent.
+const OFFER_STATUS = {
+  DRAFT: "saved",
+  PUBLISHED: "published",
+};
+
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB (backend limit)
+
+// Countdown text only shows day/hour/minute granularity, so a 1s tick is
+// unnecessary work. Update once every 30s instead.
+const COUNTDOWN_TICK_MS = 30 * 1000;
+
+const TEXT_ALIGN_OPTIONS = ["left", "center", "right"];
+
 export default function OffersPage() {
   const { limits, isLoading: limitsLoading, error: limitsError, refetch: refetchLimits } = useBusinessLimits();
   const { isDark } = useTheme();
@@ -36,7 +54,7 @@ export default function OffersPage() {
 
   const [showAddOffer, setShowAddOffer] = useState(false);
 
-  // Form states
+  // Form state
   const [offerName, setOfferName] = useState("");
   const [percentage, setPercentage] = useState("");
   const [description, setDescription] = useState("");
@@ -47,10 +65,10 @@ export default function OffersPage() {
   const [banner, setBanner] = useState(null);
   const [bannerFile, setBannerFile] = useState(null);
   const [editingOffer, setEditingOffer] = useState(null);
-  const [itemAlign, setitemAlign] = useState("left");
+  const [textAlign, setTextAlign] = useState("left");
 
-  // Modern image upload state variables
-  const [offerStatus, setOfferStatus] = useState("saved");
+  // Image upload state
+  const [offerStatus, setOfferStatus] = useState(OFFER_STATUS.DRAFT);
   const [dragActive, setDragActive] = useState(false);
   const [imageDimensions, setImageDimensions] = useState("");
   const [fileSizeStr, setFileSizeStr] = useState("");
@@ -58,17 +76,21 @@ export default function OffersPage() {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   const fileInputRef = useRef(null);
+  // Tracks the last blob URL we created so it can be revoked, preventing
+  // memory leaks from accumulating object URLs across selections.
+  const objectUrlRef = useRef(null);
 
-  // Listing states
+  // Listing state
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [actionLoading, setActionLoading] = useState({});
 
-  // Timer state
+  // Timer state (drives the "expires in" countdown)
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const fetchOffers = async () => {
+  const fetchOffers = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get("/offers/admin/all");
@@ -79,17 +101,24 @@ export default function OffersPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchOffers();
   }, []);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+    fetchOffers();
+  }, [fetchOffers]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), COUNTDOWN_TICK_MS);
     return () => clearInterval(timer);
+  }, []);
+
+  // Revoke any outstanding blob URL when the component unmounts.
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+      }
+    };
   }, []);
 
   const getOfferImageUrl = (path) => {
@@ -101,31 +130,23 @@ export default function OffersPage() {
   };
 
   const filteredOffers = offers
-    .filter((offer) =>
-      offer.title?.toLowerCase().includes(search.toLowerCase()),
-    )
+    .filter((offer) => offer.title?.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => {
-      if (a.status === "published" && b.status === "published") {
+      if (a.status === OFFER_STATUS.PUBLISHED && b.status === OFFER_STATUS.PUBLISHED) {
         return new Date(a.expires_at) - new Date(b.expires_at);
       }
-      if (a.status === "published") return -1;
-      if (b.status === "published") return 1;
+      if (a.status === OFFER_STATUS.PUBLISHED) return -1;
+      if (b.status === OFFER_STATUS.PUBLISHED) return 1;
       return b.id - a.id;
     });
 
   const validateOfferForm = () => {
-    if (
-      (!bannerFile && !banner) ||
-      // !offerName.trim() ||
-      // !percentage.trim() ||
-      !startDate ||
-      !startTime ||
-      !endDate ||
-      !endTime
-    ) {
-      toast.error(
-        "Please fill all required fields, including the offer image.",
-      );
+    if (!bannerFile && !banner) {
+      toast.error("Please add an offer image before saving.");
+      return false;
+    }
+    if (!startDate || !startTime || !endDate || !endTime) {
+      toast.error("Please fill all required schedule fields.");
       return false;
     }
 
@@ -142,14 +163,19 @@ export default function OffersPage() {
       }
     }
 
-    if (
-      new Date(`${endDate}T${endTime}`) <= new Date(`${startDate}T${startTime}`)
-    ) {
+    if (new Date(`${endDate}T${endTime}`) <= new Date(`${startDate}T${startTime}`)) {
       toast.error("End Date & Time must be after Start Date & Time.");
       return false;
     }
 
     return true;
+  };
+
+  const revokeCurrentObjectUrl = () => {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
   };
 
   const clearForm = () => {
@@ -158,20 +184,21 @@ export default function OffersPage() {
     setOfferName("");
     setPercentage("");
     setDescription("");
-    setitemAlign("left");
-    setOfferStatus("saved");
+    setTextAlign("left");
+    setOfferStatus(OFFER_STATUS.DRAFT);
 
     setStartDate("");
     setEndDate("");
-
     setStartTime("");
     setEndTime("");
 
+    revokeCurrentObjectUrl();
     setBanner(null);
     setBannerFile(null);
     setImageDimensions("");
     setFileSizeStr("");
     setUploadSuccess(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleEdit = (offer) => {
@@ -184,28 +211,31 @@ export default function OffersPage() {
     setEndDate(offer.end_date || "");
     setStartTime(offer.start_time || "");
     setEndTime(offer.end_time || "");
-    setitemAlign(offer.text_align || "left");
-    setOfferStatus(offer.status || "saved");
+    setTextAlign(offer.text_align || "left");
+    setOfferStatus(offer.status || OFFER_STATUS.DRAFT);
 
-    setBanner(getOfferImageUrl(offer.banner_image));
+    revokeCurrentObjectUrl();
+    setBannerFile(null);
+    setFileSizeStr(""); // size unknown for a server-stored image
+
+    const imageUrl = getOfferImageUrl(offer.banner_image);
+    setBanner(imageUrl || null);
+
     if (offer.banner_image) {
       const img = new Image();
-      img.onload = () => {
-        setImageDimensions(`${img.width}×${img.height}`);
-      };
-      img.src = getOfferImageUrl(offer.banner_image);
+      img.onload = () => setImageDimensions(`${img.width}×${img.height}`);
+      img.onerror = () => setImageDimensions("");
+      img.src = imageUrl;
       setUploadSuccess(true);
-      setFileSizeStr(""); // size unknown for server image
     } else {
       setImageDimensions("");
-      setFileSizeStr("");
       setUploadSuccess(false);
     }
 
     setShowAddOffer(true);
   };
 
-  // Modern Upload Handlers
+  // --- Image upload handlers ------------------------------------------------
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -226,58 +256,59 @@ export default function OffersPage() {
   };
 
   const handleFileSelection = (file) => {
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-    if (!allowedTypes.includes(file.type)) {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
       toast.error("Only JPG, PNG, and WebP images are allowed.");
       return;
     }
-    // We visually display 5MB limit recommendation, but backend allows up to 10MB
-    if (file.size > 10 * 1024 * 1024) {
+    // The UI advertises a 5MB recommendation, but the backend accepts up to 10MB.
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
       toast.error("Image size must be under 10 MB.");
       return;
     }
 
+    // Reuse a single object URL for both the dimension probe and the preview,
+    // and revoke whatever URL preceded it to avoid leaking blob memory.
+    revokeCurrentObjectUrl();
+    const objectUrl = URL.createObjectURL(file);
+    objectUrlRef.current = objectUrl;
+
     const img = new Image();
-    img.onload = () => {
-      setImageDimensions(`${img.width}×${img.height}`);
-    };
-    img.src = URL.createObjectURL(file);
+    img.onload = () => setImageDimensions(`${img.width}×${img.height}`);
+    img.onerror = () => setImageDimensions("");
+    img.src = objectUrl;
 
     setFileSizeStr((file.size / (1024 * 1024)).toFixed(1) + " MB");
-    setBanner(URL.createObjectURL(file));
+    setBanner(objectUrl);
     setBannerFile(file);
     setUploadSuccess(true);
   };
 
   const handleRemoveImage = () => {
+    revokeCurrentObjectUrl();
     setBanner(null);
     setBannerFile(null);
     setImageDimensions("");
     setFileSizeStr("");
     setUploadSuccess(false);
+    // Reset the input value so re-selecting the same file still fires onChange.
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleSave = async (status = "saved") => {
+  // --- Save / publish / delete ----------------------------------------------
+  const handleSave = async (status = OFFER_STATUS.DRAFT) => {
     if (!validateOfferForm()) return;
 
-    const isPub = status === "published";
-
-    if (isPub) setPublishing(true);
-    else setSaving(true);
+    const isPublishing = status === OFFER_STATUS.PUBLISHED;
+    isPublishing ? setPublishing(true) : setSaving(true);
 
     try {
       const formData = new FormData();
 
-      if (offerName.trim()) {
-        formData.append("title", offerName);
-      }
-
-      if (percentage.trim()) {
-        formData.append("percentage", percentage);
-      }
+      if (offerName.trim()) formData.append("title", offerName);
+      if (percentage.trim()) formData.append("percentage", percentage);
 
       formData.append("description", description);
-      formData.append("text_align", itemAlign);
+      formData.append("text_align", textAlign);
       formData.append("start_date", startDate);
       formData.append("end_date", endDate);
       formData.append("start_time", startTime);
@@ -291,56 +322,92 @@ export default function OffersPage() {
 
       if (editingOffer) {
         await api.put(`/offers/admin/${editingOffer.id}`, formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+          headers: { "Content-Type": "multipart/form-data" },
         });
-
         toast.success("Offer updated successfully.");
       } else {
         await api.post("/offers/admin", formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+          headers: { "Content-Type": "multipart/form-data" },
         });
-
-        toast.success(
-          isPub ? "Offer published successfully." : "Offer saved as draft successfully.",
-        );
+        toast.success(isPublishing ? "Offer published successfully." : "Offer saved as draft successfully.");
       }
 
-      fetchOffers();
+      await fetchOffers();
       clearForm();
-      setEditingOffer(null);
       setShowAddOffer(false);
     } catch (error) {
-      console.log(error);
+      console.error(error);
       toast.error(getApiErrorMessage(error, "Unable to save offer."));
     } finally {
       setSaving(false);
       setPublishing(false);
     }
   };
-
-  const publishOffer = async (offerId) => {
+  const formatDateTime = (dateStr, timeStr) => {
+    if (!dateStr) return "";
     try {
-      await api.put(`/offers/admin/${offerId}`, { status: "published" });
-      toast.success("Offer published successfully.");
-      fetchOffers();
-    } catch (error) {
-      console.error(error);
-      toast.error(getApiErrorMessage(error, "Failed to publish offer."));
+      const [year, month, day] = dateStr.split("-").map(Number);
+      const [hour, minute] = (timeStr || "00:00").split(":").map(Number);
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const monthName = months[month - 1] || "";
+      
+      let hoursStr = hour;
+      const minutesStr = String(minute).padStart(2, "0");
+      const ampmStr = hour >= 12 ? "PM" : "AM";
+      hoursStr = hour % 12;
+      hoursStr = hoursStr ? hoursStr : 12;
+      const formattedTime = `${String(hoursStr).padStart(2, "0")}:${minutesStr} ${ampmStr}`;
+      
+      return `${day} ${monthName} ${year} • ${formattedTime}`;
+    } catch (e) {
+      return `${dateStr} ${timeStr}`;
     }
   };
 
-  const deleteOffer = async (offerId) => {
+  const handlePublish = async (offerId) => {
+    setActionLoading((prev) => ({ ...prev, [`publish-${offerId}`]: true }));
+    try {
+      await api.put(`/offers/admin/${offerId}`);
+      toast.success("Offer published successfully.");
+      await fetchOffers();
+    } catch (error) {
+      console.error(error);
+      toast.error(getApiErrorMessage(error, "Failed to publish offer."));
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [`publish-${offerId}`]: false }));
+    }
+  };
+
+  const handleUnpublish = async (offerId) => {
+    setActionLoading((prev) => ({ ...prev, [`unpublish-${offerId}`]: true }));
+    try {
+      const formData = new FormData();
+      formData.append("status", OFFER_STATUS.DRAFT);
+      await api.patch(`/offers/admin/${offerId}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      toast.success("Offer unpublished successfully.");
+      await fetchOffers();
+    } catch (error) {
+      console.error(error);
+      toast.error(getApiErrorMessage(error, "Failed to unpublish offer."));
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [`unpublish-${offerId}`]: false }));
+    }
+  };
+
+  const handleDelete = async (offerId) => {
+    if (!confirm("Are you sure you want to delete this offer?")) return;
+    setActionLoading((prev) => ({ ...prev, [`delete-${offerId}`]: true }));
     try {
       await api.delete(`/offers/admin/${offerId}`);
       toast.success("Offer deleted successfully.");
-      fetchOffers();
+      await fetchOffers();
     } catch (error) {
       console.error(error);
       toast.error(getApiErrorMessage(error, "Failed to delete offer."));
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [`delete-${offerId}`]: false }));
     }
   };
 
@@ -355,50 +422,56 @@ export default function OffersPage() {
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-    if (days > 0) {
-      return `Ends in: ${days}d ${hours}h`;
+    return days > 0 ? `Ends in: ${days}d ${hours}h` : `Ends in: ${hours}h ${minutes}m`;
+  };
+
+  // --- Offer-limit gating ----------------------------------------------------
+  const isAtOfferLimit = Boolean(limits) && offers.length >= limits.max_offers;
+
+  const showLimitReachedToast = () => {
+    toast.error(
+      <div>
+        <strong style={{ display: "block", marginBottom: "4px" }}>Maximum Limit Reached</strong>
+        <div style={{ whiteSpace: "pre-line", fontSize: "12px", lineHeight: "1.4" }}>
+          You have reached the maximum allowed limit of {limits.max_offers} offers.{"\n"}Please delete an existing offer before creating a new one.
+        </div>
+      </div>
+    );
+  };
+
+  // Shared gate used by both "Create Offer" entry points. Returns whether
+  // it's safe to open the create-offer drawer.
+  const canCreateOffer = () => {
+    if (!limits) {
+      toast.error("⚠️ Store limits are not loaded yet. Please wait.");
+      return false;
     }
-    return `Ends in: ${hours}h ${minutes}m`;
+    if (isAtOfferLimit) {
+      showLimitReachedToast();
+      return false;
+    }
+    return true;
   };
 
   const handleCreateCampaignClick = () => {
-    if (!limits) {
-      toast.error("⚠️ Store limits are not loaded yet. Please wait.");
-      return;
-    }
-    if (offers.length >= limits.max_offers) {
-      toast.error(
-        <div>
-          <strong style={{ display: "block", marginBottom: "4px" }}>Maximum Limit Reached</strong>
-          <div style={{ whiteSpace: "pre-line", fontSize: "12px", lineHeight: "1.4" }}>
-            You have reached the maximum allowed limit of {limits.max_offers} offers.{"\n"}Please delete an existing offer before creating a new one.
-          </div>
-        </div>
-      );
-      return;
-    }
+    if (!canCreateOffer()) return;
     clearForm();
     setShowAddOffer(true);
   };
 
   const handleAddFirstOfferClick = () => {
-    if (!limits) {
-      toast.error("⚠️ Store limits are not loaded yet. Please wait.");
-      return;
-    }
-    if (offers.length >= limits.max_offers) {
-      toast.error(
-        <div>
-          <strong style={{ display: "block", marginBottom: "4px" }}>Maximum Limit Reached</strong>
-          <div style={{ whiteSpace: "pre-line", fontSize: "12px", lineHeight: "1.4" }}>
-            You have reached the maximum allowed limit of {limits.max_offers} offers.{"\n"}Please delete an existing offer before creating a new one.
-          </div>
-        </div>
-      );
-      return;
-    }
+    if (!canCreateOffer()) return;
     setShowAddOffer(true);
   };
+
+  const offerActionDisabled = limitsLoading || !!limitsError || isAtOfferLimit;
+  const offerActionTitle = limitsLoading
+    ? "Loading store configuration..."
+    : limitsError
+    ? "Unable to load configuration"
+    : isAtOfferLimit
+    ? "Maximum limit reached.\nDelete an existing item to continue."
+    : "";
 
   return (
     <div className="space-y-6">
@@ -432,11 +505,11 @@ export default function OffersPage() {
             />
             <Button
               onClick={handleCreateCampaignClick}
-              disabled={limitsLoading || !!limitsError || (limits && offers.length >= limits.max_offers)}
+              disabled={offerActionDisabled}
               icon={limitsLoading ? Loader2 : Plus}
-              variant={(limits && offers.length >= limits.max_offers) ? "secondary" : "primary"}
-              title={limitsLoading ? "Loading store configuration..." : limitsError ? "Unable to load configuration" : (limits && offers.length >= limits.max_offers) ? "Maximum limit reached.\nDelete an existing item to continue." : ""}
-              className={clsx("flex flex-row w-fit whitespace-nowrap", (limitsLoading || !!limitsError || (limits && offers.length >= limits.max_offers)) && "opacity-50 cursor-not-allowed")}
+              variant={isAtOfferLimit ? "secondary" : "primary"}
+              title={offerActionTitle}
+              className={clsx("flex flex-row w-fit whitespace-nowrap", offerActionDisabled && "opacity-50 cursor-not-allowed")}
             >
               <span>{limitsLoading ? "Loading..." : "Create Offer"}</span>
             </Button>
@@ -446,51 +519,64 @@ export default function OffersPage() {
 
       {/* Grid List */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
-          <p className="text-xs font-medium text-muted">
-            Syncing offers...
-          </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" aria-busy="true" aria-label="Loading offers">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="card overflow-hidden bg-surface border border-app rounded-2xl flex flex-col h-full animate-pulse"
+            >
+              <div className="h-40 bg-app" />
+              <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
+                <div className="space-y-2">
+                  <div className="h-4 bg-app rounded w-1/3" />
+                  <div className="h-5 bg-app rounded w-3/4" />
+                  <div className="h-3 bg-app rounded w-full" />
+                  <div className="h-3 bg-app rounded w-5/6" />
+                </div>
+                <div className="border-t border-app pt-3.5 space-y-2">
+                  <div className="h-10 bg-app rounded-xl w-full" />
+                  <div className="flex gap-2 pt-2">
+                    <div className="h-9 bg-app rounded-lg flex-1" />
+                    <div className="h-9 bg-app rounded-lg flex-1" />
+                    <div className="h-9 bg-app rounded-lg flex-1" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       ) : filteredOffers.length === 0 ? (
-        <div className="card p-16 text-center border-dashed flex flex-col items-center justify-center max-w-xl mx-auto space-y-4">
-          <div className="w-12 h-12 rounded-xl bg-app flex items-center justify-center text-muted">
-            <Percent size={20} />
+        <div className="card p-16 text-center border-dashed flex flex-col items-center justify-center max-w-md mx-auto space-y-5 bg-surface/50 backdrop-blur-sm rounded-2xl border border-app shadow-sm">
+          <div className="w-14 h-14 rounded-2xl bg-brand-500/10 flex items-center justify-center text-brand-500 shadow-inner">
+            <Percent size={24} />
           </div>
-          <div>
-            <h3 className="font-bold text-app text-sm">
-              No promotional offers found
-            </h3>
-            <p className="text-muted text-xs mt-1">
-              Create offers and discount deals to boost your customer engagement.
+          <div className="space-y-1">
+            <h3 className="font-bold text-app text-base">No Offers Available</h3>
+            <p className="text-muted text-xs">
+              Create your first promotional offer.
             </p>
           </div>
           <Button
             onClick={handleAddFirstOfferClick}
-            disabled={limitsLoading || !!limitsError || (limits && offers.length >= limits.max_offers)}
+            disabled={offerActionDisabled}
             icon={Plus}
-            variant="addvariant"
-            title={limitsLoading ? "Loading store configuration..." : limitsError ? "Unable to load configuration" : (limits && offers.length >= limits.max_offers) ? "Maximum limit reached.\nDelete an existing item to continue." : ""}
-            className={clsx("flex items-center gap-2 py-2 text-xs font-semibold whitespace-nowrap", (limitsLoading || !!limitsError || (limits && offers.length >= limits.max_offers)) ? "bg-gray-500 cursor-not-allowed opacity-50" : "bg-sky-500")}
+            variant="primary"
+            title={offerActionTitle}
+            className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold whitespace-nowrap rounded-xl shadow-md transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background"
           >
-            Add First Offer
+            Add Offer
           </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredOffers.map((offer) => {
-            const expired =
-              offer.expires_at &&
-              new Date(offer.expires_at + "Z") <= currentTime;
-            const statusVariant = expired
-              ? "default"
-              : offer.status === "published"
-                ? "success"
-                : "warning";
+            const expired = offer.expires_at && new Date(offer.expires_at + "Z") <= currentTime;
+            const statusVariant = expired ? "default" : offer.status === OFFER_STATUS.PUBLISHED ? "success" : "warning";
+
             return (
               <div
                 key={offer.id}
-                className="card overflow-hidden hover:border-brand-500/30 flex flex-col h-full hover:shadow-card-hover transition-all duration-200"
+                className="bg-surface border border-app rounded-2xl overflow-hidden flex flex-col h-full transition-all duration-200 ease-out shadow-sm hover:shadow-md hover:border-brand-500/40 hover:-translate-y-0.5 group"
               >
                 {/* Offer Image */}
                 <div className="h-40 bg-app border-b border-app relative overflow-hidden group">
@@ -498,7 +584,10 @@ export default function OffersPage() {
                     <img
                       src={getOfferImageUrl(offer.banner_image)}
                       alt={offer.title}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      className="w-full h-full object-cover transition-all duration-200 ease-in opacity-0"
+                      onLoad={(e) => {
+                        e.currentTarget.classList.remove("opacity-0");
+                      }}
                       onError={(e) => {
                         e.currentTarget.src = "";
                       }}
@@ -509,93 +598,121 @@ export default function OffersPage() {
                     </div>
                   )}
                   {/* Discount Badge */}
-                  <div className="absolute top-3 right-3 bg-brand-500 text-white font-bold text-xs px-2.5 py-1.5 rounded-lg shadow-sm">
+                  <div className="absolute top-3 right-3 bg-brand-500 text-white font-extrabold text-[11px] px-3 py-1 rounded-lg shadow-md border border-white/10 select-none tracking-wide">
                     {offer.percentage}% OFF
                   </div>
                 </div>
 
                 {/* Offer details */}
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                <div className="p-4 flex-1 flex flex-col justify-between space-y-3.5">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Badge
-                        label={
-                          expired
-                            ? "Expired"
-                            : offer.status === "published"
-                              ? "Published"
-                              : "Draft"
-                        }
+                        label={expired ? "Expired" : offer.status === OFFER_STATUS.PUBLISHED ? "Published" : "Draft"}
                         variant={statusVariant}
                         dot
+                        className="shadow-sm font-semibold tracking-wide"
                       />
                     </div>
-                    <h3 className="font-bold text-sm text-app leading-snug">
-                      {offer.title}
-                    </h3>
+                    <h3 className="font-bold text-sm text-app leading-snug">{offer.title}</h3>
                     {offer.description && (
-                      <p className="text-xs text-muted leading-relaxed line-clamp-2">
-                        {offer.description}
-                      </p>
+                      <p className="text-xs text-muted leading-relaxed line-clamp-2">{offer.description}</p>
                     )}
                   </div>
 
-                  <div className="border-t border-app pt-4 space-y-3">
+                  <div className="border-t border-app pt-3.5 space-y-2.5">
                     {/* Time limits */}
-                    {offer.status === "saved" ? (
-                      <div className="text-[10px] space-y-1 text-app font-medium leading-relaxed bg-app/50 p-2.5 rounded-lg border border-app">
-                        <div className="flex items-center gap-1.5">
-                          <Calendar size={12} className="text-muted" />
-                          <span>
-                            Start: {offer.start_date} {offer.start_time}
-                          </span>
+                    <div className="grid grid-cols-2 gap-2 text-app font-medium bg-app/30 p-2.5 rounded-xl border border-app/50 text-[11px] leading-relaxed">
+                      <div>
+                        <div className="flex items-center gap-1 text-muted text-[10px] uppercase tracking-wider font-bold">
+                          <Calendar size={11} className="text-muted" />
+                          <span>Starts</span>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <Clock size={12} className="text-muted" />
-                          <span>
-                            End: {offer.end_date} {offer.end_time}
-                          </span>
+                        <div className="text-[11px] text-app font-semibold mt-0.5">
+                          {formatDateTime(offer.start_date, offer.start_time)}
                         </div>
                       </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-rose-500 bg-rose-500/5 px-2.5 py-1.5 rounded-lg border border-rose-500/10">
-                        <Clock size={13} />
+                      <div className="border-l border-app/40 pl-2.5">
+                        <div className="flex items-center gap-1 text-muted text-[10px] uppercase tracking-wider font-bold">
+                          <Clock size={11} className="text-muted" />
+                          <span>Ends</span>
+                        </div>
+                        <div className="text-[11px] text-app font-semibold mt-0.5">
+                          {formatDateTime(offer.end_date, offer.end_time)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Active Countdown badge (only if Published and not Expired) */}
+                    {offer.status === OFFER_STATUS.PUBLISHED && !expired && (
+                      <div className="flex items-center justify-center gap-1.5 text-[11px] font-bold text-rose-500 bg-rose-500/5 py-1 px-2.5 rounded-lg border border-rose-500/10">
+                        <Clock size={12} className="animate-pulse" />
                         <span>{formatCountdown(offer.expires_at)}</span>
                       </div>
                     )}
 
-                    {/* Actions buttons */}
-                    <div className="flex justify-end gap-2 pt-1">
-                      {offer.status === "saved" && (
-                        <Button
-                          onClick={() => publishOffer(offer.id)}
-                          variant="addvariant"
-                          className="px-3 py-1.5 rounded-l text-white font-bold text-[11px] transition-all"
+                    {/* Action buttons */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2">
+                      {offer.status === OFFER_STATUS.DRAFT ? (
+                        <button
+                          onClick={() => handlePublish(offer.id)}
+                          disabled={actionLoading[`publish-${offer.id}`] || actionLoading[`delete-${offer.id}`]}
+                          aria-label="Publish offer"
+                          className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg text-[11px] font-bold transition-all bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background active:scale-[0.98] duration-150"
                         >
-                          Publish
-                        </Button>
+                          {actionLoading[`publish-${offer.id}`] ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Upload className="w-3.5 h-3.5" />
+                          )}
+                          <span>Publish</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleUnpublish(offer.id)}
+                          disabled={actionLoading[`unpublish-${offer.id}`] || actionLoading[`delete-${offer.id}`]}
+                          aria-label="Unpublish offer"
+                          className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg text-[11px] font-bold transition-all bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background active:scale-[0.98] duration-150"
+                        >
+                          {actionLoading[`unpublish-${offer.id}`] ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Download className="w-3.5 h-3.5" />
+                          )}
+                          <span>Unpublish</span>
+                        </button>
                       )}
-                      <Button
-                        onClick={() => handleEdit(offer)}
-                        variant="secondary"
-                        icon={FileText}
-                      >
-                        Edit
-                      </Button>
+
                       <button
-                        onClick={() => {
-                          if (
-                            confirm(
-                              "Are you sure you want to delete this offer?",
-                            )
-                          ) {
-                            deleteOffer(offer.id);
-                          }
-                        }}
-                        className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white font-bold text-[11px] transition-all flex items-center gap-1"
+                        onClick={() => handleEdit(offer)}
+                        disabled={
+                          actionLoading[`publish-${offer.id}`] ||
+                          actionLoading[`unpublish-${offer.id}`] ||
+                          actionLoading[`delete-${offer.id}`]
+                        }
+                        aria-label="Edit offer"
+                        className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg text-[11px] font-bold transition-all border border-app hover:bg-app text-app disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background active:scale-[0.98] duration-150"
                       >
-                        <Trash2 size={11} />
-                        Delete
+                        <FileText size={13} />
+                        <span>Edit</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleDelete(offer.id)}
+                        disabled={
+                          actionLoading[`publish-${offer.id}`] ||
+                          actionLoading[`unpublish-${offer.id}`] ||
+                          actionLoading[`delete-${offer.id}`]
+                        }
+                        aria-label="Delete offer"
+                        className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg text-[11px] font-bold transition-all bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background active:scale-[0.98] duration-150"
+                      >
+                        {actionLoading[`delete-${offer.id}`] ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 size={13} />
+                        )}
+                        <span>Delete</span>
                       </button>
                     </div>
                   </div>
@@ -616,10 +733,10 @@ export default function OffersPage() {
       >
         <form onSubmit={(e) => e.preventDefault()} className="relative flex flex-col h-full">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 pb-6">
-            
-            {/* Left Column: Media upload, Schedule, and Status */}
+
+            {/* Left Column: Media upload and Schedule */}
             <div className="space-y-4 lg:space-y-6">
-              
+
               {/* Image Upload section */}
               <div className="card p-5 md:p-6 border border-app bg-surface rounded-xl shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-app pb-3">
@@ -627,22 +744,16 @@ export default function OffersPage() {
                     <span>🖼️</span> Offer Image
                   </h3>
                 </div>
-                
+
                 <p className="text-[10px] text-muted">
                   This image will be displayed to customers on the storefront.
                 </p>
 
                 {banner ? (
-                  /* Selected Image Preview */
                   <div className="relative rounded-xl border border-app overflow-hidden bg-app">
                     <div className="relative h-48 bg-black/20 flex items-center justify-center overflow-hidden group">
-                      <img
-                        src={banner}
-                        alt="Offer Preview"
-                        className="w-full h-full object-cover"
-                      />
-                      
-                      {/* Hover Overlay Preview Button */}
+                      <img src={banner} alt="Offer Preview" className="w-full h-full object-cover" />
+
                       <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
                         <button
                           type="button"
@@ -658,9 +769,7 @@ export default function OffersPage() {
                     <div className="p-4 bg-surface border-t border-app flex flex-wrap items-center justify-between gap-3">
                       <div className="space-y-0.5">
                         {uploadSuccess && (
-                          <p className="text-xs font-bold text-green-500">
-                            ✓ Uploaded Successfully
-                          </p>
+                          <p className="text-xs font-bold text-green-500">✓ Uploaded Successfully</p>
                         )}
                         <div className="flex items-center gap-2 text-[10px] text-muted font-medium">
                           {imageDimensions && <span>{imageDimensions}</span>}
@@ -692,7 +801,6 @@ export default function OffersPage() {
                     </div>
                   </div>
                 ) : (
-                  /* Dashed Upload Area */
                   <label
                     className={clsx(
                       "relative flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200",
@@ -715,9 +823,7 @@ export default function OffersPage() {
                     />
                     <div className="flex flex-col items-center justify-center p-5 text-center gap-2">
                       <ImageIcon size={32} className="text-muted mb-1" />
-                      <p className="text-sm font-semibold text-app">
-                        Drag & Drop Offer Image Here
-                      </p>
+                      <p className="text-sm font-semibold text-app">Drag & Drop Offer Image Here</p>
                       <p className="text-xs text-muted">or</p>
                       <span className="px-3 py-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors">
                         Choose Image
@@ -731,14 +837,14 @@ export default function OffersPage() {
                 )}
               </div>
 
-              {/* Section 4: Schedule */}
+              {/* Schedule */}
               <div className="card p-5 md:p-6 border border-app bg-surface rounded-xl shadow-sm space-y-5">
                 <div className="flex items-center justify-between border-b border-app pb-3">
                   <h3 className="text-sm font-bold text-app flex items-center gap-2">
                     <span>📅</span> Schedule
                   </h3>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -799,83 +905,25 @@ export default function OffersPage() {
                   </p>
                 </div>
               </div>
-
-              {/* Section 5: Status */}
-              <div className="card p-5 md:p-6 border border-app bg-surface rounded-xl shadow-sm space-y-4">
-                <div className="flex items-center justify-between border-b border-app pb-3">
-                  <h3 className="text-sm font-bold text-app flex items-center gap-2">
-                    <span>🛡️</span> Status
-                  </h3>
-                </div>
-                
-                <div className="flex gap-4 items-stretch">
-                  <label 
-                    className={clsx(
-                      "flex-1 flex flex-col justify-center p-4 rounded-xl border cursor-pointer transition-all duration-150 min-h-[90px] select-none",
-                      offerStatus === "saved" 
-                        ? "border-brand-500 bg-brand-500/5 ring-2 ring-brand-500/20" 
-                        : "border-app bg-app/20 hover:bg-app"
-                    )}
-                  >
-                    <input 
-                      type="radio" 
-                      name="offerStatus" 
-                      value="saved" 
-                      checked={offerStatus === "saved"} 
-                      onChange={() => setOfferStatus("saved")}
-                      className="sr-only"
-                    />
-                    <span className={clsx("text-xs font-bold transition-colors", offerStatus === "saved" ? "text-brand-500" : "text-app")}>Draft</span>
-                    <span className="text-[10px] text-muted mt-1 leading-relaxed">
-                      Save the offer without displaying it on the storefront.
-                    </span>
-                  </label>
-                  
-                  <label 
-                    className={clsx(
-                      "flex-1 flex flex-col justify-center p-4 rounded-xl border cursor-pointer transition-all duration-150 min-h-[90px] select-none",
-                      offerStatus === "published" 
-                        ? "border-brand-500 bg-brand-500/5 ring-2 ring-brand-500/20" 
-                        : "border-app bg-app/20 hover:bg-app"
-                    )}
-                  >
-                    <input 
-                      type="radio" 
-                      name="offerStatus" 
-                      value="published" 
-                      checked={offerStatus === "published"} 
-                      onChange={() => setOfferStatus("published")}
-                      className="sr-only"
-                    />
-                    <span className={clsx("text-xs font-bold transition-colors", offerStatus === "published" ? "text-brand-500" : "text-app")}>Published</span>
-                    <span className="text-[10px] text-muted mt-1 leading-relaxed">
-                      Make this offer active immediately or at the scheduled time.
-                    </span>
-                  </label>
-                </div>
-              </div>
-
             </div>
 
-            {/* Right Column: Information, Description, and Display Settings */}
+            {/* Right Column: Information, Description, and Status */}
             <div className="space-y-4 lg:space-y-6">
-              
-              {/* Section 1: Offer Information */}
+
+              {/* Offer Information */}
               <div className="card p-5 md:p-6 border border-app bg-surface rounded-xl shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-app pb-3">
                   <h3 className="text-sm font-bold text-app flex items-center gap-2">
                     <span>🏷️</span> Offer Information
                   </h3>
                 </div>
-                
+
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label htmlFor="offer-name" className="text-xs font-semibold text-app">
                       Offer Name
                     </label>
-                    <span className="text-[10px] text-muted font-mono">
-                      {offerName.length} / 100
-                    </span>
+                    <span className="text-[10px] text-muted font-mono">{offerName.length} / 100</span>
                   </div>
                   <input
                     id="offer-name"
@@ -885,9 +933,7 @@ export default function OffersPage() {
                     onChange={(e) => setOfferName(e.target.value.slice(0, 100))}
                     className="input-field w-full py-2.5 text-xs"
                   />
-                  <p className="text-[10px] text-muted">
-                    This name will identify the offer campaign.
-                  </p>
+                  <p className="text-[10px] text-muted">This name will identify the offer campaign.</p>
                 </div>
 
                 <div className="space-y-1.5">
@@ -903,27 +949,21 @@ export default function OffersPage() {
                       onChange={(e) => setPercentage(e.target.value)}
                       className="input-field w-full pl-9 py-2.5 text-xs"
                     />
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-bold text-xs">
-                      %
-                    </span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted font-bold text-xs">%</span>
                   </div>
-                  <p className="text-[10px] text-muted">
-                    Enter a value between 1 and 100.
-                  </p>
+                  <p className="text-[10px] text-muted">Enter a value between 1 and 100.</p>
                 </div>
               </div>
 
-              {/* Section 2: Description */}
+              {/* Description */}
               <div className="card p-5 md:p-6 border border-app bg-surface rounded-xl shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-app pb-3">
                   <h3 className="text-sm font-bold text-app flex items-center gap-2">
                     <span>📝</span> Description
                   </h3>
-                  <span className="text-[10px] text-muted font-mono">
-                    {description.length} / 500
-                  </span>
+                  <span className="text-[10px] text-muted font-mono">{description.length} / 500</span>
                 </div>
-                
+
                 <div className="space-y-1.5">
                   <label htmlFor="description" className="text-xs font-semibold text-app">
                     Offer Description
@@ -936,56 +976,74 @@ export default function OffersPage() {
                     rows="4"
                     className="input-field w-full py-2.5 text-xs resize-none"
                   />
-                  <p className="text-[10px] text-muted">
-                    This text helps customers understand the offer.
-                  </p>
+                  <p className="text-[10px] text-muted">This text helps customers understand the offer.</p>
                 </div>
               </div>
 
-              {/* Section 3: Display Settings */}
+              {/* Status */}
               <div className="card p-5 md:p-6 border border-app bg-surface rounded-xl shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-app pb-3">
                   <h3 className="text-sm font-bold text-app flex items-center gap-2">
-                    <span>🎨</span> Display Settings
+                    <span>🛡️</span> Status
                   </h3>
                 </div>
-                
-                <div className="space-y-3">
-                  <label className="text-xs font-semibold text-app">
-                    Text Alignment
+
+                <div className="flex gap-4 items-stretch">
+                  <label
+                    className={clsx(
+                      "flex-1 flex flex-col justify-center p-4 rounded-xl border cursor-pointer transition-all duration-150 min-h-[90px] select-none",
+                      offerStatus === OFFER_STATUS.DRAFT
+                        ? "border-brand-500 bg-brand-500/5 ring-2 ring-brand-500/20"
+                        : "border-app bg-app/20 hover:bg-app"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="offerStatus"
+                      value={OFFER_STATUS.DRAFT}
+                      checked={offerStatus === OFFER_STATUS.DRAFT}
+                      onChange={() => setOfferStatus(OFFER_STATUS.DRAFT)}
+                      className="sr-only"
+                    />
+                    <span className={clsx("text-xs font-bold transition-colors", offerStatus === OFFER_STATUS.DRAFT ? "text-brand-500" : "text-app")}>
+                      Draft
+                    </span>
+                    <span className="text-[10px] text-muted mt-1 leading-relaxed">
+                      Save the offer without displaying it on the storefront.
+                    </span>
                   </label>
-                  <div className="flex gap-3">
-                    {["left", "center", "right"].map((align) => (
-                      <button
-                        key={align}
-                        type="button"
-                        onClick={() => setitemAlign(align)}
-                        className={clsx(
-                          "flex-1 rounded-lg border py-2.5 text-xs font-bold capitalize transition-all duration-150 active:scale-[0.98]",
-                          itemAlign === align
-                            ? "bg-brand-500 text-white border-brand-500 shadow-md ring-2 ring-brand-500/20"
-                            : "border-app hover:bg-app text-app bg-app/20 hover:scale-[1.01]",
-                        )}
-                      >
-                        {align}
-                      </button>
-                    ))}
-                  </div>
+
+                  <label
+                    className={clsx(
+                      "flex-1 flex flex-col justify-center p-4 rounded-xl border cursor-pointer transition-all duration-150 min-h-[90px] select-none",
+                      offerStatus === OFFER_STATUS.PUBLISHED
+                        ? "border-brand-500 bg-brand-500/5 ring-2 ring-brand-500/20"
+                        : "border-app bg-app/20 hover:bg-app"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="offerStatus"
+                      value={OFFER_STATUS.PUBLISHED}
+                      checked={offerStatus === OFFER_STATUS.PUBLISHED}
+                      onChange={() => setOfferStatus(OFFER_STATUS.PUBLISHED)}
+                      className="sr-only"
+                    />
+                    <span className={clsx("text-xs font-bold transition-colors", offerStatus === OFFER_STATUS.PUBLISHED ? "text-brand-500" : "text-app")}>
+                      Published
+                    </span>
+                    <span className="text-[10px] text-muted mt-1 leading-relaxed">
+                      Make this offer active immediately or at the scheduled time.
+                    </span>
+                  </label>
                 </div>
               </div>
-
             </div>
-
           </div>
 
           {/* Sticky Footer */}
           <div className="sticky bottom-0 bg-app border-t border-app py-4 mt-8 flex justify-end items-center gap-3 z-10 -mx-6 px-6 -mb-6">
-            <Button
-              type="button"
-              onClick={() => setShowAddOffer(false)}
-              variant="secondary"
-              className="px-5 py-2.5 h-10"
-            >
+            <Button type="button" onClick={() => setShowAddOffer(false)} variant="secondary" className="px-5 py-2.5 h-10">
               Cancel
             </Button>
             <Button
@@ -995,11 +1053,7 @@ export default function OffersPage() {
               variant="primary"
               className="px-5 py-2.5 h-10"
             >
-              {saving || publishing
-                ? "Saving..."
-                : editingOffer
-                ? "Save Changes"
-                : "Save Offer"}
+              {saving || publishing ? "Saving..." : editingOffer ? "Save Changes" : "Save Offer"}
             </Button>
           </div>
         </form>

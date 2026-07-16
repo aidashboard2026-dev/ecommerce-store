@@ -24,40 +24,11 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STATUS_OPTIONS = ['draft', 'published', 'archived']
-const MAX_IMAGES     = 7
+
 const MAX_FILE_SIZE  = 10 * 1024 * 1024
 const ALLOWED_TYPES  = ['image/jpeg', 'image/png', 'image/webp']
 const SIZE_OPTIONS   = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
-// COLLECTION_OPTIONS kept from branch — used as fallback display labels only;
-// the actual dropdown is driven by the collections API (FK-based).
-// const COLLECTION_OPTIONS = [
-//   'Oversized', 'Essentials', 'Streetwear', 'Bottoms',
-//   'Summer', 'Hoodies', 'Joggers', 'Limited Edition',
-// ]
 
-// ─── Blank variant form (module-level — stable ref, no hook needed) ───────────
-
-// const BLANK_VARIANT_FORM = {
-//   size: 'M', color: '', color_hex: '', sku: '',
-//   original_price: '', selling_price: '', discount_percentage: '',
-//   stock_quantity: '', low_stock_threshold: 5,
-// }
-
-// ─── Shared primitives ────────────────────────────────────────────────────────
-
-// function FormField({ label, required, hint, htmlFor, children }) {
-//   return (
-//     <div className="space-y-1">
-//       <div className="flex items-baseline justify-between">
-//         <label htmlFor={htmlFor} className="block text-[11px] font-medium text-muted">
-//           {label}{required && <span className="text-red-400 ml-0.5">*</span>}
-//         </label>
-//         {hint && <span className="text-[10px] text-muted italic">{hint}</span>}
-//       </div>
-//       {children}
-//     </div>
-//   )
-// }
 
 // Branch versions: properly use clsx + component props (HEAD had broken duplicate
 // StyledInput definition and referenced undefined `inputCls`).
@@ -161,11 +132,7 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
 
     size: 'All Size',
 
-    is_featured: false,
-    is_trending: false,
-    is_best_seller: false,
-    is_new_arrival: false,
-
+ 
     seo_title: '',
     seo_description: '',
   })
@@ -179,17 +146,6 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
     queryFn: () => customCategoriesAPI.list().then(r => r.data),
     staleTime: 5 * 60_000,
   })
-
-  console.log("Categories =", categories)
-
-  // const { data: collections = [] } = useQuery({
-  //   // queryKey includes form.category_id so it refetches when category changes
-  //   queryKey: ['collections', 'admin', form.category_id],
-  //   queryFn: () =>
-  //     customCollectionsAPI.list(form.category_id ? { category_id: form.category_id } : {})
-  //       .then(r => r.data),
-  //   staleTime: 5 * 60_000,
-  // })
 
   // ─── Other state ─────────────────────────────────────────────────────────────
   const [localImages, setLocalImages]     = useState([])
@@ -249,17 +205,7 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
             size:
               p.size || "All Size",
 
-            is_featured:
-              p.is_featured || false,
-
-            is_trending:
-              p.is_trending || false,
-
-            is_best_seller:
-              p.is_best_seller || false,
-
-            is_new_arrival:
-              p.is_new_arrival || false,
+           
 
             seo_title:
               p.seo_title || "",
@@ -310,10 +256,7 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
             ? Number(form.custom_category_id)
             : null,
 
-    // collection_id:
-    //   form.collection_id
-    //     ? Number(form.collection_id)
-    //     : null,
+    
 
     original_price_min:
       Number(form.original_price_min),
@@ -366,17 +309,6 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
     onError: e => toast.error(getApiErrorMessage(e, 'Something went wrong')),
   })
 
-  // ─── Variant delete mutation (edit mode) ──────────────────────────────────────
-
-  // const deleteVariantMutation = useMutation({
-  //   mutationFn: variantId => productsApi.deleteVariant(product.id, variantId),
-  //   onMutate:  variantId  => setDeletingVariantIds(prev => new Set([...prev, variantId])),
-  //   onSettled: (_, __, variantId) => setDeletingVariantIds(prev => {
-  //     const s = new Set(prev); s.delete(variantId); return s
-  //   }),
-  //   onSuccess: () => { toast.success('Variant deleted'); qc.invalidateQueries({ queryKey: ['products'] }) },
-  //   onError: e => toast.error(e.response?.data?.detail || 'Failed to delete variant'),
-  // })
 
   // ─── New product: batch save ──────────────────────────────────────────────────
 
@@ -425,38 +357,9 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
       const res =await customProductsAPI.create(data)
       createdProduct = res.data
       updateStep('create-product', { status: 'done' })
-    // } catch (e) {
-
-    //     isCriticalFailureRef.current = true
-
-    //     const errorMessage =
-    //       Array.isArray(e?.response?.data?.detail)
-    //         ? e.response.data.detail
-    //             .map(err => err.msg)
-    //             .join(', ')
-    //         : String(
-    //             e?.response?.data?.detail ||
-    //             'Failed to create product'
-    //           )
-
-    //     updateStep('create-product', {
-    //       status: 'error',
-    //       details: errorMessage
-    //     })
-
-    //     toast.error(errorMessage)
-
-    //     isSavingRef.current = false
-
-    //     return
-    //   }
+   
     }catch (e) {
-        console.log("========== CREATE PRODUCT ERROR ==========");
-        console.log(e);
-        console.log("Status:", e?.response?.status);
-        console.log("Response:", e?.response?.data);
-        console.log("Request Payload:", data);
-
+        
         const errorMessage =
           e?.response?.data?.detail ||
           e?.response?.data?.message ||
@@ -516,39 +419,6 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
       }
     }
 
-    // // ── Step 3: Create variants ─────────────────────────────────────────────────
-    // if (varCount > 0) {
-    //   updateStep('create-variants', { status: 'loading' })
-    //   try {
-    //     // BUG-3 FIX: wrap array in { variants: [...] } — matches BulkVariantCreate schema
-    //     const variantsPayload = localVariants.map(({ _localId, ...v }) => v)
-    //     const bulkRes = await productsApi.bulkCreateVariants(createdProduct.id, { variants: variantsPayload })
-
-    //     // BUG-4 FIX: response is ProductResponse, not { total_created, total_failed }.
-    //     // Derive success count from the returned product's variants array.
-    //     const returnedProduct = bulkRes.data
-    //     const varSucceeded    = (returnedProduct?.variants || []).length
-    //     const varFailed       = varCount - varSucceeded
-
-    //     if (varFailed <= 0) {
-    //       updateStep('create-variants', { status: 'done', details: `${varSucceeded} created` })
-    //     } else {
-    //       hadPartialFailure = true
-    //       updateStep('create-variants', {
-    //         status:  varSucceeded > 0 ? 'done' : 'error',
-    //         details: `${varSucceeded} created, ${varFailed} failed`,
-    //       })
-    //       toast.error(`${varFailed} variant${varFailed > 1 ? 's' : ''} failed — add them later via Edit`)
-    //     }
-    //   } catch (e) {
-    //     hadPartialFailure = true
-    //     updateStep('create-variants', {
-    //       status:  'error',
-    //       details: e.response?.data?.detail || 'Variant creation failed',
-    //     })
-    //     toast.error('Variant creation failed — add them later via Edit')
-    //   }
-    // }
 
     // ── Finish ──────────────────────────────────────────────────────────────────
     revokeObjectURLs(localImages)
@@ -581,7 +451,7 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
     if (!ALLOWED_TYPES.includes(f.type))  { toast.error('Only JPG, PNG, WebP allowed'); return }
     if (f.size > limits.max_image_size)   { toast.error(`File must be under ${limits.max_image_size / (1024 * 1024)} MB`); return }
     setLocalImages(prev => {
-      if (prev.length >= limits.max_product_images) { toast.error(`Maximum ${limits.max_product_images} images`); return prev }
+      if (prev.length >= limits.max_custom_product_images) { toast.error(`Maximum ${limits.max_custom_product_images} images`); return prev }
       if (isDuplicateFile(f, prev))                 { toast.error('This image is already added');  return prev }
       return [...prev, { id: genLocalId(), file: f, previewUrl: URL.createObjectURL(f) }]
     })
@@ -597,9 +467,7 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
     })
   }, [])
 
-  // const addLocalVariant    = useCallback(v => setLocalVariants(prev => [...prev, v]), [])
-  // const removeLocalVariant = useCallback(id => setLocalVariants(prev => prev.filter(v => v._localId !== id)), [])
-
+ 
   // ─── Derived values ───────────────────────────────────────────────────────────
 
   const thumbnailUrl  = isEdit ? getImageUrl(product?.thumbnail) : (localImages[0]?.previewUrl || null)
@@ -711,7 +579,7 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
                       ))}
                     </div>
                   )}
-                  <Button type="button" onClick={() => localFileRef.current?.click()} variant="secondary" icon={Plus} className="w-full" disabled={limitsLoading || !!limitsError || (limits && localImages.length >= limits.max_product_images)}>
+                  <Button type="button" onClick={() => localFileRef.current?.click()} variant="secondary" icon={Plus} className="w-full" disabled={limitsLoading || !!limitsError || (limits && localImages.length >= limits.max_custom_product_images)}>
                     {limitsLoading ? 'Loading limits...' : (localImages.length > 0 ? 'Add More' : 'Add Image')}
                   </Button>
                   {localImages.length > 0 && (
@@ -888,103 +756,12 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
                   placeholder="One-liner for product cards…" maxLength={500} />
               </div>
 
-              {/* Merchandising flags */}
-              <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
-                <label className="text-xs font-bold text-muted">Flags</label>
-                <div className="flex flex-wrap gap-3">
-                  {[
-                    { key: 'is_featured',    label: '⭐ Featured'    },
-                    { key: 'is_trending',    label: '🔥 Trending'    },
-                    { key: 'is_best_seller', label: '⚡ Best Seller' },
-                    { key: 'is_new_arrival', label: '🆕 New Arrival' },
-                  ].map(f => (
-                    <label key={f.key} className="flex items-center gap-1.5 cursor-pointer">
-                      <input type="checkbox" checked={!!form[f.key]}
-                        onChange={e => set(f.key, e.target.checked)}
-                        className="w-3.5 h-3.5 accent-brand-500" />
-                      <span className="text-xs font-medium text-muted">{f.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              
 
             </div>
           </div>
 
-          {/* ── Variants section ──
-          <div className="px-6 pt-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-3">Variants</p>
-            {variants.length > 0 ? (
-              <div className="card overflow-hidden bg-surface text-xs">
-                <Table>
-                  <TableHeader>
-                    <TableRow hover={false}>
-                      <TableHead>Size</TableHead>
-                      <TableHead>Actual Price</TableHead>
-                      <TableHead>Discount Price</TableHead>
-                      <TableHead>% off</TableHead>
-                      <TableHead>Stock</TableHead>
-                      <TableHead>Delete</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {variants.map(v => (
-                      <TableRow key={isEdit ? v.id : v._localId}>
-                        {/* HEAD: Badge component — cleaner than branch's oversized text-xl cell */}
-                        {/* <TableCell><Badge label={v.size} variant="info" /></TableCell>
-                        <TableCell className="font-medium">{formatPrice(v.original_price)}</TableCell>
-                        <TableCell className="font-medium text-emerald-600 dark:text-emerald-400">{formatPrice(v.selling_price)}</TableCell>
-                        <TableCell className="font-medium text-amber-600">
-                          {v.discount_percentage ? `${parseFloat(v.discount_percentage).toFixed(0)}%` : '—'}
-                        </TableCell>
-                        <TableCell className="font-semibold">
-                          {isEdit ? <StockBadge stock={v.stock_quantity} /> : <span>{v.stock_quantity}</span>}
-                        </TableCell>
-                        <TableCell>
-                          {isEdit ? (
-                            <button
-                              type="button"
-                              className="rounded-md flex items-center justify-center border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white"
-                              style={{ width: 24, height: 24 }}
-                              disabled={deletingVariantIds.has(v.id)}
-                              onClick={() => deleteVariantMutation.mutate(v.id)}
-                              aria-label="Delete variant">
-                              {deletingVariantIds.has(v.id)
-                                ? <Loader2 size={12} className="animate-spin" />
-                                : <Trash2 size={12} />}
-                            </button>
-                          ) : (
-                            <button type="button"
-                              className="btn-secondary rounded-lg flex items-center justify-center border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500 hover:text-white"
-                              style={{ width: 24, height: 24 }}
-                              onClick={() => removeLocalVariant(v._localId)}
-                              aria-label="Remove variant">
-                              <Trash2 size={12} />
-                            </button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <p className="text-xs border p-2 rounded-md text-muted py-1.5 mb-2">No variants yet.</p>
-            )}
-
-            {isEdit ? (
-              <Button
-                type="button"
-                onClick={() => onOpenVariant(product)}
-                variant="addvariant"
-                className="min-w-[100px] mt-2 whitespace-nowrap hover:bg-sky-400 hover:border-sky-600"
-              >
-                Add Variant
-              </Button>
-            ) : (
-              <LocalVariantForm onAdd={addLocalVariant} existingVariants={localVariants} />
-            )}
-          </div> */} 
+         
 
           {/* ── Description ── */}
           <div className="px-6 pt-4">
@@ -1002,11 +779,7 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
                   <ImageIcon size={10} /> {localImages.length} image{localImages.length > 1 ? 's' : ''} ready
                 </span>
               )}
-              {/* {localVariants.length > 0 && (
-                <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full px-2.5 py-1 font-semibold">
-                  <Layers size={10} /> {localVariants.length} variant{localVariants.length > 1 ? 's' : ''} ready
-                </span>
-              )} */}
+          
             </div>
           )}
 

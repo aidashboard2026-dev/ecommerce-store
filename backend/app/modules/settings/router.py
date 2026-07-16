@@ -592,6 +592,7 @@ def read_business_limits():
         "max_banners": constants.MAX_BANNERS,
         "max_offers": constants.MAX_OFFERS,
         "max_product_images": constants.MAX_PRODUCT_IMAGES,
+        "max_custom_product_images": constants.MAX_CUSTOM_PRODUCT_IMAGES,
         "max_product_variants": constants.MAX_PRODUCT_VARIANTS,
         "max_sizes": 999999,
         "max_colors": 999999,

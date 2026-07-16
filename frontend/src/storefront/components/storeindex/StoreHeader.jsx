@@ -70,6 +70,11 @@ const StoreHeaderComponent = function StoreHeader({
   const searchRef = useRef(null);
   const profileRef = useRef(null);
 
+  useEffect(() => {
+    console.log("=== StoreHeader MOUNTED ===");
+    return () => console.log("=== StoreHeader UNMOUNTED ===");
+  }, []);
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
