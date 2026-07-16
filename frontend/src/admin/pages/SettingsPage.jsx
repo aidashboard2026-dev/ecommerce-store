@@ -1034,7 +1034,7 @@ export default function SettingsPage() {
 
       <SettingsCard
         title="Admin Account"
-        subtitle="Login, verification, and access security"
+        subtitle="Manage your administrator profile."
         icon={ShieldCheck}
         accent="sky"
       >
@@ -1070,30 +1070,14 @@ export default function SettingsPage() {
                 <Mail size={14} />
                 Login Email
               </span>
-              <span
-                className={`inline-flex items-center gap-1 rounded-full p-1 px-2 text-xs font-bold ${security?.email_verified ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"}`}
-              >
-                <BadgeCheck size={14} />
-                {security?.email_verified
-                  ? "Verified"
-                  : "Verification Required"}
-              </span>
             </div>
-            <div className="flex-1 flex justify-between gap-4">
+            <div className="flex-1 flex justify-between gap-4 items-center">
               <p className="mt-2 truncate text-sm font-bold text-zinc-950 dark:text-zinc-50">
                 {security?.email}
               </p>
-              <Button
-                type="button"
-                variant="download"
-                onClick={() => {
-                  // per requirements: open modal with empty inputs (do not preload current email)
-                  emailForm.reset({ email: "", current_password: "" });
-                  setActiveModal("email");
-                }}
-              >
-                Change
-              </Button>
+              {/* <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+                Managed by System Administrator
+              </span> */}
             </div>
           </div>
           <div className="flex flex-wrap gap-3 justify-between border-b-2 border-gray-200 p-4 dark:border-zinc-800">
@@ -1103,25 +1087,21 @@ export default function SettingsPage() {
                 Password
               </span>
             </div>
-            <div className="flex-1 flex justify-between gap-4">
+            <div className="flex-1 flex justify-between gap-4 items-center">
               <p className="mt-2 text-sm font-bold text-zinc-950 dark:text-zinc-50">
                 **********
               </p>
-              <Button
-                type="button"
-                variant="download"
-                onClick={() => {
-                  passwordForm.reset({
-                    current_password: "",
-                    new_password: "",
-                    confirm_password: "",
-                  });
-                  setActiveModal("password");
-                }}
-              >
-                Change
-              </Button>
+              {/* <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+                Managed by System Administrator
+              </span> */}
             </div>
+          </div>
+
+          <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50/50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-200 mt-4">
+            <span className="shrink-0 text-blue-500 animate-pulse" aria-hidden="true">ℹ️</span>
+            <p className="text-xs sm:text-sm font-medium leading-relaxed">
+              Login credentials are managed by the System Administrator and cannot be modified from the Admin Panel.
+            </p>
           </div>
           {/* ------------------------------------------------------------------
           TODO (Future Release)
@@ -1269,6 +1249,8 @@ export default function SettingsPage() {
                 </form>
               )}
 
+              {/* Email edit dialog commented out for single-admin configuration */}
+              {/*
               {activeModal === "email" && (
                 <form
                   onSubmit={emailForm.handleSubmit(saveEmail)}
@@ -1324,7 +1306,10 @@ export default function SettingsPage() {
                   </div>
                 </form>
               )}
+              */}
 
+              {/* Password edit dialog commented out for single-admin configuration */}
+              {/*
               {activeModal === "password" && (
                 <form
                   onSubmit={passwordForm.handleSubmit(savePassword)}
@@ -1473,6 +1458,7 @@ export default function SettingsPage() {
                   </div>
                 </form>
               )}
+              */}
             </div>
           </div>
         )}
