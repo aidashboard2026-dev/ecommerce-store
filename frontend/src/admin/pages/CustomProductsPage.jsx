@@ -41,12 +41,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 
 const STATUS_OPTIONS  = ['draft', 'published', 'archived']
 // STOCK_OPTIONS removed — Custom Printing domain has no inventory
-const FLAG_OPTIONS = [
-  { key: 'is_featured',    label: 'Featured',    icon: <Star size={11} /> },
-  { key: 'is_trending',    label: 'Trending',    icon: <TrendingUp size={11} /> },
-  { key: 'is_best_seller', label: 'Best Seller', icon: <Zap size={11} /> },
-  { key: 'is_new_arrival', label: 'New',         icon: <Layers size={11} /> },
-]
+
 const BULK_ACTIONS = [
   { value: 'publish',         label: 'Publish' },
   { value: 'unpublish',       label: 'Unpublish' },
@@ -309,6 +304,7 @@ function BulkActionsBar({ selectedIds, onAction, categories, collections, onClea
 
 export default function ProductsPage() {
   const qc = useQueryClient()
+  
 
   // ── Filter state ─────────────────────────────────────────────────────────────
   const [search, setSearch]             = useState('')
@@ -316,7 +312,7 @@ export default function ProductsPage() {
   const [categoryId, setCategoryId]     = useState('')
   // const [collectionId, setCollectionId] = useState('')
   const [stockStatus, setStockStatus]   = useState('')
-  const [flagFilters, setFlagFilters]   = useState({})
+  // const [flagFilters, setFlagFilters]   = useState({})
   const [page, setPage]                 = useState(1)
   const [selectedIds, setSelectedIds]   = useState(new Set())
 
@@ -330,13 +326,13 @@ export default function ProductsPage() {
   const [quickEditModal, setQuickEditModal] = useState({ open: false, product: null })
 
   // Stable flag key — avoids JSON.stringify producing new string refs every render
-  const flagKey = Object.keys(flagFilters).filter(k => flagFilters[k]).sort().join(',')
+  // const flagKey = Object.keys(flagFilters).filter(k => flagFilters[k]).sort().join(',')
 
   // Reset page on any filter change
   React.useEffect(() => {
     setPage(1)
     setSelectedIds(new Set())
-  }, [debouncedSearch, statusFilter, categoryId, stockStatus, flagKey])
+  }, [debouncedSearch, statusFilter, categoryId, stockStatus])
 
   // ── Data queries ─────────────────────────────────────────────────────────────
 
@@ -344,12 +340,9 @@ export default function ProductsPage() {
     search: debouncedSearch,
     status_filter: statusFilter,
     custom_category_id: categoryId || undefined,
-    // collection_id: collectionId || undefined,
+   
     stock_status: stockStatus || undefined,
-    is_featured: flagFilters.is_featured || undefined,
-    is_trending: flagFilters.is_trending || undefined,
-    is_best_seller: flagFilters.is_best_seller || undefined,
-    is_new_arrival: flagFilters.is_new_arrival || undefined,
+    
     page,
     per_page:15
   }
@@ -367,6 +360,8 @@ export default function ProductsPage() {
     queryFn:  () => customCategoriesAPI.list().then(r => r.data),
     staleTime: 5 * 60_000,
   })
+
+  console.log("Custom Products Data:", data)
 
  
 
@@ -432,7 +427,7 @@ export default function ProductsPage() {
   const doToggle      = useCallback(p => toggleStatus.mutate({ id: p.id, status: p.status === 'published' ? 'draft' : 'published' }), [toggleStatus])
   const doDelete      = useCallback(p => deleteProduct.mutate(p.id), [deleteProduct])
 
-  const toggleFlag = (key) => setFlagFilters(prev => ({ ...prev, [key]: prev[key] ? undefined : true }))
+  // const toggleFlag = (key) => setFlagFilters(prev => ({ ...prev, [key]: prev[key] ? undefined : true }))
 
   const toggleSelect = (id) => setSelectedIds(prev => {
     const next = new Set(prev)
@@ -452,9 +447,8 @@ export default function ProductsPage() {
   }
 
   const hasFilters = !!(
-    statusFilter ||
-    categoryId ||
-    Object.keys(flagFilters).some(k => flagFilters[k])
+      statusFilter ||
+      categoryId
   )
 
   const emptyState = useMemo(() => (
@@ -558,23 +552,11 @@ export default function ProductsPage() {
 
         
 
-          {/* Merchandising flag filters — stock filters removed (Custom Printing has no inventory) */}
-          {FLAG_OPTIONS.map(f => (
-            <FilterPill
-              key={f.key}
-              active={!!flagFilters[f.key]}
-              label={<span className="flex items-center gap-1">{f.icon}{f.label}</span>}
-              onClick={() => toggleFlag(f.key)}
-              onClear={() => setFlagFilters(prev => ({ ...prev, [f.key]: undefined }))}
-            />
-          ))}
-
           {/* Clear all filters */}
           {hasFilters && (
             <button onClick={() => {
               setStatusFilter('')
               setCategoryId('')
-              setFlagFilters({})
             }} className="text-xs text-muted hover:text-app underline flex items-center gap-1">
               <X size={10} /> Clear filters
             </button>

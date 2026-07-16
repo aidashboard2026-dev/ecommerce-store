@@ -592,7 +592,7 @@ export default function LoginForm() {
             type="button"
             disabled={isLoading}
             onClick={handleGoogleLogin}
-            className="w-full h-12 inline-flex items-center justify-center gap-2 border border-app rounded-full font-medium hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 transition text-sm text-app"
+            className="w-full h-12 flex items-center justify-center mt-3 border border-app rounded-xl font-medium hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition"
           >
             {loadingType === "google" ? (
               <>
