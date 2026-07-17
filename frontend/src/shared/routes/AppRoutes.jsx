@@ -48,34 +48,18 @@ const CustomProductsPage = lazy(
 // Storefront Pages
 const HomePage = lazy(() => import("@/storefront/pages/main/HomePage"));
 const ProductsPage = lazy(() => import("@/storefront/pages/main/ProductsPage"));
-const CartPage = lazy(() => import("@/storefront/pages/CartPage"));
-const CheckoutPage = lazy(
-  () => import("@/storefront/pages/ordercheckout/CheckoutPage"),
-);
-const OrdersPage = lazy(
-  () => import("@/storefront/pages/ordercheckout/OrdersPage"),
-);
+const CartPage = lazy(() => import("@/storefront/pages/main/CartPage"));
+const CheckoutPage = lazy(() => import("@/storefront/pages/ordercheckout/CheckoutPage"));
+const OrdersPage = lazy(() => import("@/storefront/pages/ordercheckout/OrdersPage"));
 const ProfilePage = lazy(() => import("@/storefront/pages/users/ProfilePage"));
 const AuthPage = lazy(() => import("@/storefront/pages/users/AuthPage"));
-const ResetPasswordPage = lazy(
-  () => import("@/storefront/pages/users/ResetPasswordPage"),
-);
-const SupportPage = lazy(
-  () => import("@/storefront/pages/policys/SupportPage"),
-);
+const ResetPasswordPage = lazy(() => import("@/storefront/pages/users/ResetPasswordPage"));
+const SupportPage = lazy(() => import("@/storefront/pages/policys/SupportPage"));
 const CustomPage = lazy(() => import("@/storefront/pages/main/CustomPage"));
-const StorefrontOffersPage = lazy(
-  () => import("@/storefront/pages/main/OffersPage"),
-);
-const NotFoundPage = lazy(
-  () => import("@/storefront/pages/empty/NotFoundPage"),
-);
+const StorefrontOffersPage = lazy(() => import("@/storefront/pages/main/OffersPage"));
+const NotFoundPage = lazy(() => import("@/storefront/pages/empty/NotFoundPage"));
 const WishlistGrid = lazy(() => import("@/storefront/pages/main/WishlistPage"));
-const ProductDetailsPage = lazy(
-  () =>
-    import("@/storefront/components/Customproduct/CustomProductDetailsPage"),
-);
-
+const ProductDetailsPage = lazy(() => import("@/storefront/components/Customproduct/CustomProductDetailsPage"));
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-app">
     <div className="w-10 h-10 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
@@ -85,7 +69,6 @@ const Spinner = () => (
 // ── ADMIN AUTH STATE ──────────────────────────────────────────────────────────
 function useAdminAuthState() {
   const isAuthenticated = useSelector((state) => !!state.auth.admin);
-
   const initialized = useSelector((state) => state.auth.initialized);
 
   return {
@@ -99,12 +82,10 @@ function AdminProtectedRoute({ children }) {
   const location = useLocation();
 
   if (!initialized) return <Spinner />;
-
   if (isAuthenticated) {
     // console.log(`[Auth Isolation: Admin Guard] Allowing access to protected admin route: ${location.pathname}`);
     return children;
   }
-// 
   // console.log(`[Auth Isolation: Admin Guard] Access denied to ${location.pathname}. Redirecting to login.`);
   return <Navigate to="/auth/login" replace />;
 }
@@ -120,13 +101,15 @@ function AdminPublicRoute({ children }) {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
-   // console.log(`[Auth Isolation: Admin Public Guard] Allowing access to admin public route: ${location.pathname}`);
+  // console.log(`[Auth Isolation: Admin Public Guard] Allowing access to admin public route: ${location.pathname}`);
   return children;
 }
 
 // ── Unified Public Route ─────────────────────────────────────────────────────
 function UnifiedPublicRoute({ children }) {
-  const { token: customerToken, customer } = useSelector((state) => state.customer);
+  const { token: customerToken, customer } = useSelector(
+    (state) => state.customer,
+  );
   const location = useLocation();
 
   if (customerToken && customer) {
@@ -237,9 +220,12 @@ export default function AppRoutes() {
   useEffect(() => {
     const handle = () => {
       dispatch(customerLogout());
-      const isProtectedRoute = ["/profile", "/checkout", "/payment", "/orders"].some(
-        (path) => window.location.pathname.startsWith(path)
-      );
+      const isProtectedRoute = [
+        "/profile",
+        "/checkout",
+        "/payment",
+        "/orders",
+      ].some((path) => window.location.pathname.startsWith(path));
       if (isProtectedRoute) {
         navigate("/auth/login", { replace: true });
       }
@@ -307,21 +293,23 @@ export default function AppRoutes() {
         <Route path="/" element={<StorefrontLayout />}>
           <Route index element={<HomePage />} />
 
-          {/* Products — list (/products) and details (/products/:slug) share
-              a single consolidated page component */}
           <Route path="products" element={<ProductsPage />} />
           <Route path="products/:slug" element={<ProductsPage />} />
-          {/* <Route path="about" element={<AboutPage />} />   */}
-
-          {/* <Route path="returns-policy" element={<ReturnsPolicy />} /> */}
+          <Route path="product/:slug" element={<ProductDetailsPage />} />
+          <Route
+            path="product/:slug/:variantId"
+            element={<ProductDetailsPage />}
+          />
+          <Route
+            path="product/:slug/:variantId/:customizationId"
+            element={<ProductDetailsPage />}
+          />
           <Route path="order-success" element={<OrderSuccess />} />
-          {/* <Route path="ordertimeline" element={<OrderTimelinePage />} /> */}
           <Route
             path="sub-products"
             element={<Navigate to="/products" replace />}
           />
           <Route path="category/:slug" element={<CategoryRedirect />} />
-
           <Route path="cart" element={<CartPage />} />
 
           {/* Custom orders (new) */}
@@ -338,26 +326,18 @@ export default function AppRoutes() {
           <Route path="support/privacy" element={<SupportPage />} />
           <Route path="support/terms" element={<SupportPage />} />
           <Route path="support/returns" element={<SupportPage />} />
-
-          {/* Orders, success/payment, and tracking — all consolidated into
-              one page component that dispatches internally on the route */}
           <Route path="tracking" element={<OrdersPage />} />
           <Route path="track-order" element={<OrdersPage />} />
-          {/* <Route path="contact" element={<SupportPage />} /> */}
 
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/shipping" element={<ShippingPage />} />
           <Route path="/returns" element={<ReturnsPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route
-            path="/terms-conditions"
-            element={<TermsConditions />}
-          />
+          <Route path="/terms-conditions" element={<TermsConditions />} />
           <Route path="wishlist" element={<WishlistGrid />} />
           <Route path="/product/:id" element={<LegacyProductRedirect />} />
-          {/* Customer Auth — login/register/forgot-password consolidated;
-              /auth/signup kept as a legacy alias for /auth/register */}
+
           <Route
             path="auth/login"
             element={
@@ -366,7 +346,6 @@ export default function AppRoutes() {
               </UnifiedPublicRoute>
             }
           />
-
           <Route
             path="auth/register"
             element={
@@ -395,10 +374,8 @@ export default function AppRoutes() {
           />
 
           <Route path="/auth/email-verified" element={<EmailVerifiedPage />} />
-
           <Route path="auth/reset-password" element={<ResetPasswordPage />} />
 
-          {/* Protected Customer Routes */}
           <Route
             path="checkout"
             element={
@@ -417,8 +394,6 @@ export default function AppRoutes() {
             }
           />
 
-          {/* Profile — profile / orders / addresses / wishlist / settings tabs
-              are all handled internally by ProfilePage */}
           <Route
             path="profile"
             element={
@@ -464,8 +439,6 @@ export default function AppRoutes() {
             }
           />
 
-          {/* Orders list / details / success / per-order tracking — all one
-              consolidated page component (see OrdersPage internals) */}
           <Route
             path="orders"
             element={
@@ -502,11 +475,6 @@ export default function AppRoutes() {
             }
           />
 
-          {/* Storefront 404 — rendered inside the StorefrontLayout shell so
-              unmatched paths still get the site header/footer. (Previously
-              any unmatched path silently redirected to "/"; seeing an actual
-              not-found page here is the one intentional behavior change in
-              this refactor — see summary.) */}
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

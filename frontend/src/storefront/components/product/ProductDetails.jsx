@@ -214,7 +214,7 @@ export default function ProductDetails() {
             <button
               onClick={() => {
                 toast.dismiss(t.id);
-                navigate("/login");
+                navigate("/auth/login");
               }}
               className="w-24 border border-transparent rounded-none p-4 flex items-center justify-center text-xs font-semibold text-brand-500 hover:bg-surface hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
             >

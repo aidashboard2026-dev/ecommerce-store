@@ -23,10 +23,7 @@ import useStoreSettings from "@/shared/hooks/useStoreSettings";
 const MOBILE_NAV_LINKS = [
   { label: "Home", to: "/" },
   { label: "T-Shirt for Mens", to: "/products?category=t-shirt&gender=Men" },
-  {
-    label: "Track Pant for Mens",
-    to: "/products?category=track-pants&gender=Men",
-  },
+  { label: "Track Pant for Mens", to: "/products?category=track-pants&gender=Men",},
   { label: "Trousers for Mens", to: "/products?category=trousers&gender=Men" },
   { label: "Shirt for Mens", to: "/products?category=shirts&gender=Men" },
   { label: "Custom products", to: "/custom" },
@@ -77,10 +74,10 @@ const StoreHeaderComponent = function StoreHeader({
   const searchRef = useRef(null);
   const profileRef = useRef(null);
 
-  useEffect(() => {
-    console.log("=== StoreHeader MOUNTED ===");
-    return () => console.log("=== StoreHeader UNMOUNTED ===");
-  }, []);
+  // useEffect(() => {
+  //   console.log("=== StoreHeader MOUNTED ===");
+  //   return () => console.log("=== StoreHeader UNMOUNTED ===");
+  // }, []);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -263,7 +260,7 @@ const StoreHeaderComponent = function StoreHeader({
             >
               <Heart size={18} />
               {wishlistCount > 0 && (
-                <span className=" absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-[#111827] text-white text-[10px] font-bold border-2 border-white dark:border-[#111827] shadow-lg leading-none">
+                <span className=" absolute top-1 right-1 flex bg-[var(--count-bg)] items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-white text-[10px] font-bold leading-none">
                   {wishlistCount}
                 </span>
               )}

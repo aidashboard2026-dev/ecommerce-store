@@ -1417,7 +1417,7 @@ export default function CheckoutPage() {
         if (errInfo.code === "UNAUTHORIZED") {
           toast.error(errInfo.message);
           setTimeout(
-            () => navigate("/login", { state: { from: "/checkout" } }),
+            () => navigate("/auth/login", { state: { from: "/checkout" } }),
             3000,
           );
           return;
@@ -1588,7 +1588,7 @@ export default function CheckoutPage() {
               toast.error(errInfo.message);
               setPhase(CHECKOUT_PHASE.FAILED);
               setTimeout(
-                () => navigate("/login", { state: { from: "/checkout" } }),
+                () => navigate("/auth/login", { state: { from: "/checkout" } }),
                 3000,
               );
               return;
