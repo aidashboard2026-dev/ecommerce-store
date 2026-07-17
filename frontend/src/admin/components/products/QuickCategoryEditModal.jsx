@@ -72,6 +72,7 @@ export default function QuickCategoryEditModal({ isOpen, onClose, product }) {
     onSuccess: () => {
       toast.success('Product updated')
       qc.invalidateQueries({ queryKey: ['products'] })
+      qc.invalidateQueries({ queryKey: ['product'] })
       onClose()
     },
     onError: e => toast.error(getApiErrorMessage(e, 'Failed to update product')),

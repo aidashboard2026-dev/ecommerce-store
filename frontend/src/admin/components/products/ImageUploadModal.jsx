@@ -41,9 +41,6 @@ const GALLERY_ALLOWED_FORMATS_LABEL = 'JPG, PNG, WEBP'
 
 const IMAGE_TABS = [
   { key: 'thumbnail',  label: 'Thumbnail',  field: 'thumbnail',        description: 'Primary image shown in all product cards and listings.' },
-  { key: 'front',      label: 'Front',      field: 'image_front',      description: 'Front view of the product.' },
-  { key: 'back',       label: 'Back',       field: 'image_back',       description: 'Back view of the product.' },
-  { key: 'size_chart', label: 'Size Chart', field: 'image_size_chart', description: 'Size guide image shown on the product detail page.' },
   { key: 'gallery',    label: 'Gallery',    field: 'gallery_images',   description: 'Additional product images. Shown in image carousel.' },
 ]
 
@@ -536,9 +533,6 @@ export default function ImageUploadModal({
 
   const currentCount = product
     ? (product.thumbnail ? 1 : 0) +
-      (product.image_front ? 1 : 0) +
-      (product.image_back ? 1 : 0) +
-      (product.image_size_chart ? 1 : 0) +
       (product.gallery_images || []).length
     : 0
 

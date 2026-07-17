@@ -217,6 +217,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
     // Batch-refresh products only if something actually changed
     if (dirtyRef.current) {
       qc.invalidateQueries({ queryKey: ['products'] })
+      qc.invalidateQueries({ queryKey: ['product'] })
     }
     onClose()
   }, [onClose, qc])

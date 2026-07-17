@@ -30,6 +30,7 @@ from app.modules.products.schemas import (
     CollectionCreate, CollectionResponse, CollectionUpdate,
     ProductCreate, ProductListResponse, ProductResponse, ProductUpdate,
     VariantCreate, VariantUpdate,
+    ColorOption,
 )
 from app.modules.products.service import (
     add_variant, add_variants_bulk, bulk_action,
@@ -788,4 +789,31 @@ def get_related_products_endpoint(
 ):
     product = get_product_by_slug(db, slug)
     return get_related_products(db, product, limit=limit)
+
+
+@router.get("/colors", response_model=List[ColorOption])
+def get_colors():
+    return [
+        {"name": "Black", "hex": "#000000"},
+        {"name": "White", "hex": "#FFFFFF"},
+        {"name": "Red", "hex": "#FF0000"},
+        {"name": "Blue", "hex": "#0000FF"},
+        {"name": "Green", "hex": "#008000"},
+        {"name": "Yellow", "hex": "#FFFF00"},
+        {"name": "Orange", "hex": "#FFA500"},
+        {"name": "Purple", "hex": "#800080"},
+        {"name": "Pink", "hex": "#FFC0CB"},
+        {"name": "Grey", "hex": "#808080"},
+        {"name": "Gray", "hex": "#808080"},
+        {"name": "Brown", "hex": "#A52A2A"},
+        {"name": "Navy", "hex": "#000080"},
+        {"name": "Sky Blue", "hex": "#87CEEB"},
+        {"name": "Maroon", "hex": "#800000"},
+        {"name": "Olive", "hex": "#808000"},
+        {"name": "Teal", "hex": "#008080"},
+        {"name": "Beige", "hex": "#F5F5DC"},
+        {"name": "Cream", "hex": "#FFFDD0"},
+        {"name": "Gold", "hex": "#FFD700"},
+        {"name": "Silver", "hex": "#C0C0C0"}
+    ]
 

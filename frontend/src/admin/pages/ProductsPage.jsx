@@ -418,7 +418,7 @@ export default function ProductsPage() {
   //     is not on the currently loaded listing page) ─────────────────────────
   const shouldFetchProduct = !!urlProductId && urlProductId !== 'new' && !urlOpenedRef.current
   const { data: directProduct } = useQuery({
-    queryKey: ['product-direct', urlProductId],
+    queryKey: ['product', 'direct', urlProductId],
     queryFn: () => productsApi.get(urlProductId).then(r => r.data),
     enabled: shouldFetchProduct,
     retry: 1,
@@ -455,7 +455,7 @@ export default function ProductsPage() {
   useEffect(() => {
     if (!urlProductId || !data?.items) return
 
-    if (urlVariantId) {
+    if (urlVariantId && !formModal.open) {
       const foundProduct = data.items.find(p => String(p.id) === String(urlProductId))
       if (foundProduct) {
         const foundVariant = foundProduct.variants?.find(v => String(v.id) === String(urlVariantId))
@@ -473,13 +473,13 @@ export default function ProductsPage() {
       }
     } else {
       setVariantModal(prev => {
-        if (prev.open && prev.editingVariantId) {
+        if (prev.open) {
           return { open: false, productId: null, product: null, editingVariantId: null }
         }
         return prev
       })
     }
-  }, [urlProductId, urlVariantId, data?.items])
+  }, [urlProductId, urlVariantId, data?.items, formModal.open])
 
 
   // ── Mutations ────────────────────────────────────────────────────────────────
@@ -573,9 +573,8 @@ export default function ProductsPage() {
   const openVariant   = useCallback((p, variantId) => {
     if (variantId) {
       navigate(`/admin/products/${p.id}/edit?variant=${variantId}`, { replace: false })
-      setVariantModal({ open: true, productId: p.id, product: p, editingVariantId: variantId })
     } else {
-      setVariantModal({ open: true, productId: p.id, product: p, editingVariantId: null })
+      navigate(`/admin/products/${p.id}/edit?variant=new`, { replace: false })
     }
   }, [navigate])
   const closeVariantModal = useCallback(() => {
@@ -628,6 +627,14 @@ export default function ProductsPage() {
       <button onClick={invalidate} className="mt-3 btn-secondary text-sm">Retry</button>
     </div>
   ), [invalidate])
+
+  const getLatestProduct = useCallback((p) => {
+    if (!p) return null;
+    const foundInList = data?.items?.find(item => item.id === p.id);
+    if (foundInList) return foundInList;
+    if (directProduct && directProduct.id === p.id) return directProduct;
+    return p;
+  }, [data?.items, directProduct]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -975,7 +982,7 @@ export default function ProductsPage() {
             <div className="max-h-[90vh] overflow-y-auto">
               <ProductErrorBoundary title="Product form error">
                 <InlineProductForm
-                  product={formModal.product}
+                  product={getLatestProduct(formModal.product)}
                   onClose={closeFormModal}
                   onOpenVariant={(p, vId) => openVariant(p, vId)}
                   onOpenImage={p => setImageModal({ open: true, product: p })}
@@ -992,7 +999,7 @@ export default function ProductsPage() {
           isOpen={variantModal.open}
           onClose={closeVariantModal}
           productId={variantModal.productId}
-          product={variantModal.product || data?.items?.find(p => p.id === variantModal.productId)}
+          product={getLatestProduct(variantModal.product || data?.items?.find(p => p.id === variantModal.productId))}
           editingVariantId={variantModal.editingVariantId}
         />
       </ProductErrorBoundary>
@@ -1000,14 +1007,14 @@ export default function ProductsPage() {
         <ImageUploadModal
           isOpen={imageModal.open}
           onClose={() => setImageModal({ open: false, product: null })}
-          product={data?.items?.find(p => p.id === imageModal.product?.id) || imageModal.product}
+          product={getLatestProduct(imageModal.product || data?.items?.find(p => p.id === imageModal.product?.id))}
         />
       </ProductErrorBoundary>
       <ProductErrorBoundary title="Quick edit error">
         <QuickCategoryEditModal
           isOpen={quickEditModal.open}
           onClose={() => setQuickEditModal({ open: false, product: null })}
-          product={data?.items?.find(p => p.id === quickEditModal.product?.id) || quickEditModal.product}
+          product={getLatestProduct(quickEditModal.product || data?.items?.find(p => p.id === quickEditModal.product?.id))}
         />
       </ProductErrorBoundary>
       <ProductErrorBoundary title="Manage Catalog error">
