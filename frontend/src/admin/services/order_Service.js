@@ -1,15 +1,11 @@
 import api from "@/shared/services/api";
 
 /**
- * Fetch orders from the admin API with server-side pagination.
- *
- * @param {number} page     - 1-based page number (default 1)
- * @param {number} pageSize - rows per page (default 20)
- * @param {object} filters  - optional extra query params (e.g. { tracking_status: 'PLACED' })
- * @returns {{ orders: Order[], total: number, page: number, page_size: number }}
+ * Fetch orders with pagination + dashboard stats
  */
 export const getOrders = async (page = 1, pageSize = 20, filters = {}) => {
   const cleanFilters = {};
+
   Object.entries(filters).forEach(([k, v]) => {
     if (v !== "" && v !== null && v !== undefined) {
       cleanFilters[k] = v;
@@ -30,7 +26,21 @@ export const getOrders = async (page = 1, pageSize = 20, filters = {}) => {
     orders: Array.isArray(data?.items) ? data.items : [],
     total: Number(data?.total ?? 0),
     page: Number(data?.page ?? page),
-    page_size: Number(data?.page_size ?? pageSize),
+
+    // Backend returns per_page, not page_size
+    page_size: Number(data?.per_page ?? pageSize),
+
+    totalPages: Number(data?.total_pages ?? 1),
+
+    // ⭐ THIS WAS MISSING
+    stats: data?.stats ?? {
+      total_orders: 0,
+      new_orders: 0,
+      processing: 0,
+      shipped: 0,
+      delivered: 0,
+      cancelled: 0,
+    },
   };
 };
 
@@ -38,10 +48,12 @@ export const updateOrderStatus = async (orderId, status) => {
   const response = await api.put(`/orders/${orderId}`, {
     tracking_status: status,
   });
+
   return response.data;
 };
 
 export const updateOrder = async (orderId, data) => {
   const response = await api.put(`/orders/${orderId}`, data);
+
   return response.data;
 };

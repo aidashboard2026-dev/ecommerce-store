@@ -28,6 +28,8 @@ from app.modules.products.models import Product, ProductVariant
 from app.shared.exceptions import NotFoundError
 from app.shared.repositories import BaseRepository
 
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -40,6 +42,28 @@ class OrderRepository(BaseRepository[Order]):
 
     def __init__(self, db: Session) -> None:
         super().__init__(Order, db)
+
+    def get_order_stats(self):
+        q = self.db.query(Order)
+ 
+        return {
+            "total_orders": q.count(),
+
+            "new_orders":
+                q.filter(Order.tracking_status == "PLACED").count(),
+
+            "processing":
+                q.filter(Order.tracking_status == "PROCESSING").count(),
+
+            "shipped":
+                q.filter(Order.tracking_status == "SHIPPED").count(),
+
+            "delivered":
+                q.filter(Order.tracking_status == "DELIVERED").count(),
+
+            "cancelled":
+                q.filter(Order.tracking_status == "CANCELLED").count(),
+        }
 
     # ─────────────────────────────────────────────────────────
     # Read

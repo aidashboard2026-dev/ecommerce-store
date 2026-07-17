@@ -331,12 +331,15 @@ def list_orders(
         payment_status=payment_status,
         item_type=item_type,
     )
+    stats = repo.get_order_stats()
+
     return OrderListResponse(
         items=[OrderResponse.model_validate(o) for o in orders],
         total=total,
         page=page,
         per_page=per_page,
-        total_pages=math.ceil(total / per_page) if total else 1,
+        total_pages=math.ceil(total/per_page) if total else 1,
+        stats=stats,
     )
 
 
@@ -998,12 +1001,15 @@ def list_customer_orders(
         per_page=per_page,
         customer_email=customer.email,
     )
+    stats = repo.get_order_stats()
+
     return OrderListResponse(
         items=[OrderResponse.model_validate(o) for o in orders],
         total=total,
         page=page,
         per_page=per_page,
-        total_pages=math.ceil(total / per_page) if total else 1,
+        total_pages=math.ceil(total/per_page) if total else 1,
+        stats=stats,
     )
 
 

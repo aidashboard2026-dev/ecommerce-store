@@ -1,6 +1,17 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Download, ClipboardList, Ban, CheckCircle, Package, Clock, Calendar as CalendarIcon, Loader2 } from "lucide-react";
+import {
+  Download,
+  ClipboardList,
+  Ban,
+  CheckCircle,
+  Package,
+  Clock,
+  Calendar as CalendarIcon,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 
@@ -20,9 +31,51 @@ import {
 } from "@/admin/services/order_Service";
 import { useDebounce, getApiErrorMessage } from "@/shared/utils/productUtils";
 import { generateInvoice } from "@/shared/utils/invoiceGenerator";
+function Pagination({ page, totalPages, onPageChange }) {
+  return (
+    <div className="flex items-center justify-center gap-2">
 
+      <button
+        onClick={() => onPageChange(page - 1)}
+        disabled={page <= 1}
+        className="p-2 rounded-lg border border-app text-muted hover:text-app hover:bg-surface disabled:opacity-30 transition-all"
+      >
+        <ChevronLeft size={14} />
+      </button>
+
+      <span className="text-xs text-muted px-2 font-medium">
+        Page {page} of {totalPages}
+      </span>
+
+      <button
+        onClick={() => onPageChange(page + 1)}
+        disabled={page >= totalPages}
+        className="p-2 rounded-lg border border-app text-muted hover:text-app hover:bg-surface disabled:opacity-30 transition-all"
+      >
+        <ChevronRight size={14} />
+      </button>
+
+    </div>
+  )
+}
 export default function OrdersPage() {
   const [searchParams] = useSearchParams();
+
+  const [stats,setStats] = useState({
+
+      total_orders:0,
+
+      new_orders:0,
+
+      processing:0,
+
+      shipped:0,
+
+      delivered:0,
+
+      cancelled:0,
+
+  });
 
   // Map URL ?status= param to internal tracking_status search prefix
   const initialSearch = (() => {
@@ -44,7 +97,15 @@ export default function OrdersPage() {
     tracking_id: "",
   };
 
-  const PAGE_SIZE = 20;
+  const PAGE_SIZE = 15;
+  // const [stats, setStats] = useState({
+  //     total_orders: 0,
+  //     new_orders: 0,
+  //     processing: 0,
+  //     shipped: 0,
+  //     delivered: 0,
+  //     cancelled: 0,
+  // });
 
   const [orders, setOrders]         = useState([]);
   const [totalOrders, setTotalOrders] = useState(0);
@@ -70,7 +131,17 @@ export default function OrdersPage() {
       setLoading(true);
       const result = await getOrders(page, PAGE_SIZE, { search: searchText });
       setOrders(result.orders);
+
       setTotalOrders(result.total);
+
+      setStats(result.stats ?? {
+          total_orders: 0,
+          new_orders: 0,
+          processing: 0,
+          shipped: 0,
+          delivered: 0,
+          cancelled: 0,
+      });
     } catch (err) {
       console.error(err);
     } finally {
@@ -178,11 +249,11 @@ export default function OrdersPage() {
     });
   }, [orders, search]);
 
-  const newOrders = useMemo(() => orders.filter((o) => o.tracking_status === "PLACED").length, [orders]);
-  const pendingOrders = useMemo(() => orders.filter((o) => o.tracking_status === "PROCESSING").length, [orders]);
-  const shippedOrders = useMemo(() => orders.filter((o) => o.tracking_status === "SHIPPED").length, [orders]);
-  const deliveredOrders = useMemo(() => orders.filter((o) => o.tracking_status === "DELIVERED").length, [orders]);
-  const cancelOrders = useMemo(() => orders.filter((o) => o.tracking_status === "CANCELLED").length, [orders]);
+  // const newOrders = useMemo(() => orders.filter((o) => o.tracking_status === "PLACED").length, [orders]);
+  // const pendingOrders = useMemo(() => orders.filter((o) => o.tracking_status === "PROCESSING").length, [orders]);
+  // const shippedOrders = useMemo(() => orders.filter((o) => o.tracking_status === "SHIPPED").length, [orders]);
+  // const deliveredOrders = useMemo(() => orders.filter((o) => o.tracking_status === "DELIVERED").length, [orders]);
+  // const cancelOrders = useMemo(() => orders.filter((o) => o.tracking_status === "CANCELLED").length, [orders]);
 
   const getRemainingTime = (expectedDate, trackingStatus) => {
     if (trackingStatus === "PLACED") {
@@ -230,11 +301,12 @@ export default function OrdersPage() {
           {/* Metrics Panel */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full pt-2">
             {[
-              { label: "New Orders", val: newOrders, icon: ClipboardList, color: "text-blue-500 bg-blue-500/5 border-blue-500/10 dark:bg-blue-500/10" },
-              { label: "Processing", val: pendingOrders, icon: Clock, color: "text-amber-500 bg-amber-500/5 border-amber-500/10 dark:bg-amber-500/10" },
-              { label: "Shipped", val: shippedOrders, icon: Package, color: "text-indigo-500 bg-indigo-500/5 border-indigo-500/10 dark:bg-indigo-500/10" },
-              { label: "Delivered", val: deliveredOrders, icon: CheckCircle, color: "text-emerald-500 bg-emerald-500/5 border-emerald-500/10 dark:bg-emerald-500/10" },
-              { label: "Cancel", val: cancelOrders, icon: Ban, color: "text-red-500 bg-red-500/5 border-red-500/10 dark:bg-red-500/10" },
+              { label:"Total Orders", val:stats.total_orders , icon: ClipboardList, color: "text-blue-500 bg-blue-500/5 border-blue-500/10 dark:bg-blue-500/10" },
+              { label:"New Orders", val:stats.new_orders , icon: ClipboardList, color: "text-blue-500 bg-blue-500/5 border-blue-500/10 dark:bg-blue-500/10" },
+              { label:"Processing", val:stats.processing , icon: Clock, color: "text-amber-500 bg-amber-500/5 border-amber-500/10 dark:bg-amber-500/10" },
+              { label:"Shipped", val:stats.shipped , icon: Package, color: "text-indigo-500 bg-indigo-500/5 border-indigo-500/10 dark:bg-indigo-500/10" },
+              { label:"Delivered", val:stats.delivered , icon: CheckCircle, color: "text-emerald-500 bg-emerald-500/5 border-emerald-500/10 dark:bg-emerald-500/10" },
+              { label:"Cancel", val:stats.cancelled , icon: Ban, color: "text-red-500 bg-red-500/5 border-red-500/10 dark:bg-red-500/10" },
             ].map((stat) => (
               <div key={stat.label} className={clsx(
                 "card py-3 px-2 rounded-xl shadow-sm flex flex-col items-start justify-between border", stat.bg
@@ -273,7 +345,7 @@ export default function OrdersPage() {
         <div className="border-b border-app pb-2">
           <h2 className="text-sm font-bold uppercase tracking-wider text-muted flex items-center gap-1.5">
             <ClipboardList size={14} />
-            Active Orders ({filteredOrders.length})
+            Active Orders ({totalOrders})
           </h2>
         </div>
 
@@ -527,7 +599,17 @@ export default function OrdersPage() {
       </div>
 
       {/* ── Pagination ──────────────────────────────────────────────────── */}
+
       {totalPages > 1 && (
+        <div className="border-t border-app pt-4">
+          <Pagination
+            page={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </div>
+      )}
+      {/* {totalPages > 1 && (
         <div className="flex items-center justify-between px-4 py-3 border-t border-gray-700 mt-2">
           <p className="text-sm text-gray-400">
             Page <span className="font-medium text-white">{currentPage}</span> of{" "}
@@ -568,7 +650,7 @@ export default function OrdersPage() {
             </button>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 }

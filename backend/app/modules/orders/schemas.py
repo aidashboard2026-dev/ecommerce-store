@@ -127,15 +127,34 @@ class OrderResponse(OrderBase):
         return d
 
 
+class OrderStats(BaseModel):
+
+    total_orders:int
+
+    new_orders:int
+
+    processing:int
+
+    shipped:int
+
+    delivered:int
+
+    cancelled:int
+
+
 class OrderListResponse(BaseModel):
-    """Paginated list of orders — replaces the bare List[OrderResponse]."""
-    items:       List[OrderResponse]
-    total:       int
-    page:        int
-    per_page:    int
-    total_pages: int
 
+    items:list[OrderResponse]
 
+    total:int
+
+    page:int
+
+    per_page:int
+
+    total_pages:int
+
+    stats:OrderStats
 # ─────────────────────────────────────────────────────────────
 # Public tracking — strips all customer PII
 # ─────────────────────────────────────────────────────────────
