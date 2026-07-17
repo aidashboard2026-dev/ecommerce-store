@@ -605,7 +605,7 @@ export default function CategoriesPage() {
           className={`inline-flex w-full items-center justify-center gap-2 rounded-lg border border-brand-600 bg-brand-500 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600 sm:w-auto ${BUTTON_INTERACTION_CLASSES}`}
         >
           <Plus size={15} />
-          + Add Category
+          Add Category
         </button>
       </div>
 

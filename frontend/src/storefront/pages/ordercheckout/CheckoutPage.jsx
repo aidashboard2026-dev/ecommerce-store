@@ -736,7 +736,7 @@ export default function CheckoutPage() {
     return null;
   };
 
-  const resumeExistingCheckout = (customerOrders, activeSessionId) => {
+  const resumeExistingCheckout = async (customerOrders, activeSessionId) => {
     if (activeSessionId) {
       const sessionOrders = customerOrders.filter(
         (o) =>
@@ -751,8 +751,7 @@ export default function CheckoutPage() {
             paymentMethod: "ONLINE",
           }),
         );
-        // Customer DB + Redux + localStorage cart clear + session cleanup
-        clearCompletedCustomerCart();
+        await clearCompletedCustomerCart();
         navigate("/order-success", {
           state: { orders: sessionOrders, totals, paymentMethod: "ONLINE" },
           replace: true,
@@ -958,7 +957,7 @@ export default function CheckoutPage() {
 
         const customerOrders = res.data?.items || [];
 
-        resumeExistingCheckout(customerOrders, activeSessionId);
+        await resumeExistingCheckout(customerOrders, activeSessionId);
       } catch (err) {
         if (cancelled) {
           return;
@@ -1286,7 +1285,6 @@ export default function CheckoutPage() {
           }),
         );
 
-        // Customer DB + Redux + localStorage cart clear + session cleanup
         await clearCompletedCustomerCart();
 
         toast.success("Order placed successfully!");
@@ -1330,7 +1328,7 @@ export default function CheckoutPage() {
                 paymentMethod: "ONLINE",
               }),
             );
-            dispatch(clearCart());
+            await clearCompletedCustomerCart();
             toast.success("Payment already completed!");
             updatePhase(CHECKOUT_PHASE.SUCCESS);
             logExit({
@@ -1428,8 +1426,16 @@ export default function CheckoutPage() {
         if (errInfo.code === "ORDER_ALREADY_PAID") {
           toast.success("Order already paid!");
           updatePhase(CHECKOUT_PHASE.SUCCESS);
-          dispatch(clearCart());
-          sessionStorage.removeItem("aurastore_active_cart_session_id");
+          // for (const item of items) {
+          //   dispatch(
+          //     removeFromCart({
+          //       productId: item.productId,
+          //       size: item.size,
+          //       color: item.color,
+          //     }),
+          //   );
+          // }
+          await clearCompletedCustomerCart();
           try {
             const res = await storefrontAPI.getOrders();
             const customerOrders = res.data?.items || [];
@@ -1541,16 +1547,17 @@ export default function CheckoutPage() {
                 paymentMethod,
               }),
             );
-            // Customer DB + Redux + localStorage cart clear
+
             await clearCompletedCustomerCart();
+
             toast.success("Payment verified and order confirmed!");
 
             setPhase(CHECKOUT_PHASE.VERIFY_SUCCESS);
 
             await new Promise((resolve) => setTimeout(resolve, 600));
+
             setPhase(CHECKOUT_PHASE.SUCCESS);
 
-            logStep("STEP 15: Navigating to Order Success");
             navigate("/order-success", {
               state: {
                 orders: verifiedOrders,
