@@ -305,7 +305,7 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
 
   return (
     <Modal isOpen={isOpen} onClose={handleCloseAttempt} title="Manage Catalog" size="lg">
-      <div className="space-y-4">
+      <div className="space-y-4 p-4">
         {(limitsLoading || catalogLoading) && (
           <div className="flex items-center gap-2 justify-center py-2 text-xs text-muted">
             <Loader2 size={14} className="animate-spin" />

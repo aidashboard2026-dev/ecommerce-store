@@ -22,12 +22,6 @@ import {
 import { formatPrice, getImageUrl, useDebounce, getApiErrorMessage } from '@/shared/utils/productUtils'
 import CustomProductForm from '@/admin/components/products/CustomProductForm'
 import ImageUploadModal from '@/admin/components/products/ImageUploadModal'
-// VariantFormModal intentionally not wired here — Custom Products are
-// production-based, not variant-based (see backend models.py); there is no
-// /custom-products/admin/{id}/variants endpoint to connect this to, and the
-// "Variants" section in CustomProductForm.jsx is dead JSX (commented out),
-// so restoring it is out of scope for this stabilization fix.
-// import VariantFormModal from '@/admin/components/products/VariantFormModal'
 import CustomCategoryCollectionModel from '@/admin/components/products/CustomCategoryCollectionModel'
 import QuickCustomCategoryEditModal from '@/admin/components/products/QuickCustomCategoryEditModal'
 import Modal from '@/shared/components/common/Modal'
@@ -792,7 +786,7 @@ export default function ProductsPage() {
                             product: null
                         })
                     }
-                    onOpenImage={openImage}
+                    
                 />
               </ProductErrorBoundary>
             </div>
@@ -801,7 +795,7 @@ export default function ProductsPage() {
       )}
 
       {/* ── Image Manager Modal ── */}
-      <ProductErrorBoundary title="Image manager error">
+      {/* <ProductErrorBoundary title="Image manager error">
         <ImageUploadModal
           isOpen={imageModal.open}
           onClose={() => setImageModal({ open: false, product: null })}
@@ -810,7 +804,7 @@ export default function ProductsPage() {
           queryKeyPrefix="custom-products"
           detailQueryKey="custom-product"
         />
-      </ProductErrorBoundary>
+      </ProductErrorBoundary> */}
 
       {/* ── Manage Categories & Quick Edit Modals ── */}
       <ProductErrorBoundary title="Category manager error">

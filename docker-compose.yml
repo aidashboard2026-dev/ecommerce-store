@@ -129,3 +129,12 @@ volumes:
 networks:
   admindash_network:
     driver: bridge
+  
+# networks:
+#   admindash_network:
+#     driver: bridge
+#     enable_ipv6: true
+#     ipam:
+#       config:
+#         - subnet: 172.19.0.0/16
+#         - subnet: fd00:1234:5678::/64

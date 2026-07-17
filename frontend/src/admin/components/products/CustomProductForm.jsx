@@ -103,7 +103,11 @@ function SaveProgressOverlay({ steps, onClose }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function CustomProductForm({ product, onClose, onOpenVariant, onOpenImage }) {
+export default function CustomProductForm({
+    product,
+    onClose,
+    onOpenVariant
+}) {
   const qc     = useQueryClient()
   const { limits, isLoading: limitsLoading, error: limitsError, refetch: refetchLimits } = useBusinessLimits()
   const isEdit = !!product
@@ -149,6 +153,7 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
 
   // ─── Other state ─────────────────────────────────────────────────────────────
   const [localImages, setLocalImages]     = useState([])
+  const [editImages, setEditImages] = useState([])
   // const [localVariants, setLocalVariants] = useState([])
   const [saveSteps, setSaveSteps]         = useState(null)
   // const [deletingVariantIds, setDeletingVariantIds] = useState(() => new Set())
@@ -217,6 +222,7 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
     )
 
     setLocalImages([])
+    setEditImages([])
   }, [product?.id])
 
   // ─── Unsaved-changes guard ────────────────────────────────────────────────────
@@ -299,12 +305,39 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
 
   const editMutation = useMutation({
     mutationFn: data => customProductsAPI.update(product.id, data),
-    onSuccess: () => {
-      toast.success('Product updated successfully.')
-      qc.invalidateQueries({ queryKey: ['custom-products'] })
-      qc.invalidateQueries({ queryKey: ['custom-product'] })
+    onSuccess: async () => {
+
+      if (editImages.length > 0) {
+
+          for (let i = 0; i < editImages.length; i++) {
+
+              const imageType =
+                product.thumbnail && i === 0
+                    ? "gallery"
+                    : i === 0
+                        ? "thumbnail"
+                        : "gallery"
+
+            await customProductsAPI.uploadImage(
+                product.id,
+                editImages[i].file,
+                imageType,
+                imageType === "thumbnail"
+            )
+
+          }
+
+      }
+
+      toast.success("Product updated successfully")
+
+      qc.invalidateQueries({
+          queryKey: ["custom-products"]
+      })
+
       onClose()
-    },
+
+  },
     onError: e => toast.error(getApiErrorMessage(e, 'Something went wrong')),
   })
 
@@ -479,10 +512,68 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
     })
   }, [])
 
- 
+  const pickEditImage = useCallback((file) => {
+    if (!file || !limits) return
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast.error("Only JPG, PNG, WebP allowed")
+      return
+    }
+
+    if (file.size > limits.max_image_size) {
+      toast.error(
+        `File must be under ${limits.max_image_size / (1024 * 1024)} MB`
+      )
+      return
+    }
+
+    setEditImages((prev) => {
+      if (prev.length >= limits.max_custom_product_images) {
+        toast.error(
+          `Maximum ${limits.max_custom_product_images} images allowed`
+        )
+        return prev
+      }
+
+      return [
+        ...prev,
+        {
+          id: genLocalId(),
+          file,
+          previewUrl: URL.createObjectURL(file),
+        },
+      ]
+    })
+
+    if (localFileRef.current) {
+      localFileRef.current.value = ""
+    }
+  }, [limits])
+
+
+  const removeEditImage = (id) => {
+    setEditImages((prev) => {
+      const item = prev.find((x) => x.id === id)
+
+      if (item) {
+        URL.revokeObjectURL(item.previewUrl)
+      }
+
+      return prev.filter((x) => x.id !== id)
+    })
+  }
   // ─── Derived values ───────────────────────────────────────────────────────────
 
-  const thumbnailUrl  = isEdit ? getImageUrl(product?.thumbnail) : (localImages[0]?.previewUrl || null)
+  const thumbnailUrl =
+    isEdit
+        ? (
+            editImages.length
+                ? editImages[0].previewUrl
+                : getImageUrl(product?.thumbnail)
+          )
+        : (
+            localImages[0]?.previewUrl || null
+          )
   // const variants      = isEdit ? (product?.variants || []) : localVariants
   const isBatchSaving = saveSteps !== null
 
@@ -543,7 +634,7 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
                 <>
                   <div
                     className="w-full max-w-[180px] sm:max-w-[220px] md:max-w-none h-40 sm:h-52 md:aspect-square border-2 border-dashed border-brand-500/50 hover:border-brand-500 rounded-2xl bg-app overflow-hidden cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01] mx-auto"
-                    onClick={() => onOpenImage(productRef.current)}
+                    onClick={() => localFileRef.current?.click()}
                     title="Click to manage images"
                   >
                     {thumbnailUrl
@@ -554,9 +645,68 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
                         </div>
                     }
                   </div>
-                  <Button type="button" onClick={() => onOpenImage(product)} variant="secondary" icon={Plus} className="w-full">
-                    {product.thumbnail ? 'Change Image' : 'Add Image'}
+                  <input
+                      ref={localFileRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={(e)=>{
+                          if(e.target.files?.length){
+                              pickEditImage(e.target.files[0])
+                          }
+                      }}
+                  />
+
+                  <Button
+                      type="button"
+                      onClick={() => localFileRef.current?.click()}
+                      variant="secondary"
+                      icon={Plus}
+                      className="w-full"
+                  >
+                      Add More
                   </Button>
+                  {editImages.length > 1 && (
+                  <div className="flex gap-1.5 flex-wrap mt-1">
+                      {editImages.slice(1).map(img => (
+                          <div
+                              key={img.id}
+                              className="relative w-8 h-9 rounded overflow-hidden border border-app"
+                          >
+                              <img
+                                  src={img.previewUrl}
+                                  className="w-full h-full object-cover"
+                              />
+
+                              <Button
+                                  type="button"
+                                  onClick={() => removeEditImage(img.id)}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="absolute inset-0 h-full w-full p-0 rounded-none bg-black/50 opacity-0 hover:opacity-100"
+                              >
+                                  <X
+                                      size={10}
+                                      className="text-white"
+                                  />
+                              </Button>
+                          </div>
+                      ))}
+                  </div>
+                  
+              )}
+                  {editImages.length > 0 && (
+                      <Button
+                          type="button"
+                          onClick={() => removeEditImage(editImages[0].id)}
+                          variant="ghost"
+                          size="sm"
+                          icon={X}
+                          className="mt-1.5 p-0 text-[10px] text-red-500 hover:text-red-600 hover:bg-transparent"
+                      >
+                          Remove
+                      </Button>
+                  )}
                 </>
               ) : (
                 <>
