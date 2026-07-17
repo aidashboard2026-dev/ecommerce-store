@@ -40,6 +40,7 @@ from app.modules.custom_products.service import (
     update_custom_category, update_custom_product,
 )
 from app.shared.storage import supabase_storage
+from app.core.constants import MAX_CUSTOM_PRODUCT_IMAGES
 
 logger = logging.getLogger(__name__)
 router  = APIRouter()
@@ -293,6 +294,47 @@ def upload_custom_product_image(
 ):
     """Upload an image to the dedicated custom-product-images Supabase bucket."""
     product    = get_custom_product_orm(db, product_id)
+
+
+    total_images = 0
+
+    if product.thumbnail:
+        total_images += 1
+
+    if product.image_front:
+        total_images += 1
+
+    if product.image_back:
+        total_images += 1
+
+    if product.image_size_chart:
+        total_images += 1
+
+    total_images += len(product.gallery_images or [])
+
+    # New image?
+    is_new_upload = False
+
+    if image_type == "gallery":
+        is_new_upload = True
+
+    elif image_type == "thumbnail" and not product.thumbnail:
+        is_new_upload = True
+
+    elif image_type == "front" and not product.image_front:
+        is_new_upload = True
+
+    elif image_type == "back" and not product.image_back:
+        is_new_upload = True
+
+    elif image_type == "size_chart" and not product.image_size_chart:
+        is_new_upload = True
+
+    if is_new_upload and total_images >= MAX_CUSTOM_PRODUCT_IMAGES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Maximum {MAX_CUSTOM_PRODUCT_IMAGES} images allowed per product."
+        )
     contents   = _read_and_validate_upload(file)
 
     image_url  = supabase_storage.upload_custom_product_image(

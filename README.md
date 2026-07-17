@@ -11,20 +11,20 @@ The platform ships two complete applications in a single codebase:
 
 ## Technology Stack
 
-| Layer              | Technology                              |
-| ------------------ | --------------------------------------- |
-| Frontend           | React 18, Vite, Tailwind CSS            |
-| State Management   | Redux Toolkit                           |
-| Backend            | FastAPI (Python)                        |
-| ORM                | SQLAlchemy 2.0                          |
-| Database           | PostgreSQL 16                           |
-| Authentication     | JWT (python-jose + bcrypt)              |
-| API Client         | Axios                                   |
-| Migrations         | Alembic                                 |
-| Containerization   | Docker & Docker Compose                 |
-| Charts & Analytics | Recharts                                |
-| Icons              | Lucide React                            |
-| Animations         | Lottie React                            |
+| Layer              | Technology                   |
+| ------------------ | ---------------------------- |
+| Frontend           | React 18, Vite, Tailwind CSS |
+| State Management   | Redux Toolkit                |
+| Backend            | FastAPI (Python)             |
+| ORM                | SQLAlchemy 2.0               |
+| Database           | PostgreSQL 16                |
+| Authentication     | JWT (python-jose + bcrypt)   |
+| API Client         | Axios                        |
+| Migrations         | Alembic                      |
+| Containerization   | Docker & Docker Compose      |
+| Charts & Analytics | Recharts                     |
+| Icons              | Lucide React                 |
+| Animations         | Lottie React                 |
 
 ---
 
@@ -57,6 +57,7 @@ The backend seeds one superadmin account automatically using your `.env` values.
 ## Environment Configuration & Reference
 
 The platform decouples configuration by component:
+
 - **Backend Configurations**: Managed in [backend/.env.example](file:///d:/freelance/ecommerce-store/backend/.env.example) and loaded by the `Settings` schema.
 - **Frontend Configurations**: Managed in [frontend/.env.example](file:///d:/freelance/ecommerce-store/frontend/.env.example) and prefixed with `VITE_`.
 
@@ -109,6 +110,22 @@ docker compose up db -d
 ```
 
 ---
+
+# Developer Maintenance
+
+To manage the single administrator account:
+
+cd backend
+python scripts/manage_admin.py
+
+This utility allows developers to:
+
+- View the current administrator
+- Change username
+- Change login email
+- Change password
+
+This tool is intended for authorized backend maintenance only and is not accessible through the Admin Panel.
 
 ## Project Structure
 
@@ -239,6 +256,7 @@ Dockerfile
 ### Storefront (Customer-Facing)
 
 #### Product Discovery
+
 - Home page with hero banner, category section, and offer banners
 - Featured products, new arrivals, and best sellers sections
 - Product listing with infinite scroll
@@ -247,6 +265,7 @@ Dockerfile
 - Wishlist (persisted in localStorage)
 
 #### Cart & Checkout
+
 - Guest cart with full localStorage persistence
 - Quantity management, per-line removal, cart clear
 - Coupon code support — demo codes: `WELCOME10`, `SAVE20`, `AURA50`
@@ -256,6 +275,7 @@ Dockerfile
 - Payment methods: Cash on Delivery, UPI, Card, Wallet, Net Banking
 
 #### Orders & Account
+
 - Customer signup and login (separate JWT session from admin)
 - Place orders with automatic stock decrement
 - Order history with expand / collapse cards
@@ -269,6 +289,7 @@ Dockerfile
 ### Admin Dashboard
 
 #### Analytics
+
 - Revenue, order count, customer count, and product stats
 - Monthly sales and revenue charts (Recharts)
 - Order status breakdown analytics
@@ -276,6 +297,7 @@ Dockerfile
 - Recent activity feed
 
 #### Product Management
+
 - Create, update, and delete products
 - Product variants (size + color + SKU + price + stock)
 - Image upload (multiple images per product)
@@ -285,6 +307,7 @@ Dockerfile
 - Featured product toggle
 
 #### Order Management
+
 - View all customer orders
 - Update order status and tracking status
 - Payment status management
@@ -292,6 +315,7 @@ Dockerfile
 - Revenue analytics per order
 
 #### Customer Management
+
 - Customer list with search and status filters
 - Customer profile drawer with full order history and spend analytics
 - Activate / deactivate customers
@@ -299,6 +323,7 @@ Dockerfile
 - Customer creation (admin-side)
 
 #### Offer & Banner Management
+
 - Create time-limited discount offers with percentage values
 - Publish / unpublish offers with date and time scheduling
 - Upload offer banner images
@@ -308,52 +333,51 @@ Dockerfile
 
 ## Storefront Routes
 
-| Route                       | Page                         | Auth         |
-| ---------------------------- | ----------------------------- | ------------ |
-| `/`                          | Home                          | Public       |
-| `/products`                 | Product Listing               | Public       |
-| `/products/:slug`           | Product Detail                | Public       |
-| `/cart`                      | Shopping Cart                 | Public       |
-| `/auth/login`                | Customer Login                | Public only  |
-| `/auth/register`            | Customer Signup (canonical)   | Public only  |
-| `/auth/signup`               | Customer Signup (legacy alias)| Public only  |
-| `/auth/forgot-password`      | Password reset info           | Public only  |
-| `/checkout`                  | Checkout                      | Customer JWT |
-| `/payment`                   | Order Success (legacy alias)  | Customer JWT |
-| `/orders`                    | Order History                 | Customer JWT |
-| `/orders/success`           | Order Success                 | Customer JWT |
-| `/orders/:id`                | Order Detail                  | Customer JWT |
-| `/orders/:id/tracking`      | Order Detail (with tracking)  | Customer JWT |
-| `/profile`                   | Customer Profile              | Customer JWT |
-| `/profile/orders`           | Profile — Orders tab          | Customer JWT |
-| `/profile/addresses`        | Profile — Addresses tab       | Customer JWT |
-| `/profile/wishlist`         | Profile — Wishlist tab        | Customer JWT |
-| `/profile/settings`         | Profile — Account Settings tab| Customer JWT |
-| `/wishlist`                  | Wishlist                      | Public       |
-| `/tracking`                  | Order Tracking (by number)    | Public       |
-| `/custom`                    | Custom Orders — type selector | Public       |
-| `/custom/:productType`      | Custom Orders — quote form    | Public       |
-| `/support`                   | Support — Contact Us          | Public       |
-| `/support/faq`               | Support — FAQ                 | Public       |
-| `/support/about`             | Support — About Us            | Public       |
-| `/support/privacy`           | Support — Privacy Policy      | Public       |
-| `/support/terms`             | Support — Terms of Use        | Public       |
-| `/support/returns`           | Support — Returns & Exchanges | Public       |
-| `*` (unmatched)              | Not Found                     | Public       |
+| Route                   | Page                           | Auth         |
+| ----------------------- | ------------------------------ | ------------ |
+| `/`                     | Home                           | Public       |
+| `/products`             | Product Listing                | Public       |
+| `/products/:slug`       | Product Detail                 | Public       |
+| `/cart`                 | Shopping Cart                  | Public       |
+| `/auth/login`           | Customer Login                 | Public only  |
+| `/auth/register`        | Customer Signup (canonical)    | Public only  |
+| `/auth/signup`          | Customer Signup (legacy alias) | Public only  |
+| `/auth/forgot-password` | Password reset info            | Public only  |
+| `/checkout`             | Checkout                       | Customer JWT |
+| `/payment`              | Order Success (legacy alias)   | Customer JWT |
+| `/orders`               | Order History                  | Customer JWT |
+| `/orders/success`       | Order Success                  | Customer JWT |
+| `/orders/:id`           | Order Detail                   | Customer JWT |
+| `/orders/:id/tracking`  | Order Detail (with tracking)   | Customer JWT |
+| `/profile`              | Customer Profile               | Customer JWT |
+| `/profile/orders`       | Profile — Orders tab           | Customer JWT |
+| `/profile/addresses`    | Profile — Addresses tab        | Customer JWT |
+| `/profile/wishlist`     | Profile — Wishlist tab         | Customer JWT |
+| `/profile/settings`     | Profile — Account Settings tab | Customer JWT |
+| `/wishlist`             | Wishlist                       | Public       |
+| `/tracking`             | Order Tracking (by number)     | Public       |
+| `/custom`               | Custom Orders — type selector  | Public       |
+| `/custom/:productType`  | Custom Orders — quote form     | Public       |
+| `/support`              | Support — Contact Us           | Public       |
+| `/support/faq`          | Support — FAQ                  | Public       |
+| `/support/about`        | Support — About Us             | Public       |
+| `/support/privacy`      | Support — Privacy Policy       | Public       |
+| `/support/terms`        | Support — Terms of Use         | Public       |
+| `/support/returns`      | Support — Returns & Exchanges  | Public       |
+| `*` (unmatched)         | Not Found                      | Public       |
 
 ## Admin Routes
 
-| Route                  | Page                   | Auth         |
-| ---------------------- | ----------------------- | ------------ |
-| `/admin/login`         | Admin Login            | Public only  |
-| `/admin/dashboard`     | Dashboard              | Admin JWT    |
-| `/admin/products`      | Products               | Admin JWT    |
-| `/admin/orders`        | Orders                 | Admin JWT    |
-| `/admin/customers`     | Customers              | Admin JWT    |
-| `/admin/offers`        | Offers                 | Admin JWT    |
-| `/admin/banners`       | Banners                | Admin JWT    |
-| `/admin/settings`      | Settings               | Admin JWT    |
-
+| Route              | Page        | Auth        |
+| ------------------ | ----------- | ----------- |
+| `/admin/login`     | Admin Login | Public only |
+| `/admin/dashboard` | Dashboard   | Admin JWT   |
+| `/admin/products`  | Products    | Admin JWT   |
+| `/admin/orders`    | Orders      | Admin JWT   |
+| `/admin/customers` | Customers   | Admin JWT   |
+| `/admin/offers`    | Offers      | Admin JWT   |
+| `/admin/banners`   | Banners     | Admin JWT   |
+| `/admin/settings`  | Settings    | Admin JWT   |
 
 ---
 
@@ -362,10 +386,11 @@ Dockerfile
 The platform includes full architectural support for **WhatsApp Notifications** (via Meta WhatsApp Cloud API) alongside Email notifications.
 
 ### Current Status
-* **Database & API**: Fully supported. Database fields, schemas, and endpoints for toggling WhatsApp alerts are active.
-* **Admin UI**: Fully functional. The Admin Settings page includes independent toggles for Email and WhatsApp per notification event.
-* **Runtime Dispatcher**: The WhatsApp channel execution logic is temporarily disabled (messages are not sent) in `backend/app/shared/notifications/service.py` to prepare for future Meta Cloud API integration.
-* **Future Integration**: To activate WhatsApp notifications, only the provider-level sending logic needs to be implemented inside the dispatcher; the UI settings, database schema, and event triggers are fully ready and require zero modification.
+
+- **Database & API**: Fully supported. Database fields, schemas, and endpoints for toggling WhatsApp alerts are active.
+- **Admin UI**: Fully functional. The Admin Settings page includes independent toggles for Email and WhatsApp per notification event.
+- **Runtime Dispatcher**: The WhatsApp channel execution logic is temporarily disabled (messages are not sent) in `backend/app/shared/notifications/service.py` to prepare for future Meta Cloud API integration.
+- **Future Integration**: To activate WhatsApp notifications, only the provider-level sending logic needs to be implemented inside the dispatcher; the UI settings, database schema, and event triggers are fully ready and require zero modification.
 
 ---
 
@@ -376,93 +401,93 @@ Full interactive documentation is available at **http://localhost:8000/docs**
 
 ### Authentication
 
-| Method | Endpoint                  | Description                     | Auth         |
-| ------ | ------------------------- | ------------------------------- | ------------ |
-| POST   | `/auth/login`             | Admin login — returns JWT       | No           |
-| GET    | `/auth/me`                | Get current admin               | Admin JWT    |
-| POST   | `/auth/logout`            | Admin logout                    | Admin JWT    |
-| POST   | `/auth/signup`            | Customer signup                 | No           |
-| POST   | `/auth/customer/login`    | Customer login — returns JWT    | No           |
-| GET    | `/auth/customer/me`       | Get current customer            | Customer JWT |
+| Method | Endpoint               | Description                  | Auth         |
+| ------ | ---------------------- | ---------------------------- | ------------ |
+| POST   | `/auth/login`          | Admin login — returns JWT    | No           |
+| GET    | `/auth/me`             | Get current admin            | Admin JWT    |
+| POST   | `/auth/logout`         | Admin logout                 | Admin JWT    |
+| POST   | `/auth/signup`         | Customer signup              | No           |
+| POST   | `/auth/customer/login` | Customer login — returns JWT | No           |
+| GET    | `/auth/customer/me`    | Get current customer         | Customer JWT |
 
 ### Products
 
-| Method | Endpoint                          | Description                     | Auth         |
-| ------ | --------------------------------- | ------------------------------- | ------------ |
-| GET    | `/products/`                      | List products (paginated, filterable) | Public  |
-| GET    | `/products/slug/{slug}`           | Get product by slug             | Public       |
-| POST   | `/products/admin`                 | Create product                  | Admin JWT    |
-| GET    | `/products/admin`                 | List products (admin view)      | Admin JWT    |
-| PATCH  | `/products/admin/{id}`            | Update product                  | Admin JWT    |
-| DELETE | `/products/admin/{id}`            | Delete product                  | Admin JWT    |
-| POST   | `/products/admin/{id}/variants`   | Add variant                     | Admin JWT    |
-| POST   | `/products/admin/{id}/publish`    | Publish product                 | Admin JWT    |
-| DELETE | `/products/admin/{id}/variants/{vid}` | Delete variant              | Admin JWT    |
-| POST   | `/products/admin/{id}/images`     | Upload images                   | Admin JWT    |
-| DELETE | `/products/admin/images/{id}`     | Delete product image            | Admin JWT    |
+| Method | Endpoint                              | Description                           | Auth      |
+| ------ | ------------------------------------- | ------------------------------------- | --------- |
+| GET    | `/products/`                          | List products (paginated, filterable) | Public    |
+| GET    | `/products/slug/{slug}`               | Get product by slug                   | Public    |
+| POST   | `/products/admin`                     | Create product                        | Admin JWT |
+| GET    | `/products/admin`                     | List products (admin view)            | Admin JWT |
+| PATCH  | `/products/admin/{id}`                | Update product                        | Admin JWT |
+| DELETE | `/products/admin/{id}`                | Delete product                        | Admin JWT |
+| POST   | `/products/admin/{id}/variants`       | Add variant                           | Admin JWT |
+| POST   | `/products/admin/{id}/publish`        | Publish product                       | Admin JWT |
+| DELETE | `/products/admin/{id}/variants/{vid}` | Delete variant                        | Admin JWT |
+| POST   | `/products/admin/{id}/images`         | Upload images                         | Admin JWT |
+| DELETE | `/products/admin/images/{id}`         | Delete product image                  | Admin JWT |
 
 ### Orders
 
-| Method | Endpoint                          | Description                     | Auth         |
-| ------ | --------------------------------- | ------------------------------- | ------------ |
-| GET    | `/orders/`                        | List all orders                 | Admin JWT    |
-| POST   | `/orders/`                        | Create order (admin)            | Admin JWT    |
-| GET    | `/orders/{id}`                    | Get order                       | Admin JWT    |
-| PUT    | `/orders/{id}`                    | Update order                    | Admin JWT    |
-| POST   | `/orders/{id}/cancel`             | Cancel order (admin)            | Admin JWT    |
-| PUT    | `/orders/{id}/tracking`           | Update tracking status          | Admin JWT    |
-| POST   | `/orders/customer`                | Place order (customer)          | Customer JWT |
-| GET    | `/orders/customer/all`            | Customer's own orders           | Customer JWT |
-| GET    | `/orders/customer/{id}`           | Customer's order detail         | Customer JWT |
-| POST   | `/orders/customer/{id}/cancel`    | Customer cancel order           | Customer JWT |
-| GET    | `/orders/track/{order_number}`    | Public order tracking           | Public       |
+| Method | Endpoint                       | Description             | Auth         |
+| ------ | ------------------------------ | ----------------------- | ------------ |
+| GET    | `/orders/`                     | List all orders         | Admin JWT    |
+| POST   | `/orders/`                     | Create order (admin)    | Admin JWT    |
+| GET    | `/orders/{id}`                 | Get order               | Admin JWT    |
+| PUT    | `/orders/{id}`                 | Update order            | Admin JWT    |
+| POST   | `/orders/{id}/cancel`          | Cancel order (admin)    | Admin JWT    |
+| PUT    | `/orders/{id}/tracking`        | Update tracking status  | Admin JWT    |
+| POST   | `/orders/customer`             | Place order (customer)  | Customer JWT |
+| GET    | `/orders/customer/all`         | Customer's own orders   | Customer JWT |
+| GET    | `/orders/customer/{id}`        | Customer's order detail | Customer JWT |
+| POST   | `/orders/customer/{id}/cancel` | Customer cancel order   | Customer JWT |
+| GET    | `/orders/track/{order_number}` | Public order tracking   | Public       |
 
 ### Customers
 
-| Method | Endpoint                          | Description                     | Auth         |
-| ------ | --------------------------------- | ------------------------------- | ------------ |
-| GET    | `/customers/`                     | List customers (paginated)      | Admin JWT    |
-| GET    | `/customers/analytics`            | Customer analytics              | Admin JWT    |
-| POST   | `/customers/`                     | Create customer                 | Admin JWT    |
-| GET    | `/customers/{id}`                 | Get customer                    | Admin JWT    |
-| GET    | `/customers/{id}/profile`         | Full profile with order history | Admin JWT    |
-| PUT    | `/customers/{id}`                 | Update customer                 | Admin JWT    |
-| PATCH  | `/customers/{id}/status`          | Toggle active/inactive          | Admin JWT    |
-| PATCH  | `/customers/{id}/notes`           | Update customer notes           | Admin JWT    |
-| PATCH  | `/customers/{id}/tags`            | Update customer tags            | Admin JWT    |
-| PUT    | `/customers/profile/update`       | Customer self-update            | Customer JWT |
+| Method | Endpoint                    | Description                     | Auth         |
+| ------ | --------------------------- | ------------------------------- | ------------ |
+| GET    | `/customers/`               | List customers (paginated)      | Admin JWT    |
+| GET    | `/customers/analytics`      | Customer analytics              | Admin JWT    |
+| POST   | `/customers/`               | Create customer                 | Admin JWT    |
+| GET    | `/customers/{id}`           | Get customer                    | Admin JWT    |
+| GET    | `/customers/{id}/profile`   | Full profile with order history | Admin JWT    |
+| PUT    | `/customers/{id}`           | Update customer                 | Admin JWT    |
+| PATCH  | `/customers/{id}/status`    | Toggle active/inactive          | Admin JWT    |
+| PATCH  | `/customers/{id}/notes`     | Update customer notes           | Admin JWT    |
+| PATCH  | `/customers/{id}/tags`      | Update customer tags            | Admin JWT    |
+| PUT    | `/customers/profile/update` | Customer self-update            | Customer JWT |
 
 ### Offers
 
-| Method | Endpoint                | Description             | Auth         |
-| ------ | ----------------------- | ----------------------- | ------------ |
-| GET    | `/offers/active/all`    | Get active offers       | Public       |
-| GET    | `/offers/`              | List all offers         | Admin JWT    |
-| POST   | `/offers/`              | Create offer            | Admin JWT    |
-| GET    | `/offers/{id}`          | Get offer               | Admin JWT    |
-| PUT    | `/offers/{id}`          | Update offer            | Admin JWT    |
-| PATCH  | `/offers/{id}`          | Partial update          | Admin JWT    |
-| DELETE | `/offers/{id}`          | Delete offer            | Admin JWT    |
+| Method | Endpoint             | Description       | Auth      |
+| ------ | -------------------- | ----------------- | --------- |
+| GET    | `/offers/active/all` | Get active offers | Public    |
+| GET    | `/offers/`           | List all offers   | Admin JWT |
+| POST   | `/offers/`           | Create offer      | Admin JWT |
+| GET    | `/offers/{id}`       | Get offer         | Admin JWT |
+| PUT    | `/offers/{id}`       | Update offer      | Admin JWT |
+| PATCH  | `/offers/{id}`       | Partial update    | Admin JWT |
+| DELETE | `/offers/{id}`       | Delete offer      | Admin JWT |
 
 ### Banners
 
-| Method | Endpoint                | Description             | Auth         |
-| ------ | ----------------------- | ----------------------- | ------------ |
-| GET    | `/banners/active/all`   | Get active banners      | Public       |
-| GET    | `/banners/`             | List all banners        | Admin JWT    |
-| POST   | `/banners/`             | Create banner           | Admin JWT    |
-| GET    | `/banners/{id}`         | Get banner              | Admin JWT    |
-| PATCH  | `/banners/{id}`         | Update banner           | Admin JWT    |
-| PUT    | `/banners/{id}/toggle`  | Toggle active/inactive  | Admin JWT    |
-| DELETE | `/banners/{id}`         | Delete banner           | Admin JWT    |
+| Method | Endpoint               | Description            | Auth      |
+| ------ | ---------------------- | ---------------------- | --------- |
+| GET    | `/banners/active/all`  | Get active banners     | Public    |
+| GET    | `/banners/`            | List all banners       | Admin JWT |
+| POST   | `/banners/`            | Create banner          | Admin JWT |
+| GET    | `/banners/{id}`        | Get banner             | Admin JWT |
+| PATCH  | `/banners/{id}`        | Update banner          | Admin JWT |
+| PUT    | `/banners/{id}/toggle` | Toggle active/inactive | Admin JWT |
+| DELETE | `/banners/{id}`        | Delete banner          | Admin JWT |
 
 ### Dashboard
 
-| Method | Endpoint                         | Description            | Auth      |
-| ------ | -------------------------------- | ---------------------- | --------- |
-| GET    | `/dashboard/stats`               | KPI metrics            | Admin JWT |
-| GET    | `/dashboard/chart-data`          | Monthly chart data     | Admin JWT |
-| GET    | `/dashboard/recent-activity`     | Activity feed          | Admin JWT |
+| Method | Endpoint                     | Description        | Auth      |
+| ------ | ---------------------------- | ------------------ | --------- |
+| GET    | `/dashboard/stats`           | KPI metrics        | Admin JWT |
+| GET    | `/dashboard/chart-data`      | Monthly chart data | Admin JWT |
+| GET    | `/dashboard/recent-activity` | Activity feed      | Admin JWT |
 
 ---
 
@@ -470,27 +495,27 @@ Full interactive documentation is available at **http://localhost:8000/docs**
 
 The Redux store contains 7 slices:
 
-| Slice            | Purpose                                          | Persisted        |
-| ---------------- | ------------------------------------------------ | ---------------- |
-| `auth`           | Admin JWT session, login/logout thunks           | localStorage     |
-| `customer`       | Customer JWT session, login/signup/me thunks     | localStorage     |
-| `cart`           | Cart items, coupon, price totals                 | localStorage     |
-| `wishlist`       | Wishlisted product IDs + metadata                | localStorage     |
-| `checkout`       | Saved addresses, payment method, last order      | localStorage     |
-| `theme`          | Dark / light mode preference                     | localStorage     |
-| `ui`             | Sidebar open/close, modal state                  | Session only     |
+| Slice      | Purpose                                      | Persisted    |
+| ---------- | -------------------------------------------- | ------------ |
+| `auth`     | Admin JWT session, login/logout thunks       | localStorage |
+| `customer` | Customer JWT session, login/signup/me thunks | localStorage |
+| `cart`     | Cart items, coupon, price totals             | localStorage |
+| `wishlist` | Wishlisted product IDs + metadata            | localStorage |
+| `checkout` | Saved addresses, payment method, last order  | localStorage |
+| `theme`    | Dark / light mode preference                 | localStorage |
+| `ui`       | Sidebar open/close, modal state              | Session only |
 
 ---
 
 ## Cart Pricing Logic
 
-| Component      | Rule                                               |
-| -------------- | -------------------------------------------------- |
-| Subtotal       | `Σ (selling_price × quantity)` per line            |
-| Coupon         | Percentage discount applied to subtotal            |
-| Shipping       | Free when subtotal ≥ ₹999, otherwise flat ₹79      |
-| Tax            | 5% GST on discounted subtotal                      |
-| **Total**      | Discounted subtotal + shipping + tax               |
+| Component | Rule                                          |
+| --------- | --------------------------------------------- |
+| Subtotal  | `Σ (selling_price × quantity)` per line       |
+| Coupon    | Percentage discount applied to subtotal       |
+| Shipping  | Free when subtotal ≥ ₹999, otherwise flat ₹79 |
+| Tax       | 5% GST on discounted subtotal                 |
+| **Total** | Discounted subtotal + shipping + tax          |
 
 Demo coupon codes: `WELCOME10` (10% off), `SAVE20` (20% off), `AURA50` (50% off)
 

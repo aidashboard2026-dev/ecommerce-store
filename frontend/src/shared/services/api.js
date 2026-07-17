@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { compressImage } from '../utils/imageCompression'
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
 
@@ -39,7 +40,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isAuthRoute = error.config?.url?.endsWith('/auth/login') ||
+                        error.config?.url?.endsWith('/auth/logout') ||
+                        error.config?.url?.endsWith('/auth/signup')
+    if (error.response?.status === 401 && !isAuthRoute) {
       localStorage.removeItem('admin_token')
       localStorage.removeItem('admin_user')
       window.dispatchEvent(new CustomEvent('auth:unauthorized'))
@@ -71,7 +75,8 @@ storefrontClient.interceptors.request.use((config) => {
 storefrontClient.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    const isAuthRoute = err.config?.url?.endsWith('/auth/firebase/login')
+    if (err.response?.status === 401 && !isAuthRoute) {
       localStorage.removeItem('customer_token')
       localStorage.removeItem('customer')
       window.dispatchEvent(new CustomEvent('customer:unauthorized'))
@@ -203,9 +208,10 @@ export const productsAPI = {
    * @param {boolean} setAsPrimary - explicitly control primary flag instead of
    *                                 hard-coding based on type.
    */
-  uploadImage: (productId, file, imageType = 'thumbnail', setAsPrimary = true) => {
+  uploadImage: async (productId, file, imageType = 'thumbnail', setAsPrimary = true) => {
+    const compressed = await compressImage(file)
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('file', compressed)
     formData.append('image_type', imageType)
     formData.append('set_as_primary', String(setAsPrimary))
     return api.post(`/products/admin/${productId}/images`, formData, {
@@ -290,9 +296,10 @@ export const customProductsAPI = {
   // payload: { product_ids: [...], action: 'publish'|'unpublish'|'archive'|'delete'|'move_category',
   //            custom_category_id? }
 
-  uploadImage: (productId, file, imageType = 'thumbnail', setAsPrimary = false) => {
+  uploadImage: async (productId, file, imageType = 'thumbnail', setAsPrimary = false) => {
+    const compressed = await compressImage(file)
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('file', compressed)
     formData.append('image_type', imageType)
     formData.append('set_as_primary', String(setAsPrimary))
     return api.post(`/custom-products/admin/${productId}/images`, formData, {

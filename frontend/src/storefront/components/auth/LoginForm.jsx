@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Eye, EyeOff, Loader2, Lock, LogIn, Mail } from "lucide-react";
@@ -35,6 +35,49 @@ export default function LoginForm() {
   const [loadingType, setLoadingType] = useState(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [cooldownTimeLeft, setCooldownTimeLeft] = useState(0);
+
+  useEffect(() => {
+    const expiryStr = localStorage.getItem("login_cooldown_expiry");
+    if (expiryStr) {
+      const expiry = parseInt(expiryStr, 10);
+      const remainingMs = expiry - Date.now();
+      if (remainingMs > 0) {
+        setCooldownTimeLeft(Math.ceil(remainingMs / 1000));
+      } else {
+        localStorage.removeItem("login_cooldown_expiry");
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (cooldownTimeLeft <= 0) return;
+
+    const timer = setInterval(() => {
+      const expiryStr = localStorage.getItem("login_cooldown_expiry");
+      if (expiryStr) {
+        const expiry = parseInt(expiryStr, 10);
+        const remainingMs = expiry - Date.now();
+        if (remainingMs > 0) {
+          setCooldownTimeLeft(Math.ceil(remainingMs / 1000));
+        } else {
+          setCooldownTimeLeft(0);
+          localStorage.removeItem("login_cooldown_expiry");
+        }
+      } else {
+        setCooldownTimeLeft(0);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [cooldownTimeLeft]);
+
+  const formatCooldownTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
 
   // =========================================================
   // Save Customer Login Session
@@ -164,7 +207,7 @@ export default function LoginForm() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (isSubmitting || loadingType) {
+    if (isSubmitting || loadingType || cooldownTimeLeft > 0) {
       return;
     }
 
@@ -183,13 +226,29 @@ export default function LoginForm() {
         if (data.auth_type === "admin") {
           console.log("[Auth Isolation: Admin] Login Success. Redirecting to admin dashboard.");
           toast.success("Welcome back, Admin!");
+          localStorage.removeItem("login_cooldown_expiry");
           navigate("/admin/dashboard", { replace: true });
           return;
         }
         // If data.auth_type === "customer", proceed with Firebase Authentication
       } else {
-        const errorMsg = resultAction.payload || "Invalid email or password.";
+        let errorMsg = "Invalid email or password.";
+        let status = null;
+
+        if (resultAction.payload && typeof resultAction.payload === "object") {
+          errorMsg = resultAction.payload.detail || errorMsg;
+          status = resultAction.payload.status;
+        } else if (resultAction.payload) {
+          errorMsg = resultAction.payload;
+        }
+
         toast.error(errorMsg);
+
+        if (status === 429) {
+          const expiry = Date.now() + 5 * 60 * 1000;
+          localStorage.setItem("login_cooldown_expiry", expiry.toString());
+          setCooldownTimeLeft(300);
+        }
         return;
       }
 
@@ -216,6 +275,7 @@ export default function LoginForm() {
       await dispatch(syncCustomerCollectionsThunk()).unwrap();
 
       toast.success("Welcome back!");
+      localStorage.removeItem("login_cooldown_expiry");
 
       redirectAfterLogin();
     } catch (err) {
@@ -223,7 +283,12 @@ export default function LoginForm() {
 
       let errorMessage = "Invalid email or password.";
 
-      if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
+      if (err.response?.status === 429) {
+        errorMessage = err.response?.data?.detail || "Too many login attempts. Please try again later.";
+        const expiry = Date.now() + 5 * 60 * 1000;
+        localStorage.setItem("login_cooldown_expiry", expiry.toString());
+        setCooldownTimeLeft(300);
+      } else if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
         errorMessage = "Invalid email or password.";
       } else if (err.code === "auth/invalid-email") {
         errorMessage = "Invalid email address.";
@@ -532,10 +597,10 @@ export default function LoginForm() {
 
           <button
             type="submit"
-            disabled={isLoading}
-            className="w-full h-12 flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 text-white font-semibold text-sm rounded-full shadow-glow-sm transition-colors mt-2"
+            disabled={isLoading || cooldownTimeLeft > 0}
+            className="w-full h-12 flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-full shadow-glow-sm transition-colors mt-2"
           >
-            {loadingType === "email" ? (
+            {loadingType === "email" && cooldownTimeLeft <= 0 ? (
               <Loader2
                 size={16}
                 className="
@@ -546,7 +611,11 @@ export default function LoginForm() {
               <LogIn size={16} />
             )}
 
-            {loadingType === "email" ? "Signing in..." : "Sign In"}
+            {cooldownTimeLeft > 0
+              ? `Sign In (${formatCooldownTime(cooldownTimeLeft)})`
+              : loadingType === "email"
+              ? "Signing in..."
+              : "Sign In"}
           </button>
 
           {/* OR */}
@@ -592,7 +661,7 @@ export default function LoginForm() {
             type="button"
             disabled={isLoading}
             onClick={handleGoogleLogin}
-            className="w-full h-12 inline-flex items-center justify-center gap-2 border border-app rounded-full font-medium hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 transition text-sm text-app"
+            className="w-full h-12 flex items-center justify-center mt-3 border border-app rounded-xl font-medium hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition"
           >
             {loadingType === "google" ? (
               <>

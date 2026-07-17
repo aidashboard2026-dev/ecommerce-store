@@ -52,7 +52,7 @@ const logStep = (step, details = {}) => {
 };
 
 const logApiCall = (apiName, { sessionId, ordersCount, paymentMethod }) => {
-  // Suppressed to avoid scattered logs in DEV and production
+  // Suppressed to avoid scattered logs in DEV and production; see logGroupedApi
 };
 
 const logApiResult = (apiName, result, elapsedMs, details = {}) => {
@@ -1017,7 +1017,7 @@ export default function CheckoutPage() {
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
 
-      // Shipping fee first order item-க்கு மட்டும் add ஆகும்
+      // Shipping fee is only added to the first order item in the session
       const itemShippingFee = i === 0 ? totals.shipping : 0;
 
       try {
@@ -1101,9 +1101,7 @@ export default function CheckoutPage() {
 
         throw Object.assign(new Error(errInfo.message), {
           partialSuccessCount: currentOrders.length,
-
           failedItemTitle: item.title,
-
           code: errInfo.code,
         });
       }
@@ -1138,6 +1136,7 @@ export default function CheckoutPage() {
       );
       return;
     }
+
     if (!selectedAddress) {
       logExit({
         step: "STEP 2 (address check)",
@@ -1289,9 +1288,15 @@ export default function CheckoutPage() {
         await clearCompletedCustomerCart();
 
         toast.success("Order placed successfully!");
-
         updatePhase(CHECKOUT_PHASE.SUCCESS);
-
+        logExit({
+          step: "STEP 7 (COD complete)",
+          reason: "COD order placed, no online payment needed",
+          sessionId: currentSessionId,
+          ordersCount: currentOrders.length,
+          paymentMethod,
+          nextApi: "createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
+        });
         navigate("/order-success", {
           state: {
             orders: currentOrders,
@@ -1300,7 +1305,6 @@ export default function CheckoutPage() {
           },
           replace: true,
         });
-
         return;
       }
 

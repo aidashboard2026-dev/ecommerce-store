@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "browser-image-compression": "^2.0.2",
     "firebase": "^12.15.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",

@@ -100,6 +100,7 @@ class HomepageCategoryResponse(HomepageCategoryBase):
     id: int
     created_at: datetime
     updated_at: datetime | None = None
+    click_path: Optional[str] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -108,12 +109,16 @@ class HomepageCategoryResponse(HomepageCategoryBase):
 
         if isinstance(data, dict):
             data["image"] = get_category_image_url(data.get("image"))
+            data["click_path"] = data.get("path")
         else:
             d = {}
             for field in cls.model_fields.keys():
+                if field == "click_path":
+                    continue
                 if hasattr(data, field):
                     d[field] = getattr(data, field)
             d["image"] = get_category_image_url(d.get("image"))
+            d["click_path"] = getattr(data, "path", None)
             return d
         return data
 

@@ -22,7 +22,7 @@ from app.shared.exceptions import (
 from sqlalchemy import func as sqla_func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-
+from app.core.constants import MAX_CUSTOM_PRODUCTS_PER_CATEGORY
 from app.modules.custom_products.models import (
     CustomCategory,
     CustomProduct,
@@ -414,8 +414,26 @@ def create_custom_product(
 ) -> CustomProductResponse:
     """Create a new custom product inside a database transaction."""
     # Validate that the custom_category_id exists, if provided
+    
+
     if data.custom_category_id is not None:
         get_custom_category(db, data.custom_category_id)
+
+        current_products = (
+            db.query(sqla_func.count(CustomProduct.id))
+            .filter(
+                CustomProduct.custom_category_id == data.custom_category_id,
+                CustomProduct.deleted_at.is_(None),
+            )
+            .scalar()
+            or 0
+        )
+
+        if current_products >= MAX_CUSTOM_PRODUCTS_PER_CATEGORY:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"This category already contains the maximum of {MAX_CUSTOM_PRODUCTS_PER_CATEGORY} products."
+            )
 
     try:
         base_slug = generate_slug(data.title)
@@ -496,7 +514,27 @@ def update_custom_product(
 
     # Validate custom category if being changed
     if "custom_category_id" in patch and patch["custom_category_id"] is not None:
+
         get_custom_category(db, patch["custom_category_id"])
+
+        if patch["custom_category_id"] != product.custom_category_id:
+
+            current_products = (
+                db.query(sqla_func.count(CustomProduct.id))
+                .filter(
+                    CustomProduct.custom_category_id == patch["custom_category_id"],
+                    CustomProduct.deleted_at.is_(None),
+                    CustomProduct.id != product_id,
+                )
+                .scalar()
+                or 0
+            )
+
+            if current_products >= MAX_CUSTOM_PRODUCTS_PER_CATEGORY:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"This category already contains the maximum of {MAX_CUSTOM_PRODUCTS_PER_CATEGORY} products."
+                )
 
     # Regenerate slug if title changes
     if "title" in patch and patch["title"]:

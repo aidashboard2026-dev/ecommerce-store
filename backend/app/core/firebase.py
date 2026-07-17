@@ -101,7 +101,7 @@ def get_firebase_credentials() -> credentials.Certificate:
     # If we got here, credentials could not be resolved.
     # Log detailed diagnostics as required by Phase 6.
     expected_path_msg = (
-        str(BASE_DIR / "secrets" / "my-designers-production-firebase-adminsdk-fbsvc-cd9f08b420.json")
+        str(BASE_DIR / "secrets" / "mydesigner-ecommercestore-firebase-adminsdk-fbsvc-71110b5b7d.json")
         if not settings.FIREBASE_CREDENTIALS_PATH
         else settings.FIREBASE_CREDENTIALS_PATH
     )

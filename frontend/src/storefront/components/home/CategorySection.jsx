@@ -45,7 +45,7 @@ export default function CategorySection() {
           categories.map((cat) => (
             <Link
               key={cat.id}
-              to={resolve(cat.destination_type, cat.destination_id, cat.path)}
+              to={cat.click_path || resolve(cat.destination_type, cat.destination_id, cat.path)}
               className="group relative overflow-hidden rounded-2xl"
             >
               <img
