@@ -78,7 +78,7 @@ def firebase_login(db: Session, id_token: str, background_tasks: Optional[Backgr
         decoded = verify_firebase_token(id_token)
 
         # Make sure the Firebase user still exists
-        firebase_auth.get_user(decoded["uid"])
+        # firebase_auth.get_user(decoded["uid"])
 
     except Exception as error:
         import traceback

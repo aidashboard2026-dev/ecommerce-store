@@ -787,7 +787,7 @@ export default function ProductsPage() {
                             product: null
                         })
                     }
-                    onOpenImage={openImage}
+                    
                 />
               </ProductErrorBoundary>
             </div>
@@ -796,7 +796,7 @@ export default function ProductsPage() {
       )}
 
       {/* ── Image Manager Modal ── */}
-      <ProductErrorBoundary title="Image manager error">
+      {/* <ProductErrorBoundary title="Image manager error">
         <ImageUploadModal
           isOpen={imageModal.open}
           onClose={() => setImageModal({ open: false, product: null })}
@@ -805,7 +805,7 @@ export default function ProductsPage() {
           queryKeyPrefix="custom-products"
           detailQueryKey="custom-product"
         />
-      </ProductErrorBoundary>
+      </ProductErrorBoundary> */}
 
       {/* ── Manage Categories & Quick Edit Modals ── */}
       <ProductErrorBoundary title="Category manager error">
