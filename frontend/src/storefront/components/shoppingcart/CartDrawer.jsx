@@ -54,7 +54,14 @@ export default function CartDrawer() {
             <div className="flex-1 overflow-y-auto px-4 sm:px-6">
               {items.map((item) => (
                 <CartItem
-                  key={`${item.productId}-${item.size}-${item.color}`}
+                  key={`cart-${
+                    item.cartItemId ??
+                    item.cart_item_id ??
+                    item.id ??
+                    item.variantId ??
+                    item.variant_id ??
+                    `${item.productId}-${item.size}-${item.color}`
+                  }`}
                   item={item}
                 />
               ))}

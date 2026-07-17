@@ -170,6 +170,8 @@ export const productsAPI = {
   create: (data)     => api.post('/products/admin', data),
   update: (id, data) => api.patch(`/products/admin/${id}`, data),
   delete: (id)       => api.delete(`/products/admin/${id}`),
+  getColors: ()      => api.get('/products/colors'),
+  resolveColor: (name) => api.get('/colors/resolve', { params: { name } }),
 
   // ── Bulk actions ────────────────────────────────────────────────────────────
 

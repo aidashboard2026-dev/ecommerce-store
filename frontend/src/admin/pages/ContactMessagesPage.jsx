@@ -41,7 +41,21 @@ const StatusBadge = ({ status }) => {
     </span>
   );
 };
-
+function Pagination({ page, totalPages, onPageChange }) {
+  return (
+    <div className="flex items-center justify-center gap-2">
+      <button onClick={() => onPageChange(page - 1)} disabled={page <= 1}
+        className="p-2 rounded-lg border border-app text-muted hover:text-app hover:bg-surface disabled:opacity-30 transition-all">
+        <ChevronLeft size={14} />
+      </button>
+      <span className="text-xs text-muted px-2 font-medium">Page {page} of {totalPages}</span>
+      <button onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}
+        className="p-2 rounded-lg border border-app text-muted hover:text-app hover:bg-surface disabled:opacity-30 transition-all">
+        <ChevronRight size={14} />
+      </button>
+    </div>
+  )
+}
 const TableSkeleton = () => (
   <div className="space-y-2">
     {[...Array(5)].map((_, i) => (
@@ -66,7 +80,7 @@ export default function ContactMessagesPage() {
 
   // Pagination
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(15);
 
   // Filters & Search
   const [search, setSearch] = useState('');
@@ -366,7 +380,7 @@ export default function ContactMessagesPage() {
           )}
 
           {/* Pagination */}
-          {!loading && messages.length > 0 && (
+          {/* {!loading && messages.length > 0 && (
             <div className="px-6 py-4 border-t flex items-center justify-between bg-gray-50">
               <div className="text-sm text-gray-600">
                 Showing {Math.min((page - 1) * pageSize + 1, totalMessages)} to{' '}
@@ -404,8 +418,26 @@ export default function ContactMessagesPage() {
                   <ChevronRight size={18} />
                 </button>
               </div>
+            </div> */}
+          {/* )} */}
+
+          {!loading && totalPages>1&&(
+
+            <div className="border-t bg-white px-6 py-4 flex items-center justify-center">
+
+            <Pagination
+
+            page={page}
+
+            totalPages={totalPages}
+
+            onPageChange={setPage}
+
+            />
+
             </div>
-          )}
+
+            )}
         </div>
 
         {/* Toast */}

@@ -465,6 +465,11 @@ export default function ProductsPage() {
     </div>
   ), [invalidate])
 
+  const getLatestProduct = useCallback((p) => {
+    if (!p) return null;
+    return data?.items?.find(item => item.id === p.id) || p;
+  }, [data?.items]);
+
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
@@ -774,14 +779,14 @@ export default function ProductsPage() {
             <div className="max-h-[90vh] overflow-y-auto">
               <ProductErrorBoundary title="Product form error">
                 <CustomProductForm
-                    product={formModal.product}
+                    product={getLatestProduct(formModal.product)}
                     onClose={() =>
                         setFormModal({
                             open: false,
                             product: null
                         })
                     }
-                    onOpenImage={openImage}
+                    
                 />
               </ProductErrorBoundary>
             </div>
@@ -790,16 +795,16 @@ export default function ProductsPage() {
       )}
 
       {/* ── Image Manager Modal ── */}
-      <ProductErrorBoundary title="Image manager error">
+      {/* <ProductErrorBoundary title="Image manager error">
         <ImageUploadModal
           isOpen={imageModal.open}
           onClose={() => setImageModal({ open: false, product: null })}
-          product={data?.items?.find(p => p.id === imageModal.product?.id) || imageModal.product}
+          product={getLatestProduct(imageModal.product || data?.items?.find(p => p.id === imageModal.product?.id))}
           api={customProductsApi}
           queryKeyPrefix="custom-products"
           detailQueryKey="custom-product"
         />
-      </ProductErrorBoundary>
+      </ProductErrorBoundary> */}
 
       {/* ── Manage Categories & Quick Edit Modals ── */}
       <ProductErrorBoundary title="Category manager error">
@@ -812,7 +817,7 @@ export default function ProductsPage() {
         <QuickCustomCategoryEditModal
           isOpen={quickEditModal.open}
           onClose={() => setQuickEditModal({ open: false, product: null })}
-          product={quickEditModal.product}
+          product={getLatestProduct(quickEditModal.product)}
         />
       </ProductErrorBoundary>
 

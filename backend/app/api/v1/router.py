@@ -20,6 +20,7 @@ from app.modules.categories.router import router as categories_router
 from app.modules.cart.router import (
     router as customer_cart_router,
 )
+from app.modules.colors.router import router as colors_router
 
 from app.modules.wishlist.router import (
     router as customer_wishlist_router,
@@ -51,3 +52,5 @@ api_router.include_router(
 api_router.include_router(
     customer_wishlist_router,
 )
+
+api_router.include_router(colors_router, prefix="/colors", tags=["Colors"])

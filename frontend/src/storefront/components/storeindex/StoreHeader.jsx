@@ -320,7 +320,6 @@ const StoreHeaderComponent = function StoreHeader({
                         {customer.email}
                       </p>
                     </div>
-                    <hr className="border-app my-1" />
                     <Link
                       to="/profile"
                       onClick={() => setProfileMenuOpen(false)}

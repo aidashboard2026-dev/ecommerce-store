@@ -648,3 +648,11 @@ class BulkActionPayload(BaseModel):
         if not v:
             raise ValueError("product_ids must not be empty")
         return v
+
+
+class ColorOption(BaseModel):
+    name: str
+    hex: str
+
+    class Config:
+        from_attributes = True

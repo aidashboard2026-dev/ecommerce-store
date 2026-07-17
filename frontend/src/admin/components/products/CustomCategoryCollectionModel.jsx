@@ -184,6 +184,7 @@ export default function CustomCategoryCollectionModel({ isOpen, onClose }) {
   const handleClose = useCallback(() => {
     if (dirtyRef.current) {
       qc.invalidateQueries({ queryKey: ['custom-products'] })
+      qc.invalidateQueries({ queryKey: ['custom-product'] })
     }
     onClose()
   }, [onClose, qc])

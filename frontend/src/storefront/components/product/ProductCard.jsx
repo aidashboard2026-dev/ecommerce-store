@@ -26,14 +26,16 @@ function ProductCard({ product }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { token, customer } = useSelector((s) => s.customer);
-  const isWishlisted = useSelector(selectIsWishlisted(product.id));
+  const isWishlisted = useSelector(selectIsWishlisted(product?.id));
+  const cartItems = useSelector((s) => s.cart.items);
+  const [imageError, setImageError] = React.useState(false);
 
-  const variants = product.variants || [];
-  const inStock = (product.total_stock ?? 0) > 0;
-  const minPrice = product.min_price;
+  // --- product-derived constants (declared before any consumer) ---
+  const variants = product?.variants || [];
+  const inStock = (product?.total_stock ?? 0) > 0;
+  const minPrice = product?.min_price;
   const availableVariant =
-    variants.find((variant) => Number(variant.stock_quantity) > 0) || null;
-
+    variants.find((v) => Number(v.stock_quantity) > 0) || null;
   const firstVariant = availableVariant || variants[0];
   const priceVariant = availableVariant || variants[0];
 
@@ -48,6 +50,29 @@ function ProductCard({ product }) {
           100,
       )
     : 0;
+
+  const cartQtyMap = React.useMemo(() => {
+    const map = {};
+    for (const item of cartItems) {
+      const pid = item.productId ?? item.product_id;
+      const vid = item.variantId ?? item.variant_id;
+      const key = vid ? `v:${vid}` : `p:${pid}`;
+      map[key] = (map[key] || 0) + (item.quantity || 1);
+    }
+    return map;
+  }, [cartItems]);
+  const variantCartKey = availableVariant?.id
+    ? `v:${availableVariant.id}`
+    : `p:${product?.id}`;
+  const inCartQty = cartQtyMap[variantCartKey] || 0;
+
+  if (!product) {
+    return (
+      <div className="flex items-center justify-center aspect-[8/9] bg-surface text-muted text-sm">
+        <ShoppingBag size={20} />
+      </div>
+    );
+  }
 
   const handleWishlist = async (e) => {
     e.preventDefault();
@@ -242,8 +267,6 @@ function ProductCard({ product }) {
     }
   };
 
-  const [imageError, setImageError] = React.useState(false);
-
   return (
     <Link
       to={`/products/${product.slug}`}
@@ -365,6 +388,8 @@ function ProductCard({ product }) {
 export default memo(ProductCard, (prev, next) => {
   const a = prev.product;
   const b = next.product;
+
+  if (!a || !b) return a === b;
 
   return (
     a.id === b.id &&

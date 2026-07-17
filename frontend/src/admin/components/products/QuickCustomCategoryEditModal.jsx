@@ -38,6 +38,7 @@ export default function QuickCustomCategoryEditModal({ isOpen, onClose, product 
     onSuccess: () => {
       toast.success('Custom product updated successfully.')
       qc.invalidateQueries({ queryKey: ['custom-products'] })
+      qc.invalidateQueries({ queryKey: ['custom-product'] })
       onClose()
     },
     onError: e => toast.error(getApiErrorMessage(e, 'Failed to update custom product')),
