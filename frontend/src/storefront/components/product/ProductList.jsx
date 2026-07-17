@@ -4,7 +4,6 @@ import { SlidersHorizontal } from 'lucide-react'
 import { useProductsInfinite, useCollections, useCategories } from '@/storefront/hooks/useProducts'
 
 import ProductGrid from '@/storefront/components/home/ProductGrid'
-import ProductFilters from '@/storefront/components/product/ProductFilters'
 import { useDebounce } from '@/shared/utils/productUtils'
 import SortDropdown from "@/storefront/components/filters/SortDropdown";
 import FilterDrawer from "@/storefront/components/filters/FilterDrawer";
@@ -295,7 +294,7 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
   return (
     <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       <div className="flex flex-col gap-2 mb-6">
-        <h1 className="font-display font-bold text-2xl sm:text-3xl text-black">
+        <h1 className="font-display font-bold text-2xl sm:text-3xl text-app">
             {pageTitle}
         </h1>
         <p className="text-sm text-muted">

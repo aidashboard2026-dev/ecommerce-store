@@ -22,11 +22,13 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 const ALLOWED_ACCEPT = "image/jpeg,image/png,image/webp";
 
-// ─── Single image slot (thumbnail / front / back / size_chart) ────────────────
-
-function SingleImageSlot({ label, imageUrl, onDelete, isPending: isDeleting }) {
+/**
+ * Displays the current product thumbnail.
+ */
+function CurrentImage({ imageUrl, onDelete, isDeleting }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const timerRef = useRef(null);
+
   const resolvedImageUrl = getImageUrl(imageUrl);
 
   useEffect(() => {
@@ -47,7 +49,7 @@ function SingleImageSlot({ label, imageUrl, onDelete, isPending: isDeleting }) {
         <div className="text-center">
           <Package size={18} className="mx-auto mb-1 text-muted opacity-50" />
 
-          <p className="text-xs text-muted">No {label || "thumbnail"} image yet</p>
+          <p className="text-xs text-muted">No thumbnail image yet</p>
         </div>
       </div>
     );
@@ -61,7 +63,7 @@ function SingleImageSlot({ label, imageUrl, onDelete, isPending: isDeleting }) {
   return (
     <div>
       <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
-        Current {label || "Thumbnail"}
+        Current Thumbnail
       </p>
 
       <div
@@ -70,7 +72,7 @@ function SingleImageSlot({ label, imageUrl, onDelete, isPending: isDeleting }) {
       >
         <img
           src={resolvedImageUrl}
-          alt={`Product ${label || "thumbnail"}`}
+          alt="Product thumbnail"
           className="w-full object-contain"
           style={{ maxHeight: 220 }}
         />
@@ -105,7 +107,7 @@ function SingleImageSlot({ label, imageUrl, onDelete, isPending: isDeleting }) {
         </div>
 
         <span className="absolute left-2 top-2 rounded bg-brand-500 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-white">
-          {label || "Thumbnail"}
+          Thumbnail
         </span>
       </div>
     </div>
@@ -369,8 +371,11 @@ export default function ImageUploadModal({
 
   const currentImageCount = product
     ? (product.thumbnail ? 1 : 0) +
-      (product.gallery_images || []).length
-    : 0
+      (product.image_front ? 1 : 0) +
+      (product.image_back ? 1 : 0) +
+      (product.image_size_chart ? 1 : 0) +
+      (product.gallery_images?.length || 0)
+    : 0;
 
   const willAddNewImage = !currentImageUrl;
 
@@ -475,15 +480,6 @@ export default function ImageUploadModal({
               Retry
             </button>
           </div>
-        )}
-
-        {currentImageUrl && (
-          <SingleImageSlot
-            label="Thumbnail"
-            imageUrl={currentImageUrl}
-            onDelete={handleDelete}
-            isPending={deleteMutation.isPending}
-          />
         )}
 
         {(!isLimitReached || !willAddNewImage) && (

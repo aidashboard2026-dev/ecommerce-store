@@ -339,10 +339,10 @@ function ProductCard({ product }) {
             {product.title}
           </h3>
 
-          <div className="flex items-center border rounded-md w-fit gap-1.5 p-1">
+          {/* <div className="flex items-center border rounded-md w-fit gap-1.5 p-1">
             <span className="text-[13px] text-app">4.5</span>
             <Star size={13} className="fill-green-600 text-green-600" />
-          </div>
+          </div> */}
         </div>
 
         <div className="flex flex-wrap items-center justify-between">
@@ -367,30 +367,20 @@ function ProductCard({ product }) {
           )}
         </div>
       </div>
-      {/* Quick add / In Cart indicator */}
-      {inCartQty > 0 ? (
-        <div
-          className={clsx(
-            "absolute bottom-0 right-0 p-2 w-full text-xs flex flex-row items-center justify-center gap-2 bg-emerald-600 text-white rounded-md",
-            "translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100",
-          )}
-        >
-          <span className="font-semibold">✓ Added ({inCartQty})</span>
-        </div>
-      ) : (
-        <button
-          onClick={handleQuickAdd}
-          disabled={!inStock}
-          className={clsx(
-            "absolute bottom-0 right-0 p-2.5 w-full text-sm uppercase flex flex-row gap-3 items-center bg-zinc-950 dark:bg-zinc-900 text-white justify-center rounded-md duration-300",
-            "translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100",
-          )}
-          aria-label="Quick add to cart"
-        >
-          <ShoppingBag size={16} />
-          Add to Cart
-        </button>
-      )}
+      {/* Quick add */}
+      <button
+        onClick={handleQuickAdd}
+        disabled={!inStock}
+        className={clsx(
+          "absolute bottom-0 right-0 p-2.5 w-full text-sm  uppercase flex flex-row gap-3 items-center bg-zinc-950 dark:bg-zinc-900 text-white justify-center rounded-md duration-300",
+          "translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100",
+          !inStock && "cursor-not-allowed opacity-50",
+        )}
+        aria-label="Quick add to cart"
+      >
+        <ShoppingBag size={16} />
+        Add to Cart
+      </button>
     </Link>
   );
 }

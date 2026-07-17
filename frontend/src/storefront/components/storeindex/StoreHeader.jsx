@@ -22,11 +22,8 @@ import useStoreSettings from "@/shared/hooks/useStoreSettings";
 // ─── Static nav config ───────────────────────────────────────────────────────
 const MOBILE_NAV_LINKS = [
   { label: "Home", to: "/" },
-  { label: "T-Shirt for Mens", to: "/products?category=t-shirts&gender=Men" },
-  {
-    label: "Track Pant for Mens",
-    to: "/products?category=track-pants&gender=Men",
-  },
+  { label: "T-Shirt for Mens", to: "/products?category=t-shirt&gender=Men" },
+  { label: "Track Pant for Mens", to: "/products?category=track-pants&gender=Men",},
   { label: "Trousers for Mens", to: "/products?category=trousers&gender=Men" },
   { label: "Shirt for Mens", to: "/products?category=shirts&gender=Men" },
   { label: "Custom products", to: "/custom" },
@@ -77,10 +74,10 @@ const StoreHeaderComponent = function StoreHeader({
   const searchRef = useRef(null);
   const profileRef = useRef(null);
 
-  useEffect(() => {
-    console.log("=== StoreHeader MOUNTED ===");
-    return () => console.log("=== StoreHeader UNMOUNTED ===");
-  }, []);
+  // useEffect(() => {
+  //   console.log("=== StoreHeader MOUNTED ===");
+  //   return () => console.log("=== StoreHeader UNMOUNTED ===");
+  // }, []);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -263,7 +260,7 @@ const StoreHeaderComponent = function StoreHeader({
             >
               <Heart size={18} />
               {wishlistCount > 0 && (
-                <span className=" absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-[#111827] text-white text-[10px] font-bold border-2 border-white dark:border-[#111827] shadow-lg leading-none">
+                <span className=" absolute top-1 right-1 flex bg-[var(--count-bg)] items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-white text-[10px] font-bold leading-none">
                   {wishlistCount}
                 </span>
               )}
@@ -331,26 +328,7 @@ const StoreHeaderComponent = function StoreHeader({
                     >
                       <User size={13} /> My Account
                     </Link>
-                    <Link
-                      to="/profile/orders"
-                      onClick={() => setProfileMenuOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2 text-xs text-app hover:bg-surface transition-colors"
-                      role="menuitem"
-                    >
-                      <ClipboardList size={13} /> Orders
-                    </Link>
                     <hr className="border-app my-1" />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setProfileMenuOpen(false);
-                        handleLogout();
-                      }}
-                      className="flex w-full items-center gap-2 px-4 py-2 text-xs text-red-500 hover:bg-surface transition-colors"
-                      role="menuitem"
-                    >
-                      <LogOut size={13} /> Logout
-                    </button>
                   </div>
                 )}
               </div>

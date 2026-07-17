@@ -59,7 +59,7 @@ const StoreFooterComponent = function StoreFooter() {
   const description = settings?.description || "";
 
   const linkBase =
-    "text-[14px] leading-[1.6] text-[#555555] hover:text-black transition-all duration-300 ease-out inline-block hover:translate-x-[2px]";
+    "text-[14px] leading-[1.6] text-muted hover:text-app transition-all duration-300 ease-out inline-block hover:translate-x-[2px]";
 
   const headingBase =
     "text-[12px] font-semibold uppercase tracking-[3px] text-[#111111] whitespace-nowrap";
@@ -97,17 +97,17 @@ const StoreFooterComponent = function StoreFooter() {
               <h4 className={headingBase}>About {storeName}</h4>
 
               {description && (
-                <p className="max-w-[340px] text-[14px] leading-[1.6] text-[#555555] font-light whitespace-pre-line">
+                <p className="max-w-[340px] text-[13px] leading-[1.6] text-[#555555] font-light whitespace-pre-line">
                   {description}
                 </p>
               )}
 
-              {settings?.store_location && (
+              {/* {settings?.store_location && (
                 <div className="text-[13px] leading-[1.5] text-[#555555] font-light max-w-[340px] whitespace-pre-line border-t border-gray-100 pt-3">
                   <span className="font-semibold text-xs text-[#111111] block mb-1">Our Store Location</span>
                   {settings.store_location}
                 </div>
-              )}
+              )} */}
             </div>
 
             {/* Social & Contact icon row — always rendered; links degrade gracefully when data is absent */}
@@ -215,26 +215,17 @@ const StoreFooterComponent = function StoreFooter() {
           </div>
 
           {/* ================= Contact ================= */}
-          <div className="flex flex-col items-start lg:items-center h-full mt-5 md:mt-5 lg:mt-0 gap-3">
+          <div className="flex flex-col items-start justify-between lg:items-center h-full mt-5 md:mt-5 lg:mt-0 gap-3">
             <h4 className={headingBase}>Contact</h4>
 
             {supportEmail && (
               <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#999999]">Email</span>
                 <a href={`mailto:${supportEmail}`} className={linkBase}>
                   {supportEmail}
                 </a>
               </div>
             )}
 
-            {displayPhone && (
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#999999]">Phone</span>
-                <a href={`tel:${supportPhone}`} className={linkBase}>
-                  {displayPhone}
-                </a>
-              </div>
-            )}
 
             <button
               onClick={() => setOpenContact(true)}
