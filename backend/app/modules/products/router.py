@@ -24,12 +24,14 @@ from app.modules.admins.models import Admin
 from app.modules.audit.service import audit
 from app.modules.auth.dependencies import get_current_admin
 from app.modules.products.models import Product, ProductStatus
+from app.modules.colors.resolver import resolver as color_resolver
 from app.modules.products.schemas import (
     BulkActionPayload, BulkVariantCreate,
     CategoryCreate, CategoryResponse, CategoryUpdate,
     CollectionCreate, CollectionResponse, CollectionUpdate,
     ProductCreate, ProductListResponse, ProductResponse, ProductUpdate,
     VariantCreate, VariantUpdate,
+    ColorOption,
 )
 from app.modules.products.service import (
     add_variant, add_variants_bulk, bulk_action,
@@ -788,4 +790,9 @@ def get_related_products_endpoint(
 ):
     product = get_product_by_slug(db, slug)
     return get_related_products(db, product, limit=limit)
+
+
+@router.get("/colors", response_model=List[ColorOption])
+def get_colors():
+    return color_resolver.get_all_colors()
 

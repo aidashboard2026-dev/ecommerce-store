@@ -41,10 +41,12 @@ MAX_CUSTOM_PRODUCTS_PER_CATEGORY = 5
 # Maximum Images per Custom Product
 MAX_CUSTOM_PRODUCT_IMAGES = 2
 
-
+#================================================================================
+# Product Vareint
+#================================================================================
 
 # Product
-MAX_PRODUCT_IMAGES = 7
+MAX_PRODUCT_IMAGES = 8
 MAX_PRODUCT_VARIANTS = 30
 
 

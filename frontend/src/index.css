@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -17,12 +15,12 @@
     
     --color-text: #0f172a;
     --color-text-muted: #64748b;
-    --color-brand: #5865f2;
-    --color-brand-hover: #404be0;
 
     /* Aliases used by storefront + admin */
     --color-text-1:       #0f172a;
     --color-primary:      #0f172a;
+
+    --count-bg : #fa9b4d;
 
     /* Typography */
     --font-sans: 'Inter', 'DM Sans', system-ui, -apple-system, sans-serif;
@@ -40,6 +38,22 @@
     --shadow-lg: 0 8px 30px rgba(15,23,42,.10), 0 2px 8px rgba(15,23,42,.04);
 
     color-scheme: light;
+
+    --color-brand-50: #eef2ff;
+    --color-brand-100: #e0e7ff;
+    --color-brand-200: #c7d2fe;
+    --color-brand-300: #a5b4fc;
+    --color-brand-400: #818cf8;
+
+    --color-brand: #343535;
+    --color-brand-hover: #4f46e5;
+
+    --color-brand-700: #4338ca;
+    --color-brand-800: #3730a3;
+    --color-brand-900: #312e81;
+    --color-brand-950: #1e1b4b;
+
+    --color-surface-hover: #f1f5f9;
   }
 
   .dark {
@@ -50,12 +64,15 @@
     
     --color-text: #fafafa;
     --color-text-muted: #a1a1aa;
-    --color-brand: #6366f1;
-    --color-brand-hover: #4f46e5;
+    --color-brand: #fdfdfde7;
+    --color-brand-hover: #a3a3a3;
     --color-primary:     #f1f5f9;
     --color-text-1:      #f1f5f9;
 
     color-scheme: dark;
+    --color-brand: #818cf8;
+    --color-brand-hover: #6366f1;
+    --color-surface-hover: #27272a;
   }
 
   * {
@@ -464,12 +481,12 @@
 
   border-radius:999px;
 
-  background:white;
+  background:rgb(255, 255, 255);
 
-  border:2px solid #111;
+  border:2px solid #292929;
 
   cursor:pointer;
-
+margin-top: 7px; 
   transition:.2s;
 }
 

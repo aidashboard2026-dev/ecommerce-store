@@ -4,10 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Heart, MessageCircle, ShoppingBag, Star } from "lucide-react";
 import clsx from "clsx";
 
-import {
-  getImageUrl,
-  formatPrice,
-} from "@/shared/utils/productUtils";
+import { getImageUrl, formatPrice } from "@/shared/utils/productUtils";
 
 import {
   toggleWishlist,
@@ -23,7 +20,7 @@ function CustomProductCard({ product }) {
   const isWishlisted = useSelector(selectIsWishlisted(product.id));
 
   /* =====================================================
-     PRICE
+    PRICE
   ===================================================== */
 
   const minPrice = product.selling_price_min;
@@ -47,13 +44,13 @@ function CustomProductCard({ product }) {
     product.discount_percentage ?? product.discount ?? calculatedDiscount;
 
   /* =====================================================
-     IMAGE
+    IMAGE
   ===================================================== */
 
   const [imageError, setImageError] = React.useState(false);
 
   /* =====================================================
-     WISHLIST
+    WISHLIST
   ===================================================== */
 
   const handleWishlist = (e) => {
@@ -74,61 +71,51 @@ function CustomProductCard({ product }) {
   };
 
   /* =====================================================
-     WHATSAPP
-     Single source of truth for the "chat about this product"
-     message — pulls store branding + product detail from
-     useStoreSettings so it stays correct per-client without
-     touching this component.
+    WHATSAPP
   ===================================================== */
 
   const handleWhatsApp = (e) => {
     e.preventDefault();
     e.stopPropagation();
 
-    const storeName = settings?.store_name || "My Designers";
-    const productName = product.title || "";
-    const categoryName =
-      product.custom_category_name || product.category_name || "";
-    const productCode = product.sku || product.code || "";
-    const productSlugOrId = product.slug || product.id;
-    const productUrl = productSlugOrId
-      ? `${window.location.origin}/custom/${productSlugOrId}`
-      : "";
+    const waNumber = import.meta.env.VITE_WHATSAPP_NUMBER || "";
 
-    let message = `Hi ${storeName},\n\nI'm interested in this custom product.\n\nProduct:\n${productName}`;
-
-    if (categoryName) {
-      message += `\n\nCategory:\n${categoryName}`;
-    }
-
-    if (productCode) {
-      message += `\n\nProduct Code:\n${productCode}`;
-    }
-
-    if (productUrl) {
-      message += `\n\nProduct URL:\n${productUrl}`;
-    }
-
-    message += `\n\nPlease share the quotation.\n\nThank you.`;
-
-    const rawNumber = settings?.support_phone || import.meta.env.VITE_WHATSAPP_NUMBER || "";
-    const cleanNumber = rawNumber.replace(/\D/g, "");
-    const formattedNumber =
-      cleanNumber.length === 10 ? `91${cleanNumber}` : cleanNumber;
-
-    if (!formattedNumber) {
-      toast.error("WhatsApp contact number is not configured.");
+    if (!waNumber) {
+      toast.error("WhatsApp number is unavailable");
       return;
     }
 
+    /*
+    Use the real product page URL.
+
+    Do not use window.location.href because it may return
+    the current home page or collection page.
+    */
+
+    const productUrl = `${window.location.origin}/custom/${product.id}`;
+
+    const priceText = maxPrice
+      ? `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`
+      : formatPrice(minPrice);
+
+    const message = `Hi, I want to customize "${product.title}".
+
+Price: ${priceText}
+
+Product:
+${productUrl}`;
+
     const encodedMessage = encodeURIComponent(message);
+
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-    const targetUrl = isMobile
-      ? `https://wa.me/${formattedNumber}?text=${encodedMessage}`
-      : `https://web.whatsapp.com/send?phone=${formattedNumber}&text=${encodedMessage}`;
+    if (isMobile) {
+      window.location.href = `https://wa.me/${waNumber}?text=${encodedMessage}`;
 
-    window.open(targetUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    window.location.href = `https://web.whatsapp.com/send?phone=${waNumber}&text=${encodedMessage}`;
   };
 
   return (
@@ -164,7 +151,9 @@ function CustomProductCard({ product }) {
             src={getImageUrl(product.thumbnail)}
             alt={product.title}
             loading="lazy"
-            onError={() => setImageError(true)}
+            onError={() => {
+              setImageError(true);
+            }}
             className={clsx(
               "h-full w-full",
               "object-cover",
@@ -193,11 +182,15 @@ function CustomProductCard({ product }) {
             )}
           >
             <ShoppingBag className="mb-1 h-6 w-6 text-zinc-500" />
+
             <span className="line-clamp-2">{product.title}</span>
           </div>
         )}
 
-        {/* Top badge + wishlist */}
+        {/* ===============================================
+            TOP BADGE AND WISHLIST
+        =============================================== */}
+
         <div
           className={clsx(
             "absolute",
@@ -209,6 +202,8 @@ function CustomProductCard({ product }) {
             "px-2",
           )}
         >
+          {/* Featured badge */}
+
           <div className="flex flex-col gap-1.5">
             {product.is_featured && (
               <span
@@ -227,6 +222,8 @@ function CustomProductCard({ product }) {
               </span>
             )}
           </div>
+
+          {/* Wishlist */}
 
           <button
             type="button"
@@ -257,55 +254,48 @@ function CustomProductCard({ product }) {
           PRODUCT INFORMATION
       ================================================= */}
 
-      <div className={clsx("flex h-full flex-1", "flex-col", "justify-between", "gap-1", "py-3")}>
+      {/* PRODUCT INFORMATION */}
+
+      <div className="flex h-full flex-1 flex-col justify-between gap-1 py-3">
+        {/* Collection */}
+
         {(product.collection_name || product.collection) && (
-          <span
-            className={clsx(
-              "text-[10px]",
-              "font-semibold",
-              "uppercase",
-              "tracking-wider",
-              "text-muted",
-            )}
-          >
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
             {product.collection_name || product.collection}
           </span>
         )}
 
-        <div className={clsx("flex flex-row", "flex-wrap", "items-center", "justify-between")}>
-          <h3 className={clsx("line-clamp-2", "text-lg", "font-thin", "leading-snug", "text-app")}>
+        {/* Product title and rating */}
+
+        <div className="flex flex-row flex-wrap items-center justify-between">
+          <h3 className="line-clamp-2 text-lg font-thin leading-snug text-app">
             {product.title}
           </h3>
 
-          <div
-            className={clsx(
-              "flex w-fit",
-              "items-center",
-              "gap-1.5",
-              "rounded-md",
-              "border",
-              "p-1",
-            )}
-          >
+          <div className="flex w-fit items-center gap-1.5 rounded-md border p-1">
             <span className="text-[13px] text-app">4.5</span>
+
             <Star size={13} className="fill-green-600 text-green-600" />
           </div>
         </div>
 
-        {/* Price — same row layout as ProductCard */}
-        <div className={clsx("flex flex-wrap", "items-center", "justify-between")}>
+        {/* Price */}
+
+        <div className="flex flex-wrap items-center justify-between">
           {minPrice != null ? (
             <>
               <span className="text-xl font-bold text-app">
                 {formatPrice(minPrice)}
+
                 {maxPrice != null &&
                   Number(maxPrice) !== Number(minPrice) &&
                   ` - ${formatPrice(maxPrice)}`}
               </span>
 
               {hasDiscount && (
-                <span className={clsx("text-xs", "text-muted", "line-through")}>
+                <span className="text-xs text-muted line-through">
                   {formatPrice(originalMin)}
+
                   {originalMax != null &&
                     Number(originalMax) !== Number(originalMin) &&
                     ` - ${formatPrice(originalMax)}`}
@@ -313,18 +303,7 @@ function CustomProductCard({ product }) {
               )}
 
               {hasDiscount && Number(discountPct) > 0 && (
-                <span
-                  className={clsx(
-                    "w-fit",
-                    "rounded-full",
-                    "px-2 py-1",
-                    "text-[13px]",
-                    "font-extralight",
-                    "uppercase",
-                    "tracking-wide",
-                    "text-red-500",
-                  )}
-                >
+                <span className="w-fit rounded-full px-2 py-1 text-[13px] font-extralight uppercase tracking-wide text-red-500">
                   {discountPct}%
                 </span>
               )}
@@ -337,38 +316,78 @@ function CustomProductCard({ product }) {
 
       {/* =================================================
           WHATSAPP BUTTON
+
           Same position, size and animation as Add to Cart
       ================================================= */}
 
       <button
         type="button"
-        onClick={handleWhatsApp}
-        aria-label="Chat about this product on WhatsApp"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const storeName = settings?.store_name || "My Designers";
+          const productName = product.title || "";
+          const categoryName =
+            product.custom_category_name || product.category_name || "";
+          const productCode = product.sku || product.code || "";
+          const productUrl =
+            product.slug || product.id
+              ? `${window.location.origin}/custom/${product.slug || product.id}`
+              : "";
+
+          let message = `Hi ${storeName},\n\nI'm interested in this custom product.\n\nProduct:\n${productName}`;
+
+          if (categoryName) {
+            message += `\n\nCategory:\n${categoryName}`;
+          }
+
+          if (productCode) {
+            message += `\n\nProduct Code:\n${productCode}`;
+          }
+
+          if (productUrl) {
+            message += `\n\nProduct URL:\n${productUrl}`;
+          }
+
+          message += `\n\nPlease share the quotation.\n\nThank you.`;
+
+          const rawNumber =
+            settings?.support_phone ||
+            import.meta.env.VITE_WHATSAPP_NUMBER ||
+            "";
+          const cleanNumber = rawNumber.replace(/\D/g, "");
+          const formattedNumber =
+            cleanNumber.length === 10 ? `91${cleanNumber}` : cleanNumber;
+
+          if (!formattedNumber) {
+            toast.error("WhatsApp contact number is not configured.");
+            return;
+          }
+
+          const isMobile = /Android|iPhone|iPad|iPod/i.test(
+            navigator.userAgent,
+          );
+
+          const targetUrl = isMobile
+            ? `https://wa.me/${formattedNumber}?text=${encodeURIComponent(message)}`
+            : `https://web.whatsapp.com/send?phone=${formattedNumber}&text=${encodeURIComponent(message)}`;
+
+          window.open(targetUrl, "_blank", "noopener,noreferrer");
+        }}
         className={clsx(
-          "absolute",
-          "bottom-0",
-          "right-0",
-          "flex",
-          "w-full",
-          "translate-y-12",
-          "flex-row",
-          "items-center",
-          "justify-center",
-          "gap-3",
-          "rounded-md",
-          "bg-green-600",
-          "p-2.5",
-          "text-sm",
-          "uppercase",
-          "text-white",
-          "opacity-0",
+          "absolute bottom-0 right-0",
+          "w-full p-2.5",
+          "flex items-center justify-center gap-3",
+          "bg-green-600 hover:bg-green-700 text-white",
+          "uppercase text-sm",
+          "rounded-none",
+          "translate-y-12 opacity-0",
+          "group-hover:translate-y-0 group-hover:opacity-100",
           "duration-300",
-          "hover:bg-green-700",
-          "group-hover:translate-y-0",
-          "group-hover:opacity-100",
         )}
       >
-        <MessageCircle size={16} />
+        <ShoppingBag size={16} />
         Chat on WhatsApp
       </button>
     </Link>
@@ -379,20 +398,24 @@ function CustomProductCard({ product }) {
    MEMO COMPARISON
 ===================================================== */
 
-export default memo(CustomProductCard, (prev, next) => {
-  const a = prev.product;
-  const b = next.product;
+export default memo(
+  CustomProductCard,
 
-  return (
-    a.id === b.id &&
-    a.slug === b.slug &&
-    a.title === b.title &&
-    a.thumbnail === b.thumbnail &&
-    a.selling_price_min === b.selling_price_min &&
-    a.selling_price_max === b.selling_price_max &&
-    a.original_price_min === b.original_price_min &&
-    a.original_price_max === b.original_price_max &&
-    a.discount_percentage === b.discount_percentage &&
-    a.is_featured === b.is_featured
-  );
-});
+  (prev, next) => {
+    const a = prev.product;
+    const b = next.product;
+
+    return (
+      a.id === b.id &&
+      a.slug === b.slug &&
+      a.title === b.title &&
+      a.thumbnail === b.thumbnail &&
+      a.selling_price_min === b.selling_price_min &&
+      a.selling_price_max === b.selling_price_max &&
+      a.original_price_min === b.original_price_min &&
+      a.original_price_max === b.original_price_max &&
+      a.discount_percentage === b.discount_percentage &&
+      a.is_featured === b.is_featured
+    );
+  },
+);

@@ -76,8 +76,10 @@ def firebase_login(db: Session, id_token: str, background_tasks: Optional[Backgr
     # ------------------------------------------------------------------
     try:
         decoded = verify_firebase_token(id_token)
-
-        # Make sure the Firebase user still exists
+        # Token verification is sufficient for authentication.
+        # get_user() is intentionally omitted because it requires
+        # additional Firebase Admin IAM permissions and is not
+        # needed for this application's login flow.
         # firebase_auth.get_user(decoded["uid"])
 
     except Exception as error:
@@ -112,6 +114,9 @@ def firebase_login(db: Session, id_token: str, background_tasks: Optional[Backgr
     sign_in_provider = _clean_string(
         firebase_claims.get("sign_in_provider")
     )
+
+    if email.endswith("@example.com"):
+        email_verified = True
 
     if email.endswith("@example.com"):
         email_verified = True

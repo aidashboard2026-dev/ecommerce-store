@@ -7,7 +7,7 @@ import {
 } from "../services/customerCollectionService";
 
 import {
-  mapDatabaseCartItem,
+  normalizeCartItem,
 } from "../services/customerCollectionSync";
 
 
@@ -62,7 +62,7 @@ export const addCustomerCartItemThunk =
             });
 
         return (
-          mapDatabaseCartItem(
+          normalizeCartItem(
             response.data,
           )
         );
@@ -101,7 +101,7 @@ export const updateCustomerCartQuantityThunk =
             );
 
         return (
-          mapDatabaseCartItem(
+          normalizeCartItem(
             response.data,
           )
         );

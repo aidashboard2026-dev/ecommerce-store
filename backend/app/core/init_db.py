@@ -34,7 +34,8 @@ def init_db() -> None:
     db: Session = SessionLocal()
     try:
         # ── 1. Admin account ────────────────────────────────────────────────────
-        admin = db.query(Admin).filter(Admin.email == email).first()
+        # Since the application supports only one administrator account, we check if any admin exists.
+        admin = db.query(Admin).order_by(Admin.id.asc()).first()
         if not admin:
             admin = Admin(
                 name=name,
@@ -45,8 +46,6 @@ def init_db() -> None:
             db.add(admin)
             logger.info("Default superadmin created")
         else:
-            admin.name = name
-            admin.role = "superadmin"
             logger.info("Initial admin account verified (password unchanged)")
 
         # ── 2. Clean up notification settings ──────────────────────────────────

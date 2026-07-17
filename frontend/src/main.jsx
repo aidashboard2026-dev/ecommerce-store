@@ -20,8 +20,8 @@ const queryClient = new QueryClient({
 
   
 })
-console.log("ENV", import.meta.env);
-console.log("API", import.meta.env.VITE_FIREBASE_API_KEY);
+// console.log("ENV", import.meta.env);
+// console.log("API", import.meta.env.VITE_FIREBASE_API_KEY);
 ReactDOM.createRoot(document.getElementById("root")).render(
   <Provider store={store}>
     <QueryClientProvider client={queryClient}>

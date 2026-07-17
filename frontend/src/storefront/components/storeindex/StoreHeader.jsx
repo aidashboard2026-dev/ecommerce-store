@@ -22,13 +22,14 @@ import useStoreSettings from "@/shared/hooks/useStoreSettings";
 // ─── Static nav config ───────────────────────────────────────────────────────
 const MOBILE_NAV_LINKS = [
   { label: "Home", to: "/" },
-  { label: "T-Shirts for Mens", to: "/products?category=t-shirts&gender=Men" },
-  { label: "Track Pants for Mens", to: "/products?category=track-pants&gender=Men" },
+  { label: "T-Shirt for Mens", to: "/products?category=t-shirt&gender=Men" },
+  { label: "Track Pant for Mens", to: "/products?category=track-pants&gender=Men",},
   { label: "Trousers for Mens", to: "/products?category=trousers&gender=Men" },
-  { label: "Shirts for Mens", to: "/products?category=shirts&gender=Men" },
-  { label: "Custom product", to: "/custom" },
+  { label: "Shirt for Mens", to: "/products?category=shirts&gender=Men" },
+  { label: "Custom products", to: "/custom" },
   { label: "Offers", to: "/offers" },
-  { label: "Track Order", to: "/tracking" },
+  { label: "My Orders", to: "/profile/orders" },
+  // { label: "Track Order", to: "/tracking" },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -46,7 +47,10 @@ function getCustomerName(customer) {
   if (!customer) return "Customer";
   return (
     customer.google_name ||
-    [customer.first_name, customer.last_name].filter(Boolean).join(" ").trim() ||
+    [customer.first_name, customer.last_name]
+      .filter(Boolean)
+      .join(" ")
+      .trim() ||
     "Customer"
   );
 }
@@ -69,6 +73,11 @@ const StoreHeaderComponent = function StoreHeader({
   const location = useLocation();
   const searchRef = useRef(null);
   const profileRef = useRef(null);
+
+  // useEffect(() => {
+  //   console.log("=== StoreHeader MOUNTED ===");
+  //   return () => console.log("=== StoreHeader UNMOUNTED ===");
+  // }, []);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -103,7 +112,9 @@ const StoreHeaderComponent = function StoreHeader({
   // ── Lock body scroll when mobile menu is open ─────────────────────────────
   useEffect(() => {
     document.body.style.overflow = mobileMenuOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [mobileMenuOpen]);
 
   // ── Escape key handler ────────────────────────────────────────────────────
@@ -190,7 +201,7 @@ const StoreHeaderComponent = function StoreHeader({
             <div
               ref={searchRef}
               className={clsx(
-                "relative hidden md:flex items-center justify-end transition-all duration-300",
+                "relative hidden sm:flex items-center p-1 justify-end transition-all duration-300",
                 showSearch ? "w-72" : "w-11",
               )}
             >
@@ -209,7 +220,7 @@ const StoreHeaderComponent = function StoreHeader({
                   placeholder="Search premium apparel…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full text-sm bg-surface border border-app rounded-full py-2 pl-4 pr-12 text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                  className="flex-1 w-full bg-surface border border-app rounded-full py-1.5 px-5 text-app text-sm"
                   aria-label="Search products"
                 />
               </form>
@@ -222,22 +233,15 @@ const StoreHeaderComponent = function StoreHeader({
                     setShowSearch((v) => !v);
                   }
                 }}
-                className="absolute right-0 z-10 w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                className={clsx(
+                  "absolute right-0 z-10 w-11 h-11 flex items-center justify-center rounded-full text-app transition-colors",
+                  showSearch ? "bg-transparent" : "hover:bg-surface",
+                )}
                 aria-label={showSearch ? "Submit search" : "Open search"}
               >
                 <Search size={20} />
               </button>
             </div>
-
-            {/* Mobile Search Button */}
-            <button
-              type="button"
-              onClick={() => setShowSearch(true)}
-              className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface text-app md:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-              aria-label="Open search"
-            >
-              <Search size={20} />
-            </button>
 
             {/* Theme Toggle */}
             <button
@@ -251,27 +255,12 @@ const StoreHeaderComponent = function StoreHeader({
             {/* Wishlist */}
             <Link
               to="/wishlist"
-              className="hidden sm:flex w-11 h-11 items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors duration-200 relative"
+              className="flex w-11 h-11 items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors duration-200 relative"
               aria-label={`Wishlist${wishlistCount > 0 ? ` (${wishlistCount} items)` : ""}`}
             >
               <Heart size={18} />
               {wishlistCount > 0 && (
-                <span
-                  className="
-                    absolute -top-1 -right-1
-                    flex items-center justify-center
-                    min-w-[18px] h-[18px]
-                    px-1.5
-                    rounded-full
-                    bg-[#111827]
-                    text-white
-                    text-[10px]
-                    font-bold
-                    border-2 border-white dark:border-[#111827]
-                    shadow-lg
-                    leading-none
-                  "
-                >
+                <span className=" absolute top-1 right-1 flex bg-[var(--count-bg)] items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-white text-[10px] font-bold leading-none">
                   {wishlistCount}
                 </span>
               )}
@@ -327,9 +316,10 @@ const StoreHeaderComponent = function StoreHeader({
                       <p className="text-sm font-semibold text-app truncate">
                         {customerName}
                       </p>
-                      <p className="text-xs text-muted truncate">{customer.email}</p>
+                      <p className="text-xs text-muted truncate">
+                        {customer.email}
+                      </p>
                     </div>
-                    <hr className="border-app my-1" />
                     <Link
                       to="/profile"
                       onClick={() => setProfileMenuOpen(false)}
@@ -338,26 +328,7 @@ const StoreHeaderComponent = function StoreHeader({
                     >
                       <User size={13} /> My Account
                     </Link>
-                    <Link
-                      to="/profile/orders"
-                      onClick={() => setProfileMenuOpen(false)}
-                      className="flex items-center gap-2 px-4 py-2 text-xs text-app hover:bg-surface transition-colors"
-                      role="menuitem"
-                    >
-                      <ClipboardList size={13} /> My Orders
-                    </Link>
                     <hr className="border-app my-1" />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setProfileMenuOpen(false);
-                        handleLogout();
-                      }}
-                      className="flex w-full items-center gap-2 px-4 py-2 text-xs text-red-500 hover:bg-surface text-left transition-colors"
-                      role="menuitem"
-                    >
-                      <LogOut size={13} /> Logout
-                    </button>
                   </div>
                 )}
               </div>
@@ -383,36 +354,6 @@ const StoreHeaderComponent = function StoreHeader({
         </div>
       </header>
 
-      {/* ════════════════════ MOBILE SEARCH OVERLAY ════════════════════ */}
-      {showSearch && (
-        <div className="fixed inset-0 top-[56px] z-50 md:hidden bg-app flex flex-col">
-          <form
-            onSubmit={handleSearchSubmit}
-            className="p-4 border-b border-app flex items-center gap-3 shrink-0"
-          >
-            <input
-              autoFocus
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search products…"
-              className="flex-1 bg-surface border-0 rounded-full py-2.5 px-5 text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-              aria-label="Search products"
-            />
-            <button
-              type="button"
-              onClick={() => setShowSearch(false)}
-              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface text-app transition-colors shrink-0"
-              aria-label="Close search"
-            >
-              <X size={22} />
-            </button>
-          </form>
-          {/* Tapping empty area closes search */}
-          <div className="flex-1" onClick={() => setShowSearch(false)} />
-        </div>
-      )}
-
       {/* ════════════════════ MOBILE MENU DRAWER ════════════════════ */}
       {mobileMenuOpen && (
         <>
@@ -425,8 +366,7 @@ const StoreHeaderComponent = function StoreHeader({
 
           {/* Drawer */}
           <nav
-            className="fixed top-0 right-0 h-full w-72 bg-app border-l border-app z-50 shadow-xl flex flex-col
-                        animate-[slideInRight_250ms_ease-out]"
+            className="fixed top-0 right-0 h-full w-72 bg-app border-l border-app z-50 shadow-xl flex flex-col animate-[slideInRight_250ms_ease-out]"
             role="dialog"
             aria-modal="true"
             aria-label="Navigation menu"
@@ -434,12 +374,53 @@ const StoreHeaderComponent = function StoreHeader({
             {/* Drawer Header */}
             <div className="flex items-center justify-between p-4 border-b border-app shrink-0">
               <span className="font-display font-bold text-app">Menu</span>
-              <button
-                onClick={closeMobileMenu}
-                className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface text-app transition-colors"
-                aria-label="Close menu"
+              <div className="flex flex-row items-center gap-2">
+                <button
+                  onClick={toggleTheme}
+                  className="w-12 h-12 flex sm:hidden items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors"
+                  aria-label="Toggle Theme"
+                >
+                  {isDark ? <Sun size={20} /> : <Moon size={20} />}
+                </button>
+                <button
+                  onClick={closeMobileMenu}
+                  className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface text-app transition-colors"
+                  aria-label="Close menu"
+                >
+                  <X size={22} />
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile Search Button */}
+            <div
+              ref={searchRef}
+              className={clsx(
+                "relative flex sm:hidden items-center p-1 justify-end transition-all duration-300",
+              )}
+            >
+              <form
+                onSubmit={handleSearchSubmit}
+                className={clsx(
+                  "relative w-full transition-all duration-300 ease-in-out overflow-hidden",
+                )}
               >
-                <X size={22} />
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Search premium apparel…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex-1 w-full bg-surface border border-app rounded-md py-2 px-5 text-app text-sm"
+                  aria-label="Search products"
+                />
+              </form>
+              <button
+                type="button"
+                className="absolute right-0 z-10 w-11 h-11 flex items-center justify-center rounded-full  text-app "
+                aria-label={showSearch ? "Submit search" : "Open search"}
+              >
+                <Search size={20} />
               </button>
             </div>
 
@@ -458,6 +439,11 @@ const StoreHeaderComponent = function StoreHeader({
               ))}
 
               {/* Auth Section */}
+              
+            </div>
+
+            {/* Mobile Actions Drawer Footer */}
+            <div className="mt-auto p-3 border-t border-app flex items-center justify-around">
               {token && customer ? (
                 <>
                   <div className="flex items-center gap-3 px-5 py-4">
@@ -474,18 +460,15 @@ const StoreHeaderComponent = function StoreHeader({
                       </div>
                     )}
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-app truncate">{customerName}</p>
-                      <p className="text-xs text-muted truncate">{customer.email}</p>
+                      <p className="text-sm font-semibold text-app truncate">
+                        {customerName}
+                      </p>
+                      <p className="text-xs text-muted truncate">
+                        {customer.email}
+                      </p>
                     </div>
                   </div>
                   <hr className="border-app" />
-                  <Link
-                    to="/profile/orders"
-                    onClick={closeMobileMenu}
-                    className="flex items-center gap-3 px-5 py-3 text-sm text-app hover:bg-surface transition-colors"
-                  >
-                    <ClipboardList size={16} /> My Orders
-                  </Link>
                   <Link
                     to="/profile"
                     onClick={closeMobileMenu}
@@ -514,31 +497,7 @@ const StoreHeaderComponent = function StoreHeader({
                   <User size={16} /> Login / Sign Up
                 </Link>
               )}
-            </div>
 
-            {/* Mobile Actions Drawer Footer */}
-            <div className="mt-auto p-5 border-t border-app flex items-center justify-around md:hidden">
-              <button
-                onClick={toggleTheme}
-                className="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors"
-                aria-label="Toggle Theme"
-              >
-                {isDark ? <Sun size={20} /> : <Moon size={20} />}
-              </button>
-
-              <Link
-                to="/wishlist"
-                onClick={closeMobileMenu}
-                className="w-12 h-12 flex items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors relative"
-                aria-label="Wishlist"
-              >
-                <Heart size={20} />
-                {wishlistCount > 0 && (
-                  <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold h-4 w-4 rounded-full flex items-center justify-center">
-                    {wishlistCount}
-                  </span>
-                )}
-              </Link>
             </div>
           </nav>
         </>

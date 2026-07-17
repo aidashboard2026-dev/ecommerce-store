@@ -22,12 +22,6 @@ import {
 import { formatPrice, getImageUrl, useDebounce, getApiErrorMessage } from '@/shared/utils/productUtils'
 import CustomProductForm from '@/admin/components/products/CustomProductForm'
 import ImageUploadModal from '@/admin/components/products/ImageUploadModal'
-// VariantFormModal intentionally not wired here — Custom Products are
-// production-based, not variant-based (see backend models.py); there is no
-// /custom-products/admin/{id}/variants endpoint to connect this to, and the
-// "Variants" section in CustomProductForm.jsx is dead JSX (commented out),
-// so restoring it is out of scope for this stabilization fix.
-// import VariantFormModal from '@/admin/components/products/VariantFormModal'
 import CustomCategoryCollectionModel from '@/admin/components/products/CustomCategoryCollectionModel'
 import QuickCustomCategoryEditModal from '@/admin/components/products/QuickCustomCategoryEditModal'
 import Modal from '@/shared/components/common/Modal'
@@ -471,6 +465,11 @@ export default function ProductsPage() {
     </div>
   ), [invalidate])
 
+  const getLatestProduct = useCallback((p) => {
+    if (!p) return null;
+    return data?.items?.find(item => item.id === p.id) || p;
+  }, [data?.items]);
+
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
@@ -780,7 +779,7 @@ export default function ProductsPage() {
             <div className="max-h-[90vh] overflow-y-auto">
               <ProductErrorBoundary title="Product form error">
                 <CustomProductForm
-                    product={formModal.product}
+                    product={getLatestProduct(formModal.product)}
                     onClose={() =>
                         setFormModal({
                             open: false,
@@ -800,7 +799,7 @@ export default function ProductsPage() {
         <ImageUploadModal
           isOpen={imageModal.open}
           onClose={() => setImageModal({ open: false, product: null })}
-          product={data?.items?.find(p => p.id === imageModal.product?.id) || imageModal.product}
+          product={getLatestProduct(imageModal.product || data?.items?.find(p => p.id === imageModal.product?.id))}
           api={customProductsApi}
           queryKeyPrefix="custom-products"
           detailQueryKey="custom-product"
@@ -818,7 +817,7 @@ export default function ProductsPage() {
         <QuickCustomCategoryEditModal
           isOpen={quickEditModal.open}
           onClose={() => setQuickEditModal({ open: false, product: null })}
-          product={quickEditModal.product}
+          product={getLatestProduct(quickEditModal.product)}
         />
       </ProductErrorBoundary>
 

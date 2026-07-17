@@ -1,0 +1,533 @@
+%PDF-1.4
+% Live QA Report
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+3 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R 11 0 R 13 0 R 15 0 R 17 0 R 19 0 R 21 0 R 23 0 R 25 0 R 27 0 R 29 0 R] /Count 13 >>
+endobj
+4 0 obj
+<< /Length 1305 >>
+stream
+0.060 0.080 0.130 rg 0.0 0.0 612.0 792.0 re f
+0.110 0.160 0.270 rg 48.0 610.0 516.0 96.0 re f
+BT 1.000 1.000 1.000 rg /F2 26.0 Tf 72.0 660.0 Td (LIVE QA AUTOMATION REPORT) Tj ET
+BT 0.840 0.890 0.980 rg /F1 15.0 Tf 72.0 632.0 Td (Static Code Analysis + Runtime Verification) Tj ET
+BT 0.780 0.830 0.910 rg /F1 11.0 Tf 72.0 560.0 Td (Project: D:\\ecommerce-store) Tj ET
+BT 0.780 0.830 0.910 rg /F1 10.0 Tf 72.0 538.0 Td (Generated: 2026-07-17 11:29:53) Tj ET
+BT 0.780 0.830 0.910 rg /F1 10.0 Tf 72.0 516.0 Td (Prepared by: Senior QA Automation Engineer) Tj ET
+0.950 0.970 1.000 rg 72.0 390.0 142.0 58.0 re f
+BT 0.060 0.080 0.130 rg /F2 20.0 Tf 92.0 425.0 Td (173) Tj ET
+BT 0.250 0.290 0.360 rg /F1 8.0 Tf 92.0 405.0 Td (JS/JSX files) Tj ET
+0.950 0.970 1.000 rg 236.0 390.0 142.0 58.0 re f
+BT 0.060 0.080 0.130 rg /F2 20.0 Tf 256.0 425.0 Td (31+) Tj ET
+BT 0.250 0.290 0.360 rg /F1 8.0 Tf 256.0 405.0 Td (page surfaces) Tj ET
+0.950 0.970 1.000 rg 400.0 390.0 142.0 58.0 re f
+BT 0.060 0.080 0.130 rg /F2 20.0 Tf 420.0 425.0 Td (16) Tj ET
+BT 0.250 0.290 0.360 rg /F1 8.0 Tf 420.0 405.0 Td (verification steps) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 38.0 m 548.0 38.0 l S
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 48.0 22.0 Td (UI_QA_Report.pdf) Tj ET
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 488.0 22.0 Td (Page 1 of 13) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 4 0 R >>
+endobj
+6 0 obj
+<< /Length 1536 >>
+stream
+BT 0.060 0.080 0.130 rg /F2 18.0 Tf 48.0 760.0 Td (1. Project Information) Tj ET
+0.820 0.850 0.900 RG 0.6 w 48.0 742.0 m 548.0 742.0 l S
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 717.0 Td (This report combines static source-code inspection with live environment verification. The audited application is a) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 703.0 Td (React/Vite ecommerce storefront and admin dashboard with FastAPI backend, Docker Compose runtime, Redis, Nginx, and) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 689.0 Td (Supabase PostgreSQL connectivity.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 673.0 Td (Frontend stack observed: React 18, Vite, Redux Toolkit, React Query, Tailwind CSS, Firebase, Razorpay, lucide-react,) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 659.0 Td (react-hot-toast, and Playwright dependency inside the frontend container.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 643.0 Td (Routes reviewed include storefront home, products, product detail, custom products, offers, cart, wishlist, checkout,) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 629.0 Td (tracking, auth, profile, orders, support/footer pages, not-found, and admin dashboard/products/categories/custom) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 615.0 Td (products/orders/offers/customers/contact/settings/banners.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 38.0 m 548.0 38.0 l S
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 48.0 22.0 Td (UI_QA_Report.pdf) Tj ET
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 488.0 22.0 Td (Page 2 of 13) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 8006 >>
+stream
+BT 0.060 0.080 0.130 rg /F2 18.0 Tf 48.0 760.0 Td (2. Environment Verification) Tj ET
+0.820 0.850 0.900 RG 0.6 w 48.0 742.0 m 548.0 742.0 l S
+BT 0.180 0.220 0.300 rg /F2 8.0 Tf 52.0 717.0 Td (Step) Tj ET
+BT 0.180 0.220 0.300 rg /F2 8.0 Tf 116.0 717.0 Td (Command) Tj ET
+BT 0.180 0.220 0.300 rg /F2 8.0 Tf 320.0 717.0 Td (Status) Tj ET
+BT 0.180 0.220 0.300 rg /F2 8.0 Tf 370.0 717.0 Td (Summary) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 704.0 m 548.0 704.0 l S
+BT 0.120 0.160 0.220 rg /F2 7.0 Tf 52.0 695.0 Td (1) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 116.0 695.0 Td (node -v) Tj ET
+0.800 0.160 0.140 rg 320.0 691.0 42.0 14.0 re f
+BT 1.000 1.000 1.000 rg /F2 7.0 Tf 326.0 695.0 Td (FAIL) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 370.0 695.0 Td (node command not recognized.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 681.0 m 548.0 681.0 l S
+BT 0.120 0.160 0.220 rg /F2 7.0 Tf 52.0 672.0 Td (2) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 116.0 672.0 Td (npm -v) Tj ET
+0.800 0.160 0.140 rg 320.0 668.0 42.0 14.0 re f
+BT 1.000 1.000 1.000 rg /F2 7.0 Tf 326.0 672.0 Td (FAIL) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 370.0 672.0 Td (npm command not recognized.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 658.0 m 548.0 658.0 l S
+BT 0.120 0.160 0.220 rg /F2 7.0 Tf 52.0 649.0 Td (3) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 116.0 649.0 Td (npm install) Tj ET
+0.800 0.160 0.140 rg 320.0 645.0 42.0 14.0 re f
+BT 1.000 1.000 1.000 rg /F2 7.0 Tf 326.0 649.0 Td (FAIL) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 370.0 649.0 Td (Cannot execute because npm is not recognized.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 635.0 m 548.0 635.0 l S
+BT 0.120 0.160 0.220 rg /F2 7.0 Tf 52.0 626.0 Td (4) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 116.0 626.0 Td (npm run lint) Tj ET
+0.800 0.160 0.140 rg 320.0 622.0 42.0 14.0 re f
+BT 1.000 1.000 1.000 rg /F2 7.0 Tf 326.0 626.0 Td (FAIL) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 370.0 626.0 Td (Cannot execute because npm is not recognized.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 612.0 m 548.0 612.0 l S
+BT 0.120 0.160 0.220 rg /F2 7.0 Tf 52.0 603.0 Td (5) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 116.0 603.0 Td (npm run build) Tj ET
+0.800 0.160 0.140 rg 320.0 599.0 42.0 14.0 re f
+BT 1.000 1.000 1.000 rg /F2 7.0 Tf 326.0 603.0 Td (FAIL) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 370.0 603.0 Td (Cannot execute because npm is not recognized.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 589.0 m 548.0 589.0 l S
+BT 0.120 0.160 0.220 rg /F2 7.0 Tf 52.0 580.0 Td (6) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 116.0 580.0 Td (npm test) Tj ET
+0.800 0.160 0.140 rg 320.0 576.0 42.0 14.0 re f
+BT 1.000 1.000 1.000 rg /F2 7.0 Tf 326.0 580.0 Td (FAIL) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 370.0 580.0 Td (Cannot execute because npm is not recognized.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 566.0 m 548.0 566.0 l S
+BT 0.120 0.160 0.220 rg /F2 7.0 Tf 52.0 557.0 Td (7) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 116.0 557.0 Td (docker --version) Tj ET
+0.100 0.480 0.250 rg 320.0 553.0 42.0 14.0 re f
+BT 1.000 1.000 1.000 rg /F2 7.0 Tf 326.0 557.0 Td (PASS) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 370.0 557.0 Td (Docker CLI available.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 543.0 m 548.0 543.0 l S
+BT 0.120 0.160 0.220 rg /F2 7.0 Tf 52.0 534.0 Td (8) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 116.0 534.0 Td (docker compose version) Tj ET
+0.100 0.480 0.250 rg 320.0 530.0 42.0 14.0 re f
+BT 1.000 1.000 1.000 rg /F2 7.0 Tf 326.0 534.0 Td (PASS) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 370.0 534.0 Td (Docker Compose available.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 520.0 m 548.0 520.0 l S
+BT 0.120 0.160 0.220 rg /F2 7.0 Tf 52.0 511.0 Td (9a) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 116.0 511.0 Td (docker compose build) Tj ET
+0.800 0.160 0.140 rg 320.0 507.0 42.0 14.0 re f
+BT 1.000 1.000 1.000 rg /F2 7.0 Tf 326.0 511.0 Td (FAIL) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 370.0 511.0 Td (Sandbox attempt failed on Docker buildx permission.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 497.0 m 548.0 497.0 l S
+BT 0.120 0.160 0.220 rg /F2 7.0 Tf 52.0 488.0 Td (9b) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 116.0 488.0 Td (docker compose build \(escalated retry\)) Tj ET
+0.100 0.480 0.250 rg 320.0 484.0 42.0 14.0 re f
+BT 1.000 1.000 1.000 rg /F2 7.0 Tf 326.0 488.0 Td (PASS) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 370.0 488.0 Td (Backend and frontend images built.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 474.0 m 548.0 474.0 l S
+BT 0.120 0.160 0.220 rg /F2 7.0 Tf 52.0 465.0 Td (10a) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 116.0 465.0 Td (docker compose up --detach) Tj ET
+0.800 0.160 0.140 rg 320.0 461.0 42.0 14.0 re f
+BT 1.000 1.000 1.000 rg /F2 7.0 Tf 326.0 465.0 Td (FAIL) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 370.0 465.0 Td (Sandbox attempt could not connect to Docker API.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 451.0 m 548.0 451.0 l S
+BT 0.120 0.160 0.220 rg /F2 7.0 Tf 52.0 442.0 Td (10b) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 116.0 442.0 Td (docker compose up --detach \(escalated retry\)) Tj ET
+0.100 0.480 0.250 rg 320.0 438.0 42.0 14.0 re f
+BT 1.000 1.000 1.000 rg /F2 7.0 Tf 326.0 442.0 Td (PASS) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 370.0 442.0 Td (Stack started; backend became healthy; frontend started.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 428.0 m 548.0 428.0 l S
+BT 0.120 0.160 0.220 rg /F2 7.0 Tf 52.0 419.0 Td (11) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 116.0 419.0 Td (Invoke-WebRequest http://localhost:5173) Tj ET
+0.100 0.480 0.250 rg 320.0 415.0 42.0 14.0 re f
+BT 1.000 1.000 1.000 rg /F2 7.0 Tf 326.0 419.0 Td (PASS) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 370.0 419.0 Td (Frontend returned 200 OK.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 405.0 m 548.0 405.0 l S
+BT 0.120 0.160 0.220 rg /F2 7.0 Tf 52.0 396.0 Td (12) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 116.0 396.0 Td (Invoke-WebRequest http://localhost:8000/health) Tj ET
+0.100 0.480 0.250 rg 320.0 392.0 42.0 14.0 re f
+BT 1.000 1.000 1.000 rg /F2 7.0 Tf 326.0 396.0 Td (PASS) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 370.0 396.0 Td (Backend health returned 200 OK.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 382.0 m 548.0 382.0 l S
+BT 0.120 0.160 0.220 rg /F2 7.0 Tf 52.0 373.0 Td (13) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 116.0 373.0 Td (DB connectivity via backend startup/logs) Tj ET
+0.100 0.480 0.250 rg 320.0 369.0 42.0 14.0 re f
+BT 1.000 1.000 1.000 rg /F2 7.0 Tf 326.0 373.0 Td (PASS) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 370.0 373.0 Td (PostgreSQL ready, Alembic complete, seed complete.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 359.0 m 548.0 359.0 l S
+BT 0.120 0.160 0.220 rg /F2 7.0 Tf 52.0 350.0 Td (14) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 116.0 350.0 Td (Browser console capture) Tj ET
+0.800 0.160 0.140 rg 320.0 346.0 42.0 14.0 re f
+BT 1.000 1.000 1.000 rg /F2 7.0 Tf 326.0 350.0 Td (FAIL) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 370.0 350.0 Td (Attempted through Playwright; Chromium could not launch in container.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 336.0 m 548.0 336.0 l S
+BT 0.120 0.160 0.220 rg /F2 7.0 Tf 52.0 327.0 Td (15) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 116.0 327.0 Td (Build errors) Tj ET
+0.800 0.160 0.140 rg 320.0 323.0 42.0 14.0 re f
+BT 1.000 1.000 1.000 rg /F2 7.0 Tf 326.0 327.0 Td (FAIL) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 370.0 327.0 Td (Host npm build failed; Docker image build passed.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 313.0 m 548.0 313.0 l S
+BT 0.120 0.160 0.220 rg /F2 7.0 Tf 52.0 304.0 Td (16) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 116.0 304.0 Td (Runtime errors) Tj ET
+0.100 0.480 0.250 rg 320.0 300.0 42.0 14.0 re f
+BT 1.000 1.000 1.000 rg /F2 7.0 Tf 326.0 304.0 Td (PASS) Tj ET
+BT 0.250 0.290 0.360 rg /F1 7.0 Tf 370.0 304.0 Td (Frontend/backend server logs did not show fatal runtime errors; one expected unauthenticated 401 was observed.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 38.0 m 548.0 38.0 l S
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 48.0 22.0 Td (UI_QA_Report.pdf) Tj ET
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 488.0 22.0 Td (Page 3 of 13) Tj ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 8 0 R >>
+endobj
+10 0 obj
+<< /Length 1662 >>
+stream
+BT 0.060 0.080 0.130 rg /F2 18.0 Tf 48.0 760.0 Td (3. Build Verification) Tj ET
+0.820 0.850 0.900 RG 0.6 w 48.0 742.0 m 548.0 742.0 l S
+BT 0.060 0.080 0.130 rg /F2 13.0 Tf 48.0 717.0 Td (Host NPM Build) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 699.0 Td (Host build verification failed because node and npm are not recognized in this PowerShell environment. This is proven) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 685.0 Td (by direct command output from node -v, npm -v, npm install, npm run lint, npm run build, and npm test.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 13.0 Tf 48.0 669.0 Td (Docker Build) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 651.0 Td (Docker Compose build initially failed inside sandbox due Docker config/buildx access. Escalated retry passed and) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 637.0 Td (produced backend and frontend images successfully.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 13.0 Tf 48.0 621.0 Td (Test Verification) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 603.0 Td (npm test was attempted in frontend and failed because npm is not recognized on the host. No test suite result could be) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 589.0 Td (produced from host npm. Docker container dependency startup reported frontend dependencies up-to-date, but no) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 575.0 Td (dedicated test command was executed inside container because the requested command was npm test.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 38.0 m 548.0 38.0 l S
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 48.0 22.0 Td (UI_QA_Report.pdf) Tj ET
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 488.0 22.0 Td (Page 4 of 13) Tj ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 10 0 R >>
+endobj
+12 0 obj
+<< /Length 1838 >>
+stream
+BT 0.060 0.080 0.130 rg /F2 18.0 Tf 48.0 760.0 Td (4. Runtime Verification) Tj ET
+0.820 0.850 0.900 RG 0.6 w 48.0 742.0 m 548.0 742.0 l S
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 717.0 Td (Docker Compose up was executed in detached mode to avoid leaving a foreground process running. The sandbox attempt) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 703.0 Td (failed due Docker API permission, then escalated retry passed.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 687.0 Td (Container status showed ecommerce-store-frontend-1 up on port 5173, ecommerce-store-backend-1 up and healthy on port) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 673.0 Td (8000, nginx up on port 80, adminer up on 8080, and redis running.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 657.0 Td (Frontend verification: http://localhost:5173 returned 200 OK.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 641.0 Td (Backend verification: http://localhost:8000/health returned 200 OK with content {status: healthy, version: 1.0.0}.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 625.0 Td (Database connectivity: backend logs show PostgreSQL Ready, Alembic Complete, database seed complete, and live API) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 611.0 Td (endpoints returning 200. This verifies backend-to-database connectivity through application startup and API behavior.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 595.0 Td (Runtime logs: no fatal backend/frontend runtime errors were captured. Backend showed one GET /api/v1/auth/me 401,) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 581.0 Td (which is expected for an unauthenticated request.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 38.0 m 548.0 38.0 l S
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 48.0 22.0 Td (UI_QA_Report.pdf) Tj ET
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 488.0 22.0 Td (Page 5 of 13) Tj ET
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 12 0 R >>
+endobj
+14 0 obj
+<< /Length 941 >>
+stream
+BT 0.060 0.080 0.130 rg /F2 18.0 Tf 48.0 760.0 Td (5. Docker Verification) Tj ET
+0.820 0.850 0.900 RG 0.6 w 48.0 742.0 m 548.0 742.0 l S
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 717.0 Td (Docker CLI: PASS with Docker version 29.6.1, build 8900f1d. The CLI also emitted a config access warning.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 701.0 Td (Docker Compose: PASS with Docker Compose version v5.2.0. Compose build and up passed after escalation.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 685.0 Td (Important note: The non-escalated Docker API/buildx attempts failed due local Docker config/API permissions. The final) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 671.0 Td (Docker runtime verification passed outside sandbox.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 38.0 m 548.0 38.0 l S
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 48.0 22.0 Td (UI_QA_Report.pdf) Tj ET
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 488.0 22.0 Td (Page 6 of 13) Tj ET
+endstream
+endobj
+15 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 14 0 R >>
+endobj
+16 0 obj
+<< /Length 1122 >>
+stream
+BT 0.060 0.080 0.130 rg /F2 18.0 Tf 48.0 760.0 Td (6. UI Analysis) Tj ET
+0.820 0.850 0.900 RG 0.6 w 48.0 742.0 m 548.0 742.0 l S
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 717.0 Td (The UI has a solid structure and includes meaningful shells for storefront/admin, product grids, admin tables,) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 703.0 Td (checkout overlays, cart drawer, and reusable UI primitives. However, the visual system is inconsistent because several) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 689.0 Td (modules bypass theme tokens and use hard-coded black, white, gray, or hex colors.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 673.0 Td (The highest-impact UI fixes are dark-mode consistency, brand token repair, footer color cleanup, catalog title and) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 659.0 Td (toolbar token cleanup, contact inbox polish, and mobile product-card CTA visibility.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 38.0 m 548.0 38.0 l S
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 48.0 22.0 Td (UI_QA_Report.pdf) Tj ET
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 488.0 22.0 Td (Page 7 of 13) Tj ET
+endstream
+endobj
+17 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 16 0 R >>
+endobj
+18 0 obj
+<< /Length 2639 >>
+stream
+BT 0.060 0.080 0.130 rg /F2 18.0 Tf 48.0 760.0 Td (7. Component Analysis) Tj ET
+0.820 0.850 0.900 RG 0.6 w 48.0 742.0 m 548.0 742.0 l S
+BT 0.060 0.080 0.130 rg /F2 13.0 Tf 48.0 717.0 Td (Working Properly) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 699.0 Td (- CartDrawer and CartEmpty have strong baseline states.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 683.0 Td (- ProductGrid has skeleton and empty state support.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 667.0 Td (- Checkout PaymentSection handles loading and no-payment-method states.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 651.0 Td (- Admin ProductsPage has mobile cards, desktop table, pagination, and error boundary.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 635.0 Td (- Docker runtime verified frontend and backend serving successfully.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 13.0 Tf 48.0 619.0 Td (Needs Changes) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 601.0 Td (- StoreHeader slug routing.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 585.0 Td (- StoreFooter dark-mode tokens.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 569.0 Td (- HeroSection fallback styling.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 553.0 Td (- ProductList filter/search consistency.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 537.0 Td (- ProductCard mobile CTA and rating.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 521.0 Td (- FilterDrawer mobile width.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 505.0 Td (- ProductDetails and Checkout auth redirects.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 489.0 Td (- ContactMessagesPage mojibake and theme cleanup.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 473.0 Td (- Global console.log cleanup.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 13.0 Tf 48.0 457.0 Td (Unused / Duplicate / Suspicious) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 439.0 Td (- ProductFilters imported but not rendered in ProductList.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 423.0 Td (- CustomerProfilePage appears not routed.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 407.0 Td (- Duplicate Modal and Badge components exist under shared/common and shared/ui.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 391.0 Td (- Duplicate cart drawer paths exist under storeheaders and shoppingcart.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 375.0 Td (- Admin and shared PageHeader variants create inconsistent page headers.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 38.0 m 548.0 38.0 l S
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 48.0 22.0 Td (UI_QA_Report.pdf) Tj ET
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 488.0 22.0 Td (Page 8 of 13) Tj ET
+endstream
+endobj
+19 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 18 0 R >>
+endobj
+20 0 obj
+<< /Length 2367 >>
+stream
+BT 0.060 0.080 0.130 rg /F2 18.0 Tf 48.0 760.0 Td (8. Issue List) Tj ET
+0.820 0.850 0.900 RG 0.6 w 48.0 742.0 m 548.0 742.0 l S
+BT 0.060 0.080 0.130 rg /F2 9.0 Tf 54.0 717.0 Td (1.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 76.0 717.0 Td (Theme tokens: Tailwind brand scale is all black; restore semantic brand colors.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 9.0 Tf 54.0 701.0 Td (2.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 76.0 701.0 Td (Dark mode: Footer, hero, catalog, admin contact, and dashboard use hard-coded light colors.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 9.0 Tf 54.0 685.0 Td (3.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 76.0 685.0 Td (Navigation: Product details and checkout still use legacy /login instead of /auth/login.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 9.0 Tf 54.0 669.0 Td (4.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 76.0 669.0 Td (Catalog: Mobile menu category slugs are plural and can mismatch backend canonical category slugs.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 9.0 Tf 54.0 653.0 Td (5.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 76.0 653.0 Td (Mobile UX: ProductCard add-to-cart is hover-only; make it visible on touch devices.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 9.0 Tf 54.0 637.0 Td (6.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 76.0 637.0 Td (Filters: FilterDrawer is fixed at 420px and can overflow narrow mobile screens.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 9.0 Tf 54.0 621.0 Td (7.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 76.0 621.0 Td (Code quality: Production console.log statements remain in auth/product/order/admin flows.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 9.0 Tf 54.0 605.0 Td (8.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 76.0 605.0 Td (Contact inbox: Mojibake symbols and raw light-mode UI reduce professional polish.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 9.0 Tf 54.0 589.0 Td (9.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 76.0 589.0 Td (Forms: Auth and checkout need persistent inline errors with aria-describedby.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 9.0 Tf 54.0 573.0 Td (10.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 76.0 573.0 Td (Performance: CSS @import for fonts and image dimension gaps can affect rendering and layout shift.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 38.0 m 548.0 38.0 l S
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 48.0 22.0 Td (UI_QA_Report.pdf) Tj ET
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 488.0 22.0 Td (Page 9 of 13) Tj ET
+endstream
+endobj
+21 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 20 0 R >>
+endobj
+22 0 obj
+<< /Length 2002 >>
+stream
+BT 0.060 0.080 0.130 rg /F2 18.0 Tf 48.0 760.0 Td (9. Recommendations) Tj ET
+0.820 0.850 0.900 RG 0.6 w 48.0 742.0 m 548.0 742.0 l S
+BT 0.060 0.080 0.130 rg /F2 13.0 Tf 48.0 717.0 Td (Critical Fixes) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 699.0 Td (- Fix /login redirects to /auth/login.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 683.0 Td (- Normalize category slugs.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 667.0 Td (- Repair Tailwind brand tokens and theme variables.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 651.0 Td (- Make product add-to-cart visible on mobile.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 635.0 Td (- Fix FilterDrawer width with w-full max-w-[420px].) Tj ET
+BT 0.060 0.080 0.130 rg /F2 13.0 Tf 48.0 619.0 Td (Medium Fixes) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 601.0 Td (- Remove or guard production console.log statements.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 585.0 Td (- Replace mojibake with lucide icons/text.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 569.0 Td (- Add inline validation and aria-describedby.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 553.0 Td (- Standardize duplicate shared UI primitives.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 537.0 Td (- Move font loading out of CSS @import and add image dimensions where possible.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 13.0 Tf 48.0 521.0 Td (Minor Fixes) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 503.0 Td (- Fix cart CTA typo.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 487.0 Td (- Convert nested absolute route paths to relative child paths.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 471.0 Td (- Improve category empty/error state.) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 48.0 455.0 Td (- Add stronger screenshot-based regression coverage.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 38.0 m 548.0 38.0 l S
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 48.0 22.0 Td (UI_QA_Report.pdf) Tj ET
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 488.0 22.0 Td (Page 10 of 13) Tj ET
+endstream
+endobj
+23 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 22 0 R >>
+endobj
+24 0 obj
+<< /Length 2246 >>
+stream
+BT 0.060 0.080 0.130 rg /F2 18.0 Tf 48.0 760.0 Td (10. Final Score) Tj ET
+0.820 0.850 0.900 RG 0.6 w 48.0 742.0 m 548.0 742.0 l S
+0.960 0.970 0.990 rg 54.0 650.0 150.0 54.0 re f
+0.820 0.850 0.900 RG 54.0 650.0 150.0 54.0 re S
+BT 0.140 0.170 0.240 rg /F2 9.0 Tf 64.0 684.0 Td (UI Score) Tj ET
+BT 0.880 0.520 0.120 rg /F2 16.0 Tf 64.0 663.0 Td (72 / 100) Tj ET
+0.960 0.970 0.990 rg 230.0 650.0 150.0 54.0 re f
+0.820 0.850 0.900 RG 230.0 650.0 150.0 54.0 re S
+BT 0.140 0.170 0.240 rg /F2 9.0 Tf 240.0 684.0 Td (UX Score) Tj ET
+BT 0.800 0.160 0.140 rg /F2 16.0 Tf 240.0 663.0 Td (68 / 100) Tj ET
+0.960 0.970 0.990 rg 406.0 650.0 150.0 54.0 re f
+0.820 0.850 0.900 RG 406.0 650.0 150.0 54.0 re S
+BT 0.140 0.170 0.240 rg /F2 9.0 Tf 416.0 684.0 Td (Accessibility) Tj ET
+BT 0.800 0.160 0.140 rg /F2 16.0 Tf 416.0 663.0 Td (64 / 100) Tj ET
+0.960 0.970 0.990 rg 54.0 570.0 150.0 54.0 re f
+0.820 0.850 0.900 RG 54.0 570.0 150.0 54.0 re S
+BT 0.140 0.170 0.240 rg /F2 9.0 Tf 64.0 604.0 Td (Performance) Tj ET
+BT 0.880 0.520 0.120 rg /F2 16.0 Tf 64.0 583.0 Td (70 / 100) Tj ET
+0.960 0.970 0.990 rg 230.0 570.0 150.0 54.0 re f
+0.820 0.850 0.900 RG 230.0 570.0 150.0 54.0 re S
+BT 0.140 0.170 0.240 rg /F2 9.0 Tf 240.0 604.0 Td (Responsive) Tj ET
+BT 0.800 0.160 0.140 rg /F2 16.0 Tf 240.0 583.0 Td (66 / 100) Tj ET
+0.960 0.970 0.990 rg 406.0 570.0 150.0 54.0 re f
+0.820 0.850 0.900 RG 406.0 570.0 150.0 54.0 re S
+BT 0.140 0.170 0.240 rg /F2 9.0 Tf 416.0 604.0 Td (Code Quality) Tj ET
+BT 0.800 0.160 0.140 rg /F2 16.0 Tf 416.0 583.0 Td (69 / 100) Tj ET
+0.940 0.980 0.960 rg 54.0 448.0 502.0 74.0 re f
+BT 0.100 0.350 0.220 rg /F2 13.0 Tf 74.0 490.0 Td (Overall Health) Tj ET
+BT 0.100 0.480 0.250 rg /F2 24.0 Tf 74.0 462.0 Td (68%) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 54.0 717.0 Td (Readiness: Moderate. Runtime Docker verification passed, but host npm tooling is unavailable, browser console capture) Tj ET
+BT 0.250 0.290 0.360 rg /F1 9.0 Tf 54.0 703.0 Td (is blocked by Chromium runtime compatibility in the container, and multiple P1/P2 UI issues remain.) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 38.0 m 548.0 38.0 l S
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 48.0 22.0 Td (UI_QA_Report.pdf) Tj ET
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 488.0 22.0 Td (Page 11 of 13) Tj ET
+endstream
+endobj
+25 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 24 0 R >>
+endobj
+26 0 obj
+<< /Length 5196 >>
+stream
+BT 0.060 0.080 0.130 rg /F2 18.0 Tf 48.0 760.0 Td (11. Appendix - Command Outputs) Tj ET
+0.820 0.850 0.900 RG 0.6 w 48.0 742.0 m 548.0 742.0 l S
+BT 0.060 0.080 0.130 rg /F2 10.0 Tf 48.0 717.0 Td (Step 1 - node -v - FAIL) Tj ET
+0.970 0.980 0.990 rg 54.0 645.0 492.0 66.0 re f
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 703.0 Td (node : The term 'node' is not recognized as the name of a cmdlet, function, script file, or operable program.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 10.0 Tf 48.0 679.0 Td (Step 2 - npm -v - FAIL) Tj ET
+0.970 0.980 0.990 rg 54.0 607.0 492.0 66.0 re f
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 665.0 Td (npm : The term 'npm' is not recognized as the name of a cmdlet, function, script file, or operable program.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 10.0 Tf 48.0 641.0 Td (Step 3 - npm install - FAIL) Tj ET
+0.970 0.980 0.990 rg 54.0 569.0 492.0 66.0 re f
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 627.0 Td (npm : The term 'npm' is not recognized as the name of a cmdlet, function, script file, or operable program.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 10.0 Tf 48.0 603.0 Td (Step 4 - npm run lint - FAIL) Tj ET
+0.970 0.980 0.990 rg 54.0 531.0 492.0 66.0 re f
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 589.0 Td (npm : The term 'npm' is not recognized as the name of a cmdlet, function, script file, or operable program.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 10.0 Tf 48.0 565.0 Td (Step 5 - npm run build - FAIL) Tj ET
+0.970 0.980 0.990 rg 54.0 493.0 492.0 66.0 re f
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 551.0 Td (npm : The term 'npm' is not recognized as the name of a cmdlet, function, script file, or operable program.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 10.0 Tf 48.0 527.0 Td (Step 6 - npm test - FAIL) Tj ET
+0.970 0.980 0.990 rg 54.0 455.0 492.0 66.0 re f
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 513.0 Td (npm : The term 'npm' is not recognized as the name of a cmdlet, function, script file, or operable program.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 10.0 Tf 48.0 489.0 Td (Step 7 - docker --version - PASS) Tj ET
+0.970 0.980 0.990 rg 54.0 417.0 492.0 66.0 re f
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 475.0 Td (WARNING: Error loading config file: open C:\\Users\\ELCOT\\.docker\\config.json: Access is denied.) Tj ET
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 461.0 Td (Docker version 29.6.1, build 8900f1d) Tj ET
+BT 0.060 0.080 0.130 rg /F2 10.0 Tf 48.0 437.0 Td (Step 8 - docker compose version - PASS) Tj ET
+0.970 0.980 0.990 rg 54.0 365.0 492.0 66.0 re f
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 423.0 Td (WARNING: Error loading config file: open C:\\Users\\ELCOT\\.docker\\config.json: Access is denied.) Tj ET
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 409.0 Td (Docker Compose version v5.2.0) Tj ET
+BT 0.060 0.080 0.130 rg /F2 10.0 Tf 48.0 385.0 Td (Step 9a - docker compose build - FAIL) Tj ET
+0.970 0.980 0.990 rg 54.0 313.0 492.0 66.0 re f
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 371.0 Td (CreateFile C:\\Users\\ELCOT\\.docker\\buildx\\instances: Access is denied.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 10.0 Tf 48.0 347.0 Td (Step 9b - docker compose build \(escalated retry\) - PASS) Tj ET
+0.970 0.980 0.990 rg 54.0 275.0 492.0 66.0 re f
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 333.0 Td (Image ecommerce-store-backend Built) Tj ET
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 319.0 Td (Image ecommerce-store-frontend Built) Tj ET
+BT 0.060 0.080 0.130 rg /F2 10.0 Tf 48.0 295.0 Td (Step 10a - docker compose up --detach - FAIL) Tj ET
+0.970 0.980 0.990 rg 54.0 223.0 492.0 66.0 re f
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 281.0 Td (unable to get image 'redis:7-alpine': permission denied while trying to connect to the docker API at npipe:////./pipe/docker_engine) Tj ET
+BT 0.060 0.080 0.130 rg /F2 10.0 Tf 48.0 257.0 Td (Step 10b - docker compose up --detach \(escalated retry\) - PASS) Tj ET
+0.970 0.980 0.990 rg 54.0 185.0 492.0 66.0 re f
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 243.0 Td (Container ecommerce-store-backend-1 Healthy) Tj ET
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 229.0 Td (Container ecommerce-store-frontend-1 Started) Tj ET
+BT 0.060 0.080 0.130 rg /F2 10.0 Tf 48.0 205.0 Td (Step 11 - Invoke-WebRequest http://localhost:5173 - PASS) Tj ET
+0.970 0.980 0.990 rg 54.0 133.0 492.0 66.0 re f
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 191.0 Td (StatusCode 200 OK) Tj ET
+BT 0.060 0.080 0.130 rg /F2 10.0 Tf 48.0 167.0 Td (Step 12 - Invoke-WebRequest http://localhost:8000/health - PASS) Tj ET
+0.970 0.980 0.990 rg 54.0 95.0 492.0 66.0 re f
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 153.0 Td (StatusCode 200 OK Content {"status":"healthy","version":"1.0.0"}) Tj ET
+BT 0.060 0.080 0.130 rg /F2 10.0 Tf 48.0 129.0 Td (Step 13 - DB connectivity via backend startup/logs - PASS) Tj ET
+0.970 0.980 0.990 rg 54.0 57.0 492.0 66.0 re f
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 115.0 Td ([Startup] PostgreSQL Ready) Tj ET
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 101.0 Td ([Startup] Alembic Complete) Tj ET
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 87.0 Td ([Startup] Database Seed Complete) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 38.0 m 548.0 38.0 l S
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 48.0 22.0 Td (UI_QA_Report.pdf) Tj ET
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 488.0 22.0 Td (Page 12 of 13) Tj ET
+endstream
+endobj
+27 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 26 0 R >>
+endobj
+28 0 obj
+<< /Length 1289 >>
+stream
+BT 0.060 0.080 0.130 rg /F2 10.0 Tf 48.0 760.0 Td (Step 14 - Browser console capture - FAIL) Tj ET
+0.970 0.980 0.990 rg 54.0 688.0 492.0 66.0 re f
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 746.0 Td (browserType.launch: Failed to launch: Error: spawn /root/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome ENOENT) Tj ET
+BT 0.060 0.080 0.130 rg /F2 10.0 Tf 48.0 722.0 Td (Step 15 - Build errors - FAIL) Tj ET
+0.970 0.980 0.990 rg 54.0 650.0 492.0 66.0 re f
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 708.0 Td (Host: npm command not recognized.) Tj ET
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 694.0 Td (Docker: backend and frontend images built.) Tj ET
+BT 0.060 0.080 0.130 rg /F2 10.0 Tf 48.0 670.0 Td (Step 16 - Runtime errors - PASS) Tj ET
+0.970 0.980 0.990 rg 54.0 598.0 492.0 66.0 re f
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 656.0 Td (frontend: VITE ready in 757 ms.) Tj ET
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 642.0 Td (backend: Application startup complete.) Tj ET
+BT 0.180 0.220 0.300 rg /F1 7.0 Tf 62.0 628.0 Td (backend: GET /api/v1/auth/me 401 \(expected without auth\).) Tj ET
+0.850 0.870 0.910 RG 0.6 w 48.0 38.0 m 548.0 38.0 l S
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 48.0 22.0 Td (UI_QA_Report.pdf) Tj ET
+BT 0.450 0.490 0.570 rg /F1 8.0 Tf 488.0 22.0 Td (Page 13 of 13) Tj ET
+endstream
+endobj
+29 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 28 0 R >>
+endobj
+30 0 obj
+<< /Type /Catalog /Pages 3 0 R >>
+endobj
+xref
+0 31
+0000000000 65535 f 
+0000000026 00000 n 
+0000000096 00000 n 
+0000000171 00000 n 
+0000000311 00000 n 
+0000001668 00000 n 
+0000001804 00000 n 
+0000003392 00000 n 
+0000003528 00000 n 
+0000011586 00000 n 
+0000011722 00000 n 
+0000013437 00000 n 
+0000013575 00000 n 
+0000015466 00000 n 
+0000015604 00000 n 
+0000016597 00000 n 
+0000016735 00000 n 
+0000017910 00000 n 
+0000018048 00000 n 
+0000020740 00000 n 
+0000020878 00000 n 
+0000023298 00000 n 
+0000023436 00000 n 
+0000025491 00000 n 
+0000025629 00000 n 
+0000027928 00000 n 
+0000028066 00000 n 
+0000033315 00000 n 
+0000033453 00000 n 
+0000034795 00000 n 
+0000034933 00000 n 
+trailer
+<< /Size 31 /Root 30 0 R >>
+startxref
+34983
+%%EOF

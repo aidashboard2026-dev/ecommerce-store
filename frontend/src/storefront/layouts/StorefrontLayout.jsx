@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { useTheme } from "@/shared/hooks/useAuth";
 import { customerLogoutThunk } from "@/storefront/store/customerSlice";
@@ -33,6 +34,8 @@ export default function StorefrontLayout() {
   const cartItems = useSelector((s) => s.cart.items);
   const wishlistItems = useSelector((s) => s.wishlist.items);
 
+  const queryClient = useQueryClient();
+
   const { isDark, toggle: toggleTheme } = useTheme();
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -47,7 +50,6 @@ export default function StorefrontLayout() {
     setModalOpen(false);
   }, []);
 
-  // Track page scroll to toggle header background glassmorphism
   const handleLogout = async () => {
     try {
       await dispatch(customerLogoutThunk()).unwrap();
@@ -63,11 +65,12 @@ export default function StorefrontLayout() {
 
       localStorage.removeItem("customer");
 
-      localStorage.removeItem("aurastore_cart");
-
-      localStorage.removeItem("aurastore_wishlist");
-
       sessionStorage.removeItem("aurastore_guest_added_toast_shown");
+
+      // Clear React Query cache for customer-specific data
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+
+      queryClient.removeQueries({ queryKey: ["orders"] });
 
       navigate("/");
     }

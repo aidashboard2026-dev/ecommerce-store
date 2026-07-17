@@ -24,6 +24,7 @@ import {
 } from "@/storefront/hooks/useProducts";
 import { getImageUrl, formatPrice } from "@/shared/utils/productUtils";
 import { addToCart, openCartDrawer } from "@/storefront/store/cartSlice";
+import { addCustomerCartItemThunk } from "@/storefront/store/customerCartThunks";
 import {
   toggleWishlist,
   selectIsWishlisted,
@@ -171,20 +172,42 @@ export default function ProductDetails() {
     quantity,
   });
 
-  const handleAddToCart = () => {
-    console.log("Variant :", activeVariant);
-    console.log("Stock :", activeVariant?.stock_quantity);
-    console.log("In Stock :", inStock);
-
+  const handleAddToCart = async () => {
     if (!activeVariant) return;
     if (!inStock) {
       toast.error("This variant is out of stock");
       return;
     }
-    dispatch(addToCart(buildCartItem()));
-    dispatch(openCartDrawer());
 
     const isAuthenticated = !!(token && customer);
+
+    if (isAuthenticated) {
+      try {
+        const cartItem = {
+          productId: product.id,
+          variantId: activeVariant.id,
+          title: product.title,
+          slug: product.slug,
+          thumbnail: product.thumbnail,
+          size: activeVariant.size,
+          color: activeVariant.color || null,
+          colorHex: activeVariant.color_hex || null,
+          sellingPrice: Number(activeVariant.selling_price),
+          originalPrice: Number(activeVariant.original_price),
+          stockQuantity: activeVariant.stock_quantity,
+          quantity,
+        };
+        await dispatch(addCustomerCartItemThunk(cartItem)).unwrap();
+      } catch (err) {
+        toast.error(typeof err === 'string' ? err : 'Failed to add to cart');
+        return;
+      }
+    } else {
+      dispatch(addToCart(buildCartItem()));
+    }
+
+    dispatch(openCartDrawer());
+
     const toastShown = sessionStorage.getItem("aurastore_guest_added_toast_shown");
     if (!isAuthenticated && !toastShown) {
       sessionStorage.setItem("aurastore_guest_added_toast_shown", "true");
@@ -214,7 +237,7 @@ export default function ProductDetails() {
             <button
               onClick={() => {
                 toast.dismiss(t.id);
-                navigate("/login");
+                navigate("/auth/login");
               }}
               className="w-24 border border-transparent rounded-none p-4 flex items-center justify-center text-xs font-semibold text-brand-500 hover:bg-surface hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
             >
@@ -223,20 +246,46 @@ export default function ProductDetails() {
           </div>
         </div>
       ), { duration: 5000 });
+    } else if (isAuthenticated) {
+      toast.success("Added to cart");
     } else {
       toast.success("Added to cart");
     }
   };
 
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
     if (!activeVariant) return;
     if (!inStock) {
       toast.error("This variant is out of stock");
       return;
     }
-    dispatch(addToCart(buildCartItem()));
 
     const isAuthenticated = !!(token && customer);
+
+    if (isAuthenticated) {
+      try {
+        await dispatch(addCustomerCartItemThunk({
+          productId: product.id,
+          variantId: activeVariant.id,
+          title: product.title,
+          slug: product.slug,
+          thumbnail: product.thumbnail,
+          size: activeVariant.size,
+          color: activeVariant.color || null,
+          colorHex: activeVariant.color_hex || null,
+          sellingPrice: Number(activeVariant.selling_price),
+          originalPrice: Number(activeVariant.original_price),
+          stockQuantity: activeVariant.stock_quantity,
+          quantity,
+        })).unwrap();
+      } catch (err) {
+        toast.error(typeof err === 'string' ? err : 'Failed to add to cart');
+        return;
+      }
+    } else {
+      dispatch(addToCart(buildCartItem()));
+    }
+
     if (!isAuthenticated) {
       openCheckoutAuthModal(buyNowButtonRef.current);
       return;

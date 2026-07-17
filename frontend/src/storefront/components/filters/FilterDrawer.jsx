@@ -5,32 +5,15 @@ const MIN = 0;
 const MAX = 5000;
 const MIN_GAP = 100;
 
-export default function FilterDrawer({
-  open,
-  onClose,
-  filters,
-  setFilters,
-}) {
-  // -----------------------------
-  // Accordion States
-  // -----------------------------
-
+export default function FilterDrawer({ open, onClose, filters, setFilters }) {
   const [availabilityOpen, setAvailabilityOpen] = useState(true);
   const [priceOpen, setPriceOpen] = useState(true);
-
-  // -----------------------------
-  // Temporary Filter State
-  // -----------------------------
 
   const [tempFilters, setTempFilters] = useState({
     min_price: "",
     max_price: "",
     in_stock_only: false,
   });
-
-  // -----------------------------
-  // Sync Parent -> Drawer
-  // -----------------------------
 
   useEffect(() => {
     if (!open) return;
@@ -42,31 +25,21 @@ export default function FilterDrawer({
     });
   }, [open, filters]);
 
-  // -----------------------------
-  // Escape + Body Scroll
-  // -----------------------------
-
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
+      if (e.key === "Escape") onClose();
     };
 
     if (open) {
-      document.addEventListener("keydown", handleEscape);
       document.body.style.overflow = "hidden";
+      document.addEventListener("keydown", handleEscape);
     }
 
     return () => {
-      document.removeEventListener("keydown", handleEscape);
       document.body.style.overflow = "";
+      document.removeEventListener("keydown", handleEscape);
     };
   }, [open, onClose]);
-
-  // -----------------------------
-  // Values
-  // -----------------------------
 
   const minValue = Number(tempFilters.min_price || MIN);
   const maxValue = Number(tempFilters.max_price || MAX);
@@ -74,22 +47,16 @@ export default function FilterDrawer({
   const left = (minValue / MAX) * 100;
   const right = (maxValue / MAX) * 100;
 
-  const progressStyle = useMemo(() => {
-    return {
+  const progressStyle = useMemo(
+    () => ({
       left: `${left}%`,
       width: `${right - left}%`,
-    };
-  }, [left, right]);
-
-  // -----------------------------
-  // Slider Handlers
-  // -----------------------------
+    }),
+    [left, right],
+  );
 
   const handleMinSlider = (e) => {
-    const value = Math.min(
-      Number(e.target.value),
-      maxValue - MIN_GAP
-    );
+    const value = Math.min(Number(e.target.value), maxValue - MIN_GAP);
 
     setTempFilters((prev) => ({
       ...prev,
@@ -98,10 +65,7 @@ export default function FilterDrawer({
   };
 
   const handleMaxSlider = (e) => {
-    const value = Math.max(
-      Number(e.target.value),
-      minValue + MIN_GAP
-    );
+    const value = Math.max(Number(e.target.value), minValue + MIN_GAP);
 
     setTempFilters((prev) => ({
       ...prev,
@@ -109,14 +73,10 @@ export default function FilterDrawer({
     }));
   };
 
-  // -----------------------------
-  // Input Handlers
-  // -----------------------------
-
   const handleMinInput = (e) => {
     let value = Number(e.target.value);
 
-    if (Number.isNaN(value)) value = 0;
+    if (Number.isNaN(value)) value = MIN;
 
     value = Math.max(MIN, Math.min(value, maxValue - MIN_GAP));
 
@@ -139,10 +99,6 @@ export default function FilterDrawer({
     }));
   };
 
-  // -----------------------------
-  // Apply Filters
-  // -----------------------------
-
   const applyFilters = () => {
     setFilters((prev) => ({
       ...prev,
@@ -152,10 +108,6 @@ export default function FilterDrawer({
     onClose();
   };
 
-  // -----------------------------
-  // Clear Filters
-  // -----------------------------
-
   const clearFilters = () => {
     setTempFilters({
       min_price: "",
@@ -164,57 +116,48 @@ export default function FilterDrawer({
     });
   };
 
-  
   return (
-  <>
+    <>
+      {/* Overlay */}
+      <div
+        onClick={onClose}
+        className={`fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-all duration-300 ${
+          open ? "opacity-100 visible" : "opacity-0 invisible"
+        }`}
+      />
 
-    {/* Overlay */}
-
-    <div
-      onClick={onClose}
-      className={`fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] transition-all duration-300 ${
-        open ? "opacity-100 visible" : "opacity-0 invisible"
-      }`}
-    />
-
-    {/* Drawer */}
-
-    <div
-      className={`fixed right-0 top-0 z-50 flex h-screen w-[420px] flex-col bg-[#111111] text-white shadow-2xl transition-transform duration-300 ${
-        open ? "translate-x-0" : "translate-x-full"
-      }`}
-    >
+      {/* Drawer */}
+      <aside
+        className={`fixed right-0 top-0 z-50 flex h-screen w-full max-w-[420px] flex-col bg-surface text-app border-l border-border shadow-elevated transition-transform duration-300 ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
         {/* Header */}
-
-        <div className="flex items-center justify-between border-b border-[#2a2a2a] px-7 py-7">
-          <h2 className="text-[34px] font-light uppercase tracking-[4px]">
-            Filters
-          </h2>
+        <div className="flex items-center justify-between border-b border-border px-6 py-6 bg-surface">
+          <div>
+            <h2 className="text-2xl font-semibold text-app">Filters</h2>
+            <p className="mt-1 text-sm text-muted">
+              Refine your product results
+            </p>
+          </div>
 
           <button
             onClick={onClose}
-            className="transition hover:rotate-90"
+            className="flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
-            <X
-              size={28}
-              strokeWidth={1.4}
-            />
+            <X size={20} />
           </button>
         </div>
 
         {/* Body */}
-
         <div className="flex-1 overflow-y-auto">
-
           {/* Availability */}
-
-          <div className="border-b border-[#2b2b2b]">
-
+          <div className="border-b border-border">
             <button
               onClick={() => setAvailabilityOpen(!availabilityOpen)}
-              className="flex w-full items-center justify-between px-7 py-7"
+              className="flex w-full items-center justify-between px-6 py-5 transition-colors hover:bg-surface-hover"
             >
-              <span className="text-[13px] uppercase tracking-[3px]">
+              <span className="text-sm font-medium uppercase tracking-wider text-app">
                 Availability
               </span>
 
@@ -228,13 +171,11 @@ export default function FilterDrawer({
 
             <div
               className={`overflow-hidden transition-all duration-300 ${
-                availabilityOpen ? "max-h-40 pb-8" : "max-h-0"
+                availabilityOpen ? "max-h-32" : "max-h-0"
               }`}
             >
-              <div className="px-7">
-
-                <label className="flex cursor-pointer items-center gap-4">
-
+              <div className="px-6 pb-6">
+                <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-app px-4 py-3 hover:bg-surface-hover">
                   <input
                     type="checkbox"
                     checked={tempFilters.in_stock_only}
@@ -244,30 +185,25 @@ export default function FilterDrawer({
                         in_stock_only: e.target.checked,
                       }))
                     }
-                    className="h-5 w-5 accent-white"
+                    className="h-4 w-4 accent-brand-500"
                   />
 
-                  <span className="text-[15px] text-gray-300">
-                    In Stock Only
+                  <span className="text-sm text-app">
+                    Show only products in stock
                   </span>
-
                 </label>
-
               </div>
             </div>
-
           </div>
 
           {/* Price */}
-
-          <div className="border-b border-[#2b2b2b]">
-
+          <div className="border-b border-border">
             <button
               onClick={() => setPriceOpen(!priceOpen)}
-              className="flex w-full items-center justify-between px-7 py-7"
+              className="flex w-full items-center justify-between px-6 py-5 transition-colors hover:bg-surface-hover"
             >
-              <span className="text-[13px] uppercase tracking-[3px]">
-                Price
+              <span className="text-sm font-medium uppercase tracking-wider text-app">
+                Price Range
               </span>
 
               <ChevronDown
@@ -280,23 +216,18 @@ export default function FilterDrawer({
 
             <div
               className={`overflow-hidden transition-all duration-300 ${
-                priceOpen ? "max-h-[500px]" : "max-h-0"
+                priceOpen ? "max-h-[520px]" : "max-h-0"
               }`}
             >
-              <div className="px-7 pb-10">
-
-                {/* Slider */}
-
+              <div className="px-6 pb-8">
+                {/* Range Slider */}
                 <div className="relative mt-6 h-10">
-
-                  <div className="absolute top-1/2 h-[3px] w-full -translate-y-1/2 rounded-full bg-[#2d2d2d]" />
+                  <div className="absolute top-1/2 h-1 w-full -translate-y-1/2 rounded-full bg-border" />
 
                   <div
                     style={progressStyle}
-                    className="absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-white"
+                    className="absolute top-1/2 h-1 -translate-y-1/2 bg-orange-300 rounded-full"
                   />
-
-                  {/* Min */}
 
                   <input
                     type="range"
@@ -307,8 +238,6 @@ export default function FilterDrawer({
                     className="slider absolute w-full"
                   />
 
-                  {/* Max */}
-
                   <input
                     type="range"
                     min={MIN}
@@ -317,117 +246,80 @@ export default function FilterDrawer({
                     onChange={handleMaxSlider}
                     className="slider absolute w-full"
                   />
-
                 </div>
-
-                {/* From / To */}
-
+                {/* Price Inputs */}
                 <div className="mt-8 grid grid-cols-2 gap-4">
-
-                  {/* From */}
-
+                  {/* Minimum Price */}
                   <div>
+                    <label className="mb-2 block text-xs font-medium uppercase tracking-wider">
+                      Minimum
+                    </label>
 
-                    <p className="mb-2 text-xs uppercase tracking-[2px] text-gray-400">
-                      From
-                    </p>
-
-                    <div className="flex h-[52px] items-center rounded-md border border-[#343434] px-4">
-
-                      <span className="mr-2 text-gray-400">
-                        ₹
-                      </span>
+                    <div className="flex h-12 items-center rounded-xl border border-border bg-app px-4 transition-colors focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20">
+                      <span className="mr-2 text-muted">₹</span>
 
                       <input
                         type="number"
                         value={minValue}
                         onChange={handleMinInput}
-                        className="w-full bg-transparent outline-none"
+                        className="w-full bg-transparent text-app outline-none placeholder:text-muted"
+                        placeholder="0"
                       />
-
                     </div>
-
                   </div>
 
-                  {/* To */}
-
+                  {/* Maximum Price */}
                   <div>
+                    <label className="mb-2 block text-xs font-medium uppercase tracking-wider">
+                      Maximum
+                    </label>
 
-                    <p className="mb-2 text-xs uppercase tracking-[2px] text-gray-400">
-                      To
-                    </p>
-
-                    <div className="flex h-[52px] items-center rounded-md border border-[#343434] px-4">
-
-                      <span className="mr-2 text-gray-400">
-                        ₹
-                      </span>
+                    <div className="flex h-12 items-center rounded-xl border border-border bg-app px-4 transition-colors focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20">
+                      <span className="mr-2 text-muted">₹</span>
 
                       <input
                         type="number"
                         value={maxValue}
                         onChange={handleMaxInput}
-                        className="w-full bg-transparent outline-none"
+                        className="w-full bg-transparent text-app outline-none placeholder:text-muted"
+                        placeholder="5000"
                       />
-
                     </div>
-
                   </div>
-
                 </div>
 
+                {/* Selected Price */}
+                <div className="mt-6 rounded-xl border border-border bg-app p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Selected Range</span>
+
+                    <span className="rounded-full bg-brand-500 px-3 py-1 text-sm font-semibold">
+                      ₹{minValue} - ₹{maxValue}
+                    </span>
+                  </div>
+                </div>
               </div>
-
             </div>
-
           </div>
-
         </div>
-                {/* Footer */}
 
-        <div className="border-t border-[#2b2b2b] bg-[#111111] p-6">
-
-          {/* Clear */}
-
+        {/* Footer */}
+        <div className="border-t border-border bg-surface p-6">
           <button
             onClick={clearFilters}
-            className="mb-4 w-full text-center text-[12px] uppercase tracking-[3px] text-gray-400 transition hover:text-white"
+            className="mb-4 w-full rounded-xl border border-border py-3 text-sm font-medium text-muted transition-all duration-200 hover:bg-surface-hover hover:text-app"
           >
             Clear Filters
           </button>
 
-          {/* View Results */}
-
           <button
             onClick={applyFilters}
-            className="
-              flex
-              h-[58px]
-              w-full
-              items-center
-              justify-center
-              rounded-md
-              border
-              border-white
-              bg-white
-              text-[13px]
-              font-medium
-              uppercase
-              tracking-[3px]
-              text-black
-              transition-all
-              duration-300
-              hover:bg-[#111111]
-              hover:text-white
-            "
+          className="flex h-14 w-full items-center justify-center rounded-xl bg-black text-sm font-semibold text-white transition-all duration-300 hover:bg-neutral-800 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-black"
           >
-            View Results
+            Apply Filters
           </button>
-
         </div>
-
-      </div>
-
+      </aside>
     </>
   );
 }
