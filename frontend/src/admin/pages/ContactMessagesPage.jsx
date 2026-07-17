@@ -210,7 +210,7 @@ export default function ContactMessagesPage() {
   const totalPages = Math.ceil(totalMessages / pageSize);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -240,7 +240,7 @@ export default function ContactMessagesPage() {
         </div>
 
         {/* Controls */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div className="rounded-lg shadow-sm mb-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             {/* Search */}
             <div className="relative">
@@ -250,7 +250,7 @@ export default function ContactMessagesPage() {
                 placeholder="Search by name, email..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-transparent outline-none"
               />
             </div>
 
@@ -258,7 +258,7 @@ export default function ContactMessagesPage() {
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-transparent outline-none"
             >
               {STATUSES.map((status) => (
                 <option key={status} value={status}>
@@ -271,7 +271,7 @@ export default function ContactMessagesPage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-transparent outline-none"
             >
               <option value="created_at">Sort by Date</option>
               <option value="name">Sort by Name</option>
@@ -281,7 +281,7 @@ export default function ContactMessagesPage() {
             {/* Sort Order */}
             <button
               onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+              className="px-4 py-2 border  border-gray-300 rounded-lg hover:bg-gray-50 transition"
             >
               {sortOrder === 'desc' ? '↓ Newest' : '↑ Oldest'}
             </button>
@@ -307,7 +307,7 @@ export default function ContactMessagesPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="rounded-lg shadow-sm overflow-hidden">
           {loading ? (
             <div className="p-6">
               <TableSkeleton />
@@ -321,7 +321,7 @@ export default function ContactMessagesPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b">
+                <thead className="border-b">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Name</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Email</th>
@@ -453,8 +453,8 @@ export default function ContactMessagesPage() {
 
 function StatCard({ label, value, icon }) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4">
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
+    <div className="rounded-lg border p-4">
+      <p className="text-2xl font-bold text-gray-900 dark:text-gray-400">{value}</p>
       <p className="text-sm text-gray-600 mt-1">{icon} {label}</p>
     </div>
   );

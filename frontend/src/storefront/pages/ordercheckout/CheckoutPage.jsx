@@ -736,7 +736,7 @@ export default function CheckoutPage() {
     return null;
   };
 
-  const resumeExistingCheckout = (customerOrders, activeSessionId) => {
+  const resumeExistingCheckout = async (customerOrders, activeSessionId) => {
     if (activeSessionId) {
       const sessionOrders = customerOrders.filter(
         (o) =>
@@ -751,14 +751,7 @@ export default function CheckoutPage() {
             paymentMethod: "ONLINE",
           }),
         );
-        dispatch(
-          removeCustomerCartItemThunk({
-            cartItemId: item.cartItemId,
-          }),
-        );
-        dispatch(clearCart());
-        localStorage.removeItem("aurastore_guest_cart");
-        sessionStorage.removeItem("aurastore_active_cart_session_id");
+        await clearCompletedCustomerCart();
         navigate("/order-success", {
           state: { orders: sessionOrders, totals, paymentMethod: "ONLINE" },
           replace: true,
@@ -964,7 +957,7 @@ export default function CheckoutPage() {
 
         const customerOrders = res.data?.items || [];
 
-        resumeExistingCheckout(customerOrders, activeSessionId);
+        await resumeExistingCheckout(customerOrders, activeSessionId);
       } catch (err) {
         if (cancelled) {
           return;
@@ -1293,26 +1286,6 @@ export default function CheckoutPage() {
           }),
         );
 
-        // Login customer DB cart items clear
-        const customerCartItems = items.filter(
-          (item) => item.cartItemId != null,
-        );
-
-        await Promise.allSettled(
-          customerCartItems.map((item) =>
-            dispatch(removeCustomerCartItemThunk(item.cartItemId)).unwrap(),
-          ),
-        );
-
-        // Redux cart clear
-        dispatch(clearCart());
-
-        // Guest localStorage cart clear
-        localStorage.removeItem("aurastore_guest_cart");
-
-        // Checkout session clear
-        sessionStorage.removeItem("aurastore_active_cart_session_id");
-
         await clearCompletedCustomerCart();
 
         toast.success("Order placed successfully!");
@@ -1351,7 +1324,7 @@ export default function CheckoutPage() {
                 paymentMethod: "ONLINE",
               }),
             );
-            dispatch(clearCart());
+            await clearCompletedCustomerCart();
             toast.success("Payment already completed!");
             updatePhase(CHECKOUT_PHASE.SUCCESS);
             logExit({
@@ -1458,8 +1431,7 @@ export default function CheckoutPage() {
           //     }),
           //   );
           // }
-          dispatch(clearCart());
-          sessionStorage.removeItem("aurastore_active_cart_session_id");
+          await clearCompletedCustomerCart();
           try {
             const res = await storefrontAPI.getOrders();
             const customerOrders = res.data?.items || [];
@@ -1564,32 +1536,32 @@ export default function CheckoutPage() {
 
             logStep("STEP 14: Verification Success", verifiedOrders);
 
-            for (const item of items) {
-              dispatch(
-                setLastOrder({
-                  orders: verifiedOrders,
-                  totals,
-                  paymentMethod,
-                }),
-              );
-              // Customer DB + Redux + localStorage cart clear
-              await clearCompletedCustomerCart();
-              toast.success("Payment verified and order confirmed!");
+            dispatch(
+              setLastOrder({
+                orders: verifiedOrders,
+                totals,
+                paymentMethod,
+              }),
+            );
 
-              setPhase(CHECKOUT_PHASE.VERIFY_SUCCESS);
+            await clearCompletedCustomerCart();
 
-              await new Promise((resolve) => setTimeout(resolve, 600));
-              setPhase(CHECKOUT_PHASE.SUCCESS);
+            toast.success("Payment verified and order confirmed!");
 
-              navigate("/order-success", {
-                state: {
-                  orders: verifiedOrders,
-                  totals,
-                  paymentMethod,
-                },
-                replace: true,
-              });
-            }
+            setPhase(CHECKOUT_PHASE.VERIFY_SUCCESS);
+
+            await new Promise((resolve) => setTimeout(resolve, 600));
+
+            setPhase(CHECKOUT_PHASE.SUCCESS);
+
+            navigate("/order-success", {
+              state: {
+                orders: verifiedOrders,
+                totals,
+                paymentMethod,
+              },
+              replace: true,
+            });
           } catch (verifyErr) {
             const errInfo = getPaymentErrorMessage(verifyErr);
             logFailure({

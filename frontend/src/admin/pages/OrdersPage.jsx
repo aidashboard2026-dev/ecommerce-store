@@ -305,11 +305,11 @@ export default function OrdersPage() {
                   </span>
                 </div>
                 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <span className="text-xs text-muted font-semibold">
                     Set Status:
                   </span>
-                  <div className="flex gap-1.5">
+                  <div className="flex gap-1.5 flex-wrap">
                     {[
                       { status: "PLACED", label: "New Order", activeColor: "bg-blue-500 border-blue-500 text-white" },
                       { status: "PROCESSING", label: "Process", activeColor: "bg-amber-500 border-amber-500 text-white" },
