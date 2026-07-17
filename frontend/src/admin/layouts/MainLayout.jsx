@@ -4,7 +4,7 @@ import { useSelector } from 'react-redux'
 import clsx from 'clsx'
 
 import Header from '@/admin/components/layout/Header'
-import PageHeader from '@/admin/components/layout/PageHeader'
+import PageHeader from "@/shared/components/ui/PageHeader";
 import { PageLoader } from '@/shared/components/common/Spinner'
 import LoginSummaryToast from '@/admin/components/layout/LoginSummaryToast'
 
