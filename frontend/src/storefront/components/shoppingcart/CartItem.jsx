@@ -1,29 +1,72 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useDispatch } from 'react-redux'
-import { Trash2, Minus, Plus } from 'lucide-react'
+import { useDispatch, useSelector } from 'react-redux'
+import { Trash2, Minus, Plus, Loader2 } from 'lucide-react'
 import { getImageUrl, formatPrice } from '@/shared/utils/productUtils'
-import { updateQuantity, removeFromCart } from '@/storefront/store/cartSlice'
+import {
+  updateQuantity as updateLocalQuantity,
+  removeFromCart as removeLocalItem,
+} from '@/storefront/store/cartSlice'
+import {
+  updateCustomerCartQuantityThunk,
+  removeCustomerCartItemThunk,
+} from '@/storefront/store/customerCartThunks'
 import toast from 'react-hot-toast'
 
 export default function CartItem({ item }) {
   const dispatch = useDispatch()
+  const { token, customer } = useSelector((s) => s.customer)
+  const isAuthenticated = !!(token && customer)
+  const hasDbId = !!(item.cartItemId || item.cart_item_id)
+  const isDbItem = isAuthenticated && hasDbId
+  const [loading, setLoading] = useState(false)
 
   const lineKey = { productId: item.productId, size: item.size, color: item.color }
 
-  const handleQty = (delta) => {
+  const handleQty = async (delta) => {
     const next = item.quantity + delta
     if (next < 1) return
     if (item.stockQuantity != null && next > item.stockQuantity) {
       toast.error(`Only ${item.stockQuantity} in stock`)
       return
     }
-    dispatch(updateQuantity({ ...lineKey, quantity: next }))
+
+    if (isDbItem) {
+      setLoading(true)
+      try {
+        await dispatch(
+          updateCustomerCartQuantityThunk({
+            cartItemId: item.cartItemId || item.cart_item_id,
+            quantity: next,
+          }),
+        ).unwrap()
+      } catch (err) {
+        toast.error(typeof err === 'string' ? err : 'Failed to update quantity')
+      } finally {
+        setLoading(false)
+      }
+    } else {
+      dispatch(updateLocalQuantity({ ...lineKey, quantity: next }))
+    }
   }
 
-  const handleRemove = () => {
-    dispatch(removeFromCart(lineKey))
-    toast.success('Removed from cart')
+  const handleRemove = async () => {
+    if (isDbItem) {
+      setLoading(true)
+      try {
+        await dispatch(
+          removeCustomerCartItemThunk(item.cartItemId || item.cart_item_id),
+        ).unwrap()
+        toast.success('Removed from cart')
+      } catch (err) {
+        toast.error(typeof err === 'string' ? err : 'Failed to remove item')
+      } finally {
+        setLoading(false)
+      }
+    } else {
+      dispatch(removeLocalItem(lineKey))
+      toast.success('Removed from cart')
+    }
   }
 
   return (
@@ -72,17 +115,43 @@ export default function CartItem({ item }) {
 
         <div className="flex items-center justify-between mt-2">
           <div className="flex items-center border border-app rounded-lg overflow-hidden">
-            <button type="button" onClick={() => handleQty(-1)} className="p-1.5 text-app hover:bg-surface" aria-label="Decrease quantity">
+            <button
+              type="button"
+              onClick={() => handleQty(-1)}
+              disabled={loading || item.quantity <= 1}
+              className="p-1.5 text-app hover:bg-surface disabled:opacity-30"
+              aria-label="Decrease quantity"
+            >
               <Minus size={12} />
             </button>
-            <span className="min-w-[2rem] px-2 text-center text-xs font-semibold text-app">{item.quantity}</span>
-            <button type="button" onClick={() => handleQty(1)} className="p-1.5 text-app hover:bg-surface" aria-label="Increase quantity">
+            {loading ? (
+              <span className="min-w-[2rem] px-2 text-center flex items-center justify-center">
+                <Loader2 size={12} className="animate-spin" />
+              </span>
+            ) : (
+              <span className="min-w-[2rem] px-2 text-center text-xs font-semibold text-app">
+                {item.quantity}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => handleQty(1)}
+              disabled={loading || (item.stockQuantity != null && item.quantity >= item.stockQuantity)}
+              className="p-1.5 text-app hover:bg-surface disabled:opacity-30"
+              aria-label="Increase quantity"
+            >
               <Plus size={12} />
             </button>
           </div>
 
-          <button type="button" onClick={handleRemove} className="p-1.5 text-muted hover:text-red-500" aria-label="Remove item">
-            <Trash2 size={16} />
+          <button
+            type="button"
+            onClick={handleRemove}
+            disabled={loading}
+            className="p-1.5 text-muted hover:text-red-500 disabled:opacity-30"
+            aria-label="Remove item"
+          >
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
           </button>
         </div>
       </div>

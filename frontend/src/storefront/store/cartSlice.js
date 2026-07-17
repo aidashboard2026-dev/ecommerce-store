@@ -7,8 +7,26 @@ import {
   updateCustomerCartQuantityThunk,
 } from "./customerCartThunks";
 
-// const STORAGE_KEY = "aurastore_cart";
+import { normalizeCartItem } from "../services/customerCollectionSync";
+
 const GUEST_CART_KEY = "aurastore_guest_cart";
+const COUPON_KEY = "aurastore_coupon";
+
+function loadCoupon() {
+  try {
+    const raw = localStorage.getItem(COUPON_KEY);
+    if (!raw) return { couponCode: null, couponDiscount: 0, couponError: null };
+    return JSON.parse(raw);
+  } catch {
+    return { couponCode: null, couponDiscount: 0, couponError: null };
+  }
+}
+
+function persistCoupon(code, discount, error) {
+  try {
+    localStorage.setItem(COUPON_KEY, JSON.stringify({ couponCode: code, couponDiscount: discount, couponError: error }));
+  } catch { /* ignore */ }
+}
 
 function loadCart() {
   try {
@@ -20,7 +38,9 @@ function loadCart() {
 
     const parsed = JSON.parse(raw);
 
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.map(normalizeCartItem);
   } catch {
     return [];
   }
@@ -54,20 +74,22 @@ function sameLine(a, b) {
   );
 }
 
+const initialCoupon = loadCoupon();
+
 const cartSlice = createSlice({
   name: "cart",
   initialState: {
     items: loadCart(),
-    couponCode: null,
-    couponDiscount: 0, // percentage 0-100
-    couponError: null,
+    couponCode: initialCoupon.couponCode ?? null,
+    couponDiscount: initialCoupon.couponDiscount ?? 0,
+    couponError: initialCoupon.couponError ?? null,
     isDrawerOpen: false,
     syncLoading: false,
     syncError: null,
   },
   reducers: {
     addToCart(state, action) {
-      const incoming = action.payload;
+      const incoming = normalizeCartItem(action.payload);
       const existing = state.items.find((i) => sameLine(i, incoming));
       if (existing) {
         existing.quantity = Math.min(
@@ -75,7 +97,7 @@ const cartSlice = createSlice({
           existing.stockQuantity ?? 99,
         );
       } else {
-        state.items.push({ ...incoming, quantity: incoming.quantity || 1 });
+        state.items.push({ ...incoming });
       }
       persist(state.items);
     },
@@ -106,9 +128,12 @@ const cartSlice = createSlice({
       state.couponError = null;
 
       persist(state.items);
+      persistCoupon(null, 0, null);
     },
     replaceCartItems(state, action) {
-      state.items = Array.isArray(action.payload) ? action.payload : [];
+      const raw = Array.isArray(action.payload) ? action.payload : [];
+
+      state.items = raw.map(normalizeCartItem);
 
       persist(state.items);
     },
@@ -119,22 +144,26 @@ const cartSlice = createSlice({
       state.couponCode = null;
       state.couponDiscount = 0;
       state.couponError = null;
+      persistCoupon(null, 0, null);
     },
     applyCoupon(state, action) {
       const { code, discount } = action.payload;
       state.couponCode = code;
       state.couponDiscount = discount;
       state.couponError = null;
+      persistCoupon(code, discount, null);
     },
     setCouponError(state, action) {
       state.couponError = action.payload;
       state.couponCode = null;
       state.couponDiscount = 0;
+      persistCoupon(null, 0, action.payload);
     },
     removeCoupon(state) {
       state.couponCode = null;
       state.couponDiscount = 0;
       state.couponError = null;
+      persistCoupon(null, 0, null);
     },
 
     openCartDrawer(state) {
@@ -146,17 +175,19 @@ const cartSlice = createSlice({
       const uniqueItems = [];
 
       for (const item of incomingItems) {
+        const normalized = normalizeCartItem(item);
+
         const existing = uniqueItems.find((currentItem) =>
-          sameLine(currentItem, item),
+          sameLine(currentItem, normalized),
         );
 
         if (existing) {
           existing.quantity =
-            Number(item.quantity) || Number(existing.quantity) || 1;
+            Number(normalized.quantity) || Number(existing.quantity) || 1;
 
-          Object.assign(existing, item);
+          Object.assign(existing, normalized);
         } else {
-          uniqueItems.push(item);
+          uniqueItems.push(normalized);
         }
       }
 
@@ -189,7 +220,7 @@ const cartSlice = createSlice({
         (state, action) => {
           state.syncLoading = false;
 
-          const incoming = action.payload;
+          const incoming = normalizeCartItem(action.payload);
 
           const index = state.items.findIndex(
             (item) => Number(item.cartItemId) === Number(incoming.cartItemId),
@@ -219,7 +250,7 @@ const cartSlice = createSlice({
         updateCustomerCartQuantityThunk.fulfilled,
 
         (state, action) => {
-          const updatedItem = action.payload;
+          const updatedItem = normalizeCartItem(action.payload);
 
           const index = state.items.findIndex(
             (item) =>

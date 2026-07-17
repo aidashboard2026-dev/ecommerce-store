@@ -172,6 +172,7 @@ function CreatableSizeSelect({ value, onChange, disabled }) {
 function CreatableColorSelect({ value, onChange, onHexChange, disabled }) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState(value || '')
+  const [resolving, setResolving] = useState(false)
   const containerRef = useRef(null)
 
   const { data: backendColors = [] } = useQuery({
@@ -209,12 +210,24 @@ function CreatableColorSelect({ value, onChange, onHexChange, disabled }) {
 
   const showCreateOption = search.trim() !== '' && !backendColors.some(c => c.name.toLowerCase() === search.trim().toLowerCase())
 
-  const handleSelect = (val) => {
+  const handleSelect = async (val) => {
     const matched = backendColors.find(c => c.name.toLowerCase() === val.toLowerCase())
     onChange(val)
     setSearch(val)
     if (matched) {
       onHexChange(matched.hex)
+    } else {
+      setResolving(true)
+      try {
+        const res = await productsApi.resolveColor(val)
+        if (res.data?.found && res.data.hex) {
+          onHexChange(res.data.hex)
+        }
+      } catch {
+        // resolve failed — leave hex editable
+      } finally {
+        setResolving(false)
+      }
     }
     setIsOpen(false)
   }

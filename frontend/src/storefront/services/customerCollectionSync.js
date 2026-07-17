@@ -86,69 +86,56 @@ function getQuantity(item) {
 
 
 /*
- * Backend cart format:
+ * Central normalization layer.
  *
- * product_id
- * variant_id
- * selling_price
- *
- * Redux cart format:
- *
- * productId
- * variantId
- * sellingPrice
+ * Accepts a raw cart item from ANY source
+ * (backend API snake_case OR frontend guest camelCase)
+ * and returns ONE consistent shape used by every component.
  */
 
-export function mapDatabaseCartItem(
-  item,
-) {
+export function normalizeCartItem(raw) {
+  const cartItemId = raw.cartItemId ?? raw.cart_item_id ?? raw.id ?? null;
+  const productId = raw.productId ?? raw.product_id ?? null;
+  const variantId = raw.variantId ?? raw.variant_id ?? null;
+
+  const title = raw.title ?? "";
+  const slug = raw.slug ?? "";
+  const thumbnail = raw.thumbnail ?? null;
+  const size = raw.size ?? null;
+  const color = raw.color ?? null;
+  const colorHex = raw.colorHex ?? raw.color_hex ?? null;
+
+  let rawSelling = raw.sellingPrice ?? raw.selling_price;
+  let sellingPrice = rawSelling != null ? Number(rawSelling) : 0;
+  if (!Number.isFinite(sellingPrice)) sellingPrice = 0;
+
+  let rawOriginal = raw.originalPrice ?? raw.original_price;
+  let originalPrice = rawOriginal != null ? Number(rawOriginal) : 0;
+  if (!Number.isFinite(originalPrice)) originalPrice = 0;
+
+  let rawStock = raw.stockQuantity ?? raw.stock_quantity;
+  let stockQuantity = rawStock != null ? Number(rawStock) : 0;
+  if (!Number.isFinite(stockQuantity)) stockQuantity = 0;
+
+  const quantity = Math.max(1, Number(raw.quantity ?? 1) || 1);
+
+  const source = raw.source ?? (cartItemId ? "database" : "guest");
+
   return {
-    cartItemId:
-      item.id,
-
-    productId:
-      item.product_id,
-
-    variantId:
-      item.variant_id,
-
-    title:
-      item.title,
-
-    slug:
-      item.slug,
-
-    thumbnail:
-      item.thumbnail,
-
-    size:
-      item.size,
-
-    color:
-      item.color,
-
-    originalPrice:
-      Number(
-        item.original_price ?? 0,
-      ),
-
-    sellingPrice:
-      Number(
-        item.selling_price ?? 0,
-      ),
-
-    stockQuantity:
-      Number(
-        item.stock_quantity ?? 0,
-      ),
-
-    quantity:
-      Number(
-        item.quantity ?? 1,
-      ),
-
-    source:
-      "database",
+    cartItemId,
+    productId,
+    variantId,
+    title,
+    slug,
+    thumbnail,
+    size,
+    color,
+    colorHex,
+    sellingPrice,
+    originalPrice,
+    stockQuantity,
+    quantity,
+    source,
   };
 }
 
@@ -196,7 +183,7 @@ export async function loadCustomerCart() {
     response.data?.items ?? [];
 
   return items.map(
-    mapDatabaseCartItem,
+    normalizeCartItem,
   );
 }
 

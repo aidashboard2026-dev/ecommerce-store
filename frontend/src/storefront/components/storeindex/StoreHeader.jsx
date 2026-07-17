@@ -22,7 +22,7 @@ import useStoreSettings from "@/shared/hooks/useStoreSettings";
 // ─── Static nav config ───────────────────────────────────────────────────────
 const MOBILE_NAV_LINKS = [
   { label: "Home", to: "/" },
-  { label: "T-Shirt for Mens", to: "/products?category=t-shirt&gender=Men" },
+  { label: "T-Shirt for Mens", to: "/products?category=t-shirts&gender=Men" },
   {
     label: "Track Pant for Mens",
     to: "/products?category=track-pants&gender=Men",
@@ -323,7 +323,6 @@ const StoreHeaderComponent = function StoreHeader({
                         {customer.email}
                       </p>
                     </div>
-                    <hr className="border-app my-1" />
                     <Link
                       to="/profile"
                       onClick={() => setProfileMenuOpen(false)}
@@ -332,7 +331,26 @@ const StoreHeaderComponent = function StoreHeader({
                     >
                       <User size={13} /> My Account
                     </Link>
+                    <Link
+                      to="/profile/orders"
+                      onClick={() => setProfileMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-xs text-app hover:bg-surface transition-colors"
+                      role="menuitem"
+                    >
+                      <ClipboardList size={13} /> Orders
+                    </Link>
                     <hr className="border-app my-1" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        handleLogout();
+                      }}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-xs text-red-500 hover:bg-surface transition-colors"
+                      role="menuitem"
+                    >
+                      <LogOut size={13} /> Logout
+                    </button>
                   </div>
                 )}
               </div>

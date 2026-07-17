@@ -24,6 +24,7 @@ from app.modules.admins.models import Admin
 from app.modules.audit.service import audit
 from app.modules.auth.dependencies import get_current_admin
 from app.modules.products.models import Product, ProductStatus
+from app.modules.colors.resolver import resolver as color_resolver
 from app.modules.products.schemas import (
     BulkActionPayload, BulkVariantCreate,
     CategoryCreate, CategoryResponse, CategoryUpdate,
@@ -793,27 +794,5 @@ def get_related_products_endpoint(
 
 @router.get("/colors", response_model=List[ColorOption])
 def get_colors():
-    return [
-        {"name": "Black", "hex": "#000000"},
-        {"name": "White", "hex": "#FFFFFF"},
-        {"name": "Red", "hex": "#FF0000"},
-        {"name": "Blue", "hex": "#0000FF"},
-        {"name": "Green", "hex": "#008000"},
-        {"name": "Yellow", "hex": "#FFFF00"},
-        {"name": "Orange", "hex": "#FFA500"},
-        {"name": "Purple", "hex": "#800080"},
-        {"name": "Pink", "hex": "#FFC0CB"},
-        {"name": "Grey", "hex": "#808080"},
-        {"name": "Gray", "hex": "#808080"},
-        {"name": "Brown", "hex": "#A52A2A"},
-        {"name": "Navy", "hex": "#000080"},
-        {"name": "Sky Blue", "hex": "#87CEEB"},
-        {"name": "Maroon", "hex": "#800000"},
-        {"name": "Olive", "hex": "#808000"},
-        {"name": "Teal", "hex": "#008080"},
-        {"name": "Beige", "hex": "#F5F5DC"},
-        {"name": "Cream", "hex": "#FFFDD0"},
-        {"name": "Gold", "hex": "#FFD700"},
-        {"name": "Silver", "hex": "#C0C0C0"}
-    ]
+    return color_resolver.get_all_colors()
 
