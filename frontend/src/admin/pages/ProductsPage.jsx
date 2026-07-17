@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+﻿import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useSearchParams, useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -23,7 +23,7 @@ import Badge from '@/shared/components/ui/Badge'
 import Button from '@/shared/components/ui/Button'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/shared/components/ui/Table'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const STATUS_OPTIONS  = ['draft', 'published', 'archived']
 const STOCK_OPTIONS   = [
@@ -41,12 +41,12 @@ const BULK_ACTIONS = [
   { value: 'publish',         label: 'Publish' },
   { value: 'unpublish',       label: 'Unpublish' },
   { value: 'archive',         label: 'Archive' },
-  { value: 'move_category',   label: 'Move to Category…' },
-  { value: 'move_collection', label: 'Move to Collection…' },
+  { value: 'move_category',   label: 'Move to Categoryâ€¦' },
+  { value: 'move_collection', label: 'Move to Collectionâ€¦' },
   { value: 'delete',          label: 'Delete Selected', danger: true },
 ]
 
-// ─── Error Boundary ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Error Boundary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class ProductErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null } }
@@ -68,7 +68,7 @@ class ProductErrorBoundary extends React.Component {
   }
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const ImageStrip = React.memo(function ImageStrip({ thumbnail }) {
   const resolvedUrl = getImageUrl(thumbnail)
@@ -171,10 +171,10 @@ function ProductCard({ product, onEdit, onImage, onToggleStatus, onVariant, onDe
           <p className="text-[10px] text-muted font-mono truncate">{product.category_name || product.collection || product.slug}</p>
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
             <span className={`status-pill ${product.status}`}>{product.status}</span>
-            {product.is_featured    && <span className="text-[9px] bg-amber-500/10 text-amber-500 px-1 py-0.5 rounded border border-amber-500/20">⭐ Featured</span>}
-            {product.is_trending    && <span className="text-[9px] bg-blue-500/10 text-blue-500 px-1 py-0.5 rounded border border-blue-500/20">🔥 Trending</span>}
-            {product.is_best_seller && <span className="text-[9px] bg-purple-500/10 text-purple-500 px-1 py-0.5 rounded border border-purple-500/20">⚡ Best Seller</span>}
-            {product.is_new_arrival && <span className="text-[9px] bg-green-500/10 text-green-500 px-1 py-0.5 rounded border border-green-500/20">🆕 New</span>}
+            {product.is_featured    && <span className="text-[9px] bg-amber-500/10 text-amber-500 px-1 py-0.5 rounded border border-amber-500/20">â­ Featured</span>}
+            {product.is_trending    && <span className="text-[9px] bg-blue-500/10 text-blue-500 px-1 py-0.5 rounded border border-blue-500/20">ðŸ”¥ Trending</span>}
+            {product.is_best_seller && <span className="text-[9px] bg-purple-500/10 text-purple-500 px-1 py-0.5 rounded border border-purple-500/20">âš¡ Best Seller</span>}
+            {product.is_new_arrival && <span className="text-[9px] bg-green-500/10 text-green-500 px-1 py-0.5 rounded border border-green-500/20">ðŸ†• New</span>}
           </div>
         </div>
         <MobileActions product={product} onEdit={() => onEdit(product)} onImage={() => onImage(product)}
@@ -201,7 +201,7 @@ function Pagination({ page, totalPages, onPageChange }) {
   )
 }
 
-// ─── Filter pill ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Filter pill â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function FilterPill({ active, label, onClick, onClear }) {
   return (
@@ -223,7 +223,7 @@ function FilterPill({ active, label, onClick, onClear }) {
   )
 }
 
-// ─── Bulk Actions Bar ────────────────────────────────────────────────────────
+// â”€â”€â”€ Bulk Actions Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function BulkActionsBar({ selectedIds, onAction, categories, collections, onClear }) {
   const [open, setOpen] = useState(false)
@@ -271,7 +271,7 @@ function BulkActionsBar({ selectedIds, onAction, categories, collections, onClea
           {pendingAction === 'move_category' ? (
             <select value={targetCategoryId} onChange={e => setTargetCategoryId(e.target.value)}
               className="input-field py-1 text-xs">
-              <option value="">Select category…</option>
+              <option value="">Select categoryâ€¦</option>
               {categories.map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
@@ -279,7 +279,7 @@ function BulkActionsBar({ selectedIds, onAction, categories, collections, onClea
           ) : (
             <select value={targetCollectionId} onChange={e => setTargetCollectionId(e.target.value)}
               className="input-field py-1 text-xs">
-              <option value="">Select collection…</option>
+              <option value="">Select collectionâ€¦</option>
               {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )}
@@ -315,7 +315,7 @@ function BulkActionsBar({ selectedIds, onAction, categories, collections, onClea
   )
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function ProductsPage() {
   const qc = useQueryClient()
@@ -326,7 +326,7 @@ export default function ProductsPage() {
   // Track whether the modal was auto-opened from URL so we can close via back-nav
   const urlOpenedRef = useRef(false)
 
-  // ── URL-seeded initial filter values ─────────────────────────────────────────
+  // â”€â”€ URL-seeded initial filter values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const urlStock  = searchParams.get('stock') || ''   // e.g. 'low', 'out'
   const urlStatus = searchParams.get('status') || ''  // e.g. 'published', 'draft'
 
@@ -336,7 +336,7 @@ export default function ProductsPage() {
     return map[urlStock] || ''
   })()
 
-  // ── Filter state ─────────────────────────────────────────────────────────────
+  // â”€â”€ Filter state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [search, setSearch]             = useState('')
   const [statusFilter, setStatusFilter] = useState(urlStatus)
   const [categoryId, setCategoryId]     = useState('')
@@ -350,20 +350,20 @@ export default function ProductsPage() {
 
   const debouncedSearch = useDebounce(search, 400)
 
-  // ── Modals ──────────────────────────────────────────────────────────────────
+  // â”€â”€ Modals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [formModal,      setFormModal]      = useState({ open: false, product: null })
   const [variantModal,   setVariantModal]   = useState({ open: false, productId: null, product: null, editingVariantId: null })
   const [imageModal,     setImageModal]     = useState({ open: false, product: null })
   const [quickEditModal, setQuickEditModal] = useState({ open: false, product: null })
   const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false)
 
-  // ── URL-param driven: auto-open edit modal for /admin/products/:id/edit ─────
-  // NOTE: This effect references `data` which is declared below — it is
+  // â”€â”€ URL-param driven: auto-open edit modal for /admin/products/:id/edit â”€â”€â”€â”€â”€
+  // NOTE: This effect references `data` which is declared below â€” it is
   // intentionally placed here but the effect body only reads data?.items,
   // which will be undefined on first render and cause a harmless no-op.
   // The effect will re-run once `data` becomes available after the query resolves.
 
-  // Stable key derived from flagFilters — avoids JSON.stringify inside deps array
+  // Stable key derived from flagFilters â€” avoids JSON.stringify inside deps array
   // which produces a new string reference every render even when flags haven't changed.
   const flagKey = Object.keys(flagFilters).filter(k => flagFilters[k]).sort().join(',')
 
@@ -371,7 +371,7 @@ export default function ProductsPage() {
   React.useEffect(() => { setPage(1); setSelectedIds(new Set()) },
     [debouncedSearch, statusFilter, categoryId, collectionId, genderFilter, stockStatus, flagKey, sortBy])
 
-  // ── Data queries ─────────────────────────────────────────────────────────────
+  // â”€â”€ Data queries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const queryParams = {
     search:         debouncedSearch,
@@ -414,8 +414,8 @@ export default function ProductsPage() {
     return collections.filter(c => String(c.category_id) === String(categoryId))
   }, [collections, categoryId])
 
-  // ── Direct product fetch (for URL-driven edit mode when product
-  //     is not on the currently loaded listing page) ─────────────────────────
+  // â”€â”€ Direct product fetch (for URL-driven edit mode when product
+  //     is not on the currently loaded listing page) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const shouldFetchProduct = !!urlProductId && urlProductId !== 'new' && !urlOpenedRef.current
   const { data: directProduct } = useQuery({
     queryKey: ['product', 'direct', urlProductId],
@@ -425,7 +425,7 @@ export default function ProductsPage() {
     staleTime: 60_000,
   })
 
-  // ── URL-param driven: auto-open edit modal for /admin/products/:id/edit ─────
+  // â”€â”€ URL-param driven: auto-open edit modal for /admin/products/:id/edit â”€â”€â”€â”€â”€
   // Placed AFTER data query so the closure correctly captures data.
   // We only auto-open once (urlOpenedRef guards against re-triggering).
   useEffect(() => {
@@ -482,7 +482,7 @@ export default function ProductsPage() {
   }, [urlProductId, urlVariantId, data?.items, formModal.open])
 
 
-  // ── Mutations ────────────────────────────────────────────────────────────────
+  // â”€â”€ Mutations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   // Use prefix-only invalidation so this callback stays stable across filter
   // changes and mutation closures never capture a stale queryParams snapshot.
@@ -528,11 +528,12 @@ export default function ProductsPage() {
     onSuccess: () => {
       toast.success('Product deleted successfully.')
       // Invalidate first, unconditionally, so every cached page (not just the
-      // one we might navigate away from) is marked stale — otherwise a page
+      // one we might navigate away from) is marked stale â€” otherwise a page
       // visited earlier keeps serving the deleted product from cache for the
       // remainder of its staleTime window.
       invalidate()
-      const isLastOnPage = (data?.items?.length ?? 0) === 1
+      const cached = qc.getQueryData(['products', queryParams])
+      const isLastOnPage = (cached?.items?.length ?? 0) === 1
       if (isLastOnPage && page > 1) setPage(p => p - 1)
     },
     onError: e => toast.error(getApiErrorMessage(e, 'Delete failed')),
@@ -548,7 +549,7 @@ export default function ProductsPage() {
     onError: e => toast.error(getApiErrorMessage(e, 'Bulk action failed')),
   })
 
-  // ── Handlers ─────────────────────────────────────────────────────────────────
+  // â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   // Open edit modal AND push a deep-link URL so browser Back/Forward works
   const openEdit = useCallback(p => {
@@ -636,12 +637,12 @@ export default function ProductsPage() {
     return p;
   }, [data?.items, directProduct]);
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   return (
     <div className="space-y-6 py-2">
 
-      {/* ── Header ── */}
+      {/* â”€â”€ Header â”€â”€ */}
       <PageHeader
         title="Products"
         description={
@@ -665,7 +666,7 @@ export default function ProductsPage() {
         }
       />
 
-      {/* ── Filters ── */}
+      {/* â”€â”€ Filters â”€â”€ */}
       <div className="space-y-3">
 
         {/* Row 1: Search + Status pills */}
@@ -674,7 +675,7 @@ export default function ProductsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             onClear={() => setSearch('')}
-            placeholder="Search products, SKU, category, collection…"
+            placeholder="Search products, SKU, category, collectionâ€¦"
             className="max-w-md w-full"
           />
           <div className="flex gap-1 self-start sm:self-auto overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
@@ -765,7 +766,7 @@ export default function ProductsPage() {
         />
       </div>
 
-      {/* ── Mobile / Tablet: Card list ── */}
+      {/* â”€â”€ Mobile / Tablet: Card list â”€â”€ */}
       <div className="lg:hidden space-y-3">
         {isLoading ? (
           Array(4).fill(0).map((_, i) => (
@@ -800,7 +801,7 @@ export default function ProductsPage() {
         )}
       </div>
 
-      {/* ── Desktop: Table ── */}
+      {/* â”€â”€ Desktop: Table â”€â”€ */}
       <div className="hidden lg:block card overflow-hidden">
         <Table>
           <TableHeader>
@@ -847,7 +848,7 @@ export default function ProductsPage() {
 
                 // Filter variants based on the active inventory (stock) filter pill.
                 // When a stock filter is active, the Stock/Size columns should reflect
-                // only the matching variants — e.g. clicking "Low Stock" shows just the
+                // only the matching variants â€” e.g. clicking "Low Stock" shows just the
                 // low-stock variant's size and quantity, not the product's full set.
                 const filteredVariants = (product.variants || []).filter(v => {
                   if (!stockStatus) return true
@@ -860,7 +861,7 @@ export default function ProductsPage() {
                 const displaySizes  = [...new Set(filteredVariants.map(v => v.size))].join(', ')
                 const displayStocks = filteredVariants.map(v => v.stock_quantity).join(',')
 
-                const discPct = v0?.discount_percentage ? `${parseFloat(v0.discount_percentage).toFixed(0)}%` : '—'
+                const discPct = v0?.discount_percentage ? `${parseFloat(v0.discount_percentage).toFixed(0)}%` : 'â€”'
                 const statusMap = { published: 'success', draft: 'default', archived: 'warning' }
                 return (
                   <TableRow key={product.id}>
@@ -895,18 +896,18 @@ export default function ProductsPage() {
                     </TableCell>
                     <TableCell>
                       <span className="text-[10px] text-muted">
-                        {product.category_name || '—'}
+                        {product.category_name || 'â€”'}
                       </span>
                     </TableCell>
                     <TableCell>
                       <span className="font-mono text-[10px] bg-app border border-app px-2 py-0.5 rounded text-app font-semibold">
-                        {v0?.sku || '—'}
+                        {v0?.sku || 'â€”'}
                       </span>
                     </TableCell>
                     <TableCell className="font-medium text-app">{formatPrice(v0?.original_price ?? product.min_price)}</TableCell>
                     <TableCell className="font-semibold text-emerald-600 dark:text-emerald-400">{formatPrice(v0?.selling_price)}</TableCell>
                     <TableCell className="font-medium text-amber-600">{discPct}</TableCell>
-                    {/* Clickable stock badge — filters listing by stock status.
+                    {/* Clickable stock badge â€” filters listing by stock status.
                         Uses getStockStatusKey() so the click target matches the backend's
                         actual low-stock threshold rule rather than a hardcoded "<= 5". */}
                     <TableCell>
@@ -930,8 +931,8 @@ export default function ProductsPage() {
                         )}
                       </button>
                     </TableCell>
-                    <TableCell className="text-muted">{displaySizes || '—'}</TableCell>
-                    {/* Clickable status badge — applies status filter for this product's status */}
+                    <TableCell className="text-muted">{displaySizes || 'â€”'}</TableCell>
+                    {/* Clickable status badge â€” applies status filter for this product's status */}
                     <TableCell>
                       <button
                         type="button"
@@ -970,12 +971,12 @@ export default function ProductsPage() {
         </Table>
       </div>
 
-      {/* ── Pagination ── */}
+      {/* â”€â”€ Pagination â”€â”€ */}
       {(data?.total_pages ?? 0) > 1 && (
         <Pagination page={page} totalPages={data.total_pages} onPageChange={setPage} />
       )}
 
-      {/* ── Inline Product Form (modal) ── */}
+      {/* â”€â”€ Inline Product Form (modal) â”€â”€ */}
       {formModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-5xl max-h-[90vh] overflow-hidden rounded-2xl bg-app shadow-2xl">
@@ -993,7 +994,7 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* ── Other modals ── */}
+      {/* â”€â”€ Other modals â”€â”€ */}
       <ProductErrorBoundary title="Variant form error">
         <VariantFormModal
           isOpen={variantModal.open}

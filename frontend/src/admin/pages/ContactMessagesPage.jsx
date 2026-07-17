@@ -1,4 +1,4 @@
-/**
+﻿/**
  * frontend/src/admin/pages/ContactMessagesPage.jsx
  * 
  * Admin page for managing contact messages.
@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Loader,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api, { dashboardAPI } from '@/shared/services/api';
 import ContactDetailsDrawer from '@/admin/components/contact/ContactDetailsDrawer';
 import ReplyModal from '@/admin/components/contact/ReplyModal';
@@ -27,10 +28,10 @@ const STATUSES = ['All', 'New', 'Pending', 'Replied', 'Closed'];
 
 const StatusBadge = ({ status }) => {
   const statusConfig = {
-    New: { bg: 'bg-blue-100', text: 'text-blue-800', label: '🆕' },
-    Pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: '⏳' },
-    Replied: { bg: 'bg-green-100', text: 'text-green-800', label: '✓' },
-    Closed: { bg: 'bg-gray-100', text: 'text-gray-800', label: '✓' },
+    New: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'ðŸ†•' },
+    Pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'â³' },
+    Replied: { bg: 'bg-green-100', text: 'text-green-800', label: 'âœ“' },
+    Closed: { bg: 'bg-surface', text: 'text-muted', label: 'âœ“' },
   };
 
   const config = statusConfig[status] || statusConfig.New;
@@ -59,7 +60,7 @@ function Pagination({ page, totalPages, onPageChange }) {
 const TableSkeleton = () => (
   <div className="space-y-2">
     {[...Array(5)].map((_, i) => (
-      <div key={i} className="h-12 bg-gray-200 rounded animate-pulse" />
+      <div key={i} className="h-12 bg-surface rounded animate-pulse" />
     ))}
   </div>
 );
@@ -94,8 +95,6 @@ export default function ContactMessagesPage() {
   const [replyModalOpen, setReplyModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Toast
-  const [toast, setToast] = useState(null);
 
   // Fetch messages
   const fetchMessages = async () => {
@@ -118,7 +117,7 @@ export default function ContactMessagesPage() {
       setContactStats(statsResponse.data);
     } catch (error) {
       console.error('Error fetching messages:', error);
-      showToast('Error loading messages', 'error');
+      toast.error('Error loading messages');
     } finally {
       setLoading(false);
     }
@@ -133,11 +132,6 @@ export default function ContactMessagesPage() {
     fetchMessages();
   }, [page, pageSize, search, selectedStatus, sortBy, sortOrder]);
 
-  // Toast handler
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
 
   // Handlers
   const handleViewDetails = (message) => {
@@ -156,12 +150,12 @@ export default function ContactMessagesPage() {
       await dashboardAPI.replyToContactMessage(selectedMessage.id, {
         reply_message: replyText,
       });
-      showToast('Reply sent successfully!', 'success');
+      toast.success('Reply sent successfully!');
       setReplyModalOpen(false);
       fetchMessages();
     } catch (error) {
       console.error('Error sending reply:', error);
-      showToast('Failed to send reply', 'error');
+      toast.error('Failed to send reply');
     } finally {
       setActionLoading(false);
     }
@@ -173,12 +167,12 @@ export default function ContactMessagesPage() {
     try {
       setActionLoading(true);
       await dashboardAPI.deleteContactMessage(selectedMessage.id);
-      showToast('Message deleted successfully', 'success');
+      toast.success('Message deleted successfully');
       setDrawerOpen(false);
       fetchMessages();
     } catch (error) {
       console.error('Error deleting message:', error);
-      showToast('Failed to delete message', 'error');
+      toast.error('Failed to delete message');
     } finally {
       setActionLoading(false);
     }
@@ -186,7 +180,7 @@ export default function ContactMessagesPage() {
 
   const handleExport = async (format) => {
     try {
-      showToast(`Exporting ${format.toUpperCase()}...`, 'info');
+      toast(`Exporting ${format.toUpperCase()}...`, 'info');
       
       const response = await api.get('/contact/export', {
         params: {
@@ -214,10 +208,10 @@ export default function ContactMessagesPage() {
       link.remove();
       window.URL.revokeObjectURL(downloadUrl);
 
-      showToast(`${format.toUpperCase()} exported successfully`, 'success');
+      toast(`${format.toUpperCase()} exported successfully`, 'success');
     } catch (error) {
       console.error(`Error exporting to ${format}:`, error);
-      showToast(`Failed to export ${format.toUpperCase()}`, 'error');
+      toast(`Failed to export ${format.toUpperCase()}`, 'error');
     }
   };
 
@@ -230,14 +224,14 @@ export default function ContactMessagesPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Contact Messages</h1>
-              <p className="text-gray-600 mt-1">Manage customer inquiries and support messages</p>
+              <h1 className="text-3xl font-bold text-app">Contact Messages</h1>
+              <p className="text-muted mt-1">Manage customer inquiries and support messages</p>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={fetchMessages}
                 disabled={loading}
-                className="p-2 hover:bg-gray-200 rounded-lg transition disabled:opacity-50"
+                className="p-2 hover:bg-surface rounded-lg transition disabled:opacity-50"
               >
                 <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
               </button>
@@ -246,10 +240,10 @@ export default function ContactMessagesPage() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard label="Total Messages" value={contactStats.total_messages} icon="📧" />
-            <StatCard label="Today's Messages" value={contactStats.today_messages} icon="☀️" />
-            <StatCard label="Pending Tickets" value={contactStats.pending_count} icon="⏳" />
-            <StatCard label="Closed Tickets" value={contactStats.closed_count} icon="✓" />
+            <StatCard label="Total Messages" value={contactStats.total_messages} icon="ðŸ“§" />
+            <StatCard label="Today's Messages" value={contactStats.today_messages} icon="â˜€ï¸" />
+            <StatCard label="Pending Tickets" value={contactStats.pending_count} icon="â³" />
+            <StatCard label="Closed Tickets" value={contactStats.closed_count} icon="âœ“" />
           </div>
         </div>
 
@@ -258,13 +252,13 @@ export default function ContactMessagesPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             {/* Search */}
             <div className="relative">
-              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
               <input
                 type="text"
                 placeholder="Search by name, email..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-transparent outline-none"
+                className="w-full pl-10 pr-4 py-2 border border-app rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
               />
             </div>
 
@@ -272,7 +266,7 @@ export default function ContactMessagesPage() {
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-transparent outline-none"
+              className="px-4 py-2 border border-app rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
             >
               {STATUSES.map((status) => (
                 <option key={status} value={status}>
@@ -285,7 +279,7 @@ export default function ContactMessagesPage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-transparent outline-none"
+              className="px-4 py-2 border border-app rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
             >
               <option value="created_at">Sort by Date</option>
               <option value="name">Sort by Name</option>
@@ -295,9 +289,9 @@ export default function ContactMessagesPage() {
             {/* Sort Order */}
             <button
               onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-              className="px-4 py-2 border  border-gray-300 rounded-lg hover:bg-gray-50 transition"
+              className="px-4 py-2 border  border-app rounded-lg hover:bg-surface transition"
             >
-              {sortOrder === 'desc' ? '↓ Newest' : '↑ Oldest'}
+              {sortOrder === 'desc' ? 'â†“ Newest' : 'â†‘ Oldest'}
             </button>
           </div>
 
@@ -305,14 +299,14 @@ export default function ContactMessagesPage() {
           <div className="flex gap-2">
             <button
               onClick={() => handleExport('csv')}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-app bg-surface hover:bg-surface rounded-lg transition"
             >
               <Download size={16} />
               Export CSV
             </button>
             <button
               onClick={() => handleExport('xlsx')}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200 transition"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-lg border border-emerald-500/20 transition"
             >
               <Download size={16} />
               Export Excel
@@ -328,45 +322,45 @@ export default function ContactMessagesPage() {
             </div>
           ) : messages.length === 0 ? (
             <div className="p-12 text-center">
-              <MessageSquare size={48} className="mx-auto text-gray-300 mb-4" />
-              <p className="text-gray-500 text-lg">No contact messages found</p>
-              <p className="text-gray-400 text-sm mt-1">Messages will appear here when customers submit the contact form</p>
+              <MessageSquare size={48} className="mx-auto text-muted/30 mb-4" />
+              <p className="text-muted text-lg">No contact messages found</p>
+              <p className="text-muted text-sm mt-1">Messages will appear here when customers submit the contact form</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="border-b">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Email</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Subject</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-app uppercase tracking-wider">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-app uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-app uppercase tracking-wider">Subject</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-app uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-app uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-center text-xs font-semibold text-app uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {messages.map((message) => (
-                    <tr key={message.id} className="hover:bg-gray-50 transition">
+                    <tr key={message.id} className="hover:bg-surface transition">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <p className="text-sm font-medium text-gray-900">{message.name}</p>
+                        <p className="text-sm font-medium text-app">{message.name}</p>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <p className="text-sm text-gray-600">{message.email}</p>
+                        <p className="text-sm text-muted">{message.email}</p>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="text-sm text-gray-700 line-clamp-1">{message.subject}</p>
+                        <p className="text-sm text-app line-clamp-1">{message.subject}</p>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <StatusBadge status={message.status} />
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted">
                         {new Date(message.created_at).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <button
                           onClick={() => handleViewDetails(message)}
-                          className="inline-flex items-center justify-center p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                          className="inline-flex items-center justify-center p-2 text-brand-500 hover:bg-brand-500/10 rounded-lg transition"
                           title="View Details"
                         >
                           <Eye size={18} />
@@ -377,12 +371,10 @@ export default function ContactMessagesPage() {
                 </tbody>
               </table>
             </div>
-          )}
-
           {/* Pagination */}
           {/* {!loading && messages.length > 0 && (
-            <div className="px-6 py-4 border-t flex items-center justify-between bg-gray-50">
-              <div className="text-sm text-gray-600">
+            <div className="px-6 py-4 border-t flex items-center justify-between bg-surface">
+              <div className="text-sm text-muted">
                 Showing {Math.min((page - 1) * pageSize + 1, totalMessages)} to{' '}
                 {Math.min(page * pageSize, totalMessages)} of {totalMessages} messages
               </div>
@@ -391,7 +383,7 @@ export default function ContactMessagesPage() {
                 <select
                   value={pageSize}
                   onChange={(e) => setPageSize(Number(e.target.value))}
-                  className="px-2 py-1 text-sm border border-gray-300 rounded"
+                  className="px-2 py-1 text-sm border border-app rounded"
                 >
                   <option value={10}>10</option>
                   <option value={20}>20</option>
@@ -401,7 +393,7 @@ export default function ContactMessagesPage() {
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="p-2 hover:bg-gray-200 rounded disabled:opacity-50"
+                  className="p-2 hover:bg-surface rounded disabled:opacity-50"
                 >
                   <ChevronLeft size={18} />
                 </button>
@@ -413,7 +405,7 @@ export default function ContactMessagesPage() {
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="p-2 hover:bg-gray-200 rounded disabled:opacity-50"
+                  className="p-2 hover:bg-surface rounded disabled:opacity-50"
                 >
                   <ChevronRight size={18} />
                 </button>
@@ -423,7 +415,7 @@ export default function ContactMessagesPage() {
 
           {!loading && totalPages>1&&(
 
-            <div className="border-t bg-white px-6 py-4 flex items-center justify-center">
+            <div className="border-t bg-app px-6 py-4 flex items-center justify-center">
 
             <Pagination
 
@@ -436,24 +428,7 @@ export default function ContactMessagesPage() {
             />
 
             </div>
-
-            )}
         </div>
-
-        {/* Toast */}
-        {toast && (
-          <div
-            className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg shadow-lg text-white ${
-              toast.type === 'success'
-                ? 'bg-green-500'
-                : toast.type === 'error'
-                ? 'bg-red-500'
-                : 'bg-blue-500'
-            } animate-in fade-in slide-in-from-bottom-4`}
-          >
-            {toast.message}
-          </div>
-        )}
       </div>
 
       {/* Drawers & Modals */}
@@ -486,8 +461,10 @@ export default function ContactMessagesPage() {
 function StatCard({ label, value, icon }) {
   return (
     <div className="rounded-lg border p-4">
-      <p className="text-2xl font-bold text-gray-900 dark:text-gray-400">{value}</p>
-      <p className="text-sm text-gray-600 mt-1">{icon} {label}</p>
+      <p className="text-2xl font-bold text-app dark:text-muted">{value}</p>
+      <p className="text-sm text-muted mt-1">{icon} {label}</p>
     </div>
   );
 }
+
+

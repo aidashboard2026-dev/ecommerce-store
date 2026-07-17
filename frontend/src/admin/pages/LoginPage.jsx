@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Eye, EyeOff, Loader2, Lock, LogIn, Mail } from "lucide-react";
@@ -85,7 +85,7 @@ export default function LoginForm() {
 
   const saveCustomerSession = (responseData) => {
     const accessToken = responseData.access_token;
-    console.log("[Auth Isolation: Customer] Saving customer session for:", responseData.customer?.email);
+    if (import.meta.env.DEV) console.log("[Auth Isolation: Customer] Saving customer session for:", responseData.customer?.email);
 
     axios.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
 
@@ -100,7 +100,7 @@ export default function LoginForm() {
   };
 
   // =========================================================
-  // Firebase → FastAPI Login
+  // Firebase â†’ FastAPI Login
   // =========================================================
 
   const connectFirebaseToBackend = async (firebaseUser) => {
@@ -167,7 +167,7 @@ export default function LoginForm() {
 
       localStorage.removeItem("pending_customer_profile");
 
-      console.log("Customer profile saved successfully");
+      if (import.meta.env.DEV) console.log("Customer profile saved successfully");
     } catch (profileError) {
       console.error(
         "Customer profile save failed:",
@@ -224,7 +224,7 @@ export default function LoginForm() {
       if (loginThunk.fulfilled.match(resultAction)) {
         const data = resultAction.payload;
         if (data.auth_type === "admin") {
-          console.log("[Auth Isolation: Admin] Login Success. Redirecting to admin dashboard.");
+          if (import.meta.env.DEV) console.log("[Auth Isolation: Admin] Login Success. Redirecting to admin dashboard.");
           toast.success("Welcome back, Admin!");
           localStorage.removeItem("login_cooldown_expiry");
           navigate("/admin/dashboard", { replace: true });
@@ -252,7 +252,7 @@ export default function LoginForm() {
         return;
       }
 
-      console.log("[Auth Isolation: Customer] Admin check bypassed. Initializing Firebase customer login flow.");
+      if (import.meta.env.DEV) console.log("[Auth Isolation: Customer] Admin check bypassed. Initializing Firebase customer login flow.");
 
       // 2. Firebase email login (Customer flow)
       const userCredential = await login(

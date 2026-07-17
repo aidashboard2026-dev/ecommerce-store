@@ -1,17 +1,17 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
+﻿import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { authAPI } from '@/shared/services/api'
 
-// ── Boot-time rehydration ─────────────────────────────────────────────────────
+// â”€â”€ Boot-time rehydration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Read persisted session from localStorage so Redux starts with the real state.
-// Without this, token is always null on page load → fetchMeThunk never fires →
-// initialized stays false → every ProtectedRoute spins forever.
+// Without this, token is always null on page load â†’ fetchMeThunk never fires â†’
+// initialized stays false â†’ every ProtectedRoute spins forever.
 
 const _persistedToken = localStorage.getItem('admin_token')
 const _persistedAdmin = (() => {
   try { return JSON.parse(localStorage.getItem('admin_user')) } catch { return null }
 })()
 
-// ── Thunks ────────────────────────────────────────────────────────────────────
+// â”€â”€ Thunks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const loginThunk = createAsyncThunk(
   'auth/login',
@@ -72,7 +72,7 @@ export const logoutThunk = createAsyncThunk(
   }
 )
 
-// ── Slice ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Slice â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const authSlice = createSlice({
   name: 'auth',
@@ -81,14 +81,14 @@ const authSlice = createSlice({
     admin: _persistedAdmin || null,
     loading: false,
     error: null,
-    // If no token exists at boot, there is nothing to fetch → already initialized.
-    // If a token exists, App.jsx will dispatch fetchMeThunk → initialized flips
+    // If no token exists at boot, there is nothing to fetch â†’ already initialized.
+    // If a token exists, App.jsx will dispatch fetchMeThunk â†’ initialized flips
     // to true when that resolves (fulfilled or rejected).
     initialized: !_persistedToken,
   },
   reducers: {
     logout(state) {
-      console.log("[Auth Isolation: Admin] Logout. Clearing admin session.");
+      if (import.meta.env.DEV) console.log("[Auth Isolation: Admin] Logout. Clearing admin session.");
       state.token = null
       state.admin = null
       state.error = null
@@ -101,7 +101,7 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // ── Login ──────────────────────────────────────────────────────────────
+      // â”€â”€ Login â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       .addCase(loginThunk.fulfilled,(state,action)=>{
 
         state.loading=false
@@ -129,7 +129,7 @@ const authSlice = createSlice({
         state.error = action.payload && typeof action.payload === 'object' ? action.payload.detail : action.payload;
       })
 
-      // ── fetchMe ────────────────────────────────────────────────────────────
+      // â”€â”€ fetchMe â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       .addCase(fetchMeThunk.fulfilled, (state, action) => {
         state.admin       = action.payload
         state.initialized = true
@@ -139,7 +139,7 @@ const authSlice = createSlice({
       .addCase(fetchMeThunk.rejected, (state, action) => {
         state.initialized = true
         if (action.payload?.sessionExpired) {
-          // Token is genuinely invalid/expired — clear everything
+          // Token is genuinely invalid/expired â€” clear everything
           state.token = null
           state.admin = null
           localStorage.removeItem('admin_token')
@@ -149,12 +149,12 @@ const authSlice = createSlice({
         // and let the next authenticated request retry naturally.
       })
 
-      // ── Signup ─────────────────────────────────────────────────────────────
+      // â”€â”€ Signup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       .addCase(signupThunk.pending,   (state)         => { state.loading = true;  state.error = null })
       .addCase(signupThunk.fulfilled, (state)         => { state.loading = false })
       .addCase(signupThunk.rejected,  (state, action) => { state.loading = false; state.error = action.payload })
       
-      // ── Logout ─────────────────────────────────────────────────────────────
+      // â”€â”€ Logout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       .addCase(logoutThunk.fulfilled, (state) => { state.loading = false })
   },
 })

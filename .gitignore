@@ -76,3 +76,8 @@ test-results/
 
 #coverage
 coverage
+
+#.agents
+.agents
+.opencode
+.hypothesis

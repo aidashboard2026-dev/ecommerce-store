@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { ImagePlus, Loader2, Pencil, Plus, Trash2, X, AlertTriangle, WifiOff } from "lucide-react";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import toast from "react-hot-toast";
+
 
 import { homepageCategoriesAPI } from "@/shared/services/api";
 import { compressImage } from "@/shared/utils/imageCompression";
@@ -579,12 +579,6 @@ export default function CategoriesPage() {
 
   return (
     <div className="min-h-screen bg-app px-0 py-2">
-      <ToastContainer
-        position="top-right"
-        autoClose={2500}
-        theme={isDark ? "dark" : "light"}
-      />
-
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes scaleIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }

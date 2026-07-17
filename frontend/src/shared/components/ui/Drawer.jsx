@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+﻿import React, { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -50,7 +50,7 @@ export default function Drawer({
     <div className="fixed inset-0 z-50 flex justify-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 transition-opacity duration-300 animate-fade-in"
+        className="absolute inset-0 bg-black/50 transition-opacity duration-300 animate-fade-in"
         onClick={onClose}
       />
 
@@ -88,3 +88,4 @@ export default function Drawer({
     </div>
   )
 }
+

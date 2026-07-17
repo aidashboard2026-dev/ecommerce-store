@@ -1,4 +1,4 @@
-// import React, { useEffect, useState } from "react";
+﻿// import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Users,
@@ -106,6 +106,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState(null);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [paymentActivity, setPaymentActivity] = useState([]);
   const [notificationActivity, setNotificationActivity] = useState([]);
@@ -123,9 +124,11 @@ export default function DashboardPage() {
         if (active) {
           setStats(statsRes.data);
           setActivity(actRes.data.activities || []);
+          setError(null);
         }
       } catch (e) {
         console.error(e);
+        setError('Failed to load dashboard data. Pull to refresh or try again later.');
       } finally {
         if (active) setLoading(false);
       }
@@ -180,6 +183,19 @@ export default function DashboardPage() {
   const liveProductCount = stats?.total_products ?? 0;
 
   if (loading) return <PageLoader />;
+
+  if (error) {
+    return (
+      <div className="space-y-6 max-w-[1400px] mx-auto animate-fade-in">
+        <PageHeader title="Dashboard" className={'border-b-0'} />
+        <div className="rounded-xl border border-red-400/30 bg-red-500/5 p-6 text-center">
+          <AlertTriangle size={36} className="mx-auto mb-3 text-red-400" />
+          <p className="text-sm font-semibold text-red-400">{error}</p>
+          <button onClick={() => window.location.reload()} className="mt-4 btn-primary text-sm">Retry</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-[1400px] mx-auto animate-fade-in">
@@ -404,8 +420,8 @@ export default function DashboardPage() {
                     {message.status}
                   </span>
                 </div>
-                <p className="text-xs text-muted mb-2">{message.name} · {new Date(message.created_at).toLocaleDateString()}</p>
-                <p className="text-sm text-muted line-clamp-3">{message.message}</p>
+                <p className="text-xs text-muted mb-2">{message.name} Â· {new Date(message.created_at).toLocaleDateString()}</p>
+                <p className="text-sm text-gray-600 line-clamp-3">{message.message}</p>
               </div>
             ))}
           </div>
@@ -419,8 +435,8 @@ export default function DashboardPage() {
           tabIndex={0}
           onClick={() => navigate("/admin/settings")}
           onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && navigate("/admin/settings")}
-          aria-label="Payment Activity — go to Settings"
-          className="cursor-pointer rounded-xl border border-amber-200 bg-surface p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-amber-900/40 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-amber-400/60"
+          aria-label="Payment Activity â€” go to Settings"
+          className="cursor-pointer rounded-xl border border-amber-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-amber-900/40 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-amber-400/60"
         >
           <div className="mb-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -471,8 +487,8 @@ export default function DashboardPage() {
           tabIndex={0}
           onClick={() => navigate("/admin/settings")}
           onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && navigate("/admin/settings")}
-          aria-label="Notification Activity — go to Settings"
-          className="cursor-pointer rounded-xl border border-rose-200 bg-surface p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-rose-900/40 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-rose-400/60"
+          aria-label="Notification Activity â€” go to Settings"
+          className="cursor-pointer rounded-xl border border-rose-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-rose-900/40 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-rose-400/60"
         >
           <div className="mb-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -573,3 +589,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
