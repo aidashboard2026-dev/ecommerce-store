@@ -299,13 +299,23 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
 
   const editMutation = useMutation({
     mutationFn: data => customProductsAPI.update(product.id, data),
-    onSuccess: () => { toast.success('Product updated successfully.'); qc.invalidateQueries({queryKey: ['custom-products']}); onClose() },
+    onSuccess: () => {
+      toast.success('Product updated successfully.')
+      qc.invalidateQueries({ queryKey: ['custom-products'] })
+      qc.invalidateQueries({ queryKey: ['custom-product'] })
+      onClose()
+    },
     onError: e => toast.error(getApiErrorMessage(e, 'Something went wrong')),
   })
 
   const editPubMutation = useMutation({
     mutationFn: data => customProductsAPI.update(product.id, { ...data, status: 'published' }),
-    onSuccess: () => { toast.success('Product published successfully.'); qc.invalidateQueries({queryKey: ['custom-products']}); onClose() },
+    onSuccess: () => {
+      toast.success('Product published successfully.')
+      qc.invalidateQueries({ queryKey: ['custom-products'] })
+      qc.invalidateQueries({ queryKey: ['custom-product'] })
+      onClose()
+    },
     onError: e => toast.error(getApiErrorMessage(e, 'Something went wrong')),
   })
 
@@ -426,12 +436,14 @@ export default function CustomProductForm({ product, onClose, onOpenVariant, onO
 
     if (!hadPartialFailure) {
       toast.success(overrideStatus === 'published' ? 'Product published successfully.' : 'Product created successfully.')
-      qc.invalidateQueries({queryKey: ['custom-products']})
+      qc.invalidateQueries({ queryKey: ['custom-products'] })
+      qc.invalidateQueries({ queryKey: ['custom-product'] })
       setSaveSteps(null)
       isSavingRef.current = false
       onClose()
     } else {
-      qc.invalidateQueries({queryKey: ['custom-products']})
+      qc.invalidateQueries({ queryKey: ['custom-products'] })
+      qc.invalidateQueries({ queryKey: ['custom-product'] })
       isSavingRef.current = false
     }
   }
