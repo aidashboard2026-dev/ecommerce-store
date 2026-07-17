@@ -45,7 +45,6 @@ api.interceptors.response.use(
                         error.config?.url?.endsWith('/auth/signup')
     if (error.response?.status === 401 && !isAuthRoute) {
       localStorage.removeItem('admin_token')
-      localStorage.removeItem('admin_user')
       window.dispatchEvent(new CustomEvent('auth:unauthorized'))
     }
     return Promise.reject(error)

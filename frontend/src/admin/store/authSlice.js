@@ -7,9 +7,6 @@ import { authAPI } from '@/shared/services/api'
 // initialized stays false â†’ every ProtectedRoute spins forever.
 
 const _persistedToken = localStorage.getItem('admin_token')
-const _persistedAdmin = (() => {
-  try { return JSON.parse(localStorage.getItem('admin_user')) } catch { return null }
-})()
 
 // â”€â”€ Thunks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -78,7 +75,7 @@ const authSlice = createSlice({
   name: 'auth',
   initialState: {
     token: _persistedToken || null,
-    admin: _persistedAdmin || null,
+    admin: null,
     loading: false,
     error: null,
     // If no token exists at boot, there is nothing to fetch â†’ already initialized.
@@ -93,7 +90,6 @@ const authSlice = createSlice({
       state.admin = null
       state.error = null
       localStorage.removeItem('admin_token')
-      localStorage.removeItem('admin_user')
     },
     clearError(state) {
       state.error = null
@@ -116,11 +112,6 @@ const authSlice = createSlice({
               "admin_token",
               action.payload.access_token
           )
-
-          localStorage.setItem(
-              "admin_user",
-              JSON.stringify(action.payload.admin)
-          )
         }
 
       })
@@ -133,8 +124,6 @@ const authSlice = createSlice({
       .addCase(fetchMeThunk.fulfilled, (state, action) => {
         state.admin       = action.payload
         state.initialized = true
-        // Keep admin cache fresh in case name/role was updated server-side
-        localStorage.setItem('admin_user', JSON.stringify(action.payload))
       })
       .addCase(fetchMeThunk.rejected, (state, action) => {
         state.initialized = true
@@ -143,7 +132,6 @@ const authSlice = createSlice({
           state.token = null
           state.admin = null
           localStorage.removeItem('admin_token')
-          localStorage.removeItem('admin_user')
         }
         // Otherwise (network/server error): keep the existing session as-is
         // and let the next authenticated request retry naturally.

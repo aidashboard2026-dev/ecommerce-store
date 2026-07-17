@@ -919,6 +919,22 @@ def create_product(db: Session, product_in: ProductCreate) -> ProductResponse:
         )
     slug = _ensure_unique_slug(db, base_slug)
 
+    if product_in.category_id is not None:
+        category = db.query(Category).filter(Category.id == product_in.category_id).first()
+        if not category:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Category with id {product_in.category_id} not found.",
+            )
+
+    if product_in.collection_id is not None:
+        collection = db.query(Collection).filter(Collection.id == product_in.collection_id).first()
+        if not collection:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Collection with id {product_in.collection_id} not found.",
+            )
+
     product = Product(
         title=product_in.title,
         slug=slug,
@@ -1023,7 +1039,13 @@ def update_product(db: Session, product_id: int, product_in: ProductUpdate) -> P
         patch["slug"] = _ensure_unique_slug(db, base_slug, exclude_id=product_id)
 
     if "status" in patch and patch["status"]:
-        patch["status"] = ProductStatus(patch["status"])
+        new_status = ProductStatus(patch["status"])
+        if new_status == ProductStatus.published and not product.variants:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Cannot publish a product with no variants.",
+            )
+        patch["status"] = new_status
 
     if "genders" in patch:
         product.genders_rel.clear()
@@ -1054,8 +1076,11 @@ def update_product(db: Session, product_id: int, product_in: ProductUpdate) -> P
 
 def soft_delete_product(db: Session, product_id: int) -> None:
     from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
     product = get_product(db, product_id)
-    product.deleted_at = datetime.now(timezone.utc)
+    product.deleted_at = now
+    for variant in product.variants:
+        variant.deleted_at = now
     db.commit()
 
 
@@ -1082,6 +1107,12 @@ def bulk_action(db: Session, payload: BulkActionPayload) -> dict:
     action = payload.action
 
     if action == "publish":
+        no_variants = [p.id for p in products if not p.variants]
+        if no_variants:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Cannot publish product(s) with no variants: {no_variants}",
+            )
         for p in products:
             p.status = ProductStatus.published
     elif action == "unpublish":
@@ -1094,6 +1125,8 @@ def bulk_action(db: Session, payload: BulkActionPayload) -> dict:
         now = datetime.now(timezone.utc)
         for p in products:
             p.deleted_at = now
+            for variant in p.variants:
+                variant.deleted_at = now
     elif action == "move_category":
         if not payload.category_id:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "category_id required for move_category.")
@@ -1225,9 +1258,24 @@ def add_variant(db: Session, product_id: int, variant_in: VariantCreate) -> Prod
     db.add(variant)
     try:
         db.commit()
-    except Exception as e:
+    except IntegrityError as exc:
         db.rollback()
-        raise e
+        if "sku" in str(exc).lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"A variant with SKU '{variant.sku}' already exists.",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Database integrity constraint violation while adding variant.",
+        )
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"Unexpected error in add_variant: {exc}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while adding the variant.",
+        )
 
     return get_product_response(db, product_id)
 

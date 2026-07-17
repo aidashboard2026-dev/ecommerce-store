@@ -213,6 +213,27 @@ def update_tracking(
 
 
 # ─────────────────────────────────────────────────────────────
+# Admin — cleanup expired unpaid orders
+# ─────────────────────────────────────────────────────────────
+
+@router.post("/cleanup-expired", status_code=status.HTTP_200_OK)
+def cleanup_expired_reservations(
+    expiry_minutes: int = Query(30, ge=5, description="Orders older than this many minutes with payment_status=PENDING will be cancelled"),
+    db: Session = Depends(get_db),
+    current_admin: Admin = Depends(get_current_admin),
+):
+    """Cancel unpaid orders older than *expiry_minutes* and restore stock to inventory.
+
+    Safe to call repeatedly (idempotent). Designed for external cron jobs
+    (e.g. GitHub Actions scheduled workflow hitting this endpoint).
+
+    Returns {\"cancelled\": int}.
+    """
+    count = order_service.release_expired_reservations(db, expiry_minutes=expiry_minutes)
+    return {"cancelled": count}
+
+
+# ─────────────────────────────────────────────────────────────
 # Customer storefront
 # ─────────────────────────────────────────────────────────────
 

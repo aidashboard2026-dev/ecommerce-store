@@ -254,29 +254,6 @@ class CustomProduct(Base):
 
 
     # -------------------------------------------------
-    # Inventory
-    # -------------------------------------------------
-
-    stock_quantity = Column(
-        Integer,
-        nullable=False,
-        default=0,
-        index=True,
-    )
-
-    low_stock_threshold = Column(
-        Integer,
-        nullable=False,
-        default=5,
-    )
-
-    size = Column(
-        String(100),
-        nullable=False,
-        default="All Size",
-    )
-
-    # -------------------------------------------------
     # Timestamps
     # -------------------------------------------------
 

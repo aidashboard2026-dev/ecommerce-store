@@ -8,8 +8,8 @@ export function useBusinessLimits() {
       const response = await settingsService.getBusinessLimits()
       return response.data
     },
-    staleTime: Infinity,
-    gcTime: Infinity,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
     retry: 1,
     refetchOnWindowFocus: false,
     refetchOnMount: false,

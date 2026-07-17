@@ -43,16 +43,6 @@ class CreatePaymentResponse(BaseModel):
 # Verify Razorpay Payment
 # ----------------------------------------------------------------------
 
-class VerifyPaymentRequest(BaseModel):
-    """
-    Payload received after successful Razorpay payment.
-    """
-
-    razorpay_order_id: str
-    razorpay_payment_id: str
-    razorpay_signature: str
-
-
 class VerifyPaymentResponse(BaseModel):
     """
     Response after signature verification.

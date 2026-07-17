@@ -101,6 +101,7 @@ export default function OrderStatusAnalytics({ isDark }) {
     let active = true
 
    async function loadOrders() {
+    
       try {
         // Analytics widget only needs status distribution — fetch a single
         // page of up to 500 recent orders rather than all 10,000.

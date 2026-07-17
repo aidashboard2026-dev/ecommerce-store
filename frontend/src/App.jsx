@@ -10,6 +10,7 @@ import {
   initializeCustomerAuth,
 } from "@/storefront/store/customerSlice";
 import AppRoutes from "@/shared/routes/AppRoutes";
+import ErrorBoundary from "@/shared/components/common/ErrorBoundary";
 import useStoreSettings from "@/shared/hooks/useStoreSettings";
 
 import { loadCustomerCollectionsThunk } from "@/storefront/store/customerCollectionThunks";
@@ -27,7 +28,7 @@ function App() {
     (state) => state.customer.initialized,
   );
 
-  const { settings } = useStoreSettings();
+  const { settings, isLoading: settingsLoading } = useStoreSettings();
 
   // --------------------------------------------------
   // Store settings
@@ -107,7 +108,7 @@ function App() {
   // Application loading
   // --------------------------------------------------
 
-  if (!adminInitialized || !customerInitialized) {
+  if (!adminInitialized || !customerInitialized || settingsLoading) {
     return (
       <div className="min-h-screen bg-app flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -132,7 +133,9 @@ function App() {
         v7_relativeSplatPath: true,
       }}
     >
-      <AppRoutes />
+      <ErrorBoundary>
+        <AppRoutes />
+      </ErrorBoundary>
 
       <Toaster
         position="top-right"

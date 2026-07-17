@@ -471,11 +471,7 @@ def create_order_admin(
         try:
             from app.shared.email.service import send_order_confirmation_with_invoice
             import asyncio
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                loop.create_task(send_order_confirmation_with_invoice(order, db=db))
-            else:
-                asyncio.run(send_order_confirmation_with_invoice(order, db=db))
+            asyncio.run(send_order_confirmation_with_invoice(order, db=db))
         except Exception as e:
             logger.error(f"Failed to send order confirmation with invoice: {e}", exc_info=True)
 
@@ -503,13 +499,14 @@ def reconcile_pending_orders(db: Session, customer_email: str):
     for o in pending_orders:
         by_rzp_id[o.razorpay_order_id].append(o)
 
-    from app.core.config import settings
-    import razorpay
+    from app.modules.payments.service import payment_service
+
+    # Release the read transaction before making HTTP calls to Razorpay.
+    # This prevents holding a DB connection open during network I/O.
+    db.commit()
 
     try:
-        client = razorpay.Client(
-            auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
-        )
+        client = payment_service.client
         for rzp_order_id, orders in by_rzp_id.items():
             try:
                 rzp_order = client.order.fetch(rzp_order_id)
@@ -551,6 +548,57 @@ def reconcile_pending_orders(db: Session, customer_email: str):
                 )
     except Exception as general_err:
         logger.error("Failed to run Razorpay reconciliation: %s", general_err)
+
+
+def release_expired_reservations(
+    db: Session,
+    expiry_minutes: int = 30,
+) -> int:
+    """
+    Find orders that were created (ordered_at) more than *expiry_minutes* ago,
+    still have payment_status = 'PENDING' and tracking_status = 'PLACED', and
+    auto-cancel them — restoring stock to inventory.
+
+    Returns the number of orders cancelled.
+
+    Designed to be called periodically (e.g. by an external cron job hitting an
+    admin endpoint). If the project later adds a proper scheduler, this function
+    is the single integration point.
+    """
+    from datetime import timedelta
+
+    cutoff = datetime.utcnow() - timedelta(minutes=expiry_minutes)
+
+    stale_orders = db.query(Order).filter(
+        Order.payment_status == "PENDING",
+        Order.tracking_status == "PLACED",
+        Order.ordered_at < cutoff,
+    ).all()
+
+    if not stale_orders:
+        return 0
+
+    from app.modules.orders.repository import OrderRepository
+    repo = OrderRepository(db)
+
+    cancelled_count = 0
+    for order in stale_orders:
+        try:
+            repo.update_order_fields(order, {"tracking_status": TrackingStatus.CANCELLED})
+            _restore_inventory(db, repo, order)
+            cancelled_count += 1
+        except Exception as exc:
+            logger.error(
+                "release_expired_reservations: failed to cancel order %s: %s",
+                order.id, exc,
+                exc_info=True,
+            )
+
+    if cancelled_count:
+        db.commit()
+        logger.info("release_expired_reservations: cancelled %d stale order(s).", cancelled_count)
+
+    return cancelled_count
 
 
 def process_razorpay_webhook_payment(
@@ -741,11 +789,7 @@ def create_order_customer(
         try:
             from app.shared.email.service import send_order_confirmation_with_invoice
             import asyncio
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                loop.create_task(send_order_confirmation_with_invoice(order, db=db))
-            else:
-                asyncio.run(send_order_confirmation_with_invoice(order, db=db))
+            asyncio.run(send_order_confirmation_with_invoice(order, db=db))
         except Exception as e:
             logger.error(f"Failed to send order confirmation with invoice: {e}", exc_info=True)
 
@@ -1060,9 +1104,8 @@ def create_razorpay_order(
     Find all orders with cart_session_id belonging to customer, calculate total,
     reuse existing pending and usable Razorpay order if present, or create a new one.
     """
+    from app.modules.payments.service import payment_service
     from app.shared.exceptions import ExternalServiceError, NotFoundError
-    import razorpay
-    from app.core.config import settings
 
     repo = OrderRepository(db)
     # Lock matching order rows to serialize concurrent Razorpay order creation requests
@@ -1118,9 +1161,7 @@ def create_razorpay_order(
             code="INVALID_AMOUNT",
         )
 
-    client = razorpay.Client(
-        auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
-    )
+    client = payment_service.client
 
     # Check for order reuse eligibility (Case 1 vs Case 2)
     existing_order_id = orders[0].razorpay_order_id if orders else None
@@ -1254,10 +1295,9 @@ def verify_razorpay_payment(
     Verify the payment signature with Razorpay SDK, update payment status to PAID,
     tracking status to CONFIRMED, and record payment metadata.
     """
+    from app.modules.payments.service import payment_service
     from app.shared.exceptions import ConflictError, NotFoundError
     from app.modules.orders.constants import PaymentStatus, TrackingStatus
-    import razorpay
-    from app.core.config import settings
 
     repo = OrderRepository(db)
     # Lock matching order rows to serialize concurrent verification requests
@@ -1310,9 +1350,7 @@ def verify_razorpay_payment(
 
     # 3. Signature Verification using official SDK
     try:
-        client = razorpay.Client(
-            auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
-        )
+        client = payment_service.client
         client.utility.verify_payment_signature(
             {
                 "razorpay_order_id": razorpay_order_id,

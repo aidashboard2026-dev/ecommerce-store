@@ -210,12 +210,23 @@ def admin_login(
     admin_exists = db.query(Admin).filter(Admin.email == norm_email).first()
 
     if not admin_exists:
-        return {
-            "auth_type": "customer",
-            "access_token": None,
-            "token_type": None,
-            "admin": None
-        }
+        _record_failure(ip)
+
+        logger.warning(
+            "Admin Login Failure | IP: %s | Email: %s | Error: Invalid email or password",
+            ip,
+            login_data.email,
+        )
+
+        raise HTTPException(
+            status_code=(
+                status
+                .HTTP_401_UNAUTHORIZED
+            ),
+            detail=(
+                "Invalid email or password."
+            ),
+        )
 
     _check_rate_limit(
         ip

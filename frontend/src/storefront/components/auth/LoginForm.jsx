@@ -85,7 +85,7 @@ export default function LoginForm() {
 
   const saveCustomerSession = (responseData) => {
     const accessToken = responseData.access_token;
-    console.log("[Auth Isolation: Customer] Saving customer session for:", responseData.customer?.email);
+    if (import.meta.env.DEV) console.log("[Auth Isolation: Customer] Saving customer session for:", responseData.customer?.email);
 
     axios.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
 

@@ -58,14 +58,14 @@ class DashboardRepository:
     def _revenue_filters(self):
         """Filters that define a 'realised revenue' order."""
         return (
-            func.lower(Order.tracking_status) == REVENUE_STATUS,
-            func.lower(Order.payment_status)  == REVENUE_PAYMENT,
+            Order.tracking_status == REVENUE_STATUS,
+            Order.payment_status  == REVENUE_PAYMENT,
         )
 
     def _active_order_filters(self):
         """Filters that define an 'active sale' order."""
         return (
-            func.lower(Order.tracking_status).in_(ACTIVE_SALES_STATUSES),
+            Order.tracking_status.in_(ACTIVE_SALES_STATUSES),
         )
 
     # ── Scalar counts ─────────────────────────────────────────────────────────
@@ -146,8 +146,8 @@ class DashboardRepository:
             func.coalesce(func.sum(Order.total_amount), 0),
             func.count(Order.id),
         ).filter(
-            func.lower(Order.tracking_status) == REVENUE_STATUS,
-            func.lower(Order.payment_method).in_(payment_methods),
+            Order.tracking_status == REVENUE_STATUS,
+            Order.payment_method.in_(payment_methods),
         )
         if start_at:
             q = q.filter(Order.ordered_at >= start_at)

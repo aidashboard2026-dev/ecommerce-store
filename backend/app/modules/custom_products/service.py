@@ -251,9 +251,6 @@ def _build_product_response(
         view_count=p.view_count or 0,
         orders_count=p.orders_count or 0,
         sales_count=p.sales_count or 0,
-        stock_quantity=p.stock_quantity,
-        low_stock_threshold=p.low_stock_threshold,
-        size=p.size,
         whatsapp_message=p.whatsapp_message,
         created_at=p.created_at,
         updated_at=p.updated_at,
@@ -475,11 +472,6 @@ def create_custom_product(
         gallery_images=data.gallery_images or [],
 
         whatsapp_message=data.whatsapp_message,
-
-        stock_quantity=data.stock_quantity,
-        low_stock_threshold=data.low_stock_threshold,
-
-        size=data.size,
     )
     
 

@@ -328,7 +328,26 @@ const StoreHeaderComponent = function StoreHeader({
                     >
                       <User size={13} /> My Account
                     </Link>
+                    <Link
+                      to="/profile/orders"
+                      onClick={() => setProfileMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-xs text-app hover:bg-surface transition-colors"
+                      role="menuitem"
+                    >
+                      <ClipboardList size={13} /> Orders
+                    </Link>
                     <hr className="border-app my-1" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        handleLogout();
+                      }}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-xs text-red-500 hover:bg-surface transition-colors"
+                      role="menuitem"
+                    >
+                      <LogOut size={13} /> Logout
+                    </button>
                   </div>
                 )}
               </div>
