@@ -371,47 +371,7 @@ export default function ContactMessagesPage() {
                 </tbody>
               </table>
             </div>
-          {/* Pagination */}
-          {/* {!loading && messages.length > 0 && (
-            <div className="px-6 py-4 border-t flex items-center justify-between bg-surface">
-              <div className="text-sm text-muted">
-                Showing {Math.min((page - 1) * pageSize + 1, totalMessages)} to{' '}
-                {Math.min(page * pageSize, totalMessages)} of {totalMessages} messages
-              </div>
-
-              <div className="flex items-center gap-2">
-                <select
-                  value={pageSize}
-                  onChange={(e) => setPageSize(Number(e.target.value))}
-                  className="px-2 py-1 text-sm border border-app rounded"
-                >
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                </select>
-
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="p-2 hover:bg-surface rounded disabled:opacity-50"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-
-                <span className="text-sm font-medium">
-                  Page {page} of {totalPages}
-                </span>
-
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="p-2 hover:bg-surface rounded disabled:opacity-50"
-                >
-                  <ChevronRight size={18} />
-                </button>
-              </div>
-            </div> */}
-          {/* )} */}
+          )}
 
           {!loading && totalPages>1&&(
 
@@ -428,6 +388,7 @@ export default function ContactMessagesPage() {
             />
 
             </div>
+          )}
         </div>
       </div>
 

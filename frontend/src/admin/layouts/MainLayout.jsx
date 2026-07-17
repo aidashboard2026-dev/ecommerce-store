@@ -4,10 +4,9 @@ import { useSelector } from 'react-redux'
 import clsx from 'clsx'
 
 import Header from '@/admin/components/layout/Header'
-import PageHeader from "@/shared/components/ui/PageHeader";
+import AdminTopBar from '@/admin/components/layout/AdminTopBar'
 import { PageLoader } from '@/shared/components/common/Spinner'
 import LoginSummaryToast from '@/admin/components/layout/LoginSummaryToast'
-
 
 const pageTitles = {
   '/admin': 'Dashboard',
@@ -29,7 +28,6 @@ const pageTitles = {
 
 export default function MainLayout() {
   const location = useLocation()
-  // Resolve title: exact match first, then pattern match dynamic segments
   const title = pageTitles[location.pathname] ?? (() => {
     const p = location.pathname
     if (/^\/admin\/products\/[^/]+\/edit$/.test(p)) return 'Edit Product'
@@ -39,7 +37,6 @@ export default function MainLayout() {
     if (/^\/admin\/offers\/[^/]+$/.test(p))         return 'Edit Offer'
     return 'Dashboard'
   })()
-
   const mainRef = useRef(null)
   const [isScrolled, setIsScrolled] = useState(false)
   const sidebarOpen = useSelector((s) => s.ui.sidebarOpen)
@@ -78,12 +75,10 @@ export default function MainLayout() {
         {/* Sticky Header */}
         <div
           className={clsx(
-            'md:sticky md:top-0 z-20 md:pl-60 md:transition-all md:duration-300',
+            'md:sticky md:top-0 z-20 md:pl-60',
           )}
         >
-          <div className="mx-auto w-full max-w-[1400px]">
-            <PageHeader title={title} />
-          </div>
+          <AdminTopBar title={title} />
         </div>
 
         {/* Page Content */}
