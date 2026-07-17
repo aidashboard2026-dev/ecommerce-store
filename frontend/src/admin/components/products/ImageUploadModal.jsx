@@ -619,4 +619,3 @@ export default function ImageUploadModal({
     </Modal>
   );
 }
-
