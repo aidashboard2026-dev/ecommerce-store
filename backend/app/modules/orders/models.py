@@ -73,9 +73,11 @@ class Order(Base):
     quantity      = Column(Integer, default=1)
 
     # Numeric(10, 2) — exact decimal arithmetic; no floating-point rounding errors.
-    price        = Column(Numeric(precision=10, scale=2), default=0)
-    shipping_fee = Column(Numeric(precision=10, scale=2), default=0)
-    total_amount = Column(Numeric(precision=10, scale=2), default=0)
+    price         = Column(Numeric(precision=10, scale=2), default=0)
+    shipping_fee  = Column(Numeric(precision=10, scale=2), default=0)
+    discount_amount = Column(Numeric(precision=10, scale=2), default=0)
+    total_amount  = Column(Numeric(precision=10, scale=2), default=0)
+    coupon_code   = Column(String(50), nullable=True, index=True)
 
     # ── Payment ──────────────────────────────────────────────────────────────
     payment_method = Column(String(50), default="COD")

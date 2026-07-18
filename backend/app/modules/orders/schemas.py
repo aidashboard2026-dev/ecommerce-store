@@ -39,10 +39,15 @@ class OrderBase(BaseModel):
     color:    Optional[str] = Field(None, max_length=50)
     quantity: int            = Field(1, ge=1, le=1000)
 
-    # Decimal matches Numeric(10,2) on the database — no floating-point rounding.
-    price:        Decimal = Field(default=Decimal("0.00"), ge=0)
-    shipping_fee: Decimal = Field(default=Decimal("0.00"), ge=0)
-    total_amount: Decimal = Field(default=Decimal("0.00"), ge=0)
+    # SECURITY: These fields are IGNORED when received from frontend.
+    # Backend always recalculates from database prices (ProductVariant.selling_price).
+    # Values are accepted for backward compatibility but overridden server-side.
+    price:          Optional[Decimal] = Field(default=None, ge=0)
+    shipping_fee:   Optional[Decimal] = Field(default=None, ge=0)
+    discount_amount: Optional[Decimal] = Field(default=None, ge=0)
+    total_amount:   Optional[Decimal] = Field(default=None, ge=0)
+    # Frontend sends ONLY coupon_code — backend validates and calculates discount.
+    coupon_code:    Optional[str] = Field(default=None, max_length=50)
 
     payment_method: str = Field("COD",     max_length=50)
     payment_status: str = Field("PENDING", max_length=50)
@@ -210,9 +215,15 @@ class CartItem(BaseModel):
     size: Optional[str] = Field(None, max_length=50)
     color: Optional[str] = Field(None, max_length=50)
     quantity: int = Field(1, ge=1, le=1000)
-    price: Decimal = Field(default=Decimal("0.00"), ge=0)
-    total_amount: Decimal = Field(default=Decimal("0.00"), ge=0)
-    shipping_fee: Decimal = Field(default=Decimal("0.00"), ge=0)
+    # SECURITY: price, total_amount, shipping_fee, discount_amount are IGNORED
+    # from frontend. Backend always recalculates from ProductVariant.selling_price
+    # in the database and coupon validation. These fields exist for backward
+    # compatibility only.
+    price: Optional[Decimal] = Field(default=None, ge=0)
+    total_amount: Optional[Decimal] = Field(default=None, ge=0)
+    shipping_fee: Optional[Decimal] = Field(default=None, ge=0)
+    discount_amount: Optional[Decimal] = Field(default=None, ge=0)
+    coupon_code: Optional[str] = Field(default=None, max_length=50)
     item_type: str = Field(
         default=ItemType.PRODUCT,
         description="PRODUCT or CUSTOM_PRODUCT",
@@ -234,6 +245,8 @@ class RazorpayOrderCreateRequest(BaseModel):
     """
     cart_session_id: str = Field(..., min_length=1, max_length=100)
     items: Optional[List[CartItem]] = None
+    # SECURITY: Only coupon_code is accepted. Backend validates and calculates discount.
+    coupon_code: Optional[str] = Field(default=None, max_length=50)
 
     # Delivery address — required when items are provided (production flow)
     customer_name: Optional[str] = Field(None, max_length=200)

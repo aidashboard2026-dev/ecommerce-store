@@ -224,11 +224,74 @@ def _build_and_persist_order(
     data["ordered_at"]             = now_utc
     data["item_type"]              = (order_in.item_type or ItemType.PRODUCT).upper()
 
+    # ── SECURITY: Override frontend-submitted prices with database values ──
+    # Never trust price, shipping_fee, or total_amount from the client.
+    # Fetch the actual selling_price from ProductVariant in the database.
+    from decimal import Decimal
+    qty = Decimal(str(order_in.quantity or 1))
+    item_type_upper = data["item_type"]
+
+    if item_type_upper == ItemType.PRODUCT and order_in.size and order_in.product_id:
+        variant = repo.lock_variant_for_order(
+            product_id=order_in.product_id,
+            product_name=order_in.product_name,
+            size=order_in.size,
+            color=order_in.color,
+        )
+        if variant is not None:
+            data["price"] = Decimal(str(variant.selling_price))
+
+    # Fallback: if price is still None/0 from frontend and no variant was found
+    db_price = data.get("price")
+    if db_price is None:
+        db_price = Decimal("0.00")
+    else:
+        db_price = Decimal(str(db_price))
+
+    data["price"] = db_price
+    data["total_amount"] = db_price * qty
+    # SECURITY: shipping_fee is calculated server-side at the cart level.
+    # Individual orders are stored with 0.00 shipping; the cart-level total
+    # (including shipping) is computed by create_razorpay_order / merge logic.
+    data["shipping_fee"] = Decimal("0.00")
+
+    # ── SECURITY: Coupon validation ──────────────────────────────────────
+    # Only coupon_code is accepted from frontend. Backend does all validation
+    # and discount calculation. Any discount_amount value from frontend is
+    # always overridden.
+    coupon_code = order_in.coupon_code
+    if coupon_code:
+        data["coupon_code"] = coupon_code.strip().upper()
+        item_subtotal = db_price * qty
+        customer_email = data.get("customer_email")
+        from app.modules.coupons.service import validate_coupon, record_usage
+        result = validate_coupon(repo.db, code=coupon_code, subtotal=item_subtotal, customer_email=customer_email)
+        if result["valid"]:
+            data["discount_amount"] = result["discount_amount"]
+        else:
+            data["coupon_code"] = None
+            data["discount_amount"] = Decimal("0.00")
+    else:
+        data["coupon_code"] = None
+        data["discount_amount"] = Decimal("0.00")
+
     # ── Inventory check + decrement (atomic with the order INSERT) ────────────
     _check_and_decrement_stock(repo, order_in)
 
     order = Order(order_number=order_number, **data)
-    return repo.create_order(order)
+    created_order = repo.create_order(order)
+
+    # Record coupon usage after order is created (now we have order.id)
+    if coupon_code and data.get("discount_amount") and data["discount_amount"] > 0 and customer_email:
+        from app.modules.coupons.service import lookup_coupon
+        coupon = lookup_coupon(repo.db, coupon_code)
+        if coupon:
+            try:
+                record_usage(repo.db, coupon_id=coupon.id, order_id=created_order.id, customer_email=customer_email)
+            except Exception:
+                pass
+
+    return created_order
 
 
 def trigger_low_stock_alerts_post_commit(
@@ -803,21 +866,47 @@ def create_order_customer(
                     "shipping_fee": str(existing_session_order.shipping_fee),
                 }
                 current_line_items.append(first_item)
+            # ── SECURITY: Never trust frontend prices ──────────────────────
+            item_type = (order_in.item_type or ItemType.PRODUCT).upper()
+            db_price = Decimal("0.00")
+            if item_type == ItemType.PRODUCT and order_in.size and order_in.product_id:
+                variant = repo.lock_variant_for_order(
+                    product_id=order_in.product_id, product_name=order_in.product_name, size=order_in.size, color=order_in.color,
+                )
+                if variant is not None:
+                    db_price = Decimal(str(variant.selling_price))
+            if db_price == Decimal("0.00") and order_in.price is not None:
+                db_price = Decimal(str(order_in.price))
+
+            item_qty = order_in.quantity or 1
+            item_total = db_price * Decimal(str(item_qty))
             new_item = {
                 "product_name": order_in.product_name,
                 "product_id": order_in.product_id,
                 "size": order_in.size,
                 "color": order_in.color,
                 "quantity": order_in.quantity,
-                "price": str(order_in.price),
-                "total_amount": str(order_in.total_amount),
-                "shipping_fee": str(order_in.shipping_fee),
+                "price": str(db_price),
+                "total_amount": str(item_total),
+                "shipping_fee": "0.00",
+                "item_type": order_in.item_type,
             }
             current_line_items.append(new_item)
+
+            # Recalculate order totals server-side from all line items
+            SHIPPING_THRESHOLD = Decimal("999.00")
+            FLAT_SHIPPING_FEE = Decimal("79.00")
+            line_subtotal = sum(Decimal(str(li.get("total_amount", 0))) for li in current_line_items)
+            total_shipping = Decimal("0.00") if line_subtotal >= SHIPPING_THRESHOLD else FLAT_SHIPPING_FEE
+            # Apply shipping to first line item for compatibility
+            if current_line_items and total_shipping > 0:
+                first_total = Decimal(str(current_line_items[0]["total_amount"]))
+                current_line_items[0]["total_amount"] = str(first_total + total_shipping)
+                current_line_items[0]["shipping_fee"] = str(total_shipping)
             existing_session_order.line_items = json.dumps(current_line_items)
-            existing_session_order.total_amount += order_in.total_amount
-            existing_session_order.quantity += order_in.quantity
-            existing_session_order.shipping_fee += order_in.shipping_fee
+            existing_session_order.total_amount = line_subtotal + total_shipping
+            existing_session_order.quantity = sum(li.get("quantity", 1) or 1 for li in current_line_items)
+            existing_session_order.shipping_fee = total_shipping
             db.flush()
             db.refresh(existing_session_order)
             logger.info(
@@ -1180,6 +1269,7 @@ def create_razorpay_order(
     customer: Customer,
     items=None,
     address: Optional[dict] = None,
+    coupon_code: Optional[str] = None,
 ) -> dict:
     """
     Create a Razorpay Order for a cart session.
@@ -1198,7 +1288,7 @@ def create_razorpay_order(
     repo = OrderRepository(db)
 
     if items is not None:
-        return _create_razorpay_order_from_items(db, repo, client, cart_session_id, customer, items, address)
+        return _create_razorpay_order_from_items(db, repo, client, cart_session_id, customer, items, address, coupon_code=coupon_code)
 
     return _create_razorpay_order_from_existing_orders(db, repo, client, cart_session_id, customer)
 
@@ -1211,6 +1301,7 @@ def _create_razorpay_order_from_items(
     customer: Customer,
     items: list,
     address: Optional[dict],
+    coupon_code: Optional[str] = None,
 ) -> dict:
     from app.shared.exceptions import ExternalServiceError
 
@@ -1262,28 +1353,87 @@ def _create_razorpay_order_from_items(
     else:
         total_shipping = Decimal("0.00")
         total_amount = Decimal("0.00")
+        resolved_items = []
 
         for item in items:
-            item_total = item.price * item.quantity
-            total_amount += item_total
-            if item.shipping_fee:
-                total_shipping += item.shipping_fee
-
             item_type = (item.item_type or ItemType.PRODUCT).upper()
-            if item_type == ItemType.PRODUCT and item.size:
+            qty = Decimal(str(item.quantity or 1))
+
+            # ── SECURITY: Never trust frontend prices ──────────────────────
+            # Look up variant from DB to get the real selling_price.
+            # For standard products (PRODUCT + size), vendor price is authoritative.
+            # For custom products, we fall back to the submitted price since
+            # there is no variant record to validate against.
+            db_price = Decimal("0.00")
+            if item_type == ItemType.PRODUCT and item.size and item.product_id:
                 variant = repo.lock_variant_for_order(
                     product_id=item.product_id, product_name=item.product_name, size=item.size, color=item.color,
                 )
                 if variant is not None:
-                    qty = item.quantity or 1
-                    if variant.stock_quantity < qty:
+                    db_price = Decimal(str(variant.selling_price))
+                    v_qty = item.quantity or 1
+                    if variant.stock_quantity < v_qty:
                         raise BusinessRuleError(
-                            f"Insufficient stock for '{item.product_name}' (size: {item.size}). Available: {variant.stock_quantity}, requested: {qty}.",
+                            f"Insufficient stock for '{item.product_name}' (size: {item.size}). Available: {variant.stock_quantity}, requested: {v_qty}.",
                             code="INSUFFICIENT_STOCK",
-                            context={"product": item.product_name, "size": item.size, "available": variant.stock_quantity, "requested": qty},
+                            context={"product": item.product_name, "size": item.size, "available": variant.stock_quantity, "requested": v_qty},
                         )
+                # If variant is None (no inventory record), fall through to frontend price
+                # This covers legacy products without variant records
+            if db_price == Decimal("0.00") and item.price is not None:
+                db_price = Decimal(str(item.price))
 
-        total_amount += total_shipping
+            item_total = db_price * qty
+            total_amount += item_total
+
+            resolved_items.append({
+                "product_id": item.product_id,
+                "product_name": item.product_name,
+                "product_image": item.product_image,
+                "size": item.size,
+                "color": item.color,
+                "quantity": item.quantity,
+                "price": str(db_price),
+                "total_amount": str(item_total),
+                "shipping_fee": "0.00",
+                "item_type": item.item_type,
+            })
+
+        # Store the item subtotal (before shipping) for coupon validation
+        item_subtotal = total_amount
+
+        # ── SECURITY: Calculate shipping fee server-side ────────────────
+        # Simple rule: free shipping for orders >= ₹999, otherwise flat ₹79
+        # This matches the frontend logic in cartSlice.js (SHIPPING_THRESHOLD=999, FLAT_SHIPPING_FEE=79)
+        SHIPPING_THRESHOLD = Decimal("999.00")
+        FLAT_SHIPPING_FEE = Decimal("79.00")
+        if item_subtotal >= SHIPPING_THRESHOLD:
+            total_shipping = Decimal("0.00")
+        else:
+            total_shipping = FLAT_SHIPPING_FEE
+        # Apply shipping to the first item in resolved_items
+        if resolved_items and total_shipping > 0:
+            first_item_total = Decimal(str(resolved_items[0]["total_amount"]))
+            resolved_items[0]["total_amount"] = str(first_item_total + total_shipping)
+            resolved_items[0]["shipping_fee"] = str(total_shipping)
+
+        total_amount = item_subtotal + total_shipping
+
+        # ── SECURITY: Apply coupon discount server-side ────────────────
+        # Only coupon_code is accepted from frontend; validation and discount
+        # calculation are performed entirely on the backend.
+        discount_amount = Decimal("0.00")
+        coupon_code_normalized = None
+        if coupon_code:
+            customer_email = customer.email
+            from app.modules.coupons.service import validate_coupon
+            result = validate_coupon(repo.db, code=coupon_code, subtotal=item_subtotal, customer_email=customer_email)
+            if result["valid"]:
+                discount_amount = result["discount_amount"]
+                coupon_code_normalized = coupon_code.strip().upper()
+            else:
+                logger.warning("Invalid coupon '%s' during Razorpay order creation: %s", coupon_code, result["message"])
+        total_amount -= discount_amount
         amount_paise = int(round(total_amount * 100))
 
     if amount_paise < 100:
@@ -1292,10 +1442,9 @@ def _create_razorpay_order_from_items(
     cart_data = {
         "cart_session_id": cart_session_id,
         "customer_email": customer.email,
-        "items": [
-            {"product_id": item.product_id, "product_name": item.product_name, "product_image": item.product_image, "size": item.size, "color": item.color, "quantity": item.quantity, "price": str(item.price), "total_amount": str(item.total_amount), "shipping_fee": str(item.shipping_fee), "item_type": item.item_type}
-            for item in items
-        ],
+        "coupon_code": coupon_code_normalized,
+        "discount_amount": str(discount_amount) if discount_amount > 0 else "0.00",
+        "items": resolved_items,
         "address": {
             "customer_name": (address or {}).get("customer_name", ""),
             "customer_phone": (address or {}).get("customer_phone"),
@@ -1580,6 +1729,8 @@ def _post_payment_success(
 
         cart_session_id_from_notes = notes.get("cart_session_id", cart_session_id)
         customer_email = notes.get("customer_email", "")
+        coupon_code_from_notes = notes.get("coupon_code")
+        discount_amount_from_notes = notes.get("discount_amount", "0.00")
         cart_items_raw = notes.get("items", [])
         address_data = notes.get("address", {})
 
@@ -1597,11 +1748,27 @@ def _post_payment_success(
         now_utc = datetime.now(timezone.utc)
         created_orders = []
 
+        # Compute total cart value for proportional discount distribution
+        total_cart_value = Decimal("0.00")
+        for item_data in cart_items_raw:
+            item_total = Decimal(str(item_data.get("total_amount", "0.00")))
+            total_cart_value += item_total
+
+        total_discount = Decimal(str(discount_amount_from_notes)) if discount_amount_from_notes else Decimal("0.00")
+
         for item_data in cart_items_raw:
             order_number = repo.generate_order_number()
             delivery_days, expected_date = _calculate_delivery(
                 address_data.get("city"), now_utc
             )
+
+            item_total = Decimal(str(item_data.get("total_amount", "0.00")))
+            # Distribute discount proportionally to item weight in cart
+            if total_cart_value > 0 and total_discount > 0:
+                item_weight = item_total / total_cart_value
+                item_discount = (total_discount * item_weight).quantize(Decimal("0.01"))
+            else:
+                item_discount = Decimal("0.00")
 
             order = Order(
                 order_number=order_number,
@@ -1623,7 +1790,9 @@ def _post_payment_success(
                 quantity=item_data.get("quantity", 1),
                 price=Decimal(str(item_data.get("price", "0.00"))),
                 shipping_fee=Decimal(str(item_data.get("shipping_fee", "0.00"))),
-                total_amount=Decimal(str(item_data.get("total_amount", "0.00"))),
+                discount_amount=item_discount,
+                total_amount=item_total,
+                coupon_code=coupon_code_from_notes,
                 payment_method="RAZORPAY",
                 payment_status="PAID",
                 tracking_status=TrackingStatus.CONFIRMED,
@@ -1658,6 +1827,16 @@ def _post_payment_success(
 
             created_order = repo.create_order(order)
             created_orders.append(created_order)
+
+        # Record coupon usage for first created order
+        if coupon_code_from_notes and total_discount > 0:
+            from app.modules.coupons.service import lookup_coupon, record_usage
+            coupon = lookup_coupon(db, coupon_code_from_notes)
+            if coupon:
+                try:
+                    record_usage(db, coupon_id=coupon.id, order_id=created_orders[0].id, customer_email=customer_email)
+                except Exception as e:
+                    logger.error("Failed to record coupon usage for %s: %s", coupon_code_from_notes, e)
 
         db.commit()
 

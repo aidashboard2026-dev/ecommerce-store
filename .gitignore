@@ -81,3 +81,21 @@ coverage
 .agents
 .opencode
 .hypothesis
+
+#report related files
+reports/
+PRODUCTION_AUDIT_REPORT.pdf
+check_report.py
+expand_report.py
+gen_engine.py
+gen_findings_old.py
+gen_mods_old.py
+gen_pages_old.py
+gen_part1_old.py
+generate_report_old.py
+generate_report.py
+PRODUCTION_AUDIT_REPORT.html
+render_pdf.js
+report_data_old.py
+temp_gen_header.py
+temp_part1.py

@@ -386,6 +386,7 @@ const buildOrderPayload = ({
   form,
   sessionId,
   shippingFee = 0,
+  couponCode,
 }) => ({
   customer_name: selectedAddress.full_name,
   customer_email: customer?.email || form.email || null,
@@ -409,6 +410,7 @@ const buildOrderPayload = ({
   payment_status: "PENDING",
   tracking_status: "PLACED",
   cart_session_id: sessionId,
+  coupon_code: couponCode || null,
 });
 
 // Build the checkout payload for the production (deferred) flow
@@ -419,6 +421,7 @@ const buildCheckoutPayload = ({
   form,
   sessionId,
   shippingFee = 0,
+  couponCode,
 }) => ({
   cart_session_id: sessionId,
   items: items.map((item, index) => ({
@@ -433,6 +436,7 @@ const buildCheckoutPayload = ({
     shipping_fee: index === 0 ? shippingFee : 0,
     item_type: "PRODUCT",
   })),
+  coupon_code: couponCode || null,
   customer_name: selectedAddress.full_name,
   customer_phone: selectedAddress.phone,
   address_line1: selectedAddress.address_line1 || selectedAddress.address,
@@ -486,6 +490,7 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const items = useSelector((state) => state.cart.items);
   const cartTotals = useSelector(selectCartTotals);
+  const couponCode = useSelector((state) => state.cart.couponCode);
   const selectedAddress = useSelector(selectSelectedAddress);
   const paymentMethod = useSelector((state) => state.checkout.paymentMethod);
   const placingOrder = useSelector((state) => state.checkout.placingOrder);
@@ -685,6 +690,7 @@ export default function CheckoutPage() {
       form,
       sessionId,
       shippingFee: itemShippingFee,
+      couponCode,
     });
     logApiCall("createOrderMutation", { sessionId, ordersCount: undefined, paymentMethod });
     return measureApi(
@@ -1213,6 +1219,7 @@ export default function CheckoutPage() {
           form,
           sessionId: currentSessionId,
           shippingFee: totals.shipping,
+          couponCode,
         });
 
         try {

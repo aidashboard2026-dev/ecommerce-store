@@ -17,6 +17,7 @@ from app.modules.settings.models import (  # noqa: F401
     PaymentMethod,
     StoreSettings,
 )
+from app.modules.coupons.models import Coupon, CouponUsage  # noqa: F401
 from app.modules.notifications.models import AdminNotification  # noqa: F401
 from app.modules.wishlist.models import CustomerWishlistItem  # noqa: F401
 

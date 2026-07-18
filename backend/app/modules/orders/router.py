@@ -277,6 +277,7 @@ def create_razorpay_order_endpoint(
         customer=current_customer,
         items=payload.items,
         address=address,
+        coupon_code=payload.coupon_code,
     )
 
 

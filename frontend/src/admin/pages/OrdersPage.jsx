@@ -1,4 +1,4 @@
-﻿﻿import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Download,
@@ -150,7 +150,7 @@ export default function OrdersPage() {
   };
 
   const handleDownloadInvoice = async (order) => {
-    const toastId = toast.loading("Generating invoice…");
+    const toastId = toast.loading("Generating invoiceâ€¦");
     try {
       await generateInvoice(order);
       toast.success("Invoice downloaded!", { id: toastId });
@@ -215,6 +215,7 @@ export default function OrdersPage() {
       }));
 
       toast.success("Order updated successfully");
+      loadOrders(currentPage, debouncedSearch);
     } catch (err) {
       console.error(err);
       toast.error(getApiErrorMessage(err, "Failed to update order"));
@@ -233,6 +234,8 @@ export default function OrdersPage() {
     } catch (error) {
       console.error(error);
       toast.error("Status update failed. Please try again.");
+    } finally {
+      loadOrders(currentPage, debouncedSearch);
     }
   };
 
@@ -383,11 +386,11 @@ export default function OrdersPage() {
                   </span>
                   <div className="flex gap-1.5 flex-wrap">
                     {[
-                      { status: "PLACED", label: "New Order", activeColor: "bg-blue-500 border-blue-500 text-white" },
-                      { status: "PROCESSING", label: "Process", activeColor: "bg-amber-500 border-amber-500 text-white" },
-                      { status: "SHIPPED", label: "Ship", activeColor: "bg-violet-500 border-violet-500 text-white" },
-                      { status: "DELIVERED", label: "Deliver", activeColor: "bg-emerald-500 border-emerald-500 text-white" },
-                      { status: "CANCELLED", label: "Cancel", activeColor: "bg-red-500 border-red-500 text-white" },
+                      { status: "PLACED", label: "New Order", activeColor: "bg-blue-500 border-blue-500 text-app" },
+                      { status: "PROCESSING", label: "Process", activeColor: "bg-amber-500 border-amber-500 text-app" },
+                      { status: "SHIPPED", label: "Ship", activeColor: "bg-violet-500 border-violet-500 text-app" },
+                      { status: "DELIVERED", label: "Deliver", activeColor: "bg-emerald-500 border-emerald-500 text-app" },
+                      { status: "CANCELLED", label: "Cancel", activeColor: "bg-red-500 border-red-500 text-app" },
                     ].map((step) => (
                       <button
                         key={step.status}
@@ -509,7 +512,7 @@ export default function OrdersPage() {
                         <p>Size: <span className="font-bold text-app">{order.size}</span></p>
                         <p>Color: <span className="font-bold text-app">{order.color}</span></p>
                         <p>Qty: <span className="font-bold text-app">{order.quantity}</span></p>
-                        <p>Price: <span className="font-bold text-app">₹{order.price}</span></p>
+                        <p>Price: <span className="font-bold text-app">â‚¹{order.price}</span></p>
                       </div>
                     </div>
                   </div>
@@ -518,17 +521,17 @@ export default function OrdersPage() {
                   <div className="border-t border-app pt-4 space-y-2 text-xs">
                     <div className="flex justify-between">
                       <span className="text-muted">Subtotal</span>
-                      <span className="font-medium text-app">₹{order.price * order.quantity}</span>
+                      <span className="font-medium text-app">â‚¹{order.price * order.quantity}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted">Shipping</span>
                       <span className={order.shipping_fee > 0 ? "font-medium text-app" : "font-bold text-emerald-500 uppercase text-[10px]"}>
-                        {order.shipping_fee > 0 ? `₹${order.shipping_fee}` : "FREE"}
+                        {order.shipping_fee > 0 ? `â‚¹${order.shipping_fee}` : "FREE"}
                       </span>
                     </div>
                     <div className="flex justify-between border-t border-app pt-2 font-bold text-sm">
                       <span className="text-app">Total Amount</span>
-                      <span className="text-emerald-500">₹{order.total_amount}</span>
+                      <span className="text-emerald-500">â‚¹{order.total_amount}</span>
                     </div>
                     <div className="pt-2 flex flex-col gap-1.5 border-t border-app">
                       <div className="flex justify-between">
@@ -574,7 +577,7 @@ export default function OrdersPage() {
                   </div>
                    <div className="text-center pt-2">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Receipt Settled</p>
-                      <p className="text-xl font-bold font-display text-app">₹{order.total_amount}</p>
+                      <p className="text-xl font-bold font-display text-app">â‚¹{order.total_amount}</p>
                       <div className="mt-1.5">
                         <Badge
                           label={order.payment_status}
@@ -598,29 +601,19 @@ export default function OrdersPage() {
         )}
       </div>
 
-      {/* ── Pagination ──────────────────────────────────────────────────── */}
-
+      {/* â”€â”€ Pagination â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {totalPages > 1 && (
-        <div className="border-t border-app pt-4">
-          <Pagination
-            page={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
-        </div>
-      )}
-      {/* {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-700 mt-2">
-          <p className="text-sm text-gray-400">
-            Page <span className="font-medium text-white">{currentPage}</span> of{" "}
-            <span className="font-medium text-white">{totalPages}</span>{" "}
+        <div className="flex items-center justify-between px-4 py-3 border-t border-app mt-2">
+          <p className="text-sm text-muted">
+            Page <span className="font-medium text-app">{currentPage}</span> of{" "}
+            <span className="font-medium text-app">{totalPages}</span>{" "}
             &mdash; {totalOrders} total orders
           </p>
           <div className="flex gap-2">
             <button
               disabled={currentPage <= 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              className="px-3 py-1 text-sm rounded bg-gray-700 text-white disabled:opacity-40 hover:bg-gray-600 transition-colors"
+              className="px-3 py-1 text-sm rounded bg-app text-app disabled:opacity-40 hover:bg-surface-hover transition-colors"
             >
               ← Prev
             </button>
@@ -633,8 +626,8 @@ export default function OrdersPage() {
                   onClick={() => setCurrentPage(page)}
                   className={`px-3 py-1 text-sm rounded transition-colors ${
                     page === currentPage
-                      ? "bg-indigo-600 text-white"
-                      : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                      ? "bg-brand-500 text-app"
+                      : "bg-app text-muted hover:bg-surface-hover"
                   }`}
                 >
                   {page}
@@ -644,13 +637,14 @@ export default function OrdersPage() {
             <button
               disabled={currentPage >= totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              className="px-3 py-1 text-sm rounded bg-gray-700 text-white disabled:opacity-40 hover:bg-gray-600 transition-colors"
+              className="px-3 py-1 text-sm rounded bg-app text-app disabled:opacity-40 hover:bg-surface-hover transition-colors"
             >
               Next →
             </button>
           </div>
         </div>
-      )} */}
+      )}
     </div>
   );
 }
+

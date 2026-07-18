@@ -8,6 +8,7 @@ from app.modules.custom_products.router import router as custom_products_router
 from app.modules.customers.router import router as customers_router
 from app.modules.dashboard.router import router as dashboard_router
 from app.modules.delivery_zones.router import router as delivery_zones_router
+from app.modules.coupons.router import router as coupons_router
 from app.modules.offers.router import router as offers_router
 from app.modules.orders.router import router as orders_router
 from app.modules.payments.router import router as payments_router
@@ -28,6 +29,7 @@ from app.modules.wishlist.router import (
 
 api_router = APIRouter()
 
+api_router.include_router(coupons_router,           prefix="/coupons",              tags=["Coupons"])
 api_router.include_router(auth_router,              prefix="/auth",                 tags=["Authentication"])
 api_router.include_router(categories_router,        prefix="",                      tags=["Categories"])
 api_router.include_router(admins_router,            prefix="/admins",               tags=["Admins"])

@@ -468,12 +468,25 @@ def build_order_confirmation(branding: dict, order_data: dict, reference_id: str
     qty = order_data.get("quantity", 1)
     subtotal = order_data.get("subtotal", price * qty)
     shipping_fee = order_data.get("shipping_fee", 0)
+    discount_amount = order_data.get("discount_amount", 0)
     total_amount = order_data.get("total_amount", 0)
     
     product_name = order_data.get("product_name", "N/A")
     variant_str = order_data.get("variant_str", "")
     shipping_addr_html = order_data.get("shipping_addr_html", "")
     shipping_addr_text = order_data.get("shipping_addr_text", "")
+
+    discount_row_html = ""
+    discount_row_text = ""
+    if discount_amount > 0:
+        discount_row_html = f"""
+        <tr>
+          <td style="padding: 6px 0; color: #16A34A;" class="text-muted">Discount</td>
+          <td style="padding: 6px 0; text-align: right; color: #16A34A; font-weight: bold;">
+            -₹{discount_amount:,.2f}
+          </td>
+        </tr>"""
+        discount_row_text = f"- Discount: -₹{discount_amount:,.2f}\n"
 
     html_content = f"""
     <h2 style="margin: 0 0 16px; color: #111827; font-size: 20px; font-weight: bold;">Hi {customer_name},</h2>
@@ -512,6 +525,7 @@ def build_order_confirmation(branding: dict, order_data: dict, reference_id: str
           <td style="padding: 12px 0 6px 0; color: #6B7280;" class="text-muted">Subtotal</td>
           <td style="padding: 12px 0 6px 0; text-align: right; color: #111827;">₹{subtotal:,.2f}</td>
         </tr>
+        {discount_row_html}
         <tr>
           <td style="padding: 6px 0; color: #6B7280;" class="text-muted">Shipping</td>
           <td style="padding: 6px 0; text-align: right; color: #16A34A; font-weight: bold;">
@@ -551,6 +565,7 @@ def build_order_confirmation(branding: dict, order_data: dict, reference_id: str
            f"- Item: {product_name} ({variant_str})\n" \
            f"- Quantity: {qty}\n" \
            f"- Price: ₹{price:,.2f}\n" \
+           f"{discount_row_text}" \
            f"- Shipping Fee: ₹{shipping_fee:,.2f}\n" \
            f"- Total Amount: ₹{total_amount:,.2f}\n\n" \
            f"SHIPPING ADDRESS:\n{shipping_addr_text}\n\n" \
