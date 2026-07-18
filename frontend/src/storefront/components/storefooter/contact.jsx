@@ -61,7 +61,7 @@ export default function ContactPage() {
 
         {/* Hero */}
 
-        <section className="py-28 text-center">
+        <section className="pt-16 pb-14 text-center">
 
           <p className="uppercase tracking-[0.35em] text-sm text-gray-500">
             Contact Us
@@ -71,10 +71,9 @@ export default function ContactPage() {
             WE'RE HERE TO HELP
           </h1>
 
-          <div className="w-24 h-[2px] bg-gray-300 mx-auto my-8"></div>
+          <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
 
-          <p className="max-w-3xl mx-auto text-lg leading-9 text-gray-600">
-
+          <p className="max-w-3xl mx-auto text-lg leading-8 text-gray-600">
             Have questions about our products, custom orders,
             or bulk printing?
 
@@ -90,9 +89,9 @@ export default function ContactPage() {
 
         {/* Get In Touch */}
 
-        <section className="py-20 border-t border-gray-200">
+        <section className="py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold text-gray-900 mb-8">
+          <h2 className="text-3xl font-semibold text-gray-900 mb-5">
 
             Get In Touch
 
@@ -100,7 +99,7 @@ export default function ContactPage() {
 
           <div className="max-w-4xl">
 
-            <p className="text-lg leading-9 text-gray-600">
+            <p className="text-lg leading-8 text-gray-600">
 
               At <strong>MY DESIGNERS</strong>,
               we're always happy to hear from you.
@@ -121,7 +120,7 @@ export default function ContactPage() {
 
         {/* Contact Cards */}
 
-        <section className="py-20 border-t border-gray-200">
+        <section className="py-10 border-t border-gray-200">
 
           <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
 
@@ -129,10 +128,10 @@ export default function ContactPage() {
 
               <div
                 key={card.title}
-                className="bg-white rounded-3xl border border-gray-200 p-8 hover:shadow-xl transition duration-300"
+                className="bg-white border border-gray-200 rounded-xl p-6"
               >
 
-                <div className="text-gray-900 mb-6">
+                <div className="text-gray-900 mb-4">
                   {card.icon}
                 </div>
 
@@ -144,7 +143,7 @@ export default function ContactPage() {
                   {card.value}
                 </p>
 
-                <p className="mt-4 leading-7 text-gray-500">
+                <p className="mt-2 leading-7 text-gray-500">
                   {card.description}
                 </p>
 
@@ -199,21 +198,21 @@ export default function ContactPage() {
 
                 {/* Bulk Orders */}
 
-        <section className="py-20 border-t border-gray-200">
+        <section className="py-10 border-t border-gray-200">
 
-          <div className="bg-white border border-gray-200 rounded-3xl p-10 lg:p-14">
+          <div className="max-w-4xl">
 
             <p className="uppercase tracking-[0.3em] text-sm text-gray-500">
               Bulk & Corporate Orders
             </p>
 
-            <h2 className="mt-5 text-4xl font-light text-gray-900">
+            <h2 className="mt-3 text-3xl font-semibold text-gray-900">
               Professional Printing Solutions
             </h2>
 
-            <div className="w-20 h-[2px] bg-gray-300 mt-8 mb-8"></div>
+            <div className="w-16 h-px bg-gray-300 my-5"></div>
 
-            <p className="max-w-4xl text-lg leading-9 text-gray-600">
+            <p className="max-w-4xl text-lg leading-8 text-gray-600">
 
               Looking for customized merchandise for your company,
               college, school, organization, or special event?
@@ -232,9 +231,9 @@ export default function ContactPage() {
 
         </section>
 
-        {/* Why Choose */}
+        {/* Why Choose
 
-        <section className="py-20 border-t border-gray-200">
+        <section className="py-10 border-t border-gray-200">
 
           <h2 className="text-3xl font-semibold text-gray-900 mb-12">
             Why Choose MY DESIGNERS
@@ -288,11 +287,11 @@ export default function ContactPage() {
 
           </div>
 
-        </section>
+        </section> */}
 
         {/* FAQ */}
 
-        <section className="py-20 border-t border-gray-200">
+        <section className="py-10 border-t border-gray-200">
 
           <h2 className="text-3xl font-semibold text-gray-900 mb-12">
             Frequently Asked Questions
@@ -326,14 +325,14 @@ export default function ContactPage() {
 
               <div
                 key={faq.q}
-                className="bg-white border border-gray-200 rounded-2xl p-8"
+                className="border-b border-gray-200 py-6"
               >
 
                 <h3 className="text-xl font-semibold text-gray-900">
                   {faq.q}
                 </h3>
 
-                <p className="mt-4 leading-8 text-gray-600">
+                <p className="mt-2 leading-8 text-gray-600">
                   {faq.a}
                 </p>
 
@@ -347,15 +346,15 @@ export default function ContactPage() {
 
         {/* Commitment */}
 
-        <section className="py-20 border-t border-gray-200">
+        <section className="py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold text-gray-900 mb-8">
+          <h2 className="text-3xl font-semibold text-gray-900 mb-5">
             Our Commitment
           </h2>
 
-          <div className="max-w-5xl">
+          <div className="max-w-4xl">
 
-            <p className="text-lg leading-9 text-gray-600">
+            <p className="text-lg leading-8 text-gray-600">
 
               Every order represents someone's idea,
               celebration, business, or special memory.
@@ -377,13 +376,13 @@ export default function ContactPage() {
 
         {/* CTA */}
 
-        <section className="py-28 border-t border-gray-200 text-center">
+        <section className="py-14 border-t border-gray-200 text-center">
 
           <p className="uppercase tracking-[0.35em] text-sm text-gray-500">
             Let's Work Together
           </p>
 
-          <h2 className="mt-6 text-5xl font-light text-gray-900">
+          <h2 className="mt-4 text-4xl font-light text-gray-900">
 
             Let's Create Something
             <br />
@@ -391,9 +390,9 @@ export default function ContactPage() {
 
           </h2>
 
-          <div className="w-24 h-[2px] bg-gray-300 mx-auto my-10"></div>
+          <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
 
-          <p className="max-w-3xl mx-auto text-lg leading-9 text-gray-600">
+          <p className="max-w-3xl mx-auto text-lg leading-8 text-gray-600">
 
             Whether you need a single personalized gift
             or thousands of custom products,
@@ -403,7 +402,7 @@ export default function ContactPage() {
 
           </p>
 
-          <p className="mt-12 text-xl font-medium text-gray-900">
+          <p className="mt-8 text-lg font-medium text-gray-900">
 
             We're just one conversation away.
 

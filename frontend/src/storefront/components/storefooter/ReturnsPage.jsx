@@ -47,36 +47,35 @@ export default function ReturnsPage() {
   return (
     <div className="min-h-screen bg-[#F6F6F4]">
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-10">
+      <div className="max-w-5xl mx-auto px-6">
 
         {/* Hero */}
 
-        <section className="py-28 text-center">
+        <section className="pt-16 pb-14 text-center">
 
-          <p className="uppercase tracking-[0.35em] text-sm text-gray-500">
-            Returns & Refund Policy
+          <p className="uppercase tracking-[0.3em] text-sm text-gray-500">
+            Returns
           </p>
 
-          <h1 className="mt-6 text-5xl md:text-6xl font-light text-gray-900">
-
-            Fair. Transparent.
+          <h1 className="mt-5 text-5xl font-light text-gray-900">
+            Fair.
+            <br />
+            Transparent.
             <br />
             Reliable.
-
           </h1>
 
-          <div className="w-24 h-[2px] bg-gray-300 mx-auto my-8"></div>
+          <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
 
-          <p className="max-w-3xl mx-auto text-lg leading-9 text-gray-600">
+          <p className="max-w-3xl mx-auto text-lg leading-8 text-gray-600">
 
             We want every customer to shop with confidence.
 
             <br /><br />
 
             This policy explains when returns,
-            replacements,
-            and refunds are available for products
-            purchased from MY DESIGNERS.
+            replacements and refunds are available
+            for products purchased from MY DESIGNERS.
 
           </p>
 
@@ -84,90 +83,56 @@ export default function ReturnsPage() {
 
         {/* Return Eligibility */}
 
-        <section className="py-20 border-t border-gray-200">
+        <section className="py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold text-gray-900 mb-12">
-
+          <h2 className="text-3xl font-semibold mb-6">
             Return Eligibility
-
           </h2>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <p className="text-lg leading-8 text-gray-600">
 
-            {eligibleReturns.map((item) => (
+            Returns are accepted only when products
+            arrive damaged, contain manufacturing defects,
+            printing mistakes from our side,
+            or when an incorrect product has been delivered.
 
-              <div
-                key={item.title}
-                className="bg-white rounded-3xl border border-gray-200 p-8 hover:shadow-lg transition duration-300"
-              >
+            <br /><br />
 
-                <div className="text-gray-900 mb-6">
-                  {item.icon}
-                </div>
+            Every request is carefully reviewed before
+            approval to ensure a fair process.
 
-                <h3 className="text-xl font-semibold text-gray-900">
-
-                  {item.title}
-
-                </h3>
-
-                <p className="mt-4 leading-8 text-gray-600">
-
-                  {item.description}
-
-                </p>
-
-              </div>
-
-            ))}
-
-          </div>
+          </p>
 
         </section>
 
         {/* Non Returnable */}
 
-        <section className="py-20 border-t border-gray-200">
+        <section className="py-10 border-t border-gray-200">
 
-          <div className="bg-white rounded-3xl border border-gray-200 p-10 lg:p-14">
+          <h2 className="text-3xl font-semibold mb-6">
+            Non-Returnable Products
+          </h2>
 
-            <h2 className="text-3xl font-semibold text-gray-900">
+          <p className="text-lg leading-8 text-gray-600">
 
-              Non-Returnable Products
+            Since most of our products are customized,
+            they cannot normally be returned once production
+            has started unless the issue is caused by us.
 
-            </h2>
+          </p>
 
-            <p className="mt-8 text-lg leading-9 text-gray-600">
+          <div className="mt-8 space-y-3">
 
-              Since most of our products are customized
-              specifically for each customer,
-              the following products are generally
-              not eligible for return unless
-              there is a manufacturing defect
-              or an error from our side.
+            {nonReturnable.map(item => (
 
-            </p>
+              <div
+                key={item}
+                className="border-b border-gray-200 pb-3"
+              >
+                {item}
+              </div>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-12">
-
-              {nonReturnable.map((item) => (
-
-                <div
-                  key={item}
-                  className="border border-gray-200 rounded-2xl bg-[#FAFAF9] px-6 py-5"
-                >
-
-                  <p className="text-gray-700">
-
-                    {item}
-
-                  </p>
-
-                </div>
-
-              ))}
-
-            </div>
+            ))}
 
           </div>
 
@@ -175,51 +140,34 @@ export default function ReturnsPage() {
 
         {/* Damaged Products */}
 
-        <section className="py-20 border-t border-gray-200">
+        <section className="py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold text-gray-900 mb-8">
-
+          <h2 className="text-3xl font-semibold mb-6">
             Damaged Products
-
           </h2>
 
-          <div className="max-w-5xl">
+          <p className="text-lg leading-8 text-gray-600">
 
-            <p className="text-lg leading-9 text-gray-600">
+            Please report damaged products within
+            <strong> 48 hours </strong>
+            after delivery.
 
-              If your parcel arrives damaged,
-              please contact our support team
-              within <strong>48 hours</strong>
-              after delivery.
+          </p>
 
-              <br /><br />
-
-              Please provide:
-
-            </p>
-
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-5 mt-10">
+          <div className="mt-8 space-y-3">
 
             {[
               "Clear photos of the product",
-              "Photos of the packaging",
+              "Photos of the package",
               "Shipping label (if available)",
-              "Your order information",
-            ].map((item) => (
+              "Order information",
+            ].map(item => (
 
               <div
                 key={item}
-                className="bg-white rounded-2xl border border-gray-200 px-6 py-5"
+                className="border-b border-gray-200 pb-3"
               >
-
-                <p className="text-gray-700">
-
-                  {item}
-
-                </p>
-
+                {item}
               </div>
 
             ))}
@@ -228,320 +176,138 @@ export default function ReturnsPage() {
 
         </section>
 
-        {/* Replacement Policy */}
+            {/* Replacement Policy */}
 
-        <section className="py-20 border-t border-gray-200">
+        <section className="py-10 border-t border-gray-200">
 
-          <div className="bg-white rounded-3xl border border-gray-200 p-12">
-
-            <h2 className="text-3xl font-semibold text-gray-900">
-
-              Replacement Policy
-
-            </h2>
-
-            <p className="mt-8 text-lg leading-9 text-gray-600">
-
-              Eligible replacement requests include:
-
-              <br /><br />
-
-              • Manufacturing defects
-
-              <br />
-
-              • Printing errors from our side
-
-              <br />
-
-              • Wrong product shipped
-
-              <br />
-
-              • Verified shipping damage
-
-              <br /><br />
-
-              Once approved,
-              replacement products will be
-              processed at no additional cost.
-
-            </p>
-
-          </div>
-
-        </section>
-
-                {/* Refund Policy */}
-
-        <section className="py-20 border-t border-gray-200">
-
-          <div className="bg-white rounded-3xl border border-gray-200 p-12">
-
-            <h2 className="text-3xl font-semibold text-gray-900">
-              Refund Policy
-            </h2>
-
-            <p className="mt-8 text-lg leading-9 text-gray-600">
-
-              Refunds are considered only when a replacement
-              is not possible or when an order cannot be
-              fulfilled due to verified circumstances.
-
-              <br /><br />
-
-              Approved refunds will be processed through the
-              original payment method whenever applicable.
-
-              <br /><br />
-
-              Every refund request is carefully reviewed by
-              our support team to ensure a fair and transparent
-              resolution.
-
-            </p>
-
-          </div>
-
-        </section>
-
-
-
-        {/* Cancellation Policy */}
-
-        <section className="py-20 border-t border-gray-200">
-
-          <h2 className="text-3xl font-semibold text-gray-900 mb-10">
-            Cancellation Policy
+          <h2 className="text-3xl font-semibold mb-6">
+            Replacement Policy
           </h2>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <p className="text-lg leading-8 text-gray-600">
 
-            <div className="bg-white rounded-3xl border border-gray-200 p-8">
-
-              <h3 className="text-xl font-semibold text-gray-900">
-                Before Production
-              </h3>
-
-              <p className="mt-4 leading-8 text-gray-600">
-
-                Orders may be cancelled before production
-                begins by contacting our support team.
-
-              </p>
-
-            </div>
-
-            <div className="bg-white rounded-3xl border border-gray-200 p-8">
-
-              <h3 className="text-xl font-semibold text-gray-900">
-                After Production
-              </h3>
-
-              <p className="mt-4 leading-8 text-gray-600">
-
-                Customized products cannot normally be
-                cancelled once production has started,
-                since every product is made specifically
-                for the customer.
-
-              </p>
-
-            </div>
-
-          </div>
-
-        </section>
-
-
-
-        {/* Quality Commitment */}
-
-        <section className="py-20 border-t border-gray-200">
-
-          <h2 className="text-3xl font-semibold text-gray-900 mb-10">
-            Quality Commitment
-          </h2>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-
-            {[
-              "Production Inspection",
-              "Print Quality Verification",
-              "Packaging Inspection",
-              "Final Dispatch Check",
-            ].map((item) => (
-
-              <div
-                key={item}
-                className="bg-white rounded-3xl border border-gray-200 p-8 text-center hover:shadow-lg transition"
-              >
-
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {item}
-                </h3>
-
-              </div>
-
-            ))}
-
-          </div>
-
-        </section>
-
-
-
-        {/* Return Process */}
-{/* 
-        <section className="py-20 border-t border-gray-200">
-
-          <h2 className="text-3xl font-semibold text-gray-900 mb-12">
-            Return Process
-          </h2>
-
-          <div className="grid md:grid-cols-5 gap-6">
-
-            {[
-              "Contact Support",
-              "Share Photos",
-              "Verification",
-              "Approval",
-              "Replacement / Refund",
-            ].map((step, index) => (
-
-              <div
-                key={step}
-                className="bg-white rounded-3xl border border-gray-200 p-8 text-center hover:shadow-lg transition"
-              >
-
-                <div className="text-3xl font-light text-gray-400 mb-4">
-                  {index + 1}
-                </div>
-
-                <h3 className="font-semibold text-gray-900">
-                  {step}
-                </h3>
-
-              </div>
-
-            ))}
-
-          </div>
-
-        </section> */}
-
-
-
-        {/* FAQ */}
-{/* 
-        <section className="py-20 border-t border-gray-200">
-
-          <h2 className="text-3xl font-semibold text-gray-900 mb-12">
-            Frequently Asked Questions
-          </h2>
-
-          <div className="space-y-6">
-
-            {[
-              {
-                q: "Can I return customized products?",
-                a: "Customized products are generally non-returnable unless there is a manufacturing defect or an error from our side.",
-              },
-              {
-                q: "How many days do I have to report an issue?",
-                a: "Please contact us within 48 hours after receiving your order.",
-              },
-              {
-                q: "Who pays return shipping?",
-                a: "If the issue occurred due to our mistake, we'll take responsibility for the approved replacement process.",
-              },
-              {
-                q: "Can I exchange sizes?",
-                a: "Size exchanges are available only if the incorrect size was sent due to our error.",
-              },
-            ].map((faq) => (
-
-              <div
-                key={faq.q}
-                className="bg-white rounded-3xl border border-gray-200 p-8"
-              >
-
-                <h3 className="text-xl font-semibold text-gray-900">
-                  {faq.q}
-                </h3>
-
-                <p className="mt-4 leading-8 text-gray-600">
-                  {faq.a}
-                </p>
-
-              </div>
-
-            ))}
-
-          </div>
-
-        </section> */}
-
-
-
-        {/* Our Promise */}
-
-        <section className="py-20 border-t border-gray-200">
-
-          <h2 className="text-3xl font-semibold text-gray-900 mb-8">
-            Our Promise
-          </h2>
-
-          <div className="max-w-5xl">
-
-            <p className="text-lg leading-9 text-gray-600">
-
-              Every customized product is created with care,
-              inspected for quality,
-              and securely packed before shipping.
-
-              <br /><br />
-
-              If something goes wrong because of our mistake,
-              we'll work quickly to provide a fair,
-              transparent,
-              and customer-friendly resolution.
-
-            </p>
-
-          </div>
-
-        </section>
-
-
-
-        {/* Bottom CTA */}
-
-        <section className="py-28 border-t border-gray-200 text-center">
-
-          <p className="uppercase tracking-[0.35em] text-sm text-gray-500">
-            MY DESIGNERS
-          </p>
-
-          <h2 className="mt-6 text-5xl font-light text-gray-900">
-
-            Your Satisfaction
-            <br />
-            Comes First.
-
-          </h2>
-
-          <div className="w-24 h-[2px] bg-gray-300 mx-auto my-10"></div>
-
-          <p className="max-w-3xl mx-auto text-lg leading-9 text-gray-600">
-
-            Thank you for choosing MY DESIGNERS.
+            Replacement requests are approved for:
 
             <br /><br />
 
-            We are committed to delivering premium-quality
-            customized products along with reliable service
-            and a transparent customer experience.
+            • Manufacturing defects
+
+            <br />
+
+            • Printing mistakes from our side
+
+            <br />
+
+            • Wrong product delivered
+
+            <br />
+
+            • Verified shipping damage
+
+            <br /><br />
+
+            Once approved,
+            replacement products are shipped
+            without additional charges.
+
+          </p>
+
+        </section>
+
+        {/* Refund */}
+
+        <section className="py-10 border-t border-gray-200">
+
+          <h2 className="text-3xl font-semibold mb-6">
+            Refund Policy
+          </h2>
+
+          <p className="text-lg leading-8 text-gray-600">
+
+            Refunds are processed only when
+            replacement is not possible.
+
+            <br /><br />
+
+            Approved refunds will be issued
+            through the original payment method.
+
+          </p>
+
+        </section>
+
+        {/* Cancellation */}
+
+        <section className="py-10 border-t border-gray-200">
+
+          <h2 className="text-3xl font-semibold mb-6">
+            Cancellation Policy
+          </h2>
+
+          <p className="text-lg leading-8 text-gray-600">
+
+            Orders may be cancelled before production begins.
+
+            <br /><br />
+
+            Once production starts,
+            customized products normally
+            cannot be cancelled.
+
+          </p>
+
+        </section>
+
+        {/* Promise */}
+
+        <section className="py-10 border-t border-gray-200">
+
+          <h2 className="text-3xl font-semibold mb-6">
+            Our Promise
+          </h2>
+
+          <p className="text-lg leading-8 text-gray-600">
+
+            Every customized product is carefully
+            inspected before dispatch.
+
+            <br /><br />
+
+            If any issue occurs because of our mistake,
+            we will provide a fair and transparent solution.
+
+          </p>
+
+        </section>
+
+        {/* Thank You */}
+
+        <section className="py-14 border-t border-gray-200 text-center">
+
+          <p className="uppercase tracking-[0.3em] text-sm text-gray-500">
+            MY DESIGNERS
+          </p>
+
+          <h2 className="mt-4 text-4xl font-light text-gray-900">
+
+            Customer Satisfaction
+            <br />
+            Comes First
+
+          </h2>
+
+          <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
+
+          <p className="max-w-3xl mx-auto text-lg leading-8 text-gray-600">
+
+            Thank you for choosing
+            <strong> MY DESIGNERS.</strong>
+
+            <br /><br />
+
+            We are committed to providing
+            premium products together with
+            reliable service and transparent support.
 
           </p>
 
@@ -550,7 +316,7 @@ export default function ReturnsPage() {
       </div>
 
     </div>
+  )}
 
-  );
 
-}
+          

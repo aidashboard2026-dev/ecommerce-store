@@ -1,4 +1,4 @@
-﻿﻿import React, { useMemo, useEffect, useRef, useState } from "react";
+﻿import React, { useMemo, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useQuery } from "@tanstack/react-query";
@@ -404,7 +404,7 @@ const buildOrderPayload = ({
   quantity: item.quantity,
   price: item.sellingPrice,
   shipping_fee: shippingFee,
-  total_amount: item.sellingPrice * item.quantity + shippingFee,
+  total_amount: (item.sellingPrice * item.quantity) + shippingFee,
   payment_method: paymentMethod,
   payment_status: "PENDING",
   tracking_status: "PLACED",
@@ -654,16 +654,12 @@ export default function CheckoutPage() {
       sessionId,
       shippingFee: itemShippingFee,
     });
-    logApiCall("createOrderMutation", {
-      sessionId,
-      ordersCount: undefined,
-      paymentMethod,
-    });
+    logApiCall("createOrderMutation", { sessionId, ordersCount: undefined, paymentMethod });
     return measureApi(
       "createOrderMutation",
       () => createOrderMutation.mutateAsync(payload),
       (created) => ({ orderId: created?.id, item: item.title }),
-      () => ({ item: item.title }),
+      () => ({ item: item.title })
     );
   };
 
@@ -673,13 +669,9 @@ export default function CheckoutPage() {
   };
 
   const cleanupStaleSession = async (ordersList) => {
-    logStep("Cleaning up confirmed-stale session", {
-      orderIds: ordersList.map((o) => o.id),
-    });
+    logStep("Cleaning up confirmed-stale session", { orderIds: ordersList.map((o) => o.id) });
     try {
-      await Promise.all(
-        ordersList.map((order) => storefrontAPI.cancelOrder(order.id)),
-      );
+      await Promise.all(ordersList.map((order) => storefrontAPI.cancelOrder(order.id)));
     } catch (err) {
       logFailure({
         step: "cleanupStaleSession",
@@ -696,69 +688,47 @@ export default function CheckoutPage() {
   // ============================================================================
 
   const isPaidSession = (sessionOrders) => {
-    return (
-      sessionOrders.length > 0 &&
-      sessionOrders.every((o) => o.payment_status === "PAID")
-    );
+    return sessionOrders.length > 0 && sessionOrders.every((o) => o.payment_status === "PAID");
   };
 
   const findMatchingSession = (customerOrders, activeSessionId) => {
     if (activeSessionId) {
       const sessionOrders = customerOrders.filter(
-        (o) =>
-          o.cart_session_id === activeSessionId &&
-          o.tracking_status !== "CANCELLED",
+        (o) => o.cart_session_id === activeSessionId && o.tracking_status !== "CANCELLED"
       );
       if (sessionOrders.length > 0 && cartMatchesOrders(sessionOrders, items)) {
-        return {
-          sessionId: activeSessionId,
-          orders: sessionOrders,
-          type: "active",
-        };
+        return { sessionId: activeSessionId, orders: sessionOrders, type: "active" };
       }
     }
 
     const otherPendingOrders = customerOrders.filter(
-      (o) => isActivePendingOrder(o) && o.cart_session_id,
+      (o) => isActivePendingOrder(o) && o.cart_session_id
     );
     if (otherPendingOrders.length > 0) {
       const sessions = groupOrdersBySession(otherPendingOrders);
       const recoveredSessionId = Object.keys(sessions)[0];
       const sessionOrders = sessions[recoveredSessionId];
       if (cartMatchesOrders(sessionOrders, items)) {
-        return {
-          sessionId: recoveredSessionId,
-          orders: sessionOrders,
-          type: "other",
-        };
+        return { sessionId: recoveredSessionId, orders: sessionOrders, type: "other" };
       }
     }
     return null;
   };
 
-  const resumeExistingCheckout = async (customerOrders, activeSessionId) => {
+  const resumeExistingCheckout = (customerOrders, activeSessionId) => {
     if (activeSessionId) {
       const sessionOrders = customerOrders.filter(
-        (o) =>
-          o.cart_session_id === activeSessionId &&
-          o.tracking_status !== "CANCELLED",
+        (o) => o.cart_session_id === activeSessionId && o.tracking_status !== "CANCELLED"
       );
       if (isPaidSession(sessionOrders)) {
-        dispatch(
-          setLastOrder({
-            orders: sessionOrders,
-            totals,
-            paymentMethod: "ONLINE",
-          }),
-        );
-        await clearCompletedCustomerCart();
+        dispatch(setLastOrder({ orders: sessionOrders, totals, paymentMethod: "ONLINE" }));
+        dispatch(clearCart());
+        sessionStorage.removeItem("aurastore_active_cart_session_id");
         navigate("/order-success", {
           state: { orders: sessionOrders, totals, paymentMethod: "ONLINE" },
           replace: true,
         });
-        logStep(
-          "Mount recovery: existing session already PAID, navigated to order-success",
-        );
+        logStep("Mount recovery: existing session already PAID, navigated to order-success");
         return true;
       }
     }
@@ -766,56 +736,36 @@ export default function CheckoutPage() {
     const match = findMatchingSession(customerOrders, activeSessionId);
     if (match) {
       if (match.type === "active") {
-        setCheckoutState({
-          cartSessionId: match.sessionId,
-          orders: match.orders,
-        });
-        logStep("Mount recovery: resumed matching pending session", {
-          sessionId: match.sessionId,
-        });
+        setCheckoutState({ cartSessionId: match.sessionId, orders: match.orders });
+        logStep("Mount recovery: resumed matching pending session", { sessionId: match.sessionId });
       } else {
-        sessionStorage.setItem(
-          "aurastore_active_cart_session_id",
-          match.sessionId,
-        );
-        setCheckoutState({
-          cartSessionId: match.sessionId,
-          orders: match.orders,
-        });
+        sessionStorage.setItem("aurastore_active_cart_session_id", match.sessionId);
+        setCheckoutState({ cartSessionId: match.sessionId, orders: match.orders });
         toast.success("Resumed your previous pending checkout session.");
-        logStep("Mount recovery: resumed other-tab pending session", {
-          sessionId: match.sessionId,
-        });
+        logStep("Mount recovery: resumed other-tab pending session", { sessionId: match.sessionId });
       }
       return true;
     }
 
     if (activeSessionId) {
       const sessionOrders = customerOrders.filter(
-        (o) =>
-          o.cart_session_id === activeSessionId &&
-          o.tracking_status !== "CANCELLED",
+        (o) => o.cart_session_id === activeSessionId && o.tracking_status !== "CANCELLED"
       );
       if (sessionOrders.length > 0) {
         setCheckoutState({ cartSessionId: null, orders: [] });
         sessionStorage.removeItem("aurastore_active_cart_session_id");
-        logStep(
-          "Mount recovery: local session cleared (cart no longer matches); no backend mutation performed",
-        );
+        logStep("Mount recovery: local session cleared (cart no longer matches); no backend mutation performed");
       }
     }
 
     const otherPendingOrders = customerOrders.filter(
-      (o) => isActivePendingOrder(o) && o.cart_session_id,
+      (o) => isActivePendingOrder(o) && o.cart_session_id
     );
     if (otherPendingOrders.length > 0) {
       const sessions = groupOrdersBySession(otherPendingOrders);
-      logStep(
-        "Mount recovery: other pending sessions found but do not match cart — leaving untouched (no cleanup on mount)",
-        {
-          sessionIds: Object.keys(sessions),
-        },
-      );
+      logStep("Mount recovery: other pending sessions found but do not match cart — leaving untouched (no cleanup on mount)", {
+        sessionIds: Object.keys(sessions),
+      });
     }
     return false;
   };
@@ -827,12 +777,13 @@ export default function CheckoutPage() {
       error: null,
     });
     try {
-      const res = await measureApi("getOrders (recovery)", () =>
-        storefrontAPI.getOrders(),
+      const res = await measureApi(
+        "getOrders (recovery)",
+        () => storefrontAPI.getOrders()
       );
       const customerOrders = res.data?.items || [];
       const otherPendingOrders = customerOrders.filter(
-        (o) => isActivePendingOrder(o) && o.cart_session_id,
+        (o) => isActivePendingOrder(o) && o.cart_session_id
       );
 
       if (otherPendingOrders.length === 0) {
@@ -847,25 +798,15 @@ export default function CheckoutPage() {
       if (cartMatchesOrders(sessionOrders, items)) {
         commitCheckoutSession(recoveredSessionId, sessionOrders);
         setRecoveryState((prev) => ({ ...prev, isRecovering: false }));
-        return {
-          status: "resumed",
-          sessionId: recoveredSessionId,
-          orders: sessionOrders,
-        };
+        return { status: "resumed", sessionId: recoveredSessionId, orders: sessionOrders };
       }
 
       setRecoveryState((prev) => ({ ...prev, isRecovering: false }));
       return { status: "mismatch", staleSessions: sessions };
     } catch (recoveryErr) {
       const recErrInfo = getPaymentErrorMessage(recoveryErr);
-      setRecoveryState({
-        isRecovering: true,
-        message: "",
-        error: recErrInfo.message,
-      });
-      throw Object.assign(new Error(recErrInfo.message), {
-        code: recErrInfo.code,
-      });
+      setRecoveryState({ isRecovering: true, message: "", error: recErrInfo.message });
+      throw Object.assign(new Error(recErrInfo.message), { code: recErrInfo.code });
     }
   };
 
@@ -874,9 +815,7 @@ export default function CheckoutPage() {
   // ============================================================================
 
   const buildInputsSignature = () => {
-    const itemsPart = items
-      .map((i) => `${i.productId}:${i.size}:${i.color}:${i.quantity}`)
-      .join("|");
+    const itemsPart = items.map((i) => `${i.productId}:${i.size}:${i.color}:${i.quantity}`).join("|");
     const addressPart = selectedAddress
       ? `${selectedAddress.id || ""}:${selectedAddress.address_line1 || selectedAddress.address || ""}:${selectedAddress.pincode || ""}`
       : "null";
@@ -934,6 +873,8 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!customer || !token) return;
+    let isMounted = true;
+    setPhase(CHECKOUT_PHASE.RECOVERING, { source: "mount" });
 
     let cancelled = false;
 
@@ -1021,13 +962,7 @@ export default function CheckoutPage() {
       const itemShippingFee = i === 0 ? totals.shipping : 0;
 
       try {
-        const created = await persistOrderItem(
-          item,
-          currentSessionId,
-          itemShippingFee,
-        );
-
-        currentOrders.push(created);
+        created = await persistOrderItem(item, currentSessionId, itemShippingFee);
       } catch (itemErr) {
         const errInfo = getPaymentErrorMessage(itemErr);
 
@@ -1136,7 +1071,6 @@ export default function CheckoutPage() {
       );
       return;
     }
-
     if (!selectedAddress) {
       logExit({
         step: "STEP 2 (address check)",
@@ -1552,10 +1486,10 @@ export default function CheckoutPage() {
 
             toast.success("Payment verified and order confirmed!");
 
+            // Transition to VERIFY_SUCCESS phase to show confirmation state
             setPhase(CHECKOUT_PHASE.VERIFY_SUCCESS);
 
             await new Promise((resolve) => setTimeout(resolve, 600));
-
             setPhase(CHECKOUT_PHASE.SUCCESS);
 
             navigate("/order-success", {
@@ -1981,12 +1915,8 @@ export default function CheckoutPage() {
           <button
             type="button"
             onClick={() => handlePlaceOrder()}
-            disabled={
-              submitting || placingOrder || paymentMethodsList.length === 0
-            }
-            aria-disabled={
-              submitting || placingOrder || paymentMethodsList.length === 0
-            }
+            disabled={submitting || placingOrder || paymentMethodsList.length === 0}
+            aria-disabled={submitting || placingOrder || paymentMethodsList.length === 0}
             className="w-full h-12 flex items-center justify-center bg-brand-500 hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 text-white font-semibold text-sm rounded-full shadow-glow-sm transition-colors"
           >
             {getButtonText()}

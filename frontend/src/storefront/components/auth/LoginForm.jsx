@@ -243,12 +243,6 @@ export default function LoginForm() {
         }
 
         toast.error(errorMsg);
-
-        if (status === 429) {
-          const expiry = Date.now() + 5 * 60 * 1000;
-          localStorage.setItem("login_cooldown_expiry", expiry.toString());
-          setCooldownTimeLeft(300);
-        }
         return;
       }
 
@@ -597,8 +591,8 @@ export default function LoginForm() {
 
           <button
             type="submit"
-            disabled={isLoading || cooldownTimeLeft > 0}
-            className="w-full h-12 flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-full shadow-glow-sm transition-colors mt-2"
+            disabled={isLoading}
+            className="w-full h-12 flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 text-white font-semibold text-sm rounded-full shadow-glow-sm transition-colors mt-2"
           >
             {loadingType === "email" && cooldownTimeLeft <= 0 ? (
               <Loader2
