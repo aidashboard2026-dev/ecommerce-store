@@ -57,28 +57,28 @@ export default function ContactPage() {
   return (
     <div className="bg-[#F6F6F4] min-h-screen">
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-10">
+      <div className="max-w-6xl mx-auto px-5 sm:px-6 lg:px-8">
 
         {/* Hero */}
 
         <section className="pt-16 pb-14 text-center">
 
-          <p className="uppercase tracking-[0.35em] text-sm text-gray-500">
+          <p className="uppercase tracking-[0.3em] text-sm text-gray-500">
             Contact Us
           </p>
 
-          <h1 className="mt-6 text-5xl md:text-6xl font-light text-gray-900">
+          <h1 className="mt-5 text-4xl sm:text-5xl lg:text-6xl font-light text-gray-900 leading-tight">
             WE'RE HERE TO HELP
           </h1>
 
           <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
 
-          <p className="max-w-3xl mx-auto text-lg leading-8 text-gray-600">
-            Have questions about our products, custom orders,
-            or bulk printing?
+          <p className="max-w-3xl mx-auto text-base sm:text-lg leading-8 text-gray-600">
 
-            <br />
-            <br />
+            Have questions about our products,
+            custom orders or bulk printing?
+
+            <br /><br />
 
             Our team is always ready to assist you with
             reliable guidance and premium customer support.
@@ -89,28 +89,30 @@ export default function ContactPage() {
 
         {/* Get In Touch */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-10 border-t border-gray-200 text-center">
 
-          <h2 className="text-3xl font-semibold text-gray-900 mb-5">
+          <div className="max-w-3xl mx-auto">
 
-            Get In Touch
+            <h2 className="text-3xl font-semibold text-gray-900">
 
-          </h2>
+              Get In Touch
 
-          <div className="max-w-4xl">
+            </h2>
 
-            <p className="text-lg leading-8 text-gray-600">
+            <div className="w-20 h-px bg-gray-300 mx-auto my-5"></div>
+
+            <p className="text-base sm:text-lg leading-8 text-gray-600">
 
               At <strong>MY DESIGNERS</strong>,
               we're always happy to hear from you.
 
-              <br />
-              <br />
+              <br /><br />
 
               Whether you're planning a personalized gift,
-              custom apparel, promotional merchandise,
+              custom apparel,
+              promotional merchandise,
               or corporate branding products,
-              we're here to help make your ideas a reality.
+              we're here to help bring your ideas to life.
 
             </p>
 
@@ -122,28 +124,28 @@ export default function ContactPage() {
 
         <section className="py-10 border-t border-gray-200">
 
-          <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
 
             {contactCards.map((card) => (
 
               <div
                 key={card.title}
-                className="bg-white border border-gray-200 rounded-xl p-6"
+                className="bg-white border border-gray-200 rounded-xl p-6 text-center"
               >
 
-                <div className="text-gray-900 mb-4">
+                <div className="flex justify-center mb-4">
                   {card.icon}
                 </div>
 
-                <h3 className="text-xl font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-gray-900">
                   {card.title}
                 </h3>
 
-                <p className="mt-4 font-medium text-gray-800">
+                <p className="mt-3 font-medium text-gray-800 whitespace-pre-line break-words">
                   {card.value}
                 </p>
 
-                <p className="mt-2 leading-7 text-gray-500">
+                <p className="mt-3 text-sm leading-7 text-gray-500">
                   {card.description}
                 </p>
 
@@ -155,75 +157,38 @@ export default function ContactPage() {
 
         </section>
 
-        {/* Services */}
+            {/* Professional Printing */}
 
-        {/* <section className="py-20 border-t border-gray-200">
+        <section className="py-10 border-t border-gray-200 text-center">
 
-          <h2 className="text-3xl font-semibold text-gray-900 mb-8">
-
-            Our Services
-
-          </h2>
-
-          <p className="max-w-4xl text-lg leading-9 text-gray-600 mb-14">
-
-            We create premium-quality personalized products
-            for individuals, businesses, educational institutions,
-            and organizations using modern printing and
-            embroidery techniques.
-
-          </p>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-
-            {services.map((service) => (
-
-              <div
-                key={service}
-                className="bg-white rounded-2xl border border-gray-200 px-6 py-5 hover:shadow-md transition"
-              >
-
-                <p className="text-gray-700">
-                  {service}
-                </p>
-
-              </div>
-
-            ))}
-
-          </div>
-
-        </section> */}
-
-
-                {/* Bulk Orders */}
-
-        <section className="py-10 border-t border-gray-200">
-
-          <div className="max-w-4xl">
+          <div className="max-w-3xl mx-auto">
 
             <p className="uppercase tracking-[0.3em] text-sm text-gray-500">
               Bulk & Corporate Orders
             </p>
 
             <h2 className="mt-3 text-3xl font-semibold text-gray-900">
+
               Professional Printing Solutions
+
             </h2>
 
-            <div className="w-16 h-px bg-gray-300 my-5"></div>
+            <div className="w-20 h-px bg-gray-300 mx-auto my-5"></div>
 
-            <p className="max-w-4xl text-lg leading-8 text-gray-600">
+            <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-              Looking for customized merchandise for your company,
-              college, school, organization, or special event?
+              Looking for customized merchandise
+              for your company,
+              college,
+              school,
+              organization or special event?
 
               <br /><br />
 
-              MY DESIGNERS provides high-quality printing and
-              embroidery services for businesses of every size.
-              From employee uniforms to promotional merchandise,
-              we ensure premium quality, competitive pricing,
-              and dependable delivery.
+              MY DESIGNERS provides premium printing
+              and embroidery solutions for businesses
+              of every size with dependable delivery
+              and competitive pricing.
 
             </p>
 
@@ -231,114 +196,68 @@ export default function ContactPage() {
 
         </section>
 
-        {/* Why Choose
-
-        <section className="py-10 border-t border-gray-200">
-
-          <h2 className="text-3xl font-semibold text-gray-900 mb-12">
-            Why Choose MY DESIGNERS
-          </h2>
-
-          <div className="grid lg:grid-cols-2 gap-6">
-
-            {[
-              {
-                title: "Premium Quality",
-                desc: "Every product is created using quality materials and professional production techniques."
-              },
-              {
-                title: "Affordable Pricing",
-                desc: "We believe premium products should remain affordable for everyone."
-              },
-              {
-                title: "Modern Printing",
-                desc: "Reliable printing and embroidery solutions with consistent quality."
-              },
-              {
-                title: "Personalized Support",
-                desc: "Every customer receives individual attention from enquiry to delivery."
-              },
-              {
-                title: "Reliable Delivery",
-                desc: "Orders are completed carefully and delivered with professionalism."
-              },
-              {
-                title: "Customer Satisfaction",
-                desc: "Building long-term relationships through trust and quality service."
-              }
-            ].map((item) => (
-
-              <div
-                key={item.title}
-                className="bg-white rounded-3xl border border-gray-200 p-8 hover:shadow-lg transition duration-300"
-              >
-
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                  {item.title}
-                </h3>
-
-                <p className="leading-8 text-gray-600">
-                  {item.desc}
-                </p>
-
-              </div>
-
-            ))}
-
-          </div>
-
-        </section> */}
-
         {/* FAQ */}
 
         <section className="py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold text-gray-900 mb-12">
-            Frequently Asked Questions
-          </h2>
+          <div className="max-w-4xl mx-auto">
 
-          <div className="space-y-6">
+            <h2 className="text-3xl font-semibold text-center text-gray-900">
 
-            {[
-              {
-                q: "Do you accept bulk orders?",
-                a: "Yes. We provide bulk printing solutions for businesses, schools, colleges, events, and organizations."
-              },
-              {
-                q: "Can I provide my own design?",
-                a: "Absolutely. You can share your artwork or logo, and we'll print it professionally."
-              },
-              {
-                q: "Do you offer embroidery?",
-                a: "Yes. We provide premium embroidery for apparel, uniforms, and custom clothing."
-              },
-              {
-                q: "Do you deliver across India?",
-                a: "Yes. We deliver customized products across India with secure packaging."
-              },
-              {
-                q: "What products can be customized?",
-                a: "T-Shirts, Hoodies, Caps, Mugs, Glasses, Tote Bags, Keychains, Photo Frames, Corporate Gifts and much more."
-              }
+              Frequently Asked Questions
 
-            ].map((faq) => (
+            </h2>
 
-              <div
-                key={faq.q}
-                className="border-b border-gray-200 py-6"
-              >
+            <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
 
-                <h3 className="text-xl font-semibold text-gray-900">
-                  {faq.q}
-                </h3>
+            <div className="space-y-5">
 
-                <p className="mt-2 leading-8 text-gray-600">
-                  {faq.a}
-                </p>
+              {[
+                {
+                  q: "Do you accept bulk orders?",
+                  a: "Yes. We provide bulk printing solutions for businesses, schools, colleges, events and organizations."
+                },
+                {
+                  q: "Can I provide my own design?",
+                  a: "Absolutely. You can share your artwork or logo and we'll print it professionally."
+                },
+                {
+                  q: "Do you offer embroidery?",
+                  a: "Yes. Premium embroidery services are available for uniforms and apparel."
+                },
+                {
+                  q: "Do you deliver across India?",
+                  a: "Yes. We deliver customized products across India."
+                },
+                {
+                  q: "What products can be customized?",
+                  a: "T-Shirts, Hoodies, Caps, Mugs, Glasses, Tote Bags, Photo Frames, Corporate Gifts and more."
+                }
 
-              </div>
+              ].map((faq) => (
 
-            ))}
+                <div
+                  key={faq.q}
+                  className="border-b border-gray-200 pb-5"
+                >
+
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
+
+                    {faq.q}
+
+                  </h3>
+
+                  <p className="mt-2 text-gray-600 leading-8">
+
+                    {faq.a}
+
+                  </p>
+
+                </div>
+
+              ))}
+
+            </div>
 
           </div>
 
@@ -346,27 +265,34 @@ export default function ContactPage() {
 
         {/* Commitment */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-10 border-t border-gray-200 text-center">
 
-          <h2 className="text-3xl font-semibold text-gray-900 mb-5">
-            Our Commitment
-          </h2>
+          <div className="max-w-3xl mx-auto">
 
-          <div className="max-w-4xl">
+            <h2 className="text-3xl font-semibold text-gray-900">
 
-            <p className="text-lg leading-8 text-gray-600">
+              Our Commitment
+
+            </h2>
+
+            <div className="w-20 h-px bg-gray-300 mx-auto my-5"></div>
+
+            <p className="text-base sm:text-lg leading-8 text-gray-600">
 
               Every order represents someone's idea,
-              celebration, business, or special memory.
+              celebration,
+              business or special memory.
 
               <br /><br />
 
-              That's why we approach every project with
-              creativity, precision, and dedication.
-              Whether you're ordering one personalized gift
-              or thousands of branded products,
-              our goal is always the same—
-              delivering quality you can trust.
+              Whether you're ordering one product
+              or thousands,
+              our goal remains the same—
+
+              <br /><br />
+
+              Delivering premium quality
+              you can trust.
 
             </p>
 
@@ -378,11 +304,13 @@ export default function ContactPage() {
 
         <section className="py-14 border-t border-gray-200 text-center">
 
-          <p className="uppercase tracking-[0.35em] text-sm text-gray-500">
+          <p className="uppercase tracking-[0.3em] text-sm text-gray-500">
+
             Let's Work Together
+
           </p>
 
-          <h2 className="mt-4 text-4xl font-light text-gray-900">
+          <h2 className="mt-4 text-4xl sm:text-5xl font-light text-gray-900 leading-tight">
 
             Let's Create Something
             <br />
@@ -392,17 +320,16 @@ export default function ContactPage() {
 
           <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
 
-          <p className="max-w-3xl mx-auto text-lg leading-8 text-gray-600">
+          <p className="max-w-3xl mx-auto text-base sm:text-lg leading-8 text-gray-600">
 
-            Whether you need a single personalized gift
+            Whether you need one personalized gift
             or thousands of custom products,
-            MY DESIGNERS is ready to bring your ideas
-            to life with premium craftsmanship
-            and dependable service.
+            MY DESIGNERS is ready to bring
+            your ideas to life.
 
           </p>
 
-          <p className="mt-8 text-lg font-medium text-gray-900">
+          <p className="mt-8 font-medium text-gray-900">
 
             We're just one conversation away.
 
@@ -413,7 +340,4 @@ export default function ContactPage() {
       </div>
 
     </div>
-
-  );
-
-}
+  )}
