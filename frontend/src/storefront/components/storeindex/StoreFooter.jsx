@@ -102,12 +102,13 @@ const StoreFooterComponent = function StoreFooter() {
                 </p>
               )}
 
-              {/* {settings?.store_location && (
+              {settings?.store_location && (
                 <div className="text-[13px] leading-[1.5] text-[#555555] font-light max-w-[340px] whitespace-pre-line border-t border-gray-100 pt-3">
-                  <span className="font-semibold text-xs text-[#111111] block mb-1">Our Store Location</span>
+                  {/* <span className="font-semibold text-xs text-[#111111] block mb-1">Our Store Location</span> */}
+                  <h4 className={headingBase}>Our Store Location</h4>
                   {settings.store_location}
                 </div>
-              )} */}
+              )}
             </div>
 
             {/* Social & Contact icon row — always rendered; links degrade gracefully when data is absent */}
@@ -222,6 +223,14 @@ const StoreFooterComponent = function StoreFooter() {
               <div className="flex flex-col gap-0.5">
                 <a href={`mailto:${supportEmail}`} className={linkBase}>
                   {supportEmail}
+                </a>
+              </div>
+            )}
+           <h4 className={headingBase}>Call</h4>
+            {displayPhone && (
+              <div className="flex flex-col gap-0.5">
+                <a href={`tel:${supportPhone}`} className={linkBase}>
+                  {displayPhone}
                 </a>
               </div>
             )}

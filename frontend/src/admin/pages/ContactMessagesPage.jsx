@@ -1,4 +1,4 @@
-﻿/**
+﻿﻿/**
  * frontend/src/admin/pages/ContactMessagesPage.jsx
  * 
  * Admin page for managing contact messages.
@@ -427,5 +427,3 @@ function StatCard({ label, value, icon }) {
     </div>
   );
 }
-
-

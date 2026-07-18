@@ -254,21 +254,44 @@ def create_razorpay_order_endpoint(
     db:               Session  = Depends(get_db),
     current_customer: Customer = Depends(get_current_customer),
 ):
-    """Storefront — create a Razorpay Order for a cart session."""
+    """Storefront — create a Razorpay Order for a cart session.
+
+    Production flow: send items + address to defer order creation until after payment.
+    Legacy flow: send only cart_session_id (orders already exist in DB).
+    """
+    address = None
+    if payload.customer_name:
+        address = {
+            "customer_name": payload.customer_name,
+            "customer_phone": payload.customer_phone,
+            "address_line1": payload.address_line1,
+            "address_line2": payload.address_line2,
+            "city": payload.city,
+            "state": payload.state,
+            "country": payload.country,
+            "pincode": payload.pincode,
+        }
     return order_service.create_razorpay_order(
         db,
         cart_session_id=payload.cart_session_id,
         customer=current_customer,
+        items=payload.items,
+        address=address,
     )
 
 
 @router.post("/customer/razorpay/verify", response_model=list[OrderResponse])
 def verify_razorpay_payment_endpoint(
     payload:          RazorpayPaymentVerifyRequest,
+    background_tasks: BackgroundTasks,
     db:               Session  = Depends(get_db),
     current_customer: Customer = Depends(get_current_customer),
 ):
-    """Storefront — verify Razorpay payment and mark order as PAID."""
+    """Storefront — verify Razorpay payment and process the order.
+
+    For the production flow: creates orders from Razorpay notes, decrements stock,
+    sends email, and notifies admin. For the legacy flow: marks existing orders as PAID.
+    """
     return order_service.verify_razorpay_payment(
         db,
         cart_session_id=payload.cart_session_id,
@@ -276,6 +299,7 @@ def verify_razorpay_payment_endpoint(
         razorpay_payment_id=payload.razorpay_payment_id,
         razorpay_signature=payload.razorpay_signature,
         customer=current_customer,
+        background_tasks=background_tasks,
     )
 
 
@@ -425,6 +449,7 @@ async def razorpay_webhook(
             razorpay_payment_id=razorpay_payment_id,
             background_tasks=background_tasks
         )
+
         return {
             "status": "success",
             "message": f"Processed webhook event successfully. Updated {updated_count} order(s)."

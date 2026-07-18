@@ -411,6 +411,38 @@ const buildOrderPayload = ({
   cart_session_id: sessionId,
 });
 
+// Build the checkout payload for the production (deferred) flow
+const buildCheckoutPayload = ({
+  items,
+  customer,
+  selectedAddress,
+  form,
+  sessionId,
+  shippingFee = 0,
+}) => ({
+  cart_session_id: sessionId,
+  items: items.map((item, index) => ({
+    product_id: item.productId,
+    product_name: item.title,
+    product_image: item.thumbnail,
+    size: item.size,
+    color: item.color,
+    quantity: item.quantity,
+    price: item.sellingPrice,
+    total_amount: (item.sellingPrice * item.quantity) + (index === 0 ? shippingFee : 0),
+    shipping_fee: index === 0 ? shippingFee : 0,
+    item_type: "PRODUCT",
+  })),
+  customer_name: selectedAddress.full_name,
+  customer_phone: selectedAddress.phone,
+  address_line1: selectedAddress.address_line1 || selectedAddress.address,
+  address_line2: selectedAddress.address_line2 || null,
+  city: selectedAddress.city,
+  state: selectedAddress.state,
+  country: "India",
+  pincode: selectedAddress.pincode,
+});
+
 // ============================================================================
 // API & TIMING HELPERS
 // ============================================================================
@@ -1161,6 +1193,164 @@ export default function CheckoutPage() {
     };
 
     try {
+      // ═══════════════════════════════════════════════════════════════════
+      // PRODUCTION FLOW: ONLINE payments — orders created AFTER payment
+      // ═══════════════════════════════════════════════════════════════════
+      if (paymentMethod === "ONLINE") {
+        // For ONLINE: skip order creation, go straight to Razorpay checkout
+        if (!currentSessionId) {
+          currentSessionId = crypto.randomUUID();
+          setCheckoutState({ cartSessionId: currentSessionId, orders: [] });
+          sessionStorage.setItem("aurastore_active_cart_session_id", currentSessionId);
+        }
+
+        updatePhase(CHECKOUT_PHASE.CREATING_RAZORPAY_ORDER);
+
+        const checkoutPayload = buildCheckoutPayload({
+          items,
+          customer,
+          selectedAddress,
+          form,
+          sessionId: currentSessionId,
+          shippingFee: totals.shipping,
+        });
+
+        try {
+          rzpOrder = await measureApi(
+            "createRazorpayOrderMutation",
+            () => createRazorpayOrderMutation.mutateAsync(checkoutPayload),
+            (order) => ({
+              order_id: order.id,
+              amount: order.amount,
+              currency: order.currency,
+            }),
+          );
+        } catch (rzpErr) {
+          const errInfo = getPaymentErrorMessage(rzpErr);
+
+          if (errInfo.code === "UNAUTHORIZED") {
+            toast.error(errInfo.message);
+            setTimeout(() => navigate("/auth/login", { state: { from: "/checkout" } }), 3000);
+            return;
+          }
+
+          if (errInfo.code === "ORDER_ALREADY_PAID") {
+            toast.success("Order already paid!");
+            updatePhase(CHECKOUT_PHASE.SUCCESS);
+            await clearCompletedCustomerCart();
+            try {
+              const res = await storefrontAPI.getOrders();
+              const customerOrders = res.data?.items || [];
+              const sessionOrders = customerOrders.filter(
+                (o) => o.cart_session_id === currentSessionId,
+              );
+              dispatch(setLastOrder({ orders: sessionOrders, totals, paymentMethod: "ONLINE" }));
+              navigate("/order-success", {
+                state: { orders: sessionOrders, totals, paymentMethod: "ONLINE" },
+                replace: true,
+              });
+            } catch (e) {
+              navigate("/order-success", {
+                state: { orders: [], totals, paymentMethod: "ONLINE" },
+                replace: true,
+              });
+            }
+            return;
+          }
+
+          throw Object.assign(new Error(errInfo.message), { code: errInfo.code });
+        }
+
+        // Open Razorpay popup
+        if (!window.Razorpay) {
+          let attempts = 0;
+          await new Promise((resolve) => {
+            const interval = setInterval(() => {
+              attempts++;
+              if (window.Razorpay || attempts >= 20) {
+                clearInterval(interval);
+                resolve();
+              }
+            }, 100);
+          });
+        }
+
+        const options = {
+          key: rzpOrder.key || import.meta.env.VITE_RAZORPAY_KEY_ID,
+          amount: rzpOrder.amount,
+          currency: rzpOrder.currency,
+          name: import.meta.env.VITE_STORE_NAME || "My Designers",
+          description: "Order Checkout Payment",
+          order_id: rzpOrder.id,
+          handler: async (response) => {
+            // Payment success — verify and create orders
+            setPhase(CHECKOUT_PHASE.VERIFYING);
+            try {
+              const verifiedOrders = await measureApi(
+                "verifyRazorpayPaymentMutation",
+                () =>
+                  verifyRazorpayPaymentMutation.mutateAsync({
+                    cart_session_id: currentSessionId,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature,
+                  }),
+              );
+
+              dispatch(setLastOrder({ orders: verifiedOrders, totals, paymentMethod }));
+              await clearCompletedCustomerCart();
+              toast.success("Payment verified and order confirmed!");
+
+              setPhase(CHECKOUT_PHASE.VERIFY_SUCCESS);
+              await new Promise((resolve) => setTimeout(resolve, 600));
+              setPhase(CHECKOUT_PHASE.SUCCESS);
+
+              navigate("/order-success", {
+                state: { orders: verifiedOrders, totals, paymentMethod },
+                replace: true,
+              });
+            } catch (verifyErr) {
+              const errInfo = getPaymentErrorMessage(verifyErr);
+
+              if (errInfo.code === "UNAUTHORIZED") {
+                toast.error(errInfo.message);
+                setPhase(CHECKOUT_PHASE.FAILED);
+                setTimeout(() => navigate("/auth/login", { state: { from: "/checkout" } }), 3000);
+                return;
+              }
+
+              dispatch(setOrderError(errInfo.message));
+              toast.error(errInfo.message);
+              setPhase(CHECKOUT_PHASE.FAILED);
+            }
+          },
+          prefill: {
+            name: selectedAddress.full_name,
+            email: customer?.email || form.email || null,
+            contact: selectedAddress.phone,
+          },
+          theme: { color: "#000000" },
+          modal: {
+            ondismiss: () => {
+              toast.error("Payment cancelled by user.");
+              setPhase(CHECKOUT_PHASE.FAILED);
+            },
+          },
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.on("payment.failed", (response) => {
+          toast.error(response.error.description || "Payment failed. Please try again.");
+          setPhase(CHECKOUT_PHASE.FAILED);
+        });
+        updatePhase(CHECKOUT_PHASE.AWAITING_PAYMENT);
+        rzp.open();
+        return;
+      }
+
+      // ═══════════════════════════════════════════════════════════════════
+      // COD FLOW — unchanged (orders created immediately)
+      // ═══════════════════════════════════════════════════════════════════
       if (!currentSessionId) {
         updatePhase(CHECKOUT_PHASE.CREATING_ORDERS);
         const MAX_SESSION_ATTEMPTS = 3;
@@ -1210,372 +1400,27 @@ export default function CheckoutPage() {
         );
       }
 
-      if (paymentMethod === "COD") {
-        dispatch(
-          setLastOrder({
-            orders: currentOrders,
-            totals,
-            paymentMethod,
-          }),
-        );
-
-        await clearCompletedCustomerCart();
-
-        toast.success("Order placed successfully!");
-        updatePhase(CHECKOUT_PHASE.SUCCESS);
-        logExit({
-          step: "STEP 7 (COD complete)",
-          reason: "COD order placed, no online payment needed",
-          sessionId: currentSessionId,
-          ordersCount: currentOrders.length,
+      dispatch(
+        setLastOrder({
+          orders: currentOrders,
+          totals,
           paymentMethod,
-          nextApi: "createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
-        });
-        navigate("/order-success", {
-          state: {
-            orders: currentOrders,
-            totals,
-            paymentMethod,
-          },
-          replace: true,
-        });
-        return;
-      }
+        }),
+      );
 
-      if (!sessionFreshlyVerified) {
-        try {
-          const res = await measureApi("getOrders (dedupe check)", () =>
-            storefrontAPI.getOrders(),
-          );
-          const customerOrders = res.data?.items || [];
-          const sessionOrders = customerOrders.filter(
-            (o) => o.cart_session_id === currentSessionId,
-          );
-          if (
-            sessionOrders.length > 0 &&
-            sessionOrders.every((o) => o.payment_status === "PAID")
-          ) {
-            dispatch(
-              setLastOrder({
-                orders: sessionOrders,
-                totals,
-                paymentMethod: "ONLINE",
-              }),
-            );
-            await clearCompletedCustomerCart();
-            toast.success("Payment already completed!");
-            updatePhase(CHECKOUT_PHASE.SUCCESS);
-            logExit({
-              step: "STEP 7 (dedupe check)",
-              reason: "Session already PAID",
-              sessionId: currentSessionId,
-              ordersCount: sessionOrders.length,
-              paymentMethod,
-              nextApi:
-                "createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
-            });
-            navigate("/order-success", {
-              state: { orders: sessionOrders, totals, paymentMethod: "ONLINE" },
-              replace: true,
-            });
-            return;
-          }
-        } catch (checkErr) {
-          logFailure({
-            step: "STEP 7 (dedupe check)",
-            error: checkErr,
-            sessionId: currentSessionId,
-            ordersCount: currentOrders.length,
-            nextApiSkipped: "none — non-fatal, continuing to Razorpay create",
-          });
-        }
-      } else {
-        logStep(
-          "STEP 7: Skipping dedupe getOrders() call — session was freshly created/recovered this run",
-          { sessionId: currentSessionId },
-        );
-      }
+      await clearCompletedCustomerCart();
 
-      updatePhase(CHECKOUT_PHASE.CREATING_RAZORPAY_ORDER);
-      logStep("STEP 8: Validating state before Razorpay Create call", {
-        checkoutState,
-        currentSessionId,
-        currentOrdersLength: currentOrders.length,
-        paymentMethod,
-        selectedAddress,
-        customerEmail: customer?.email,
-        razorpayExists: typeof window.Razorpay !== "undefined",
-      });
-      logApiCall("createRazorpayOrderMutation", {
-        sessionId: currentSessionId,
-        ordersCount: currentOrders.length,
-        paymentMethod,
-      });
-
-      try {
-        rzpOrder = await measureApi(
-          "createRazorpayOrderMutation",
-          () =>
-            createRazorpayOrderMutation.mutateAsync({
-              cart_session_id: currentSessionId,
-            }),
-          (order) => ({
-            order_id: order.id,
-            amount: order.amount,
-            currency: order.currency,
-          }),
-        );
-        logStep("STEP 9: Received Razorpay Order", {
-          order_id: rzpOrder.id,
-          amount: rzpOrder.amount,
-          currency: rzpOrder.currency,
-        });
-      } catch (rzpErr) {
-        const errInfo = getPaymentErrorMessage(rzpErr);
-        logFailure({
-          step: "STEP 8 (Razorpay create)",
-          error: rzpErr,
-          sessionId: currentSessionId,
-          ordersCount: currentOrders.length,
-          nextApiSkipped: "verifyRazorpayPaymentMutation",
-        });
-        logExit({
-          step: "STEP 8 (Razorpay create)",
-          reason: `${errInfo.code}: ${errInfo.message}`,
-          sessionId: currentSessionId,
-          ordersCount: currentOrders.length,
+      toast.success("Order placed successfully!");
+      updatePhase(CHECKOUT_PHASE.SUCCESS);
+      navigate("/order-success", {
+        state: {
+          orders: currentOrders,
+          totals,
           paymentMethod,
-          nextApi: "verifyRazorpayPaymentMutation",
-        });
-
-        if (errInfo.code === "UNAUTHORIZED") {
-          toast.error(errInfo.message);
-          setTimeout(
-            () => navigate("/auth/login", { state: { from: "/checkout" } }),
-            3000,
-          );
-          return;
-        }
-
-        if (errInfo.code === "ORDER_ALREADY_PAID") {
-          toast.success("Order already paid!");
-          updatePhase(CHECKOUT_PHASE.SUCCESS);
-          // for (const item of items) {
-          //   dispatch(
-          //     removeFromCart({
-          //       productId: item.productId,
-          //       size: item.size,
-          //       color: item.color,
-          //     }),
-          //   );
-          // }
-          await clearCompletedCustomerCart();
-          try {
-            const res = await storefrontAPI.getOrders();
-            const customerOrders = res.data?.items || [];
-            const sessionOrders = customerOrders.filter(
-              (o) => o.cart_session_id === currentSessionId,
-            );
-            dispatch(
-              setLastOrder({
-                orders: sessionOrders,
-                totals,
-                paymentMethod: "ONLINE",
-              }),
-            );
-            navigate("/order-success", {
-              state: { orders: sessionOrders, totals, paymentMethod: "ONLINE" },
-              replace: true,
-            });
-          } catch (e) {
-            dispatch(
-              setLastOrder({
-                orders: currentOrders,
-                totals,
-                paymentMethod: "ONLINE",
-              }),
-            );
-            navigate("/order-success", {
-              state: { orders: currentOrders, totals, paymentMethod: "ONLINE" },
-              replace: true,
-            });
-          }
-          return;
-        }
-        if (errInfo.code === "ORDER_NOT_FOUND") {
-          setCheckoutState({ cartSessionId: null, orders: [] });
-          sessionStorage.removeItem("aurastore_active_cart_session_id");
-        }
-
-        throw Object.assign(new Error(errInfo.message), { code: errInfo.code });
-      }
-
-      if (!window.Razorpay) {
-        let attempts = 0;
-        await new Promise((resolve) => {
-          const interval = setInterval(() => {
-            attempts++;
-            if (window.Razorpay || attempts >= 20) {
-              clearInterval(interval);
-              resolve();
-            }
-          }, 100);
-        });
-      }
-
-      const prereqCheck = validateRazorpayPrerequisites({
-        sessionId: currentSessionId,
-        orders: currentOrders,
-        rzpOrder,
-      });
-      if (!prereqCheck.passed) {
-        logExit({
-          step: "STEP 10 (Razorpay instance)",
-          reason: `Prerequisites failed: ${prereqCheck.failed.join(", ")}`,
-          sessionId: currentSessionId,
-          ordersCount: currentOrders.length,
-          paymentMethod,
-          nextApi: "rzp.open(), verifyRazorpayPaymentMutation",
-        });
-        throw new Error("Razorpay SDK is not initialized. Please try again.");
-      }
-
-      logStep("STEP 10: Creating Razorpay instance", {
-        prereqChecks: prereqCheck.checks,
-      });
-      const options = {
-        key: rzpOrder.key || import.meta.env.VITE_RAZORPAY_KEY_ID,
-        amount: rzpOrder.amount,
-        currency: rzpOrder.currency,
-        name: import.meta.env.VITE_STORE_NAME || "My Designers",
-        description: "Order Checkout Payment",
-        order_id: rzpOrder.id,
-        handler: async (response) => {
-          logStep("STEP 12: Payment Success Callback", response);
-          setPhase(CHECKOUT_PHASE.VERIFYING);
-          try {
-            logStep("STEP 13: Calling Verify API");
-            logApiCall("verifyRazorpayPaymentMutation", {
-              sessionId: currentSessionId,
-              ordersCount: currentOrders.length,
-              paymentMethod,
-            });
-
-            const verifiedOrders = await measureApi(
-              "verifyRazorpayPaymentMutation",
-              () =>
-                verifyRazorpayPaymentMutation.mutateAsync({
-                  cart_session_id: currentSessionId,
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                }),
-            );
-
-            logStep("STEP 14: Verification Success", verifiedOrders);
-
-            dispatch(
-              setLastOrder({
-                orders: verifiedOrders,
-                totals,
-                paymentMethod,
-              }),
-            );
-
-            await clearCompletedCustomerCart();
-
-            toast.success("Payment verified and order confirmed!");
-
-            // Transition to VERIFY_SUCCESS phase to show confirmation state
-            setPhase(CHECKOUT_PHASE.VERIFY_SUCCESS);
-
-            await new Promise((resolve) => setTimeout(resolve, 600));
-            setPhase(CHECKOUT_PHASE.SUCCESS);
-
-            navigate("/order-success", {
-              state: {
-                orders: verifiedOrders,
-                totals,
-                paymentMethod,
-              },
-              replace: true,
-            });
-          } catch (verifyErr) {
-            const errInfo = getPaymentErrorMessage(verifyErr);
-            logFailure({
-              step: "STEP 13 (verify)",
-              error: verifyErr,
-              sessionId: currentSessionId,
-              ordersCount: currentOrders.length,
-              nextApiSkipped: "none — verification was the last step",
-            });
-            logExit({
-              step: "STEP 13 (verify)",
-              reason: `${errInfo.code}: ${errInfo.message}`,
-              sessionId: currentSessionId,
-              ordersCount: currentOrders.length,
-              paymentMethod,
-              nextApi: "none — verification was the last step",
-            });
-
-            if (errInfo.code === "UNAUTHORIZED") {
-              toast.error(errInfo.message);
-              setPhase(CHECKOUT_PHASE.FAILED);
-              setTimeout(
-                () => navigate("/auth/login", { state: { from: "/checkout" } }),
-                3000,
-              );
-              return;
-            }
-
-            if (errInfo.code === "ORDER_NOT_FOUND") {
-              setCheckoutState({ cartSessionId: null, orders: [] });
-              sessionStorage.removeItem("aurastore_active_cart_session_id");
-            }
-
-            dispatch(setOrderError(errInfo.message));
-            toast.error(errInfo.message);
-            setPhase(CHECKOUT_PHASE.FAILED);
-          }
         },
-        prefill: {
-          name: selectedAddress.full_name,
-          email: customer?.email || form.email || null,
-          contact: selectedAddress.phone,
-        },
-        theme: { color: "#000000" },
-        modal: {
-          ondismiss: () => {
-            logExit({
-              step: "STEP 11 (popup dismissed)",
-              reason: "User closed the Razorpay popup",
-              sessionId: currentSessionId,
-              ordersCount: currentOrders.length,
-              paymentMethod,
-              nextApi: "verifyRazorpayPaymentMutation",
-            });
-            toast.error("Payment cancelled by user.");
-            setPhase(CHECKOUT_PHASE.FAILED);
-          },
-        },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.on("payment.failed", (response) => {
-        logFailure({
-          step: "Razorpay payment.failed event",
-          error: response.error,
-          sessionId: currentSessionId,
-          ordersCount: currentOrders.length,
-        });
-        toast.error(
-          response.error.description || "Payment failed. Please try again.",
-        );
-        setPhase(CHECKOUT_PHASE.FAILED);
+        replace: true,
       });
-      updatePhase(CHECKOUT_PHASE.AWAITING_PAYMENT);
-      logStep("STEP 11: Opening Razorpay popup");
-      rzp.open();
+      return;
     } catch (err) {
       if (err.code === "UNAUTHORIZED") {
         return;
