@@ -56,54 +56,63 @@ export default function ShippingPage() {
   return (
     <div className="min-h-screen bg-[#F6F6F4]">
 
-      <div className="max-w-5xl mx-auto px-6">
+      <div className="max-w-4xl mx-auto px-5 sm:px-6 lg:px-8">
 
         {/* Hero */}
 
-        <section className="pt-16 pb-14 text-center">
+        <section className="pt-14 sm:pt-16 pb-12 sm:pb-14 text-center">
 
-          <p className="uppercase tracking-[0.3em] text-sm text-gray-500">
+          <p className="uppercase tracking-[0.3em] text-xs sm:text-sm text-gray-500">
             Shipping Information
           </p>
 
-          <h1 className="mt-5 text-5xl font-light text-gray-900">
-            Fast. Secure.
+          <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-light leading-tight text-gray-900">
+
+            Fast.
+            <br />
+            Secure.
             <br />
             Reliable.
+
           </h1>
 
           <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
 
-          <p className="max-w-3xl mx-auto text-lg leading-8 text-gray-600">
+          <p className="max-w-3xl mx-auto text-base sm:text-lg leading-8 text-gray-600">
+
             Every customized product is carefully packed,
             professionally handled and delivered with care.
+
           </p>
 
         </section>
 
         {/* Shipping Overview */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-5">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
+
             Shipping Overview
+
           </h2>
 
-          <p className="max-w-4xl text-lg leading-8 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-            At <strong>MY DESIGNERS</strong>, every order is handled with
-            precision from production to final delivery.
+            At <strong>MY DESIGNERS</strong>,
+            every order is handled with precision
+            from production to final delivery.
 
             <br /><br />
 
-            Every customized product is inspected carefully,
+            Every customized product is inspected,
             securely packed and prepared for safe transportation.
 
             <br /><br />
 
-            Whether you order one personalized product or a
-            large corporate order, our commitment to quality
-            remains the same.
+            Whether you order one product or
+            a large corporate order,
+            our commitment to quality remains the same.
 
           </p>
 
@@ -111,30 +120,32 @@ export default function ShippingPage() {
 
         {/* Order Processing */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-8">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-6">
+
             Order Processing
+
           </h2>
 
-          <div className="grid md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
             {processSteps.map((step) => (
 
               <div
                 key={step.title}
-                className="bg-white border border-gray-200 rounded-xl p-6"
+                className="bg-white border border-gray-200 rounded-xl p-5 sm:p-6"
               >
 
-                <div className="mb-4">
+                <div className="mb-3">
                   {step.icon}
                 </div>
 
-                <h3 className="text-xl font-semibold">
+                <h3 className="text-lg sm:text-xl font-semibold">
                   {step.title}
                 </h3>
 
-                <p className="mt-3 leading-7 text-gray-600">
+                <p className="mt-2 text-sm sm:text-base leading-7 text-gray-600">
                   {step.description}
                 </p>
 
@@ -146,33 +157,35 @@ export default function ShippingPage() {
 
         </section>
 
-        {/* Delivery Timeline */}
+            {/* Timeline */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-8">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-6">
+
             Estimated Delivery Timeline
+
           </h2>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
 
             {timeline.map((item) => (
 
               <div
                 key={item.title}
-                className="border border-gray-200 rounded-xl bg-white p-5 text-center"
+                className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5 text-center"
               >
 
                 <Clock
-                  size={24}
+                  size={22}
                   className="mx-auto mb-3"
                 />
 
-                <h3 className="font-semibold">
+                <h3 className="text-sm sm:text-base font-semibold">
                   {item.title}
                 </h3>
 
-                <p className="mt-2 text-gray-600">
+                <p className="mt-2 text-sm text-gray-600">
                   {item.value}
                 </p>
 
@@ -184,15 +197,17 @@ export default function ShippingPage() {
 
         </section>
 
-                {/* Shipping Guidelines */}
+        {/* Guidelines */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-8">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-6">
+
             Shipping Guidelines
+
           </h2>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
 
             {[
               "Provide a complete delivery address.",
@@ -205,13 +220,9 @@ export default function ShippingPage() {
 
               <div
                 key={item}
-                className="border-b border-gray-200 pb-4"
+                className="border-b border-gray-200 pb-3 text-gray-700 text-sm sm:text-base leading-7"
               >
-
-                <p className="leading-8 text-gray-700">
-                  {item}
-                </p>
-
+                {item}
               </div>
 
             ))}
@@ -220,29 +231,34 @@ export default function ShippingPage() {
 
         </section>
 
-        {/* Shipping Promise */}
+        {/* Promise */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-5">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
+
             Our Shipping Promise
+
           </h2>
 
-          <p className="max-w-4xl text-lg leading-8 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-            Every customized product represents the trust our
-            customers place in us.
-
-            <br /><br />
-
-            From production to packaging and final delivery,
-            every order receives the attention, protection
-            and care it deserves.
+            Every customized product represents
+            the trust our customers place in us.
 
             <br /><br />
 
-            Our commitment is simple —
-            deliver every order safely,
+            From production to packaging and delivery,
+            every order receives the attention,
+            protection and care it deserves.
+
+            <br /><br />
+
+            Our commitment is simple—
+
+            <br />
+
+            Deliver every order safely,
             professionally and on time.
 
           </p>
@@ -253,20 +269,27 @@ export default function ShippingPage() {
 
         <section className="py-14 border-t border-gray-200 text-center">
 
-          <p className="uppercase tracking-[0.3em] text-sm text-gray-500">
+          <p className="uppercase tracking-[0.3em] text-xs sm:text-sm text-gray-500">
+
             MY DESIGNERS
+
           </p>
 
-          <h2 className="mt-4 text-4xl font-light text-gray-900">
-            Delivered With Care
+          <h2 className="mt-4 text-3xl sm:text-4xl font-light leading-tight text-gray-900">
+
+            Delivered
+            <br />
+            With Care
+
           </h2>
 
           <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
 
-          <p className="max-w-3xl mx-auto text-lg leading-8 text-gray-600">
+          <p className="max-w-3xl mx-auto text-base sm:text-lg leading-8 text-gray-600">
 
-            Every package reflects our commitment to
-            premium quality, secure packaging and
+            Every package reflects our commitment
+            to premium quality,
+            secure packaging and
             customer satisfaction.
 
             <br /><br />
@@ -281,6 +304,4 @@ export default function ShippingPage() {
       </div>
 
     </div>
-
-  );
-}
+  )}

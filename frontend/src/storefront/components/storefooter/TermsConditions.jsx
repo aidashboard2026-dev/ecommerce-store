@@ -46,25 +46,27 @@ export default function TermsConditions() {
   return (
     <div className="min-h-screen bg-[#F6F6F4]">
 
-      <div className="max-w-5xl mx-auto px-6">
+      <div className="max-w-4xl mx-auto px-5 sm:px-6 lg:px-8">
 
         {/* Hero */}
 
-        <section className="pt-16 pb-14 text-center">
+        <section className="pt-14 sm:pt-16 pb-12 sm:pb-14 text-center">
 
-          <p className="uppercase tracking-[0.3em] text-sm text-gray-500">
+          <p className="uppercase tracking-[0.3em] text-xs sm:text-sm text-gray-500">
             Terms & Conditions
           </p>
 
-          <h1 className="mt-5 text-5xl font-light text-gray-900">
+          <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-light leading-tight text-gray-900">
+
             Terms &
             <br />
             Conditions
+
           </h1>
 
           <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
 
-          <p className="max-w-3xl mx-auto text-lg leading-8 text-gray-600">
+          <p className="max-w-3xl mx-auto text-base sm:text-lg leading-8 text-gray-600">
 
             Welcome to <strong>MY DESIGNERS</strong>.
 
@@ -77,17 +79,20 @@ export default function TermsConditions() {
 
         </section>
 
-        {/* Overview */}
+        {/* Terms Overview */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-6">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
+
             Terms Overview
+
           </h2>
 
-          <p className="text-lg leading-8 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-            These terms are designed to provide a fair,
+            These terms are designed to provide
+            a fair,
             transparent and secure shopping experience
             for every customer.
 
@@ -97,20 +102,23 @@ export default function TermsConditions() {
 
         {/* Order Process */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-6">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
+
             Order Process
+
           </h2>
 
-          <p className="text-lg leading-8 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
             Every order is confirmed before production.
 
             <br /><br />
 
             Customized products are manufactured only
-            after your order and design have been approved.
+            after your order and design
+            have been approved.
 
           </p>
 
@@ -118,17 +126,22 @@ export default function TermsConditions() {
 
         {/* Customer Responsibility */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-6">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
+
             Customer Responsibility
+
           </h2>
 
-          <p className="text-lg leading-8 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
             Customers are responsible for ensuring that
-            uploaded artwork, logos, photographs and text
-            belong to them or are used with permission.
+            uploaded artwork,
+            logos,
+            photographs and text
+            belong to them or are used
+            with proper permission.
 
           </p>
 
@@ -136,21 +149,24 @@ export default function TermsConditions() {
 
         {/* Intellectual Property */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-6">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
+
             Intellectual Property
+
           </h2>
 
-          <p className="text-lg leading-8 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
             MY DESIGNERS owns all website branding,
             layouts and original content.
 
             <br /><br />
 
-            Customer-provided artwork always remains
-            the property of the customer.
+            Customer-provided artwork
+            always remains the property
+            of the customer.
 
           </p>
 
@@ -158,17 +174,20 @@ export default function TermsConditions() {
 
         {/* Production */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-6">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
+
             Production & Delivery
+
           </h2>
 
-          <p className="text-lg leading-8 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
             Production and delivery timelines
             depend on customization,
-            order quantity and courier operations.
+            order quantity
+            and courier operations.
 
           </p>
 
@@ -176,21 +195,25 @@ export default function TermsConditions() {
 
             {/* Pricing */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-6">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
+
             Pricing & Payments
+
           </h2>
 
-          <p className="text-lg leading-8 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-            Product prices may change without notice.
+            Product prices may change
+            without prior notice.
 
             <br /><br />
 
             Applicable taxes,
-            customization charges and shipping fees
-            are shown during checkout.
+            customization charges
+            and shipping fees are shown
+            during checkout.
 
           </p>
 
@@ -198,20 +221,22 @@ export default function TermsConditions() {
 
         {/* Liability */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-6">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
+
             Limitation of Liability
+
           </h2>
 
-          <p className="text-lg leading-8 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
             MY DESIGNERS is not responsible for
             courier delays,
             incorrect addresses,
             customer-approved design mistakes
-            or copyright issues related to
-            customer-provided artwork.
+            or copyright issues
+            related to customer artwork.
 
           </p>
 
@@ -219,22 +244,24 @@ export default function TermsConditions() {
 
         {/* Cancellation */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-6">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
+
             Order Cancellation
+
           </h2>
 
-          <p className="text-lg leading-8 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-            Orders may be cancelled before
-            production begins.
+            Orders may be cancelled
+            before production begins.
 
             <br /><br />
 
             Once production starts,
-            customized products cannot normally
-            be cancelled.
+            customized products normally
+            cannot be cancelled.
 
           </p>
 
@@ -242,16 +269,19 @@ export default function TermsConditions() {
 
         {/* Governing Law */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-6">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
+
             Governing Law
+
           </h2>
 
-          <p className="text-lg leading-8 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
             These Terms & Conditions
-            are governed by the laws of India.
+            are governed by
+            the laws of India.
 
           </p>
 
@@ -259,17 +289,20 @@ export default function TermsConditions() {
 
         {/* Contact */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-6">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
+
             Need Assistance?
+
           </h2>
 
-          <p className="text-lg leading-8 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-            If you have questions regarding these
-            Terms & Conditions,
-            please contact MY DESIGNERS.
+            If you have questions
+            regarding these Terms & Conditions,
+            please contact
+            <strong> MY DESIGNERS.</strong>
 
           </p>
 
@@ -279,11 +312,13 @@ export default function TermsConditions() {
 
         <section className="py-14 border-t border-gray-200 text-center">
 
-          <p className="uppercase tracking-[0.3em] text-sm text-gray-500">
+          <p className="uppercase tracking-[0.3em] text-xs sm:text-sm text-gray-500">
+
             MY DESIGNERS
+
           </p>
 
-          <h2 className="mt-4 text-4xl font-light text-gray-900">
+          <h2 className="mt-4 text-3xl sm:text-4xl font-light leading-tight text-gray-900">
 
             Quality.
             <br />
@@ -295,7 +330,7 @@ export default function TermsConditions() {
 
           <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
 
-          <p className="max-w-3xl mx-auto text-lg leading-8 text-gray-600">
+          <p className="max-w-3xl mx-auto text-base sm:text-lg leading-8 text-gray-600">
 
             Thank you for choosing
             <strong> MY DESIGNERS.</strong>
@@ -303,8 +338,9 @@ export default function TermsConditions() {
             <br /><br />
 
             We are committed to providing
-            premium customized products with
-            transparency, quality and exceptional service.
+            premium customized products
+            with transparency,
+            quality and exceptional service.
 
           </p>
 

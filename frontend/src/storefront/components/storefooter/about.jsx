@@ -22,20 +22,20 @@ We strive to build long-term relationships through quality, honesty, and reliabl
 export default function AboutPage() {
   return (
     <div className="bg-[#F6F6F4] min-h-screen">
-      <div className="max-w-4xl mx-auto px-6 py-20">
+      <div className="max-w-4xl mx-auto px-5 sm:px-6 lg:px-8 py-14 sm:py-16">
 
-        <section className="text-center mb-10">
+        <section className="text-center mb-8 sm:mb-10">
           <p className="uppercase tracking-[0.35em] text-sm text-gray-500">
             About Us
           </p>
 
-          <h1 className="mt-5 text-5xl font-light text-gray-900">
+          <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-light leading-tight text-gray-900">
             MY DESIGNERS
           </h1>
 
-          <div className="w-20 h-px bg-gray-300 mx-auto my-8"></div>
+          <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
 
-          <p className="text-xl text-gray-600">
+          <p className="text-base sm:text-lg lg:text-xl text-gray-600">
             Crafted with Quality. Made for You.
           </p>
         </section>
@@ -43,16 +43,16 @@ export default function AboutPage() {
         {sections.map((section) => (
           <section
             key={section.title}
-            className="border-t border-gray-200 py-10"
+            className="border-t border-gray-200 py-8 sm:py-10"
           >
-            <h2 className="text-3xl font-semibold text-gray-900 mb-8">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 mb-5">
               {section.title}
             </h2>
 
             {section.content.split("\n\n").map((paragraph, index) => (
               <p
                 key={index}
-                className="text-gray-600 leading-9 mb-7 text-lg"
+                className="text-base sm:text-lg text-gray-600 leading-8 mb-6"
               >
                 {paragraph}
               </p>
@@ -60,12 +60,12 @@ export default function AboutPage() {
           </section>
         ))}
 
-                <section className="border-t border-gray-200 py-10">
-          <h2 className="text-3xl font-semibold text-gray-900 mb-8">
+                <section className="border-t border-gray-200 py-8 sm:py-10">
+          <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 mb-5">
             What We Create
           </h2>
 
-          <p className="text-lg leading-9 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
             MY DESIGNERS specializes in custom printed T-shirts,
             embroidered apparel, hoodies, caps, mugs, glass products,
             tote bags, keychains, photo frames, corporate gifts,
@@ -74,12 +74,12 @@ export default function AboutPage() {
           </p>
         </section>
 
-        <section className="border-t border-gray-200 py-10">
-          <h2 className="text-3xl font-semibold text-gray-900 mb-8">
+        <section className="border-t border-gray-200 py-8 sm:py-10">
+          <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 mb-5">
             Our Promise
           </h2>
 
-          <p className="text-lg leading-9 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
             Every order receives the same level of attention,
             whether it is a single personalized gift or a large
             corporate requirement.
@@ -89,12 +89,12 @@ export default function AboutPage() {
           </p>
         </section>
 
-        <section className="border-t border-gray-200 py-10">
-          <h2 className="text-3xl font-semibold text-gray-900 mb-8">
+        <section className="border-t border-gray-200 py-8 sm:py-10">
+          <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 mb-5">
             Looking Ahead
           </h2>
 
-          <p className="text-lg leading-9 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
             As we continue to grow, MY DESIGNERS aims to become one of
             the most trusted custom printing brands by delivering
             consistent quality, expanding our product collection,
@@ -103,18 +103,18 @@ export default function AboutPage() {
           </p>
         </section>
 
-        <section className="border-t border-gray-200 py-20 text-center">
-          <h2 className="text-4xl font-light text-gray-900">
+        <section className="border-t border-gray-200 py-14 text-center">
+          <h2 className="text-3xl sm:text-4xl font-light leading-tight text-gray-900">
             Thank You
           </h2>
 
-          <p className="mt-8 text-lg leading-9 text-gray-600">
+          <p className="mt-6 text-base sm:text-lg leading-8 text-gray-600 max-w-3xl mx-auto">
             Thank you for choosing <strong>MY DESIGNERS</strong>.
             Your trust motivates us to continue creating products that
             combine creativity, craftsmanship, and lasting quality.
           </p>
 
-          <p className="mt-10 text-xl font-medium text-gray-800">
+          <p className="mt-8 text-lg sm:text-xl font-medium text-gray-800">
             Let's Create Something Meaningful Together.
           </p>
         </section>

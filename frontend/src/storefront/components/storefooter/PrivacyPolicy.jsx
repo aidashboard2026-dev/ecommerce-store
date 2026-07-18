@@ -50,297 +50,298 @@ export default function PrivacyPolicy() {
   return (
     <div className="min-h-screen bg-[#F6F6F4]">
 
-    <div className="max-w-5xl mx-auto px-6">
+      <div className="max-w-4xl mx-auto px-5 sm:px-6 lg:px-8">
 
-      {/* Hero */}
+        {/* Hero */}
 
-      <section className="pt-16 pb-14 text-center">
+        <section className="pt-14 sm:pt-16 pb-12 sm:pb-14 text-center">
 
-        <p className="uppercase tracking-[0.3em] text-sm text-gray-500">
-          Privacy Policy
-        </p>
+          <p className="uppercase tracking-[0.3em] text-xs sm:text-sm text-gray-500">
+            Privacy Policy
+          </p>
 
-        <h1 className="mt-5 text-5xl font-light text-gray-900">
-          Your Privacy.
-          <br />
-          Our Responsibility.
-        </h1>
+          <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-light leading-tight text-gray-900">
 
-        <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
+            Your Privacy.
+            <br />
+            Our Responsibility.
 
-        <p className="max-w-3xl mx-auto text-lg leading-8 text-gray-600">
-          At <strong>MY DESIGNERS</strong>, protecting your privacy is one of
-          our highest priorities.
+          </h1>
 
-          <br /><br />
+          <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
 
-          This Privacy Policy explains how we collect,
-          use, protect and manage your information.
-        </p>
+          <p className="max-w-3xl mx-auto text-base sm:text-lg leading-8 text-gray-600">
 
-      </section>
+            At <strong>MY DESIGNERS</strong>,
+            protecting your privacy is one of our highest priorities.
 
-      {/* Information We Collect */}
+            <br /><br />
 
-      <section className="py-10 border-t border-gray-200">
+            This Privacy Policy explains how we collect,
+            use, protect and manage your information.
 
-        <h2 className="text-3xl font-semibold mb-6">
-          Information We Collect
-        </h2>
+          </p>
 
-        <p className="text-lg leading-8 text-gray-600">
+        </section>
 
-          We may collect your personal information,
-          shipping details, order information,
-          uploaded designs and payment details
-          necessary to complete your order.
+        {/* Information */}
 
-        </p>
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-      </section>
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
 
-      {/* How We Use Information */}
+            Information We Collect
 
-      <section className="py-10 border-t border-gray-200">
+          </h2>
 
-        <h2 className="text-3xl font-semibold mb-6">
-          How We Use Your Information
-        </h2>
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-        <p className="text-lg leading-8 text-gray-600">
+            We may collect your personal information,
+            shipping details,
+            order information,
+            uploaded designs and payment details
+            necessary to complete your order.
 
-          Your information helps us process orders,
-          manufacture customized products,
-          provide customer support,
-          improve our services and comply with legal requirements.
+          </p>
 
-        </p>
+        </section>
 
-      </section>
+        {/* Usage */}
 
-      {/* Your Designs */}
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-      <section className="py-10 border-t border-gray-200">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
 
-        <h2 className="text-3xl font-semibold mb-6">
-          Your Designs
-        </h2>
+            How We Use Your Information
 
-        <p className="text-lg leading-8 text-gray-600">
+          </h2>
 
-          Logos, artwork and other files uploaded
-          by you remain your property.
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-          <br /><br />
+            Your information helps us process orders,
+            manufacture customized products,
+            provide customer support,
+            improve our services and comply with legal requirements.
 
-          They are used only to produce
-          your customized products and are never
-          sold or used without permission.
+          </p>
 
-        </p>
+        </section>
 
-      </section>
+        {/* Designs */}
 
-      {/* Payment Security */}
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-      <section className="py-10 border-t border-gray-200">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
 
-        <h2 className="text-3xl font-semibold mb-6">
-          Payment Security
-        </h2>
+            Your Designs
 
-        <p className="text-lg leading-8 text-gray-600">
+          </h2>
 
-          Payments are processed securely
-          through trusted payment providers.
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-          <br /><br />
+            Logos,
+            artwork and uploaded files remain your property.
 
-          MY DESIGNERS never stores complete
-          card or banking credentials.
+            <br /><br />
 
-        </p>
+            They are used only to produce your customized products.
 
-      </section>
+          </p>
 
-      {/* Sharing Information */}
+        </section>
 
-      <section className="py-10 border-t border-gray-200">
+        {/* Payment */}
 
-        <h2 className="text-3xl font-semibold mb-6">
-          Sharing Information
-        </h2>
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-        <p className="text-lg leading-8 text-gray-600">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
 
-          We never sell or trade your personal data.
+            Payment Security
 
-          <br /><br />
+          </h2>
 
-          Information is shared only when necessary
-          with courier partners,
-          payment providers or
-          when legally required.
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-        </p>
+            Payments are securely processed through trusted providers.
 
-      </section>
+            <br /><br />
 
-      {/* Cookies */}
+            MY DESIGNERS never stores complete
+            card or banking credentials.
 
-      <section className="py-10 border-t border-gray-200">
+          </p>
 
-        <h2 className="text-3xl font-semibold mb-6">
-          Cookies
-        </h2>
+        </section>
 
-        <p className="text-lg leading-8 text-gray-600">
+        {/* Sharing */}
 
-          Cookies help improve your browsing experience,
-          remember preferences and enhance website performance.
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-        </p>
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
 
-      </section>
+            Sharing Information
 
-          {/* Data Security */}
+          </h2>
 
-      <section className="py-10 border-t border-gray-200">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-        <h2 className="text-3xl font-semibold mb-6">
-          Data Security
-        </h2>
+            We never sell or trade your personal data.
 
-        <p className="text-lg leading-8 text-gray-600">
+            <br /><br />
 
-          We use appropriate security practices
-          to protect your personal information
-          against unauthorized access,
-          misuse or disclosure.
+            Information is shared only when necessary
+            with courier partners,
+            payment providers or when legally required.
 
-        </p>
+          </p>
 
-      </section>
+        </section>
 
-      {/* Your Rights */}
+        {/* Cookies */}
 
-      <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-        <h2 className="text-3xl font-semibold mb-6">
-          Your Rights
-        </h2>
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
 
-        <p className="text-lg leading-8 text-gray-600">
+            Cookies
 
-          You may request access,
-          correction or deletion of
-          eligible personal information
-          by contacting our support team.
+          </h2>
 
-        </p>
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-      </section>
+            Cookies improve browsing,
+            remember preferences
+            and enhance website performance.
 
-      {/* Third Party */}
+          </p>
 
-      <section className="py-10 border-t border-gray-200">
+        </section>
 
-        <h2 className="text-3xl font-semibold mb-6">
-          Third-Party Services
-        </h2>
+            {/* Data Security */}
 
-        <p className="text-lg leading-8 text-gray-600">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          We work with trusted providers
-          for payments,
-          shipping and essential business services.
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
 
-        </p>
+            Data Security
 
-      </section>
+          </h2>
 
-      {/* Policy Updates */}
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-      <section className="py-10 border-t border-gray-200">
+            We use appropriate security practices
+            to protect your information against
+            unauthorized access,
+            misuse or disclosure.
 
-        <h2 className="text-3xl font-semibold mb-6">
-          Policy Updates
-        </h2>
+          </p>
 
-        <p className="text-lg leading-8 text-gray-600">
+        </section>
 
-          This Privacy Policy may be updated
-          whenever required.
+        {/* Rights */}
 
-          <br /><br />
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          The latest version will always
-          be available on this page.
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
 
-        </p>
+            Your Rights
 
-      </section>
+          </h2>
 
-      {/* Contact */}
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-      <section className="py-10 border-t border-gray-200">
+            You may request access,
+            correction or deletion of
+            eligible personal information.
 
-        <h2 className="text-3xl font-semibold mb-6">
-          Contact Us
-        </h2>
+          </p>
 
-        <p className="text-lg leading-8 text-gray-600">
+        </section>
 
-          Email:
-          support@mydesigners.in
+        {/* Third Party */}
 
-          <br /><br />
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          Phone:
-          +91 XXXXX XXXXX
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
 
-          <br /><br />
+            Third-Party Services
 
-          Dharmapuri,
-          Tamil Nadu,
-          India
+          </h2>
 
-        </p>
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-      </section>
+            We work with trusted partners
+            for payments,
+            shipping and essential services.
 
-      {/* Thank You */}
+          </p>
 
-      <section className="py-14 border-t border-gray-200 text-center">
+        </section>
 
-        <p className="uppercase tracking-[0.3em] text-sm text-gray-500">
-          MY DESIGNERS
-        </p>
+        {/* Updates */}
 
-        <h2 className="mt-4 text-4xl font-light text-gray-900">
-          Your Trust.
-          <br />
-          Our Commitment.
-        </h2>
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-        <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
 
-        <p className="max-w-3xl mx-auto text-lg leading-8 text-gray-600">
+            Policy Updates
 
-          Thank you for trusting
-          <strong> MY DESIGNERS.</strong>
+          </h2>
 
-          <br /><br />
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-          We remain committed to protecting
-          your information with transparency,
-          responsibility and care.
+            This Privacy Policy may be updated
+            whenever required.
 
-        </p>
+            <br /><br />
 
-      </section>
+            The latest version will always
+            be available on this page.
+
+          </p>
+
+        </section>
+
+        {/* Contact */}
+
+       
+
+        {/* Thank You */}
+
+        <section className="py-14 text-center border-t border-gray-200">
+
+          <p className="uppercase tracking-[0.3em] text-xs sm:text-sm text-gray-500">
+
+            MY DESIGNERS
+
+          </p>
+
+          <h2 className="mt-4 text-3xl sm:text-4xl font-light leading-tight text-gray-900">
+
+            Your Trust.
+            <br />
+            Our Commitment.
+
+          </h2>
+
+          <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
+
+          <p className="max-w-3xl mx-auto text-base sm:text-lg leading-8 text-gray-600">
+
+            Thank you for trusting
+            <strong> MY DESIGNERS.</strong>
+
+            <br /><br />
+
+            We remain committed to protecting
+            your information with transparency,
+            responsibility and care.
+
+          </p>
+
+        </section>
+
+      </div>
 
     </div>
-
-  </div>
   )}

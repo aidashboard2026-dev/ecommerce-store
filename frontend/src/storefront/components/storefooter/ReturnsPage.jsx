@@ -47,27 +47,29 @@ export default function ReturnsPage() {
   return (
     <div className="min-h-screen bg-[#F6F6F4]">
 
-      <div className="max-w-5xl mx-auto px-6">
+      <div className="max-w-4xl mx-auto px-5 sm:px-6 lg:px-8">
 
         {/* Hero */}
 
-        <section className="pt-16 pb-14 text-center">
+        <section className="pt-14 sm:pt-16 pb-12 sm:pb-14 text-center">
 
-          <p className="uppercase tracking-[0.3em] text-sm text-gray-500">
+          <p className="uppercase tracking-[0.3em] text-xs sm:text-sm text-gray-500">
             Returns
           </p>
 
-          <h1 className="mt-5 text-5xl font-light text-gray-900">
+          <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-light leading-tight text-gray-900">
+
             Fair.
             <br />
             Transparent.
             <br />
             Reliable.
+
           </h1>
 
           <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
 
-          <p className="max-w-3xl mx-auto text-lg leading-8 text-gray-600">
+          <p className="max-w-3xl mx-auto text-base sm:text-lg leading-8 text-gray-600">
 
             We want every customer to shop with confidence.
 
@@ -75,7 +77,8 @@ export default function ReturnsPage() {
 
             This policy explains when returns,
             replacements and refunds are available
-            for products purchased from MY DESIGNERS.
+            for products purchased from
+            <strong> MY DESIGNERS.</strong>
 
           </p>
 
@@ -83,23 +86,26 @@ export default function ReturnsPage() {
 
         {/* Return Eligibility */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-6">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
+
             Return Eligibility
+
           </h2>
 
-          <p className="text-lg leading-8 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
             Returns are accepted only when products
-            arrive damaged, contain manufacturing defects,
-            printing mistakes from our side,
-            or when an incorrect product has been delivered.
+            arrive damaged,
+            contain manufacturing defects,
+            printing mistakes from our side
+            or an incorrect product has been delivered.
 
             <br /><br />
 
-            Every request is carefully reviewed before
-            approval to ensure a fair process.
+            Every request is carefully reviewed
+            before approval.
 
           </p>
 
@@ -107,27 +113,29 @@ export default function ReturnsPage() {
 
         {/* Non Returnable */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-6">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
+
             Non-Returnable Products
+
           </h2>
 
-          <p className="text-lg leading-8 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-            Since most of our products are customized,
-            they cannot normally be returned once production
-            has started unless the issue is caused by us.
+            Customized products normally cannot
+            be returned after production begins
+            unless the issue is caused by us.
 
           </p>
 
-          <div className="mt-8 space-y-3">
+          <div className="mt-6 space-y-2">
 
             {nonReturnable.map(item => (
 
               <div
                 key={item}
-                className="border-b border-gray-200 pb-3"
+                className="border-b border-gray-200 pb-3 text-gray-700"
               >
                 {item}
               </div>
@@ -138,23 +146,25 @@ export default function ReturnsPage() {
 
         </section>
 
-        {/* Damaged Products */}
+        {/* Damaged */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-6">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
+
             Damaged Products
+
           </h2>
 
-          <p className="text-lg leading-8 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-            Please report damaged products within
-            <strong> 48 hours </strong>
+            Please report damaged products
+            within <strong>48 hours</strong>
             after delivery.
 
           </p>
 
-          <div className="mt-8 space-y-3">
+          <div className="mt-6 space-y-2">
 
             {[
               "Clear photos of the product",
@@ -165,7 +175,7 @@ export default function ReturnsPage() {
 
               <div
                 key={item}
-                className="border-b border-gray-200 pb-3"
+                className="border-b border-gray-200 pb-3 text-gray-700"
               >
                 {item}
               </div>
@@ -176,15 +186,17 @@ export default function ReturnsPage() {
 
         </section>
 
-            {/* Replacement Policy */}
+            {/* Replacement */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-6">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
+
             Replacement Policy
+
           </h2>
 
-          <p className="text-lg leading-8 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
             Replacement requests are approved for:
 
@@ -208,7 +220,7 @@ export default function ReturnsPage() {
 
             Once approved,
             replacement products are shipped
-            without additional charges.
+            at no additional cost.
 
           </p>
 
@@ -216,13 +228,15 @@ export default function ReturnsPage() {
 
         {/* Refund */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-6">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
+
             Refund Policy
+
           </h2>
 
-          <p className="text-lg leading-8 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
             Refunds are processed only when
             replacement is not possible.
@@ -238,15 +252,18 @@ export default function ReturnsPage() {
 
         {/* Cancellation */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-6">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
+
             Cancellation Policy
+
           </h2>
 
-          <p className="text-lg leading-8 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-            Orders may be cancelled before production begins.
+            Orders may be cancelled
+            before production begins.
 
             <br /><br />
 
@@ -260,21 +277,24 @@ export default function ReturnsPage() {
 
         {/* Promise */}
 
-        <section className="py-10 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold mb-6">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
+
             Our Promise
+
           </h2>
 
-          <p className="text-lg leading-8 text-gray-600">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-            Every customized product is carefully
-            inspected before dispatch.
+            Every customized product
+            is carefully inspected before dispatch.
 
             <br /><br />
 
-            If any issue occurs because of our mistake,
-            we will provide a fair and transparent solution.
+            If an issue occurs because of our mistake,
+            we will provide a fair,
+            transparent and customer-friendly solution.
 
           </p>
 
@@ -284,11 +304,13 @@ export default function ReturnsPage() {
 
         <section className="py-14 border-t border-gray-200 text-center">
 
-          <p className="uppercase tracking-[0.3em] text-sm text-gray-500">
+          <p className="uppercase tracking-[0.3em] text-xs sm:text-sm text-gray-500">
+
             MY DESIGNERS
+
           </p>
 
-          <h2 className="mt-4 text-4xl font-light text-gray-900">
+          <h2 className="mt-4 text-3xl sm:text-4xl font-light leading-tight text-gray-900">
 
             Customer Satisfaction
             <br />
@@ -298,7 +320,7 @@ export default function ReturnsPage() {
 
           <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
 
-          <p className="max-w-3xl mx-auto text-lg leading-8 text-gray-600">
+          <p className="max-w-3xl mx-auto text-base sm:text-lg leading-8 text-gray-600">
 
             Thank you for choosing
             <strong> MY DESIGNERS.</strong>
@@ -306,8 +328,9 @@ export default function ReturnsPage() {
             <br /><br />
 
             We are committed to providing
-            premium products together with
-            reliable service and transparent support.
+            premium products,
+            reliable service and
+            transparent customer support.
 
           </p>
 
@@ -317,6 +340,3 @@ export default function ReturnsPage() {
 
     </div>
   )}
-
-
-          
