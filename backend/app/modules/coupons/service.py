@@ -123,12 +123,6 @@ def validate_coupon(
 def record_usage(db: Session, coupon_id: int, order_id: int, customer_email: str) -> None:
     usage = CouponUsage(coupon_id=coupon_id, order_id=order_id, customer_email=customer_email)
     db.add(usage)
-    try:
-        db.flush()
-    except Exception as e:
-        db.rollback()
-        logger.error("Failed to record coupon usage: %s", e)
-        raise HTTPException(status_code=500, detail="Failed to record coupon usage.")
 
 
 def lookup_coupon(db: Session, code: str) -> Optional[Coupon]:

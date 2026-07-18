@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session
 from app.modules.orders.models import Order
 from app.modules.orders.constants import ItemType, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.modules.products.models import Product, ProductVariant
-from app.shared.exceptions import NotFoundError
+from app.shared.exceptions import BusinessRuleError, NotFoundError
 from app.shared.repositories import BaseRepository
 
 
@@ -285,6 +285,18 @@ class OrderRepository(BaseRepository[Order]):
 
     def decrement_stock(self, variant: ProductVariant, quantity: int) -> None:
         """Decrement variant stock. Must be called inside a locked transaction."""
+        if variant.stock_quantity < quantity:
+            raise BusinessRuleError(
+                f"Insufficient stock for variant #{variant.id} (size: {variant.size}). "
+                f"Available: {variant.stock_quantity}, requested: {quantity}.",
+                code="INSUFFICIENT_STOCK",
+                context={
+                    "variant_id": variant.id,
+                    "size": variant.size,
+                    "available": variant.stock_quantity,
+                    "requested": quantity,
+                },
+            )
         variant.stock_quantity -= quantity
         self.db.flush()
 

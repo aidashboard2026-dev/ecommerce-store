@@ -32,12 +32,14 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+import hashlib
 import logging
 import math
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
 from fastapi import BackgroundTasks
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.core.config import settings
 
@@ -224,6 +226,30 @@ def _build_and_persist_order(
     data["ordered_at"]             = now_utc
     data["item_type"]              = (order_in.item_type or ItemType.PRODUCT).upper()
 
+    # ── Idempotency: Return existing PENDING order for this session + product ──
+    # Prevents duplicate orders from double-click, browser refresh, network retry.
+    # Uses FOR UPDATE to serialize concurrent requests for the same checkout.
+    if order_in.cart_session_id and order_in.product_id and order_in.size:
+        existing_dup = (
+            repo.db.query(Order)
+            .filter(
+                Order.cart_session_id == order_in.cart_session_id,
+                Order.product_id == order_in.product_id,
+                Order.size == order_in.size,
+                Order.color == order_in.color,
+                Order.payment_status == "PENDING",
+                Order.tracking_status != TrackingStatus.CANCELLED,
+            )
+            .with_for_update()
+            .first()
+        )
+        if existing_dup:
+            logger.info(
+                "Idempotent create: Returning existing order %s for session=%s product=%s",
+                existing_dup.order_number, order_in.cart_session_id, order_in.product_id,
+            )
+            return existing_dup
+
     # ── SECURITY: Override frontend-submitted prices with database values ──
     # Never trust price, shipping_fee, or total_amount from the client.
     # Fetch the actual selling_price from ProductVariant in the database.
@@ -286,10 +312,7 @@ def _build_and_persist_order(
         from app.modules.coupons.service import lookup_coupon
         coupon = lookup_coupon(repo.db, coupon_code)
         if coupon:
-            try:
-                record_usage(repo.db, coupon_id=coupon.id, order_id=created_order.id, customer_email=customer_email)
-            except Exception:
-                pass
+            record_usage(repo.db, coupon_id=coupon.id, order_id=created_order.id, customer_email=customer_email)
 
     return created_order
 
@@ -685,7 +708,21 @@ def process_razorpay_webhook_payment(
     sends payment confirmation email and admin notification.
 
     Idempotent: returns 0 if orders are already PAID.
+
+    Uses PostgreSQL advisory lock (pg_advisory_xact_lock) to serialize concurrent
+    webhook deliveries for the same razorpay_order_id, preventing the race condition
+    where two simultaneous webhooks both see no orders and each creates duplicates.
     """
+    # Acquire a transaction-scoped advisory lock keyed on razorpay_order_id.
+    # pg_advisory_xact_lock is automatically released when the transaction ends
+    # (commit or rollback). This serializes concurrent webhook handlers so that
+    # only one process checks/creates orders at a time per razorpay_order_id.
+    hash_bytes = hashlib.sha256(razorpay_order_id.encode()).digest()
+    lock_key = int.from_bytes(hash_bytes[:8], 'big', signed=True)
+    db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_key})
+
+    # Re-check orders after acquiring lock — a concurrent webhook that held the
+    # lock before us may have already created/reconciled orders for this payment.
     orders = db.query(Order).filter(Order.razorpay_order_id == razorpay_order_id).all()
 
     if orders:
@@ -699,6 +736,12 @@ def process_razorpay_webhook_payment(
         now = datetime.utcnow()
         for order in orders:
             if order.payment_status == "PENDING":
+                if order.tracking_status == TrackingStatus.CANCELLED:
+                    logger.warning(
+                        "Webhook: Order %s is CANCELLED. Skipping payment reconciliation.",
+                        order.order_number,
+                    )
+                    continue
                 order.payment_status = "PAID"
                 order.payment_verified_at = now
                 if razorpay_payment_id:
@@ -1615,7 +1658,28 @@ def verify_razorpay_payment(
         logger.warning("Razorpay signature verification failed: %s", e)
         raise BusinessRuleError("Invalid payment signature.", code="INVALID_SIGNATURE")
 
-    # 3. Delegate to shared post-payment processing
+    # 3. Ownership & state validation
+    #    Verify that any existing orders for this cart_session belong to the
+    #    authenticated customer and are in a payable state.
+    existing = (
+        db.query(Order)
+        .filter(Order.cart_session_id == cart_session_id)
+        .all()
+    )
+    if existing:
+        for order in existing:
+            if order.customer_email != customer.email:
+                raise BusinessRuleError(
+                    "Cart session does not belong to this customer.",
+                    code="SESSION_OWNERSHIP_MISMATCH",
+                )
+            if order.tracking_status == TrackingStatus.CANCELLED:
+                raise BusinessRuleError(
+                    f"Order #{order.order_number} has been cancelled and cannot be paid.",
+                    code="ORDER_CANCELLED",
+                )
+
+    # 4. Delegate to shared post-payment processing
     orders = _post_payment_success(
         db=db,
         cart_session_id=cart_session_id,
@@ -1659,14 +1723,22 @@ def _post_payment_success(
     - Admin notification is sent exactly once
 
     Flow:
-    1. Check if orders already exist for cart_session_id
-    2. If not, fetch cart data from Razorpay notes and create orders
-    3. Mark orders as PAID
-    4. Decrement stock
-    5. Send customer email with invoice
-    6. Send admin notification
+    1. Acquire advisory lock on razorpay_order_id (serializes webhook+verify races)
+    2. Check if orders already exist for cart_session_id
+    3. If not, fetch cart data from Razorpay notes and create orders
+    4. Mark orders as PAID
+    5. Decrement stock
+    6. Send customer email with invoice
+    7. Send admin notification
     """
     import json
+
+    # Acquire advisory lock so that concurrent verify + webhook calls for the
+    # same razorpay_order_id are serialized. Whichever acquires the lock first
+    # creates the orders; the second caller finds them already present and exits.
+    hash_bytes = hashlib.sha256(razorpay_order_id.encode()).digest()
+    lock_key = int.from_bytes(hash_bytes[:8], 'big', signed=True)
+    db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_key})
 
     repo = OrderRepository(db)
 
@@ -1688,9 +1760,19 @@ def _post_payment_success(
             return existing_orders
 
         # Update existing orders with payment data
+        # SECURITY: Only update orders whose razorpay_order_id matches the
+        # verified payment's order_id. This prevents cart_session_id tampering
+        # where an attacker uses their own payment with a different session's orders.
         now_utc = datetime.now(timezone.utc)
         for order in existing_orders:
             if order.payment_status != "PAID":
+                if order.razorpay_order_id and order.razorpay_order_id != razorpay_order_id:
+                    logger.warning(
+                        "_post_payment_success: Order %s has razorpay_order_id %s "
+                        "but verified payment is for %s. Skipping.",
+                        order.id, order.razorpay_order_id, razorpay_order_id,
+                    )
+                    continue
                 repo.update_order_fields(
                     order,
                     {
@@ -1817,13 +1899,19 @@ def _post_payment_success(
                 )
                 if variant is not None:
                     qty = item_data.get("quantity", 1)
-                    if variant.stock_quantity >= qty:
-                        repo.decrement_stock(variant, qty)
-                    else:
-                        logger.error(
-                            "Stock insufficient at payment time for %s: available=%d, needed=%d",
-                            item_data.get("product_name"), variant.stock_quantity, qty,
+                    if variant.stock_quantity < qty:
+                        raise BusinessRuleError(
+                            f"Insufficient stock for '{item_data.get('product_name')}' (size: {item_data.get('size')}). "
+                            f"Available: {variant.stock_quantity}, requested: {qty}.",
+                            code="INSUFFICIENT_STOCK",
+                            context={
+                                "product": item_data.get("product_name"),
+                                "size": item_data.get("size"),
+                                "available": variant.stock_quantity,
+                                "requested": qty,
+                            },
                         )
+                    repo.decrement_stock(variant, qty)
 
             created_order = repo.create_order(order)
             created_orders.append(created_order)
@@ -1833,10 +1921,7 @@ def _post_payment_success(
             from app.modules.coupons.service import lookup_coupon, record_usage
             coupon = lookup_coupon(db, coupon_code_from_notes)
             if coupon:
-                try:
-                    record_usage(db, coupon_id=coupon.id, order_id=created_orders[0].id, customer_email=customer_email)
-                except Exception as e:
-                    logger.error("Failed to record coupon usage for %s: %s", coupon_code_from_notes, e)
+                record_usage(db, coupon_id=coupon.id, order_id=created_orders[0].id, customer_email=customer_email)
 
         db.commit()
 
