@@ -99,3 +99,6 @@ render_pdf.js
 report_data_old.py
 temp_gen_header.py
 temp_part1.py
+
+#grahify files
+graphify-out/

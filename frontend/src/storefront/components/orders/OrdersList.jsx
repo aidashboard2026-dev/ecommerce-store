@@ -138,7 +138,9 @@ function OrderCard({ order }) {
 export default function OrdersList() {
   const { data, isLoading } = useMyOrders()
 
-  console.log("Orders API Response:", data)
+  if (import.meta.env.DEV) {
+    console.log("Orders API Response:", data)
+  }
 
   const orders = Array.isArray(data)
     ? data

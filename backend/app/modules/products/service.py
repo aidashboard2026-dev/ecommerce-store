@@ -979,7 +979,12 @@ def create_product(db: Session, product_in: ProductCreate) -> ProductResponse:
 def get_product(db: Session, product_id: int) -> Product:
     product = (
         db.query(Product)
-        .options(selectinload(Product.variants), selectinload(Product.genders_rel))
+        .options(
+            selectinload(Product.variants),
+            selectinload(Product.genders_rel),
+            selectinload(Product.category),
+            selectinload(Product.collection_rel),
+        )
         .filter(Product.id == product_id, Product.deleted_at.is_(None))
         .first()
     )
@@ -992,14 +997,11 @@ def get_product_response(db: Session, product_id: int) -> ProductResponse:
     product = get_product(db, product_id)
     cat_map: dict = {}
     col_map: dict = {}
-    if product.category_id:
-        cat = db.get(Category, product.category_id)
-        if cat:
-            cat_map[cat.id] = cat.name
-    if product.collection_id:
-        col = db.get(Collection, product.collection_id)
-        if col:
-            col_map[col.id] = col.name
+    # category and collection_rel are eagerly loaded via selectinload in get_product
+    if product.category and product.category_id:
+        cat_map[product.category.id] = product.category.name
+    if product.collection_rel and product.collection_id:
+        col_map[product.collection_rel.id] = product.collection_rel.name
     return _build_product_response(product, category_map=cat_map, collection_map=col_map)
 
 
@@ -1122,6 +1124,21 @@ def bulk_action(db: Session, payload: BulkActionPayload) -> dict:
         for p in products:
             p.status = ProductStatus.archived
     elif action == "delete":
+        from app.shared.storage import supabase_storage
+        for p in products:
+            for attr in ["thumbnail", "image_front", "image_back", "image_size_chart"]:
+                url = getattr(p, attr, None)
+                if url:
+                    try:
+                        supabase_storage.delete_product_image(url)
+                    except Exception:
+                        pass
+            for url in p.gallery_images or []:
+                if url:
+                    try:
+                        supabase_storage.delete_product_image(url)
+                    except Exception:
+                        pass
         now = datetime.now(timezone.utc)
         for p in products:
             p.deleted_at = now

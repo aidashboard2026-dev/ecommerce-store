@@ -85,12 +85,14 @@ def firebase_login(db: Session, id_token: str, background_tasks: Optional[Backgr
     except Exception as error:
         import traceback
         error_details = f"FIREBASE VERIFY ERROR:\n{repr(error)}\nTraceback:\n{traceback.format_exc()}\n"
-        print(error_details, flush=True)
-        try:
-            with open("firebase_error.log", "a") as f:
-                f.write(error_details)
-        except Exception:
-            pass
+        logger.error("Firebase token verification failed: %s", error)
+        if settings.ENVIRONMENT != "production":
+            print(error_details, flush=True)
+            try:
+                with open("firebase_error.log", "a") as f:
+                    f.write(error_details)
+            except Exception:
+                pass
 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -115,13 +117,10 @@ def firebase_login(db: Session, id_token: str, background_tasks: Optional[Backgr
         firebase_claims.get("sign_in_provider")
     )
 
-    if email.endswith("@example.com"):
-        email_verified = True
-
-    if email.endswith("@example.com"):
-        email_verified = True
-
-    if email.endswith("@example.com"):
+    # Development shortcut: skip email verification for @example.com addresses
+    # so dev/test accounts don't require a real Firebase email verification step.
+    # Production MUST never bypass this check.
+    if settings.ENVIRONMENT != "production" and email.endswith("@example.com"):
         email_verified = True
 
     if not email_verified:

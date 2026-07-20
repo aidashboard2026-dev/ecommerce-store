@@ -1,4 +1,4 @@
-﻿/**
+/**
  * src/pages/AdminPage/ProductsPage.jsx
  * Enhanced with category, collection, stock status, and merchandising flag filters.
  * Adds bulk actions UI. Preserves existing UI/UX completely.

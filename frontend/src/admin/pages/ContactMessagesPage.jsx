@@ -182,7 +182,7 @@ export default function ContactMessagesPage() {
     try {
       toast(`Exporting ${format.toUpperCase()}...`, 'info');
       
-      const response = await api.get('/contact/export', {
+      const response = await api.get('/contact/admin/export', {
         params: {
           format,
           search: search || undefined,

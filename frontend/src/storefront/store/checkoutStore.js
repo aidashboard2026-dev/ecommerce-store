@@ -1,3 +1,12 @@
+/*
+ * NOTE: Addresses are managed client-side only (Redux + localStorage).
+ * There is no backend persistence for customer addresses in this version.
+ * Users will lose saved addresses on browser data clear or when switching devices.
+ *
+ * Future enhancement: Add a customer_addresses table and REST endpoints,
+ * then replace the loadAddresses/persistAddresses helpers with API calls.
+ */
+
 import { createSlice } from '@reduxjs/toolkit'
 
 const ADDRESS_KEY = 'aurastore_addresses'

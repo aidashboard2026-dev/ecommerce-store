@@ -99,12 +99,13 @@ def get_stats(db: Session) -> DashboardStatsResponse:
 
     current_start, previous_start, _ = _growth_windows(now)
 
-    # ── Totals ────────────────────────────────────────────────────────────────
-    total_orders    = repo.total_active_order_count()
-    total_revenue   = repo.total_revenue()
-    total_users     = repo.admin_count()
-    total_products  = repo.product_count()
-    published       = repo.product_count(published_only=True)
+    # ── Consolidated scalar stats (2 round-trips instead of 5) ────────────────
+    scalars = repo.consolidated_scalar_stats()
+    total_orders   = scalars["total_orders"]
+    total_revenue  = scalars["total_revenue"]
+    total_users    = scalars["admin_count"]
+    total_products = scalars["product_count"]
+    published      = scalars["published_count"]
 
     # ── Growth windows ────────────────────────────────────────────────────────
     cur_revenue  = repo.revenue_in_window(current_start, now)
@@ -116,13 +117,13 @@ def get_stats(db: Session) -> DashboardStatsResponse:
     cur_products = repo.product_count_in_window(current_start, now)
     prev_products= repo.product_count_in_window(previous_start, current_start)
 
-    # ── Payment method breakdowns ──────────────────────────────────────────────
-    cash_all  = repo.payment_revenue_summary(CASH_PAYMENT_METHODS)
-    upi_all   = repo.payment_revenue_summary(UPI_PAYMENT_METHODS)
-    cash_cur  = repo.payment_revenue_summary(CASH_PAYMENT_METHODS, current_start, now)
-    cash_prev = repo.payment_revenue_summary(CASH_PAYMENT_METHODS, previous_start, current_start)
-    upi_cur   = repo.payment_revenue_summary(UPI_PAYMENT_METHODS,  current_start, now)
-    upi_prev  = repo.payment_revenue_summary(UPI_PAYMENT_METHODS,  previous_start, current_start)
+    # ── Payment method breakdowns (batch: 2 round-trips instead of 6) ──────────
+    pmt = repo.payment_revenue_summary_batch(
+        CASH_PAYMENT_METHODS, UPI_PAYMENT_METHODS,
+        current_start, now, previous_start,
+    )
+    cash_all = pmt["cash_all"]
+    upi_all  = pmt["upi_all"]
 
     # ── Inventory ─────────────────────────────────────────────────────────────
     top_cats                  = repo.top_categories()
@@ -151,12 +152,12 @@ def get_stats(db: Session) -> DashboardStatsResponse:
         cash_revenue=cash_all["revenue"],
         cash_average_order=cash_all["average_order"],
         cash_orders=cash_all["orders"],
-        cash_revenue_growth=_growth(cash_cur["revenue"], cash_prev["revenue"]),
+        cash_revenue_growth=_growth(pmt["cash_cur"], pmt["cash_prev"]),
 
         upi_revenue=upi_all["revenue"],
         upi_average_order=upi_all["average_order"],
         upi_orders=upi_all["orders"],
-        upi_revenue_growth=_growth(upi_cur["revenue"], upi_prev["revenue"]),
+        upi_revenue_growth=_growth(pmt["upi_cur"], pmt["upi_prev"]),
 
         top_categories=[CategoryStat(**c) for c in top_cats],
         low_stock_products=[LowStockProduct(**p) for p in low_stock],

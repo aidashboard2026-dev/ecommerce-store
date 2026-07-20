@@ -69,7 +69,7 @@ def get_all_offers(
 
 # ── Create offer ──────────────────────────────────────────────────────────────
 
-@router.post("/admin", response_model=OfferResponse)
+@router.post("/admin", response_model=OfferResponse, status_code=status.HTTP_201_CREATED)
 async def create_new_offer(
     request:      Request,
     title:        Optional[str]          = Form(None),

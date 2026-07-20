@@ -17,7 +17,7 @@ import html
 from collections import defaultdict
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, HTTPException, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, Query, HTTPException, Request, BackgroundTasks, status
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
 from sqlalchemy.orm import Session
@@ -108,7 +108,7 @@ def _strip_html(text: str) -> str:
 
 # ── Public Endpoints (Storefront) ────────────────────────────────────────────
 
-@router.post("", response_model=dict)
+@router.post("", response_model=dict, status_code=status.HTTP_201_CREATED)
 def create_contact_message(
     request: Request,
     data: ContactMessageCreate,
@@ -329,9 +329,6 @@ def delete_contact_message(
     return {"success": True, "message": "Contact message deleted successfully"}
 
 
-# ── Clean, Direct Endpoints (Without /admin prefix) ───────────────────────────
-
-@router.get("/export")
 @router.get("/admin/export")
 def export_contact_messages(
     format: str = Query("csv", pattern="^(csv|xlsx)$"),
@@ -411,79 +408,3 @@ def export_contact_messages(
             media_type="text/csv",
             headers={"Content-Disposition": "attachment; filename=contact_messages.csv"}
         )
-
-
-@router.get("", response_model=ContactMessageListResponse)
-def list_contact_messages_new(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
-    search: Optional[str] = Query(None),
-    status: Optional[str] = Query(None),
-    sort_by: str = Query("created_at"),
-    sort_order: str = Query("desc"),
-    db: Session = Depends(get_db),
-    current_admin: Admin = Depends(get_current_admin),
-):
-    """Get paginated list of contact messages (direct GET /api/v1/contact)."""
-    return list_contact_messages(
-        skip=skip,
-        limit=limit,
-        search=search,
-        status=status,
-        sort_by=sort_by,
-        sort_order=sort_order,
-        db=db,
-        current_admin=current_admin,
-    )
-
-
-@router.get("/{message_id}", response_model=ContactMessageDetailResponse)
-def get_contact_message_new(
-    message_id: int,
-    db: Session = Depends(get_db),
-    current_admin: Admin = Depends(get_current_admin),
-):
-    """Get detailed contact message (direct GET /api/v1/contact/{id})."""
-    return get_contact_message(message_id=message_id, db=db, current_admin=current_admin)
-
-
-@router.put("/{message_id}", response_model=ContactMessageResponse)
-def update_contact_status_new(
-    message_id: int,
-    status_update: ContactMessageUpdate,
-    db: Session = Depends(get_db),
-    current_admin: Admin = Depends(get_current_admin),
-):
-    """Update contact message status (direct PUT /api/v1/contact/{id})."""
-    return update_contact_status(
-        message_id=message_id,
-        status_update=status_update,
-        db=db,
-        current_admin=current_admin,
-    )
-
-
-@router.post("/{message_id}/reply", response_model=ContactMessageResponse)
-def send_reply_new(
-    message_id: int,
-    reply_data: ContactMessageReply,
-    db: Session = Depends(get_db),
-    current_admin: Admin = Depends(get_current_admin),
-):
-    """Send reply to customer (direct POST /api/v1/contact/{id}/reply)."""
-    return send_reply(
-        message_id=message_id,
-        reply_data=reply_data,
-        db=db,
-        current_admin=current_admin,
-    )
-
-
-@router.delete("/{message_id}")
-def delete_contact_message_new(
-    message_id: int,
-    db: Session = Depends(get_db),
-    current_admin: Admin = Depends(get_current_admin),
-):
-    """Delete a contact message (direct DELETE /api/v1/contact/{id})."""
-    return delete_contact_message(message_id=message_id, db=db, current_admin=current_admin)

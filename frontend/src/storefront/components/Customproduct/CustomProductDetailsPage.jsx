@@ -103,8 +103,7 @@ export default function CustomProductDetailsPage({ product }) {
     );
   }
 
-  const inStock =
-    (product?.stock_quantity ?? 0) > 0;
+  const published = product?.status === "published";
  
 
 
@@ -399,7 +398,10 @@ export default function CustomProductDetailsPage({ product }) {
 
                         <span className="mt-1 text-sm font-medium text-pink-500">
 
-                            ✔ In Stock ({product.stock_quantity})
+                            {product.stock_quantity > 0
+                              ? `✔ In Stock (${product.stock_quantity})`
+                              : '✕ Out of Stock'
+                            }
 
                         </span>
 
@@ -415,7 +417,7 @@ export default function CustomProductDetailsPage({ product }) {
             <div className="flex flex-wrap gap-3 mt-6">
                 <button
                     onClick={handleWhatsApp}
-                    disabled={!inStock}
+                    disabled={!published}
                     className={`
                     flex-1 w-full
                     flex items-center justify-center gap-3

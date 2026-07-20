@@ -429,19 +429,21 @@ def firebase_customer_login(
 
     except Exception as error:
         db.rollback()
-        import traceback
-        error_details = f"ROUTER GENERIC ERROR:\n{repr(error)}\nTraceback:\n{traceback.format_exc()}\n"
         logger.exception("Firebase customer login failed")
         logger.warning(
             "Customer Login Failure | IP: %s | Error: %s",
             ip,
             str(error),
         )
-        try:
-            with open("firebase_error.log", "a") as f:
-                f.write(error_details)
-        except Exception:
-            pass
+        if settings.ENVIRONMENT != "production":
+            import traceback
+            error_details = f"ROUTER GENERIC ERROR:\n{repr(error)}\nTraceback:\n{traceback.format_exc()}\n"
+            logger.warning("Writing full traceback to firebase_error.log (dev only)")
+            try:
+                with open("firebase_error.log", "a") as f:
+                    f.write(error_details)
+            except Exception:
+                pass
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

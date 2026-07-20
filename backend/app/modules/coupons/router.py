@@ -49,7 +49,7 @@ def validate_coupon_endpoint(
     )
 
 
-@router.post("/admin", response_model=CouponResponse)
+@router.post("/admin", response_model=CouponResponse, status_code=status.HTTP_201_CREATED)
 def create_coupon_endpoint(
     payload: CouponCreate,
     request: Request,

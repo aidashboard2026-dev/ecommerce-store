@@ -33,6 +33,37 @@ export default function RegisterForm() {
   const update = (key) => (e) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
 
+  // ------------------------------------------------------------------
+  // Password Policy
+  // Must be at least 8 characters, contain at least one letter,
+  // and at least one digit or special character.
+  // Common/trivial passwords are blocked.
+  // ------------------------------------------------------------------
+  const COMMON_PASSWORDS = new Set([
+    "password", "password1", "password123",
+    "12345678", "123456789", "1234567890",
+    "abc12345", "abc123456", "abcdefgh",
+    "qwerty123", "letmein1", "iloveyou1",
+    "admin123", "welcome1", "monkey123",
+    "dragon12", "master12", "sunshine1",
+  ]);
+
+  const validatePassword = (pwd) => {
+    if (pwd.length < 8) {
+      return "Password must be at least 8 characters.";
+    }
+    if (!/[a-zA-Z]/.test(pwd)) {
+      return "Password must contain at least one letter.";
+    }
+    if (!/[\d!@#$%^&*()_\-+=[\]{};':"\\|,.<>/?`~]/.test(pwd)) {
+      return "Password must contain at least one number or special character.";
+    }
+    if (COMMON_PASSWORDS.has(pwd.toLowerCase())) {
+      return "This password is too common. Please choose a stronger password.";
+    }
+    return null;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -46,8 +77,9 @@ export default function RegisterForm() {
       return;
     }
 
-    if (form.password.length < 8) {
-      toast.error("Password must be at least 8 characters");
+    const passwordError = validatePassword(form.password);
+    if (passwordError) {
+      toast.error(passwordError);
       return;
     }
 
@@ -97,7 +129,7 @@ export default function RegisterForm() {
           break;
 
         case "auth/weak-password":
-          toast.error("Password should be at least 6 characters");
+          toast.error("Password must be at least 8 characters and contain a letter and number or special character.");
           break;
 
         default:

@@ -573,13 +573,18 @@ def reconcile_pending_orders(db: Session, customer_email: str):
     Check for any pending online orders with a razorpay_order_id, fetch from Razorpay API,
     and update them to PAID if paid on Razorpay.
     """
-    pending_orders = db.query(Order).filter(
-        Order.customer_email == customer_email,
-        Order.payment_status == "PENDING",
-        Order.payment_method == "ONLINE",
-        Order.razorpay_order_id.isnot(None),
-        Order.tracking_status != TrackingStatus.CANCELLED,
-    ).all()
+    pending_orders = (
+        db.query(Order)
+        .filter(
+            Order.customer_email == customer_email,
+            Order.payment_status == "PENDING",
+            Order.payment_method.in_(["ONLINE", "RAZORPAY"]),
+            Order.razorpay_order_id.isnot(None),
+            Order.tracking_status != TrackingStatus.CANCELLED,
+        )
+        .limit(50)
+        .all()
+    )
 
     if not pending_orders:
         return
@@ -615,7 +620,7 @@ def reconcile_pending_orders(db: Session, customer_email: str):
                     )
                     for order in orders:
                         order.payment_status = "PAID"
-                        order.payment_verified_at = datetime.utcnow()
+                        order.payment_verified_at = datetime.now(timezone.utc)
                         order.razorpay_payment_id = payment_id
                         try:
                             from app.modules.notifications.service import create_admin_notification
@@ -657,13 +662,22 @@ def release_expired_reservations(
     """
     from datetime import timedelta
 
-    cutoff = datetime.utcnow() - timedelta(minutes=expiry_minutes)
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=expiry_minutes)
 
-    stale_orders = db.query(Order).filter(
-        Order.payment_status == "PENDING",
-        Order.tracking_status == "PLACED",
-        Order.ordered_at < cutoff,
-    ).all()
+    # Process in bounded batches to avoid holding a large row lock scope.
+    # The composite index on (payment_status, tracking_status, ordered_at)
+    # ensures this filter uses an index scan rather than a full table scan.
+    BATCH_SIZE = 100
+    stale_orders = (
+        db.query(Order)
+        .filter(
+            Order.payment_status == "PENDING",
+            Order.tracking_status == "PLACED",
+            Order.ordered_at < cutoff,
+        )
+        .limit(BATCH_SIZE)
+        .all()
+    )
 
     if not stale_orders:
         return 0
@@ -675,7 +689,7 @@ def release_expired_reservations(
     for order in stale_orders:
         try:
             repo.update_order_fields(order, {"tracking_status": TrackingStatus.CANCELLED})
-            _restore_inventory(db, repo, order)
+            _restore_inventory(repo, order)
             cancelled_count += 1
         except Exception as exc:
             logger.error(
@@ -733,7 +747,7 @@ def process_razorpay_webhook_payment(
 
         # Legacy path: orders exist, mark as PAID
         updated_orders = []
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         for order in orders:
             if order.payment_status == "PENDING":
                 if order.tracking_status == TrackingStatus.CANCELLED:
@@ -847,7 +861,7 @@ def create_order_customer(
         existing_pending = db.query(Order).filter(
             Order.customer_email == customer.email,
             Order.payment_status == "PENDING",
-            Order.payment_method == "ONLINE",
+            Order.payment_method.in_(["ONLINE", "RAZORPAY"]),
             Order.cart_session_id.isnot(None),
             Order.tracking_status != TrackingStatus.CANCELLED,
         ).all()
@@ -1358,6 +1372,10 @@ def _create_razorpay_order_from_items(
         .all()
     )
 
+    resolved_items = []
+    discount_amount = Decimal("0.00")
+    coupon_code_normalized = None
+
     if existing_orders:
         any_paid = any(o.payment_status == "PAID" for o in existing_orders)
         if any_paid:
@@ -1396,7 +1414,6 @@ def _create_razorpay_order_from_items(
     else:
         total_shipping = Decimal("0.00")
         total_amount = Decimal("0.00")
-        resolved_items = []
 
         for item in items:
             item_type = (item.item_type or ItemType.PRODUCT).upper()
@@ -1465,8 +1482,6 @@ def _create_razorpay_order_from_items(
         # ── SECURITY: Apply coupon discount server-side ────────────────
         # Only coupon_code is accepted from frontend; validation and discount
         # calculation are performed entirely on the backend.
-        discount_amount = Decimal("0.00")
-        coupon_code_normalized = None
         if coupon_code:
             customer_email = customer.email
             from app.modules.coupons.service import validate_coupon

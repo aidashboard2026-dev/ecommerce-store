@@ -102,6 +102,8 @@ class CustomProductBase(BaseModel):
     is_new_arrival: bool = False
     seo_title: Optional[str] = None
     seo_description: Optional[str] = None
+    # Inventory — direct stock on the product (no variant-level stock)
+    stock_quantity: int = 0
     # Price range — Custom Products are production-based, not variant-based
     original_price_min: Decimal
     original_price_max: Decimal
@@ -171,6 +173,7 @@ class CustomProductUpdate(BaseModel):
     is_new_arrival:    Optional[bool] = None
     seo_title:         Optional[str] = None
     seo_description:   Optional[str] = None
+    stock_quantity:     Optional[int] = None
     original_price_min: Optional[Decimal] = None
     original_price_max: Optional[Decimal] = None
     selling_price_min:  Optional[Decimal] = None
@@ -258,6 +261,7 @@ class CustomProductResponse(BaseModel):
     image_size_chart:  Optional[str] = None
     gallery_images:    List[Any] = Field(default_factory=list)
     images:            List[Any] = Field(default_factory=list)  # legacy alias/consolidated list
+    stock_quantity:    int = 0
     whatsapp_message:  Optional[str] = None
     view_count:        int = 0
     orders_count:      int = 0

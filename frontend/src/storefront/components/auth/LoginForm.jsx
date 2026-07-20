@@ -242,8 +242,14 @@ export default function LoginForm() {
           errorMsg = resultAction.payload;
         }
 
-        toast.error(errorMsg);
-        return;
+        // A 401 here means the email is not a known admin account.
+        // Fall through to Firebase customer login — do NOT block or show an error.
+        // Any other failure (wrong password for known admin, 429 rate-limit, etc.)
+        // is a real error that should stop the flow.
+        if (status !== 401) {
+          toast.error(errorMsg);
+          return;
+        }
       }
 
       console.log("[Auth Isolation: Customer] Admin check bypassed. Initializing Firebase customer login flow.");
@@ -282,10 +288,10 @@ export default function LoginForm() {
         const expiry = Date.now() + 5 * 60 * 1000;
         localStorage.setItem("login_cooldown_expiry", expiry.toString());
         setCooldownTimeLeft(300);
-      } else if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
-        errorMessage = "Invalid email or password.";
-      } else if (err.code === "auth/invalid-email") {
-        errorMessage = "Invalid email address.";
+      } else if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
+        errorMessage = "Invalid email or password. Please check your credentials and try again.";
+      // } else if (err.code === "auth/invalid-email") {
+      //   errorMessage = "Invalid email address.";
       } else if (err.code === "auth/user-disabled") {
         errorMessage = "This account has been disabled.";
       } else if (err.code === "auth/too-many-requests") {
@@ -339,6 +345,16 @@ export default function LoginForm() {
 
       if (error.code === "auth/popup-blocked") {
         toast.error("Google popup was blocked. Please allow popups.");
+        return;
+      }
+
+      // Issue 3 (TC_AUTH_012): An account with this email exists using
+      // email/password. Firebase requires the user to sign in with their
+      // original method first. Guide them clearly — no duplicate is created.
+      if (error.code === "auth/account-exists-with-different-credential") {
+        toast.error(
+          "An account with this email already exists. Please sign in with your email and password first."
+        );
         return;
       }
 

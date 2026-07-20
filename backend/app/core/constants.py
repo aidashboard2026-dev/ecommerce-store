@@ -46,7 +46,7 @@ MAX_CUSTOM_PRODUCT_IMAGES = 2
 #================================================================================
 
 # Product
-MAX_PRODUCT_IMAGES = 8
+MAX_PRODUCT_IMAGES = 6
 MAX_PRODUCT_VARIANTS = 30
 
 

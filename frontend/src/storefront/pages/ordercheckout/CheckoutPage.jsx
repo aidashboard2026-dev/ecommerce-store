@@ -330,13 +330,8 @@ const EMPTY_CHECKOUT_FORM = {
   city: "",
   state: "",
   pincode: "",
-  billingType: "same",
-  billing_full_name: "",
-  billing_phone: "",
-  billing_address: "",
-  billing_city: "",
-  billing_state: "",
-  billing_pincode: "",
+  // Billing address fields removed — billing is always "same as delivery".
+  // See BillingAddress.jsx for details.
 };
 
 // ============================================================================
@@ -372,7 +367,7 @@ const validateRazorpayPrerequisites = ({ sessionId, orders, rzpOrder }) => {
 
 const isActivePendingOrder = (order) =>
   order.payment_status === "PENDING" &&
-  order.payment_method === "ONLINE" &&
+  (order.payment_method === "ONLINE" || order.payment_method === "RAZORPAY") &&
   order.tracking_status !== "CANCELLED";
 
 // ============================================================================
@@ -937,6 +932,13 @@ export default function CheckoutPage() {
 
         const customerOrders = res.data?.items || [];
 
+        // Re-check cancelled flag before calling resumeExistingCheckout,
+        // which may call navigate(), dispatch(), and setCheckoutState()
+        // — these should not fire after component unmount.
+        if (cancelled) {
+          return;
+        }
+
         await resumeExistingCheckout(customerOrders, activeSessionId);
       } catch (err) {
         if (cancelled) {
@@ -1001,7 +1003,7 @@ export default function CheckoutPage() {
       const itemShippingFee = i === 0 ? totals.shipping : 0;
 
       try {
-        created = await persistOrderItem(item, currentSessionId, itemShippingFee);
+        const created = await persistOrderItem(item, currentSessionId, itemShippingFee);
       } catch (itemErr) {
         const errInfo = getPaymentErrorMessage(itemErr);
 
@@ -1266,7 +1268,69 @@ export default function CheckoutPage() {
             return;
           }
 
-          throw Object.assign(new Error(errInfo.message), { code: errInfo.code });
+          // ACTIVE_CHECKOUT_EXISTS recovery for ONLINE path
+          // Uses the same recoverActiveSession helper as COD so behaviour is
+          // consistent across both payment methods.
+          if (errInfo.code === "ACTIVE_CHECKOUT_EXISTS") {
+            const recovery = await recoverActiveSession();
+
+            if (recovery.status === "resumed") {
+              // Recovered — retry Razorpay order creation with the resumed session
+              currentSessionId = recovery.sessionId;
+              setCheckoutState({ cartSessionId: recovery.sessionId, orders: recovery.orders });
+              sessionStorage.setItem("aurastore_active_cart_session_id", recovery.sessionId);
+
+              const retryPayload = buildCheckoutPayload({
+                items, customer, selectedAddress, form,
+                sessionId: currentSessionId,
+                shippingFee: totals.shipping,
+                couponCode,
+              });
+
+              rzpOrder = await measureApi(
+                "createRazorpayOrderMutation (retry)",
+                () => createRazorpayOrderMutation.mutateAsync(retryPayload),
+                (order) => ({
+                  order_id: order.id,
+                  amount: order.amount,
+                  currency: order.currency,
+                }),
+              );
+              // rzpOrder is set — flow continues to Razorpay popup below
+            } else if (recovery.status === "mismatch") {
+              // Clean up stale sessions and retry with a fresh session
+              for (const [sessionId, orders] of Object.entries(recovery.staleSessions)) {
+                await cleanupStaleSession(orders);
+              }
+              currentSessionId = crypto.randomUUID();
+              setCheckoutState({ cartSessionId: currentSessionId, orders: [] });
+              sessionStorage.setItem("aurastore_active_cart_session_id", currentSessionId);
+
+              const freshPayload = buildCheckoutPayload({
+                items, customer, selectedAddress, form,
+                sessionId: currentSessionId,
+                shippingFee: totals.shipping,
+                couponCode,
+              });
+
+              rzpOrder = await measureApi(
+                "createRazorpayOrderMutation (retry)",
+                () => createRazorpayOrderMutation.mutateAsync(freshPayload),
+                (order) => ({
+                  order_id: order.id,
+                  amount: order.amount,
+                  currency: order.currency,
+                }),
+              );
+            } else {
+              // No recoverable session found — show error
+              toast.error("Unable to recover your checkout session. Please try again.");
+              updatePhase(CHECKOUT_PHASE.FAILED);
+              return;
+            }
+          } else {
+            throw Object.assign(new Error(errInfo.message), { code: errInfo.code });
+          }
         }
 
         // Open Razorpay popup
@@ -1764,7 +1828,7 @@ export default function CheckoutPage() {
           <ContactSection form={form} update={update} />
           <DeliveryAddress form={form} setForm={setForm} update={update} />
           <PaymentSection />
-          <BillingAddress form={form} update={update} />
+          <BillingAddress />
           <button
             type="button"
             onClick={() => handlePlaceOrder()}

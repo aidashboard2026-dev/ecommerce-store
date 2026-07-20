@@ -44,25 +44,23 @@ class OrderRepository(BaseRepository[Order]):
         super().__init__(Order, db)
 
     def get_order_stats(self):
-        q = self.db.query(Order)
- 
+        from sqlalchemy import case
+        stats = self.db.query(
+            sqla_func.count(Order.id).label("total"),
+            sqla_func.sum(case((Order.tracking_status == "PLACED", 1), else_=0)).label("placed"),
+            sqla_func.sum(case((Order.tracking_status == "PROCESSING", 1), else_=0)).label("processing"),
+            sqla_func.sum(case((Order.tracking_status == "SHIPPED", 1), else_=0)).label("shipped"),
+            sqla_func.sum(case((Order.tracking_status == "DELIVERED", 1), else_=0)).label("delivered"),
+            sqla_func.sum(case((Order.tracking_status == "CANCELLED", 1), else_=0)).label("cancelled"),
+        ).one()
+
         return {
-            "total_orders": q.count(),
-
-            "new_orders":
-                q.filter(Order.tracking_status == "PLACED").count(),
-
-            "processing":
-                q.filter(Order.tracking_status == "PROCESSING").count(),
-
-            "shipped":
-                q.filter(Order.tracking_status == "SHIPPED").count(),
-
-            "delivered":
-                q.filter(Order.tracking_status == "DELIVERED").count(),
-
-            "cancelled":
-                q.filter(Order.tracking_status == "CANCELLED").count(),
+            "total_orders": int(stats.total or 0),
+            "new_orders": int(stats.placed or 0),
+            "processing": int(stats.processing or 0),
+            "shipped": int(stats.shipped or 0),
+            "delivered": int(stats.delivered or 0),
+            "cancelled": int(stats.cancelled or 0),
         }
 
     # ─────────────────────────────────────────────────────────

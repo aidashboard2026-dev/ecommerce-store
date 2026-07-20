@@ -16,9 +16,8 @@ No Inventory logic.
 
 import razorpay
 
-from fastapi import HTTPException
-
 from app.core.config import settings
+from app.shared.exceptions import BusinessRuleError, ExternalServiceError
 
 
 class RazorpayService:
@@ -48,9 +47,9 @@ class RazorpayService:
         Amount must be in paise.
         """
         if amount < 100:
-            raise HTTPException(
-                status_code=400,
-                detail="Amount must be at least 100 paise (1.00 INR).",
+            raise BusinessRuleError(
+                "Amount must be at least 100 paise (1.00 INR).",
+                code="INVALID_AMOUNT",
             )
 
         try:
@@ -66,9 +65,9 @@ class RazorpayService:
 
         except Exception as e:
 
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to create Razorpay order: {str(e)}",
+            raise ExternalServiceError(
+                f"Failed to create Razorpay order: {str(e)}",
+                code="RAZORPAY_API_FAILURE",
             )
 
     # ------------------------------------------------------

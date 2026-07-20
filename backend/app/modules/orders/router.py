@@ -456,5 +456,5 @@ async def razorpay_webhook(
             "message": f"Processed webhook event successfully. Updated {updated_count} order(s)."
         }
     except Exception as e:
-        logger.error(f"Failed to process webhook event: {e}", exc_info=True)
-        return {"status": "failed", "message": str(e)}
+        logger.error("Webhook processing failed: %s", e, exc_info=True)
+        return {"status": "failed", "message": "Webhook processing failed."}

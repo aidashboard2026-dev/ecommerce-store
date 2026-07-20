@@ -98,7 +98,7 @@ const HeaderComponent = function Header() {
   const handleLogout = async () => {
     try {
       await dispatch(logoutThunk()).unwrap();
-      navigate("/auth/login");
+      navigate("/admin/login");
     } catch (err) {
       console.error(err);
     }

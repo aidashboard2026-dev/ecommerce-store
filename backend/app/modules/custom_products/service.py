@@ -248,6 +248,7 @@ def _build_product_response(
         image_back=p.image_back,
         image_size_chart=p.image_size_chart,
         gallery_images=p.gallery_images or [],
+        stock_quantity=p.stock_quantity or 0,
         view_count=p.view_count or 0,
         orders_count=p.orders_count or 0,
         sales_count=p.sales_count or 0,
@@ -471,10 +472,12 @@ def create_custom_product(
         image_size_chart=data.image_size_chart,
         gallery_images=data.gallery_images or [],
 
+        stock_quantity=data.stock_quantity,
+
         whatsapp_message=data.whatsapp_message,
     )
     
-
+ 
     db.add(product)
     try:
         db.commit()
@@ -606,6 +609,21 @@ def bulk_action_custom_products(
         for p in products:
             p.status = CustomProductStatus.archived
     elif action == "delete":
+        from app.shared.storage import supabase_storage
+        for p in products:
+            for attr in ["thumbnail", "image_front", "image_back", "image_size_chart"]:
+                url = getattr(p, attr, None)
+                if url:
+                    try:
+                        supabase_storage.delete_custom_product_image(url)
+                    except Exception:
+                        pass
+            for url in p.gallery_images or []:
+                if url:
+                    try:
+                        supabase_storage.delete_custom_product_image(url)
+                    except Exception:
+                        pass
         now = datetime.now(timezone.utc)
         for p in products:
             p.deleted_at = now

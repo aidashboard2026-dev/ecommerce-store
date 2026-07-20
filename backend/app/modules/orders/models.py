@@ -20,7 +20,7 @@ as ItemType.PRODUCT for backward compatibility.
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Integer, Numeric, String, Text
+from sqlalchemy import Column, DateTime, Index, Integer, Numeric, String, Text
 from sqlalchemy.sql import func
 
 from app.core.database import Base
@@ -94,6 +94,12 @@ class Order(Base):
     tracking_note   = Column(Text)
     logistics       = Column(String(100), nullable=True)
     tracking_id     = Column(String(100), nullable=True)
+
+    # ── Composite indexes for performance-critical queries ────────────────────
+    __table_args__ = (
+        Index("ix_orders_pending_expiry", "payment_status", "tracking_status", "ordered_at"),
+        Index("ix_orders_customer_history", "customer_email", "ordered_at"),
+    )
 
     # ── Dates ────────────────────────────────────────────────────────────────
     # timezone=True ensures TIMESTAMPTZ in PostgreSQL so comparisons
