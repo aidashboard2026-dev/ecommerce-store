@@ -17,6 +17,7 @@ import StoreFooter from "@/storefront/components/storeindex/StoreFooter";
 import CartDrawer from "@/storefront/components/shoppingcart/CartDrawer";
 import GuestAuthModal from "@/storefront/components/checkout/GuestAuthModal";
 import { clearCart } from "@/storefront/store/cartSlice";
+import { AppContainer } from "@/shared/components/layout";
 
 import { clearWishlist } from "@/storefront/store/wishlistSlice";
 
@@ -85,7 +86,7 @@ export default function StorefrontLayout() {
     <CheckoutAuthModalContext.Provider
       value={{ openCheckoutAuthModal, closeCheckoutAuthModal }}
     >
-      <div className="min-h-screen w-full store-bg flex flex-col transition-colors duration-300">
+      <AppContainer className="store-bg flex flex-col">
         {/* Top Promotional Banner */}
         {/* <div className="bg-gradient-to-r from-brand-600 to-indigo-600 text-white text-xs py-2 px-4 text-center font-medium tracking-wide">
           FREE SHIPPING ON ORDERS OVER ₹999 & COMPLIMENTARY TRIAL GIFTS IN EVERY ORDER!
@@ -105,7 +106,7 @@ export default function StorefrontLayout() {
         />
 
         {/* Main Page Layout Wrapper */}
-        <main className="flex-1 w-full mt-5 p-2 relative">
+        <main className="relative w-full flex-1">
           <Suspense
             fallback={
               <div className="flex items-center justify-center min-h-[60vh]">
@@ -126,7 +127,7 @@ export default function StorefrontLayout() {
           onClose={closeCheckoutAuthModal}
           triggerElement={modalTrigger}
         />
-      </div>
+      </AppContainer>
     </CheckoutAuthModalContext.Provider>
   );
 }

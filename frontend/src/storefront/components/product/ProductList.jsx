@@ -8,6 +8,7 @@ import { useDebounce } from '@/shared/utils/productUtils'
 import SortDropdown from "@/storefront/components/filters/SortDropdown";
 import FilterDrawer from "@/storefront/components/filters/FilterDrawer";
 import { useLocation } from "react-router-dom";
+import { PageContainer } from "@/shared/components/layout";
   const DEFAULT_FILTERS={
       sort_by:"newest",
       collection_id:"",
@@ -292,9 +293,9 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
      
   }, [filters, categories, queryFilters]);
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <PageContainer>
       <div className="flex flex-col gap-2 mb-6">
-        <h1 className="font-display font-bold text-2xl sm:text-3xl text-app">
+        <h1 className="font-display text-2xl font-bold text-app sm:text-3xl lg:text-4xl">
             {pageTitle}
         </h1>
         <p className="text-sm text-muted">
@@ -306,10 +307,10 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
 
       {/* Search + mobile filter trigger */}
 
-      <div className="mb-8 flex items-center justify-between border-y border-[#d9d9d9]">
+      <div className="mb-8 flex flex-col justify-between overflow-hidden border-y border-app sm:flex-row sm:items-center">
 
       {/* Left Side */}
-      <div className="flex flex-1 items-center px-5 py-2">
+      <div className="flex min-h-[58px] flex-1 items-center px-3 py-2 sm:px-5">
 
         {/* Search
         <input
@@ -335,18 +336,18 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
           <button
             onClick={handleReset}
             className="
-              ml-4
+              ml-0
               h-[42px]
               whitespace-nowrap
               border
-              border-[#d9d9d9]
+              border-app
               px-5
               text-[12px]
               uppercase
               tracking-[2px]
               text-red-600
               transition
-              hover:bg-[#f5f5f5]
+              hover:bg-surface
             "
           >
             Clear Filters
@@ -356,7 +357,7 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
       </div>
 
       {/* Right Side */}
-      <div className="flex h-[58px]">
+      <div className="flex h-[58px] w-full border-t border-app sm:w-auto sm:border-t-0">
 
         <SortDropdown
           value={filters.sort_by}
@@ -382,17 +383,19 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
           }}
           className="
             flex
-            w-[140px]
+            min-w-[9rem]
+            flex-1
             items-center
             justify-center
             gap-3
             border-l
-            border-[#d9d9d9]
+            border-app
             text-[12px]
             uppercase
             tracking-[3px]
             transition
-            hover:bg-[#f7f7f7]
+            hover:bg-surface
+            sm:flex-none
           "
         >
           <SlidersHorizontal size={16} />
@@ -441,6 +444,6 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
         </div>
      
       
-    </div>
+    </PageContainer>
   )
 }

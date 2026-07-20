@@ -8,6 +8,7 @@ import { updateCustomerProfileThunk } from '@/storefront/store/customerSlice'
 import OrdersList from '@/storefront/components/orders/OrdersList'
 import DeliveryAddress from '@/storefront/components/checkout/DeliveryAddress'
 import WishlistGrid from '@/storefront/components/storeheaders/WishlistGrid'
+import { PageContainer } from '@/shared/components/layout'
 
 const ADDRESS_FIELDS = ['full_name', 'phone', 'address_line1', 'address_line2', 'city', 'state', 'pincode']
 const EMPTY_ADDRESS_FORM = ADDRESS_FIELDS.reduce((acc, field) => ({ ...acc, [field]: '' }), {})
@@ -45,7 +46,7 @@ function AccountDetailsSection() {
   }
 
   return (
-    <div className="bg-app border border-app rounded-2xl p-5 sm:p-6">
+    <div className="rounded-md border border-app bg-app p-4 sm:p-6">
       <h2 className="font-display font-bold text-lg text-app mb-4">Account Details</h2>
       <form onSubmit={handleSave} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="relative">
@@ -99,7 +100,7 @@ function AccountDetailsSection() {
 // ─── Account Settings tab — split out from the original Profile view ───────
 function AccountSettingsSection() {
   return (
-    <div className="bg-app border border-app rounded-2xl p-5 sm:p-6">
+    <div className="rounded-md border border-app bg-app p-4 sm:p-6">
       <h2 className="font-display font-bold text-lg text-app mb-2 flex items-center gap-2">
         <Lock size={16} /> Password
       </h2>
@@ -131,16 +132,16 @@ export default function ProfilePage() {
   const activeTab = activeTabFromPath(location.pathname)
 
   return (
-    <div className="mx-auto w-full max-w-[900px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      <h1 className="font-display font-bold text-2xl sm:text-3xl text-app mb-6">My Account</h1>
+    <PageContainer size="lg">
+      <h1 className="mb-6 font-display text-2xl font-bold text-app sm:text-3xl lg:text-4xl">My Account</h1>
 
-      <div className="flex gap-2 mb-8 border-b border-app overflow-x-auto">
+      <div className="mb-8 flex gap-2 overflow-x-auto border-b border-app scrollbar-hide">
         {TABS.map((tab) => (
           <Link
             key={tab.key}
             to={tab.path}
             className={clsx(
-              'inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors whitespace-nowrap',
+              'focus-ring -mb-px inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors whitespace-nowrap',
               activeTab === tab.key ? 'border-brand-500 text-brand-500' : 'border-transparent text-muted hover:text-app'
             )}
           >
@@ -154,6 +155,6 @@ export default function ProfilePage() {
       {activeTab === 'wishlist' && <WishlistGrid />}
       {activeTab === 'settings' && <AccountSettingsSection />}
       {activeTab === 'profile' && <AccountDetailsSection />}
-    </div>
+    </PageContainer>
   )
 }

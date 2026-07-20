@@ -186,7 +186,7 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="space-y-6 max-w-[1400px] mx-auto animate-fade-in">
+      <div className="space-y-6  mx-auto animate-fade-in">
         <PageHeader title="Dashboard" className={'border-b-0'} />
         <div className="rounded-xl border border-red-400/30 bg-red-500/5 p-6 text-center">
           <AlertTriangle size={36} className="mx-auto mb-3 text-red-400" />
@@ -198,7 +198,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-[1400px] mx-auto animate-fade-in">
+    <div className="space-y-6  mx-auto animate-fade-in">
       <PageHeader
               title="Dashboard"
               className={'border-b-0'}

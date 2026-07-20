@@ -84,7 +84,7 @@ export default function MainLayout() {
         {/* Page Content */}
         <div
           className={clsx(
-            'mx-auto w-full md:pl-60 md:pb-0 pb-20 max-w-[1400px] animate-slide-up transition-all duration-300',
+            'mx-auto w-full md:pl-60 md:pb-0 pb-20  animate-slide-up transition-all duration-300',
           )}
         >
           <div className="px-6 py-6 md:px-8">

@@ -1,4 +1,5 @@
 import { useParams } from "react-router-dom";
+import { PageContainer, ResponsiveGrid } from "@/shared/components/layout";
 
 export default function CategoryPage() {
   const { slug } = useParams();
@@ -71,27 +72,26 @@ export default function CategoryPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-6 py-10">
+    <PageContainer>
 
         {/* Category Title */}
-        <h1 className="text-4xl font-bold text-gray-900 mb-2 capitalize">
+        <h1 className="mb-2 font-display text-2xl font-bold capitalize text-app sm:text-3xl lg:text-4xl">
           {slug?.replaceAll("-", " ")}
         </h1>
 
-        <p className="text-gray-500 mb-8">
+        <p className="mb-8 text-sm text-muted">
           Browse all products from this category
         </p>
 
         {/* Products Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <ResponsiveGrid variant="products">
 
           {products.map((product) => (
             <div
               key={product.id}
               className="
-                bg-white
-                rounded-2xl
+                bg-app
+                rounded-md
                 border
                 border-gray-200
                 shadow-sm
@@ -106,7 +106,7 @@ export default function CategoryPage() {
               <img
                 src={product.image}
                 alt={product.name}
-                className="w-full h-64 object-cover"
+                className="aspect-[4/5] w-full object-cover"
               />
 
               {/* Product Content */}
@@ -179,8 +179,8 @@ export default function CategoryPage() {
 
         </div>
 
-      </div>
-    </div>
+        </ResponsiveGrid>
+    </PageContainer>
   );
 }
   

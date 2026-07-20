@@ -26,7 +26,7 @@ function ProductTypeGrid() {
 
   const products = data?.items || []
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+    <div className="mx-auto w-full  px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
       <div className="text-center mb-10">
         <h1 className="font-display font-bold text-2xl sm:text-3xl text-app">Custom Products</h1>
         <p className="text-sm text-muted mt-2 max-w-xl mx-auto">
@@ -80,7 +80,7 @@ export default function CustomPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <div className="mx-auto w-full  px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       <Link
         to="/custom"
         className="inline-flex items-center gap-2 text-sm text-muted hover:text-app mb-6"

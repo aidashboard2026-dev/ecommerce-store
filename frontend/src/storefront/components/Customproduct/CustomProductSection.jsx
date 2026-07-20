@@ -2,17 +2,18 @@ import React from "react";
 import CustomProductCard from "./custom_product_card";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
+import { Section, ResponsiveGrid } from "@/shared/components/layout";
 export default function CustomProductSection({ products = [] }) {
   if (!products.length) return null;
 
   return (
-    <section className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-10">
+    <Section spacing="md">
 
-      <div className="flex items-end justify-between mb-6">
+      <div className="mb-6 flex items-end justify-between gap-4">
 
         <div>
 
-            <h2 className="font-display font-bold text-xl sm:text-2xl text-app">
+            <h2 className="font-display text-xl font-bold text-app sm:text-2xl lg:text-3xl">
             Custom Products
             </h2>
 
@@ -32,7 +33,7 @@ export default function CustomProductSection({ products = [] }) {
 
         </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      <ResponsiveGrid variant="products">
 
         {products.map((product) => (
 
@@ -43,8 +44,8 @@ export default function CustomProductSection({ products = [] }) {
 
         ))}
 
-      </div>
+      </ResponsiveGrid>
 
-    </section>
+    </Section>
   );
 }

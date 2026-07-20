@@ -31,7 +31,7 @@ export default function WishlistGrid() {
           flex
           min-h-[60vh]
           w-full
-          max-w-[1400px]
+          
           flex-col
           items-center
           justify-center
@@ -121,7 +121,7 @@ export default function WishlistGrid() {
       className="
         mx-auto
         w-full
-        max-w-[1400px]
+        
         px-4
         py-8
         sm:px-6

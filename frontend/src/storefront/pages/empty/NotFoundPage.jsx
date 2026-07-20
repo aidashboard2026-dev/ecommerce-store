@@ -4,7 +4,7 @@ import { Compass } from 'lucide-react'
 
 export default function NotFoundPage() {
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-20 flex flex-col items-center text-center gap-4">
+    <div className="mx-auto w-full  px-4 sm:px-6 lg:px-8 py-20 flex flex-col items-center text-center gap-4">
       <div className="h-16 w-16 rounded-full bg-surface flex items-center justify-center">
         <Compass size={28} className="text-muted" />
       </div>

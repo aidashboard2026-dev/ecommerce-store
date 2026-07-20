@@ -25,6 +25,7 @@ import {
 } from "@/storefront/hooks/useOrders";
 import { storefrontAPI } from "@/shared/services/api";
 import GuestAuthModal from "@/storefront/components/checkout/GuestAuthModal";
+import { PageContainer } from "@/shared/components/layout";
 
 // ============================================================================
 // LOGGING HELPERS
@@ -1482,7 +1483,7 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-20 flex flex-col items-center text-center gap-4">
+      <PageContainer className="flex flex-col items-center gap-4 py-20 text-center">
         <div className="h-16 w-16 rounded-full bg-surface flex items-center justify-center">
           <ShoppingBag size={28} className="text-muted" />
         </div>
@@ -1498,12 +1499,12 @@ export default function CheckoutPage() {
         >
           Browse Products
         </Link>
-      </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <PageContainer>
       {/* Screen Reader Live Announcements */}
       <div className="sr-only" role="status" aria-live="polite">
         {checkoutPhase === CHECKOUT_PHASE.CREATING_ORDERS ||
@@ -1673,19 +1674,19 @@ export default function CheckoutPage() {
           </div>
         </div>
       )}
-      <div className="grid grid-cols-1 md:grid-cols-[50%_45%] gap-8">
-        <div className=" flex flex-col gap-8 ">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(24rem,0.85fr)] xl:gap-10">
+        <div className="flex min-w-0 flex-col gap-6 lg:gap-8">
           <div className="">
             <h2 className="font-display font-bold text-lg text-app mb-4">
               Review Items
             </h2>
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 rounded-md border border-app p-3 sm:p-4">
               {items.map((item) => (
                 <div
                   key={`${item.productId}-${item.size}-${item.color}`}
-                  className="flex gap-4"
+                  className="flex min-w-0 gap-3 sm:gap-4"
                 >
-                  <div className="w-16 h-20 rounded-xl bg-surface overflow-hidden border border-app shrink-0">
+                  <div className="aspect-[4/5] w-16 shrink-0 overflow-hidden rounded-md border border-app bg-surface">
                     {item.thumbnail ? (
                       <img
                         src={getImageUrl(item.thumbnail)}
@@ -1698,7 +1699,7 @@ export default function CheckoutPage() {
                       </div>
                     )}
                   </div>
-                  <div className="flex-1">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-app line-clamp-1">
                       {item.title}
                     </p>
@@ -1708,15 +1709,15 @@ export default function CheckoutPage() {
                       {item.quantity}
                     </p>
                   </div>
-                  <p className="text-sm font-bold text-app">
+                  <p className="shrink-0 text-sm font-bold text-app">
                     {formatPrice(item.sellingPrice * item.quantity)}
                   </p>
                 </div>
               ))}
             </div>
           </div>
-          <div className="">
-            <div className="flex flex-col gap-4 ">
+          <div className="rounded-md border border-app p-4">
+            <div className="flex flex-col gap-4">
               <h3 className="font-display font-bold text-lg text-app">
                 Order Total
               </h3>
@@ -1759,7 +1760,7 @@ export default function CheckoutPage() {
             </div>
           </div>
         </div>
-        <div className="flex flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-24 lg:self-start">
           <ContactSection form={form} update={update} />
           <DeliveryAddress form={form} setForm={setForm} update={update} />
           <PaymentSection />
@@ -1769,12 +1770,12 @@ export default function CheckoutPage() {
             onClick={() => handlePlaceOrder()}
             disabled={submitting || placingOrder || paymentMethodsList.length === 0}
             aria-disabled={submitting || placingOrder || paymentMethodsList.length === 0}
-            className="w-full h-12 flex items-center justify-center bg-brand-500 hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 text-white font-semibold text-sm rounded-full shadow-glow-sm transition-colors"
+            className="focus-ring flex h-12 w-full items-center justify-center rounded-md bg-brand-500 px-6 text-sm font-semibold text-white shadow-glow-sm transition-colors hover:bg-brand-600 disabled:opacity-60"
           >
             {getButtonText()}
           </button>
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }

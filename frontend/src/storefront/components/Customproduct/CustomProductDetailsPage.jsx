@@ -94,7 +94,7 @@ export default function CustomProductDetailsPage({ product }) {
 
   if (!product) {
     return (
-      <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-20 text-center">
+      <div className="mx-auto w-full  px-4 sm:px-6 lg:px-8 py-20 text-center">
         <p className="text-app font-semibold mb-4">Product not found.</p>
         <Link to="/custom" className="text-brand-500 font-semibold text-sm">
           Back to Custom Orders
@@ -180,7 +180,7 @@ export default function CustomProductDetailsPage({ product }) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <div className="mx-auto w-full  px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       {/* Breadcrumb */}
       <div className="mb-6 flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
         <Link to="/" className="transition-colors hover:text-app">

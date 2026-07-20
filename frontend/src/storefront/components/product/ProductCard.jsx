@@ -270,10 +270,10 @@ function ProductCard({ product }) {
   return (
     <Link
       to={`/products/${product.slug}`}
-      className="group relative flex flex-col w-full justify-between overflow-hidden transition-all duration-300 hover:-translate-y-1"
+      className="group relative flex h-full w-full min-w-0 flex-col justify-between overflow-hidden rounded-md transition-all duration-300 hover:-translate-y-1 focus-ring"
     >
       {/* Image */}
-      <div className="flex relative w-full aspect-[8/9] rounded-0 bg-surface overflow-hidden">
+      <div className="relative flex w-full overflow-hidden bg-surface aspect-[4/5]">
         {product.thumbnail && !imageError ? (
           <img
             src={
@@ -300,7 +300,7 @@ function ProductCard({ product }) {
           </div>
         )}
 
-        <div className="absolute flex flex-wrap flex-row w-full items-center justify-between mt-2 px-2">
+        <div className="absolute mt-2 flex w-full flex-row flex-wrap items-center justify-between px-2">
           {/* Badges */}
           <div className="flex flex-col gap-1.5">
             {!inStock && (
@@ -328,14 +328,14 @@ function ProductCard({ product }) {
       </div>
 
       {/* Info */}
-      <div className="flex flex-col flex-1 flex-wrap h-full justify-between gap-1 py-3">
+      <div className="flex min-h-[8.75rem] flex-1 flex-col justify-between gap-2 py-3">
         {(product.collection_name || product.collection) && (
           <span className="text-[10px] uppercase tracking-wider text-muted font-semibold">
             {product.collection_name || product.collection}
           </span>
         )}
-        <div className="flex flex-row flex-wrap items-center justify-between">
-          <h3 className="text-lg font-thin text-app line-clamp-2 leading-snug">
+        <div className="flex min-w-0 flex-row flex-wrap items-start justify-between gap-2">
+          <h3 className="min-w-0 text-sm font-medium leading-snug text-app line-clamp-2 sm:text-base lg:text-lg lg:font-light">
             {product.title}
           </h3>
 
@@ -345,10 +345,10 @@ function ProductCard({ product }) {
           </div> */}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           {minPrice != null ? (
             <>
-              <span className="text-xl font-bold text-app">
+              <span className="text-base font-bold text-app sm:text-lg lg:text-xl">
                 {formatPrice(minPrice)}
               </span>
               {hasDiscount && (
