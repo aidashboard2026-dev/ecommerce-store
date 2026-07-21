@@ -43,6 +43,7 @@ from app.modules.products.service import (
     soft_delete_product, update_category, update_collection,
     update_product, update_variant,
 )
+from app.shared.exceptions import NotFoundError
 from app.shared.storage import supabase_storage
 
 router = APIRouter()
@@ -430,20 +431,6 @@ def delete_product_by_id(
 ):
     product = get_product(db, product_id)
     title   = product.title
-    # Clean up images from storage before soft-deleting
-    for attr in ["thumbnail", "image_front", "image_back", "image_size_chart"]:
-        url = getattr(product, attr)
-        if url:
-            try:
-                supabase_storage.delete_product_image(url)
-            except Exception:
-                pass
-    for url in product.gallery_images or []:
-        if url:
-            try:
-                supabase_storage.delete_product_image(url)
-            except Exception:
-                pass
     soft_delete_product(db, product_id)
     audit.deleted(
         db=db, admin=current_admin,

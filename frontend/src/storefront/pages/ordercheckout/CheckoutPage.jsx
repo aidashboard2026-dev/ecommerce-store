@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useEffect, useRef, useState } from "react";
+import React, { useMemo, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useQuery } from "@tanstack/react-query";
@@ -10,6 +10,7 @@ import DeliveryAddress from "@/storefront/components/checkout/DeliveryAddress";
 import PaymentSection from "@/storefront/components/checkout/PaymentSection";
 import { getImageUrl, formatPrice } from "@/shared/utils/productUtils";
 import { removeCustomerCartItemThunk } from "@/storefront/store/customerCartThunks";
+import { customerCartAPI } from "@/storefront/services/customerCollectionService";
 import {
   selectSelectedAddress,
   setLastOrder,
@@ -512,37 +513,26 @@ export default function CheckoutPage() {
   }, [paymentMethodsList, paymentMethod, dispatch]);
 
   const clearCompletedCustomerCart = async () => {
-    const databaseCartItems = items.filter(
-      (item) => item.cartItemId !== null && item.cartItemId !== undefined,
-    );
-
-    if (databaseCartItems.length > 0) {
-      const results = await Promise.allSettled(
-        databaseCartItems.map((item) =>
-          dispatch(removeCustomerCartItemThunk(item.cartItemId)).unwrap(),
-        ),
+    try {
+      const databaseCartItems = items.filter(
+        (item) => item.cartItemId !== null && item.cartItemId !== undefined,
       );
 
-      const failedDeletes = results.filter(
-        (result) => result.status === "rejected",
-      );
-
-      if (failedDeletes.length > 0) {
-        debugError(
-          "[Checkout] Some customer DB cart items could not be removed:",
-          failedDeletes,
-        );
+      if (databaseCartItems.length > 0) {
+        await customerCartAPI.clearItems().catch(() => {});
       }
+    } catch (err) {
+      debugError("[Checkout] Non-critical error during cart clearing:", err);
+    } finally {
+      // Clear Redux cart and save [] in guest localStorage.
+      dispatch(clearCart());
+
+      // Extra cleanup for old guest cart data.
+      localStorage.removeItem("aurastore_guest_cart");
+
+      // Remove completed checkout session.
+      sessionStorage.removeItem("aurastore_active_cart_session_id");
     }
-
-    // Clear Redux cart and save [] in guest localStorage.
-    dispatch(clearCart());
-
-    // Extra cleanup for old guest cart data.
-    localStorage.removeItem("aurastore_guest_cart");
-
-    // Remove completed checkout session.
-    sessionStorage.removeItem("aurastore_active_cart_session_id");
   };
 
   const totals = useMemo(() => {
@@ -1004,6 +994,7 @@ export default function CheckoutPage() {
 
       try {
         const created = await persistOrderItem(item, currentSessionId, itemShippingFee);
+        currentOrders.push(created);
       } catch (itemErr) {
         const errInfo = getPaymentErrorMessage(itemErr);
 
@@ -1247,7 +1238,7 @@ export default function CheckoutPage() {
           if (errInfo.code === "ORDER_ALREADY_PAID") {
             toast.success("Order already paid!");
             updatePhase(CHECKOUT_PHASE.SUCCESS);
-            await clearCompletedCustomerCart();
+            clearCompletedCustomerCart().catch(() => {});
             try {
               const res = await storefrontAPI.getOrders();
               const customerOrders = res.data?.items || [];
@@ -1370,12 +1361,14 @@ export default function CheckoutPage() {
               );
 
               dispatch(setLastOrder({ orders: verifiedOrders, totals, paymentMethod }));
-              await clearCompletedCustomerCart();
               toast.success("Payment verified and order confirmed!");
 
               setPhase(CHECKOUT_PHASE.VERIFY_SUCCESS);
-              await new Promise((resolve) => setTimeout(resolve, 600));
               setPhase(CHECKOUT_PHASE.SUCCESS);
+
+              clearCompletedCustomerCart().catch((err) => {
+                debugError("[Checkout] Non-critical error clearing cart after payment verification:", err);
+              });
 
               navigate("/order-success", {
                 state: { orders: verifiedOrders, totals, paymentMethod },
@@ -1480,10 +1473,13 @@ export default function CheckoutPage() {
         }),
       );
 
-      await clearCompletedCustomerCart();
-
       toast.success("Order placed successfully!");
       updatePhase(CHECKOUT_PHASE.SUCCESS);
+
+      clearCompletedCustomerCart().catch((err) => {
+        debugError("[Checkout] Non-critical error clearing cart after COD order:", err);
+      });
+
       navigate("/order-success", {
         state: {
           orders: currentOrders,

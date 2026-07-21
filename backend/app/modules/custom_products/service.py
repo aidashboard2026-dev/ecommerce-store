@@ -573,6 +573,8 @@ def delete_custom_product(db: Session, product_id: int) -> None:
     """Soft-delete a custom product by setting deleted_at."""
     from datetime import datetime, timezone
     product = get_custom_product_orm(db, product_id)
+    from app.shared.storage import supabase_storage
+    supabase_storage.delete_all_custom_product_images(product)
     product.deleted_at = datetime.now(timezone.utc)
     db.commit()
     logger.info("Custom product soft-deleted: id=%s", product_id)
@@ -611,20 +613,11 @@ def bulk_action_custom_products(
     elif action == "delete":
         from app.shared.storage import supabase_storage
         for p in products:
-            for attr in ["thumbnail", "image_front", "image_back", "image_size_chart"]:
-                url = getattr(p, attr, None)
-                if url:
-                    try:
-                        supabase_storage.delete_custom_product_image(url)
-                    except Exception:
-                        pass
-            for url in p.gallery_images or []:
-                if url:
-                    try:
-                        supabase_storage.delete_custom_product_image(url)
-                    except Exception:
-                        pass
+            supabase_storage.delete_all_custom_product_images(p)
+
         now = datetime.now(timezone.utc)
+
+
         for p in products:
             p.deleted_at = now
     elif action == "move_category":

@@ -13,7 +13,7 @@ export async function compressImage(file) {
 
   // Recommended settings
   const options = {
-    maxSizeMB: 0.4,
+    maxSizeMB: 0.3,
     maxWidthOrHeight: 1200,
     useWebWorker: true,
     fileType: 'image/webp',

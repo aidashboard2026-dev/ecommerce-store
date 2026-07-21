@@ -435,7 +435,7 @@ export default function DashboardPage() {
           tabIndex={0}
           onClick={() => navigate("/admin/settings")}
           onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && navigate("/admin/settings")}
-          aria-label="Payment Activity â€” go to Settings"
+          aria-label="Payment Activity ” go to Settings"
           className="cursor-pointer rounded-xl border border-amber-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-amber-900/40 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-amber-400/60"
         >
           <div className="mb-5 flex items-center justify-between">
@@ -487,7 +487,7 @@ export default function DashboardPage() {
           tabIndex={0}
           onClick={() => navigate("/admin/settings")}
           onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && navigate("/admin/settings")}
-          aria-label="Notification Activity â€” go to Settings"
+          aria-label="Notification Activity ” go to Settings"
           className="cursor-pointer rounded-xl border border-rose-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-rose-900/40 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-rose-400/60"
         >
           <div className="mb-5 flex items-center justify-between">

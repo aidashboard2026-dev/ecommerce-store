@@ -1,12 +1,12 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "axios";
+import { storefrontClient } from "@/shared/services/api";
 
 import {
   replaceWishlistItems,
 } from "@/storefront/store/wishlistSlice";
 
 const WISHLIST_API =
-  "/api/v1/customer/wishlist";
+  "/customer/wishlist";
 
 // Backend response → Redux product format
 function normalizeWishlistItem(item) {
@@ -50,7 +50,7 @@ export const fetchCustomerWishlistThunk =
     "customerWishlist/fetch",
     async (_, { dispatch, rejectWithValue }) => {
       try {
-        const response = await axios.get(
+        const response = await storefrontClient.get(
           WISHLIST_API,
         );
 
@@ -90,7 +90,7 @@ export const addCustomerWishlistItemThunk =
       { rejectWithValue },
     ) => {
       try {
-        const response = await axios.post(
+        const response = await storefrontClient.post(
           WISHLIST_API,
           {
             product_id: Number(
@@ -121,7 +121,7 @@ export const removeCustomerWishlistItemThunk =
       { rejectWithValue },
     ) => {
       try {
-        await axios.delete(
+        await storefrontClient.delete(
           `${WISHLIST_API}/${productId}`,
         );
 

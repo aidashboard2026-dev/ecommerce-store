@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
-import { getImageUrl } from "@/shared/utils/productUtils";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useDestinationResolver } from "@/storefront/routing/DestinationResolver";
 import { Section, ContentWrapper } from "@/shared/components/layout";
+import BannerRenderer from "@/shared/components/BannerRenderer";
 
 const AUTO_ROTATE_MS = 6000;
 
@@ -53,44 +53,12 @@ function HeroCta({ banner }) {
 function BannerSlide({ banner }) {
   if (!banner) return null;
 
-  const imageUrl = getImageUrl(banner.banner_image);
   return (
     <Section spacing="md" className="bg-green-400">
       <ContentWrapper>
-      <section className="relative min-h-[320px] w-full overflow-hidden bg-gradient-to-br from-brand-600 via-brand-500 to-indigo-600 text-white sm:min-h-[420px] lg:min-h-[540px]">
-        {imageUrl && (
-          <img
-            src={imageUrl}
-            alt={banner.title || "Promotional banner"}
-            className="absolute inset-0 w-full h-full object-cover"
-            loading="eager"
-          />
-        )}
-        {/* Legibility overlay over the banner image */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
-
-        <div className="relative flex min-h-[320px] flex-col items-start justify-center gap-5 py-14 sm:min-h-[420px] sm:py-20 lg:min-h-[540px] lg:py-28">
-          <span className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm text-xs font-semibold uppercase tracking-wider px-4 py-1.5 rounded-full">
-            <Sparkles size={14} /> Featured
-          </span>
-
-          {banner.title && (
-            <h1 className="max-w-3xl font-display text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
-              {banner.title}
-            </h1>
-          )}
-
-          {banner.subtitle && (
-            <p className="text-sm sm:text-base text-white/85 max-w-md leading-relaxed">
-              {banner.subtitle}
-            </p>
-          )}
-
-          <div className="flex flex-wrap gap-3 mt-2">
-            <HeroCta banner={banner} />
-          </div>
-        </div>
-      </section>
+        <BannerRenderer banner={banner}>
+          {banner.cta_text && <HeroCta banner={banner} />}
+        </BannerRenderer>
       </ContentWrapper>
     </Section>
   );

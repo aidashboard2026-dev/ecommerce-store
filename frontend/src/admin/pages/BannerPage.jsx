@@ -8,6 +8,7 @@ import { useTheme } from "@/shared/hooks/useAuth";
 import { getImageUrl, getApiErrorMessage } from "@/shared/utils/productUtils";
 import { compressImage } from "@/shared/utils/imageCompression";
 import RoutePicker from "@/shared/components/ui/RoutePicker";
+import BannerRenderer from "@/shared/components/BannerRenderer";
 
 // ─── Placement options ───────────────────────────────────────────────────────
 const PLACEMENTS = [
@@ -439,35 +440,29 @@ export function BannerPreviewModal({ banner, onClose, isDark, type = "banner", r
       <div className="bp-modal-anim" style={{ maxWidth: 900, width: "100%", background: isDark ? "#0f172a" : "#ffffff", borderRadius: 12, overflow: "hidden", border: `1px solid ${s.border}`, maxHeight: "90vh", display: "flex", flexDirection: "column" }} onClick={e => e.stopPropagation()}>
         <div style={{ overflowY: "auto" }}>
           {imgUrl ? (
-            <div style={{ position: "relative" }}>
-              <img src={imgUrl} alt={banner.title || "Preview"} style={{ width: "100%", display: "block", maxHeight: 500, objectFit: "cover" }} />
-              {/* Overlay text (simulates storefront) */}
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "40px 32px 32px", background: "linear-gradient(transparent, rgba(0,0,0,.8))" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
-                  {type === "offer" && banner.percentage && (
-                    <span style={{ background: "#ef4444", color: "#fff", padding: "4px 10px", borderRadius: 6, fontSize: 13, fontWeight: 800 }}>
-                      {banner.percentage}% OFF
-                    </span>
-                  )}
-                  {type === "offer" && banner.status && (
-                    <span style={{ background: banner.status === "published" ? "#16a34a" : "#d97706", color: "#fff", padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>
-                      {banner.status}
-                    </span>
-                  )}
-                </div>
-                <h2 style={{ margin: 0, color: "#fff", fontSize: 28, fontWeight: 800, textShadow: "0 2px 8px rgba(0,0,0,.5)" }}>{banner.title}</h2>
-                {type === "offer" ? (
-                  banner.description && <p style={{ margin: "8px 0 0", color: "#e2e8f0", fontSize: 15, textShadow: "0 1px 4px rgba(0,0,0,.5)" }}>{banner.description}</p>
-                ) : (
-                  banner.subtitle && <p style={{ margin: "6px 0 0", color: "#e2e8f0", fontSize: 16 }}>{banner.subtitle}</p>
-                )}
-                {type === "banner" && banner.cta_text && (
-                  <div style={{ marginTop: 16, display: "inline-block", padding: "10px 24px", background: "#2563eb", borderRadius: 8, color: "#fff", fontWeight: 700, fontSize: 14 }}>
-                    {banner.cta_text}
+            type === "offer" ? (
+              <div style={{ position: "relative" }}>
+                <img src={imgUrl} alt={banner.title || "Preview"} style={{ width: "100%", display: "block", maxHeight: 500, objectFit: "cover" }} />
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "40px 32px 32px", background: "linear-gradient(transparent, rgba(0,0,0,.8))" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
+                    {banner.percentage && (
+                      <span style={{ background: "#ef4444", color: "#fff", padding: "4px 10px", borderRadius: 6, fontSize: 13, fontWeight: 800 }}>
+                        {banner.percentage}% OFF
+                      </span>
+                    )}
+                    {banner.status && (
+                      <span style={{ background: banner.status === "published" ? "#16a34a" : "#d97706", color: "#fff", padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>
+                        {banner.status}
+                      </span>
+                    )}
                   </div>
-                )}
+                  <h2 style={{ margin: 0, color: "#fff", fontSize: 28, fontWeight: 800, textShadow: "0 2px 8px rgba(0,0,0,.5)" }}>{banner.title}</h2>
+                  {banner.description && <p style={{ margin: "8px 0 0", color: "#e2e8f0", fontSize: 15, textShadow: "0 1px 4px rgba(0,0,0,.5)" }}>{banner.description}</p>}
+                </div>
               </div>
-            </div>
+            ) : (
+              <BannerRenderer banner={banner} imageUrl={imgUrl} />
+            )
           ) : (
             <div style={{ height: 300, display: "flex", alignItems: "center", justifyContent: "center", color: s.textMuted }}>No image uploaded</div>
           )}

@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useSearchParams, useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -861,7 +861,7 @@ export default function ProductsPage() {
                 const displaySizes  = [...new Set(filteredVariants.map(v => v.size))].join(', ')
                 const displayStocks = filteredVariants.map(v => v.stock_quantity).join(',')
 
-                const discPct = v0?.discount_percentage ? `${parseFloat(v0.discount_percentage).toFixed(0)}%` : 'â€”'
+                const discPct = v0?.discount_percentage ? `${parseFloat(v0.discount_percentage).toFixed(0)}%` : ''
                 const statusMap = { published: 'success', draft: 'default', archived: 'warning' }
                 return (
                   <TableRow key={product.id}>
@@ -896,12 +896,12 @@ export default function ProductsPage() {
                     </TableCell>
                     <TableCell>
                       <span className="text-[10px] text-muted">
-                        {product.category_name || 'â€”'}
+                        {product.category_name || ''}
                       </span>
                     </TableCell>
                     <TableCell>
                       <span className="font-mono text-[10px] bg-app border border-app px-2 py-0.5 rounded text-app font-semibold">
-                        {v0?.sku || 'â€”'}
+                        {v0?.sku || ''}
                       </span>
                     </TableCell>
                     <TableCell className="font-medium text-app">{formatPrice(v0?.original_price ?? product.min_price)}</TableCell>

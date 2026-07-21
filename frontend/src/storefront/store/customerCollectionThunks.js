@@ -78,13 +78,23 @@ export const loadCustomerCollectionsThunk =
     ) => {
       try {
         const [
-          cartItems,
-          wishlistItems,
+          cartResult,
+          wishlistResult,
         ] =
-          await Promise.all([
+          await Promise.allSettled([
             loadCustomerCart(),
             loadCustomerWishlist(),
           ]);
+
+        const cartItems =
+          cartResult.status === "fulfilled"
+            ? cartResult.value
+            : [];
+
+        const wishlistItems =
+          wishlistResult.status === "fulfilled"
+            ? wishlistResult.value
+            : [];
 
         dispatch(
           replaceCartItems(

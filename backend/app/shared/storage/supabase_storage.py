@@ -275,6 +275,25 @@ def delete_product_image(image_url: Optional[str]) -> None:
         _delete_object(settings.SUPABASE_PRODUCT_BUCKET, object_path)
 
 
+def delete_all_product_images(product) -> None:
+    """Deletes all associated images (thumbnail, front, back, size_chart, gallery) of a product from storage."""
+    if not product:
+        return
+    for attr in ["thumbnail", "image_front", "image_back", "image_size_chart"]:
+        url = getattr(product, attr, None)
+        if url:
+            try:
+                delete_product_image(url)
+            except Exception as exc:
+                logger.warning(f"Failed to delete product image {url}: {exc}")
+    for url in getattr(product, "gallery_images", None) or []:
+        if url:
+            try:
+                delete_product_image(url)
+            except Exception as exc:
+                logger.warning(f"Failed to delete product gallery image {url}: {exc}")
+
+
 # ─────────────────────────────────────────────────────────────
 # Public API — custom product images (SEPARATE from product images)
 # Custom products use their own Supabase bucket to enforce domain isolation.
@@ -370,6 +389,25 @@ def delete_custom_product_image(image_url: Optional[str]) -> None:
         _delete_object(settings.SUPABASE_CUSTOM_PRODUCT_BUCKET, object_path)
 
 
+def delete_all_custom_product_images(product) -> None:
+    """Deletes all associated images (thumbnail, front, back, size_chart, gallery) of a custom product from storage."""
+    if not product:
+        return
+    for attr in ["thumbnail", "image_front", "image_back", "image_size_chart"]:
+        url = getattr(product, attr, None)
+        if url:
+            try:
+                delete_custom_product_image(url)
+            except Exception as exc:
+                logger.warning(f"Failed to delete custom product image {url}: {exc}")
+    for url in getattr(product, "gallery_images", None) or []:
+        if url:
+            try:
+                delete_custom_product_image(url)
+            except Exception as exc:
+                logger.warning(f"Failed to delete custom product gallery image {url}: {exc}")
+
+
 # ─────────────────────────────────────────────────────────────
 # Public API — banner images
 # ─────────────────────────────────────────────────────────────
@@ -419,6 +457,11 @@ def delete_banner_image(image_url: Optional[str]) -> None:
     object_path = _object_path_from_public_url(image_url, settings.SUPABASE_BANNER_BUCKET)
     if object_path:
         _delete_object(settings.SUPABASE_BANNER_BUCKET, object_path)
+
+
+def delete_offer_image(image_url: Optional[str]) -> None:
+    """Deletes an offer banner image from Supabase or local storage."""
+    delete_banner_image(image_url)
 
 
 # ─────────────────────────────────────────────────────────────
