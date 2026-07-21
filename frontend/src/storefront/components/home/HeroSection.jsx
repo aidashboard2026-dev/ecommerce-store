@@ -55,14 +55,14 @@ function BannerSlide({ banner }) {
 
   const imageUrl = getImageUrl(banner.banner_image);
   return (
-    <Section spacing="md" className="bg-green-400">
+    <Section spacing="md">
       <ContentWrapper>
-      <section className="relative min-h-[320px] w-full overflow-hidden bg-gradient-to-br from-brand-600 via-brand-500 to-indigo-600 text-white sm:min-h-[420px] lg:min-h-[540px]">
+      <section className="relative min-h-[320px] w-full p-3 mt-4 overflow-hidden bg-gradient-to-br from-brand-600 via-brand-500 text-white sm:min-h-[320px] lg:min-h-[640px]">
         {imageUrl && (
           <img
             src={imageUrl}
             alt={banner.title || "Promotional banner"}
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-110"
             loading="eager"
           />
         )}

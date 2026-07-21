@@ -2,26 +2,26 @@ import React from "react";
 import clsx from "clsx";
 
 const widthClasses = {
-  sm: "max-w-3xl",
-  md: "max-w-5xl",
-  lg: "max-w-7xl",
-  xl: "max-w-[1440px]",
-  "2xl": "max-w-[1680px]",
-  fluid: "max-w-[1920px]",
-  none: "max-w-none",
+  // sm: "max-w-3xl",
+  // md: "max-w-5xl",
+  // lg: "max-w-7xl",
+  // xl: "max-w-[1440px]",
+  // "2xl": "max-w-[1680px]",
+  // fluid: "max-w-[1920px]",
+  // none: "max-w-none",
 };
 
 const paddingClasses = {
   none: "",
-  page: "px-4 sm:px-6 lg:px-8 2xl:px-10",
-  tight: "px-3 sm:px-4 lg:px-6",
+  // page: "px-4 sm:px-6 lg:px-8 2xl:px-10",
+  // tight: "px-3 sm:px-4 lg:px-6",
 };
 
 const sectionSpacing = {
   none: "",
-  sm: "py-6 sm:py-8 lg:py-10",
-  md: "py-8 sm:py-10 lg:py-14",
-  lg: "py-10 sm:py-14 lg:py-18",
+  // sm: "py-6 sm:py-8 lg:py-10",
+  // md: "py-3 sm:py-1 lg:py-2",
+  // lg: "py-10 sm:py-14 lg:py-18",
 };
 
 export function ContentWrapper({

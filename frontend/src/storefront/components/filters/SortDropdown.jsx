@@ -44,19 +44,13 @@ const SORT_OPTIONS = [
   },
 ];
 
-export default function SortDropdown({
-  value = "featured",
-  onChange,
-}) {
+export default function SortDropdown({ value = "featured", onChange }) {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
     const handleOutside = (event) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target)
-      ) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setOpen(false);
       }
     };
@@ -74,10 +68,7 @@ export default function SortDropdown({
   };
 
   return (
-    <div
-      ref={dropdownRef}
-      className="relative h-full flex-1 sm:flex-none"
-    >
+    <div ref={dropdownRef} className="relative h-full flex-1 sm:flex-none">
       {/* Header */}
 
       <button
@@ -97,7 +88,7 @@ export default function SortDropdown({
       {/* Dropdown */}
 
       <div
-        className={`absolute right-0 top-full z-50 mt-px w-[min(230px,calc(100vw-2rem))] origin-top overflow-hidden rounded-md bg-[#111111] shadow-[0_10px_40px_rgba(0,0,0,.45)] transition-all duration-300
+        className={`absolute right-0 top-full z-[999] mt-px w-[min(230px,calc(100vw-2rem))] origin-top overflow-hidden rounded-b-md rounded-t-0 bg-surface transition-all duration-300
         ${
           open
             ? "visible translate-y-0 opacity-100"
@@ -111,8 +102,8 @@ export default function SortDropdown({
             className={`block w-full px-5 py-[11px] text-left text-[15px] transition
               ${
                 value === item.value
-                  ? "bg-[#1a1a1a] text-white"
-                  : "text-gray-300 hover:bg-[#1a1a1a] hover:text-white"
+                  ? "bg-surface text-app"
+                  : "text-app hover:bg-surface-hover"
               }`}
           >
             {item.label}

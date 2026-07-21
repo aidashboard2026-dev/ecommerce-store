@@ -9,7 +9,7 @@ export default function OfferSection({ offers, scrollRef, handleWheel }) {
 
   return (
     <Section spacing="md">
-      <div className="mb-6 flex items-end justify-between gap-4">
+      <div className="p-3 flex items-end justify-between gap-4">
         <h2 className="font-display text-xl font-bold text-app sm:text-2xl lg:text-3xl">
           Limited Time Offers
         </h2>

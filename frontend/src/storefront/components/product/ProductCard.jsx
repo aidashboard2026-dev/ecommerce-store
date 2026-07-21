@@ -207,7 +207,7 @@ function ProductCard({ product }) {
           (t) => (
             <div
               className={clsx(
-                "max-w-md w-full bg-app border border-app shadow-lg rounded-2xl pointer-events-auto flex overflow-hidden transition-all duration-350",
+                "max-w-md w-full bg-app border border-app shadow-lg  rounded-2xl pointer-events-auto flex overflow-hidden transition-all duration-350",
 
                 t.visible
                   ? "animate-fade-in opacity-100 translate-y-0"
@@ -328,21 +328,23 @@ function ProductCard({ product }) {
       </div>
 
       {/* Info */}
-      <div className="flex min-h-[8.75rem] flex-1 flex-col justify-between gap-2 py-3">
-        {(product.collection_name || product.collection) && (
-          <span className="text-[10px] uppercase tracking-wider text-muted font-semibold">
-            {product.collection_name || product.collection}
-          </span>
-        )}
-        <div className="flex min-w-0 flex-row flex-wrap items-start justify-between gap-2">
-          <h3 className="min-w-0 text-sm font-medium leading-snug text-app line-clamp-2 sm:text-base lg:text-lg lg:font-light">
-            {product.title}
-          </h3>
+      <div className="flex min-h-[4.75rem] flex-1 flex-col justify-between gap-2">
+        <div className="">
+          {(product.collection_name || product.collection) && (
+            <span className="text-[10px] uppercase tracking-wider text-muted font-semibold">
+              {product.collection_name || product.collection}
+            </span>
+          )}
+          <div className="flex min-w-0 flex-row flex-wrap items-start justify-between gap-2">
+            <h3 className="min-w-0 text-sm font-medium leading-snug text-app line-clamp-2 sm:text-base lg:text-lg lg:font-light">
+              {product.title}
+            </h3>
 
-          {/* <div className="flex items-center border rounded-md w-fit gap-1.5 p-1">
+            {/* <div className="flex items-center border rounded-md w-fit gap-1.5 p-1">
             <span className="text-[13px] text-app">4.5</span>
             <Star size={13} className="fill-green-600 text-green-600" />
           </div> */}
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -366,21 +368,22 @@ function ProductCard({ product }) {
             </span>
           )}
         </div>
+
+        {/* Quick add */}
+        <button
+          onClick={handleQuickAdd}
+          disabled={!inStock}
+          className={clsx(
+            "absolute bottom-0 right-0 p-2.5 w-full text-sm  uppercase flex flex-row gap-3 items-center bg-zinc-950 dark:bg-zinc-900 text-white justify-center rounded-md duration-300",
+            "translate-y-10 opacity-0 group-hover:translate-y-0 group-hover:opacity-100",
+            !inStock && "cursor-not-allowed opacity-50",
+          )}
+          aria-label="Quick add to cart"
+        >
+          <ShoppingBag size={16} />
+          Add to Cart
+        </button>
       </div>
-      {/* Quick add */}
-      <button
-        onClick={handleQuickAdd}
-        disabled={!inStock}
-        className={clsx(
-          "absolute bottom-0 right-0 p-2.5 w-full text-sm  uppercase flex flex-row gap-3 items-center bg-zinc-950 dark:bg-zinc-900 text-white justify-center rounded-md duration-300",
-          "translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100",
-          !inStock && "cursor-not-allowed opacity-50",
-        )}
-        aria-label="Quick add to cart"
-      >
-        <ShoppingBag size={16} />
-        Add to Cart
-      </button>
     </Link>
   );
 }

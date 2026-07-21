@@ -72,9 +72,9 @@ const StoreFooterComponent = function StoreFooter() {
   };
 
   return (
-    <Section spacing="md" className="bg-green-400">
-      <footer className="mt-12 border-t border-app transition-colors duration-300 lg:mt-16">
-        <ContentWrapper className="py-8 sm:py-10">
+    <Section spacing="md" className="py-3 ">
+      <footer className="border-t border-app transition-colors duration-300">
+        <ContentWrapper className="py-8 px-3 sm:py-10">
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-10">
             <div className="flex h-full flex-col items-start justify-between gap-5">
               <div className="space-y-3">
