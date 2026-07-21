@@ -1,4 +1,4 @@
-﻿/**
+/**
  * src/pages/AdminPage/ProductsPage.jsx
  * Enhanced with category, collection, stock status, and merchandising flag filters.
  * Adds bulk actions UI. Preserves existing UI/UX completely.
@@ -619,7 +619,6 @@ export default function ProductsPage() {
               </TableHead>
               <TableHead>Products</TableHead>
               <TableHead>Category</TableHead>
-              <TableHead>Code</TableHead>
               <TableHead>Original Price</TableHead>
               <TableHead>Selling Price</TableHead>
               <TableHead>Discount</TableHead>
@@ -636,7 +635,7 @@ export default function ProductsPage() {
             {isLoading ? (
               Array(8).fill(0).map((_, i) => (
                 <TableRow key={i} hover={false}>
-                  {Array(14).fill(0).map((_, j) => (
+                  {Array(13).fill(0).map((_, j) => (
                     <TableCell key={j}>
                       <div className={clsx("h-3.5 bg-app border border-app/50 rounded animate-pulse", j === 1 ? "w-32" : "w-12")} />
                     </TableCell>
@@ -644,9 +643,9 @@ export default function ProductsPage() {
                 </TableRow>
               ))
             ) : isError ? (
-              <TableRow hover={false}><TableCell colSpan={14}>{errorState}</TableCell></TableRow>
+              <TableRow hover={false}><TableCell colSpan={13}>{errorState}</TableCell></TableRow>
             ) : data?.items?.length === 0 ? (
-              <TableRow hover={false}><TableCell colSpan={14}>{emptyState}</TableCell></TableRow>
+              <TableRow hover={false}><TableCell colSpan={13}>{emptyState}</TableCell></TableRow>
             ) : (
               data?.items?.map(product => {
                 const stock = product.stock_quantity || 0
@@ -698,11 +697,6 @@ export default function ProductsPage() {
                     <TableCell>
                       <span className="text-[10px] text-muted">
                         {product.custom_category_name || ''}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-mono text-[10px] bg-app border border-app px-2 py-0.5 rounded text-app font-semibold">
-                        {product.sku || ''}
                       </span>
                     </TableCell>
                     <TableCell className="font-medium text-app">
