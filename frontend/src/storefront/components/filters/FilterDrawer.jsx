@@ -293,7 +293,7 @@ export default function FilterDrawer({ open, onClose, filters, setFilters }) {
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Selected Range</span>
 
-                    <span className="rounded-full bg-brand-500 px-3 py-1 text-sm font-semibold">
+                    <span className="rounded-full  px-3 py-1 text-sm font-semibold">
                       ₹{minValue} - ₹{maxValue}
                     </span>
                   </div>

@@ -41,16 +41,16 @@ export default function CategorySection() {
   if (isError || (!isLoading && categories.length === 0)) return null;
 
   return (
-    <Section spacing="md" className="bg-green-400">
-      <h2 className="mb-6 font-display  text-xl font-bold text-app sm:text-2xl lg:text-3xl">
+    <Section spacing="md" className="p-3">
+      <h2 className="mb-5 font-display  text-xl font-bold text-app sm:text-2xl lg:text-3xl">
         Shop by Category
       </h2>
-      <ResponsiveGrid variant="cards" className="sm:grid-cols-2 lg:grid-cols-4 ">
+      <ResponsiveGrid  className="sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 ">
         {isLoading &&
           [1, 2, 3, 4].map((item) => (
             <div
               key={item}
-              className="aspect-[4/5] rounded-md bg-surface animate-pulse"
+              className="aspect-[2/3] rounded-md bg-surface animate-pulse"
             />
           ))}
 
@@ -67,7 +67,7 @@ export default function CategorySection() {
               <img
                 src={getImageUrl(cat.image)}
                 alt={cat.name}
-                className="aspect-[4/5] w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                className="aspect-[4/4] w-full object-cover transition-transform duration-700 group-hover:scale-110"
               />
 
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>

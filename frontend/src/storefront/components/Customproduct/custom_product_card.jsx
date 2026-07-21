@@ -127,7 +127,7 @@ ${productUrl}`;
         "h-full w-full min-w-0",
         "justify-between",
         "overflow-hidden",
-        "rounded-md",
+        "rounded-none",
         "transition-all duration-300",
         "hover:-translate-y-1",
         "focus-ring",
@@ -245,7 +245,9 @@ ${productUrl}`;
           >
             <Heart
               size={16}
-              className={clsx(isWishlisted ? "fill-red-500 text-red-500" : "text-app")}
+              className={clsx(
+                isWishlisted ? "fill-red-500 text-red-500" : "text-app",
+              )}
             />
           </button>
         </div>
@@ -257,7 +259,7 @@ ${productUrl}`;
 
       {/* PRODUCT INFORMATION */}
 
-      <div className="flex min-h-[8.75rem] flex-1 flex-col justify-between gap-2 py-3">
+      <div className="flex min-h-[4.75rem] flex-col gap-2">
         {/* Collection */}
 
         {(product.collection_name || product.collection) && (
@@ -268,7 +270,7 @@ ${productUrl}`;
 
         {/* Product title and rating */}
 
-        <div className="flex min-w-0 flex-row flex-wrap items-start justify-between gap-2">
+        {/* <div className="flex min-w-0 flex-row flex-wrap items-start justify-between gap-2">
           <h3 className="min-w-0 text-sm font-medium leading-snug text-app line-clamp-2 sm:text-base lg:text-lg lg:font-light">
             {product.title}
           </h3>
@@ -278,11 +280,11 @@ ${productUrl}`;
 
             <Star size={13} className="fill-green-600 text-green-600" />
           </div>
-        </div>
+        </div> */}
 
         {/* Price */}
 
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between ">
           {minPrice != null ? (
             <>
               <span className="text-base font-bold text-app sm:text-lg lg:text-xl">
@@ -313,84 +315,84 @@ ${productUrl}`;
             <span className="text-xs text-muted">Price unavailable</span>
           )}
         </div>
-      </div>
 
-      {/* =================================================
+        {/* =================================================
           WHATSAPP BUTTON
 
           Same position, size and animation as Add to Cart
       ================================================= */}
 
-      <button
-        type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
 
-          const storeName = settings?.store_name || "My Designers";
-          const productName = product.title || "";
-          const categoryName =
-            product.custom_category_name || product.category_name || "";
-          const productCode = product.sku || product.code || "";
-          const productUrl =
-            product.slug || product.id
-              ? `${window.location.origin}/custom/${product.slug || product.id}`
-              : "";
+            const storeName = settings?.store_name || "My Designers";
+            const productName = product.title || "";
+            const categoryName =
+              product.custom_category_name || product.category_name || "";
+            const productCode = product.sku || product.code || "";
+            const productUrl =
+              product.slug || product.id
+                ? `${window.location.origin}/custom/${product.slug || product.id}`
+                : "";
 
-          let message = `Hi ${storeName},\n\nI'm interested in this custom product.\n\nProduct:\n${productName}`;
+            let message = `Hi ${storeName},\n\nI'm interested in this custom product.\n\nProduct:\n${productName}`;
 
-          if (categoryName) {
-            message += `\n\nCategory:\n${categoryName}`;
-          }
+            if (categoryName) {
+              message += `\n\nCategory:\n${categoryName}`;
+            }
 
-          if (productCode) {
-            message += `\n\nProduct Code:\n${productCode}`;
-          }
+            if (productCode) {
+              message += `\n\nProduct Code:\n${productCode}`;
+            }
 
-          if (productUrl) {
-            message += `\n\nProduct URL:\n${productUrl}`;
-          }
+            if (productUrl) {
+              message += `\n\nProduct URL:\n${productUrl}`;
+            }
 
-          message += `\n\nPlease share the quotation.\n\nThank you.`;
+            message += `\n\nPlease share the quotation.\n\nThank you.`;
 
-          const rawNumber =
-            settings?.support_phone ||
-            import.meta.env.VITE_WHATSAPP_NUMBER ||
-            "";
-          const cleanNumber = rawNumber.replace(/\D/g, "");
-          const formattedNumber =
-            cleanNumber.length === 10 ? `91${cleanNumber}` : cleanNumber;
+            const rawNumber =
+              settings?.support_phone ||
+              import.meta.env.VITE_WHATSAPP_NUMBER ||
+              "";
+            const cleanNumber = rawNumber.replace(/\D/g, "");
+            const formattedNumber =
+              cleanNumber.length === 10 ? `91${cleanNumber}` : cleanNumber;
 
-          if (!formattedNumber) {
-            toast.error("WhatsApp contact number is not configured.");
-            return;
-          }
+            if (!formattedNumber) {
+              toast.error("WhatsApp contact number is not configured.");
+              return;
+            }
 
-          const isMobile = /Android|iPhone|iPad|iPod/i.test(
-            navigator.userAgent,
-          );
+            const isMobile = /Android|iPhone|iPad|iPod/i.test(
+              navigator.userAgent,
+            );
 
-          const targetUrl = isMobile
-            ? `https://wa.me/${formattedNumber}?text=${encodeURIComponent(message)}`
-            : `https://web.whatsapp.com/send?phone=${formattedNumber}&text=${encodeURIComponent(message)}`;
+            const targetUrl = isMobile
+              ? `https://wa.me/${formattedNumber}?text=${encodeURIComponent(message)}`
+              : `https://web.whatsapp.com/send?phone=${formattedNumber}&text=${encodeURIComponent(message)}`;
 
-          window.open(targetUrl, "_blank", "noopener,noreferrer");
-        }}
-        className={clsx(
-          "absolute bottom-0 right-0",
-          "w-full p-2.5",
-          "flex items-center justify-center gap-3",
-          "bg-green-600 hover:bg-green-700 text-white",
-          "uppercase text-sm",
-          "rounded-none",
-          "translate-y-12 opacity-0",
-          "group-hover:translate-y-0 group-hover:opacity-100",
-          "duration-300",
-        )}
-      >
-        <ShoppingBag size={16} />
-        Chat on WhatsApp
-      </button>
+            window.open(targetUrl, "_blank", "noopener,noreferrer");
+          }}
+          className={clsx(
+            "absolute bottom-0 right-0",
+            "w-full p-2.5",
+            "flex items-center justify-center gap-3",
+            "bg-green-600 hover:bg-green-700 text-white",
+            "uppercase text-sm",
+            "rounded-md",
+            "translate-y-12 opacity-0",
+            "group-hover:translate-y-0 group-hover:opacity-100",
+            "duration-300",
+          )}
+        >
+          <ShoppingBag size={16} />
+          Chat on WhatsApp
+        </button>
+      </div>
     </Link>
   );
 }

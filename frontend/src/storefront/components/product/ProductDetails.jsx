@@ -312,7 +312,7 @@ export default function ProductDetails() {
   };
 
   return (
-    <PageContainer>
+    <PageContainer className="p-3">
       {/* Breadcrumb */}
       <div className="mb-6 flex flex-wrap items-center gap-1 text-sm text-muted">
         <Link to="/" className="transition-colors hover:text-app">

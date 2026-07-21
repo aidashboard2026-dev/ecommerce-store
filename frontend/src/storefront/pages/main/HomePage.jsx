@@ -74,10 +74,10 @@ export default function HomePage() {
         handleWheel={handleWheel}
       />
 
-      <CustomProductSection products={customProducts} />
+      <CustomProductSection  products={customProducts} />
 
       {(loadingFeatured || featured.length > 0) && (
-        <Section spacing="md">
+        <Section spacing="md" className="p-3">
           <SectionHeader
             title="Featured Products"
             subtitle="Hand-picked styles, just for you"
@@ -91,7 +91,7 @@ export default function HomePage() {
         </Section>
       )}
 
-      <Section spacing="md">
+      <Section spacing="md" className="p-3">
         <SectionHeader
           title="New Arrivals"
           subtitle="Fresh off the production line"
@@ -105,7 +105,7 @@ export default function HomePage() {
       </Section>
 
       {(loadingBest || bestSellers.length > 0) && (
-        <Section spacing="md">
+        <Section spacing="md" className="p-3">
           <SectionHeader
             title="Best Sellers"
             subtitle="Customer favorites, in high demand"

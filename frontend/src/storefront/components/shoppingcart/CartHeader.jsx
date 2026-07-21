@@ -1,6 +1,15 @@
-import React from 'react'
-import { ShoppingCart, X } from 'lucide-react'
-import CartBadge from './CartBadge'
+import React from "react";
+import { ShoppingCart, X } from "lucide-react";
+
+function CartBadges({ count = 0 }) {
+  if (count <= 0) return null;
+
+  return (
+    <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1.5 bg-[var(--count-bg)] rounded-full text-white text-[10px] font-bold leading-none">
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
 
 export default function CartHeader({ count = 0, onClose }) {
   return (
@@ -9,14 +18,18 @@ export default function CartHeader({ count = 0, onClose }) {
         <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-500">
           {import.meta.env.VITE_STORE_NAME || "My Designers"}
         </p>
-        <h2 className="font-display text-lg font-bold text-app">Shopping cart</h2>
+
+        <h2 className="font-display text-lg font-bold text-app">
+          Shopping cart
+        </h2>
       </div>
 
       <div className="flex items-center gap-3">
         <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-surface border border-app text-app">
           <ShoppingCart size={15} />
-          <CartBadge count={count} />
+          <CartBadges count={count} />
         </div>
+
         <button
           type="button"
           onClick={onClose}
@@ -27,5 +40,5 @@ export default function CartHeader({ count = 0, onClose }) {
         </button>
       </div>
     </div>
-  )
+  );
 }
