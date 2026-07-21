@@ -25,6 +25,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Enum as SAEnum,
+    text,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -72,7 +73,7 @@ class CustomCategory(Base):
 # =====================================================
 # Custom Products are production-based (e.g. embroidery, jersey printing).
 # They DO NOT use:
-#   - inventory (no stock_quantity, no reserved_stock)
+#   - reserved_stock (inventory is tracked as simple stock_quantity)
 #   - product variants (size/color variants)
 #   - collections (collections belong ONLY to Products)
 #   - product categories (each domain has its own)
@@ -177,6 +178,19 @@ class CustomProduct(Base):
     )
 
     # -------------------------------------------------
+    # Inventory
+    # Custom Products track stock directly on the product record
+    # (no variant-level stock, no reserved_stock).
+    # -------------------------------------------------
+
+    stock_quantity = Column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default=text("0"),
+    )
+
+    # -------------------------------------------------
     # Price Range
     # Custom Products have a price range (not a single price) because
     # the exact price depends on production options (size, quantity, etc.)
@@ -252,29 +266,6 @@ class CustomProduct(Base):
     orders_count = Column(Integer, nullable=False, default=0)
     sales_count  = Column(Integer, nullable=False, default=0)
 
-
-    # -------------------------------------------------
-    # Inventory
-    # -------------------------------------------------
-
-    stock_quantity = Column(
-        Integer,
-        nullable=False,
-        default=0,
-        index=True,
-    )
-
-    low_stock_threshold = Column(
-        Integer,
-        nullable=False,
-        default=5,
-    )
-
-    size = Column(
-        String(100),
-        nullable=False,
-        default="All Size",
-    )
 
     # -------------------------------------------------
     # Timestamps

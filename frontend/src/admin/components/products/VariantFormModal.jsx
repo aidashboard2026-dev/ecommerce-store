@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+﻿import React, { useState, useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, Loader2, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -49,7 +49,7 @@ function StyledInput({ className, ...props }) {
   return <Input className={`py-1.5 text-sm ${className || ""}`} {...props} />
 }
 
-// ─── Creatable size selector with suggestions ─────────────────────────────────
+// â”€â”€â”€ Creatable size selector with suggestions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function CreatableSizeSelect({ value, onChange, disabled }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -172,6 +172,7 @@ function CreatableSizeSelect({ value, onChange, disabled }) {
 function CreatableColorSelect({ value, onChange, onHexChange, disabled }) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState(value || '')
+  const [resolving, setResolving] = useState(false)
   const containerRef = useRef(null)
 
   const { data: backendColors = [] } = useQuery({
@@ -209,12 +210,24 @@ function CreatableColorSelect({ value, onChange, onHexChange, disabled }) {
 
   const showCreateOption = search.trim() !== '' && !backendColors.some(c => c.name.toLowerCase() === search.trim().toLowerCase())
 
-  const handleSelect = (val) => {
+  const handleSelect = async (val) => {
     const matched = backendColors.find(c => c.name.toLowerCase() === val.toLowerCase())
     onChange(val)
     setSearch(val)
     if (matched) {
       onHexChange(matched.hex)
+    } else {
+      setResolving(true)
+      try {
+        const res = await productsApi.resolveColor(val)
+        if (res.data?.found && res.data.hex) {
+          onHexChange(res.data.hex)
+        }
+      } catch {
+        // resolve failed â€” leave hex editable
+      } finally {
+        setResolving(false)
+      }
     }
     setIsOpen(false)
   }
@@ -347,7 +360,7 @@ export default function VariantFormModal({ isOpen, onClose, productId, product, 
 
   const mutation = useMutation({
     mutationFn: data => {
-      console.log('[DEBUG] [Modal] Variant API request start', { productId, editingVariantId, data })
+      if (import.meta.env.DEV) console.log('[DEBUG] [Modal] Variant API request start', { productId, editingVariantId, data })
       if (isEditMode) {
         return productsApi.updateVariant(productId, editingVariantId, data)
       } else {
@@ -355,7 +368,7 @@ export default function VariantFormModal({ isOpen, onClose, productId, product, 
       }
     },
     onSuccess: (response) => {
-      console.log('[DEBUG] [Modal] Variant API success response', response)
+      if (import.meta.env.DEV) console.log('[DEBUG] [Modal] Variant API success response', response)
       toast.success(isEditMode ? 'Variant updated successfully.' : 'Variant added successfully.')
       qc.invalidateQueries({ queryKey: ['products'] })
       qc.invalidateQueries({ queryKey: ['products', productId] })
@@ -385,7 +398,7 @@ export default function VariantFormModal({ isOpen, onClose, productId, product, 
   const handleSubmit = e => {
     if (e && e.preventDefault) e.preventDefault()
     if (e && e.stopPropagation) e.stopPropagation()
-    console.log('[DEBUG] [Modal] Variant form submission triggered', { isEditMode, editingVariantId, form })
+    if (import.meta.env.DEV) console.log('[DEBUG] [Modal] Variant form submission triggered', { isEditMode, editingVariantId, form })
     if (!limits) {
       toast.error("Store limits not loaded yet. Please wait.")
       return

@@ -15,8 +15,10 @@ No SQLAlchemy.
 No Order creation.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.modules.admins.models import Admin
+from app.modules.auth.dependencies import get_current_admin
 from app.modules.payments.schemas import (
     CreatePaymentRequest,
     CreatePaymentResponse,
@@ -37,7 +39,10 @@ router = APIRouter()
     "/create-order",
     response_model=CreatePaymentResponse,
 )
-def create_payment_order(payload: CreatePaymentRequest):
+def create_payment_order(
+    payload: CreatePaymentRequest,
+    current_admin: Admin = Depends(get_current_admin),
+):
 
     order = payment_service.create_order(
         amount=payload.amount,
@@ -61,7 +66,10 @@ def create_payment_order(payload: CreatePaymentRequest):
     "/verify",
     response_model=VerifyPaymentResponse,
 )
-def verify_payment(payload: VerifyPaymentRequest):
+def verify_payment(
+    payload: VerifyPaymentRequest,
+    current_admin: Admin = Depends(get_current_admin),
+):
 
     verified = payment_service.verify_signature(
         razorpay_order_id=payload.razorpay_order_id,

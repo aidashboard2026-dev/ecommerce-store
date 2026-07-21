@@ -2,14 +2,15 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import OfferCard from "@/storefront/components/home/OfferCard";
+import { Section } from "@/shared/components/layout";
 
 export default function OfferSection({ offers, scrollRef, handleWheel }) {
   if (!offers?.length) return null;
 
   return (
-    <section className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-6">
-      <div className="mb-6 flex items-end justify-between">
-        <h2 className="font-display text-xl font-bold text-app sm:text-2xl">
+    <Section spacing="md">
+      <div className="mb-6 flex items-end justify-between gap-4">
+        <h2 className="font-display text-xl font-bold text-app sm:text-2xl lg:text-3xl">
           Limited Time Offers
         </h2>
         {offers.length > 9 && (
@@ -25,12 +26,16 @@ export default function OfferSection({ offers, scrollRef, handleWheel }) {
       <div
         ref={scrollRef}
         onWheel={handleWheel}
-        className="flex gap-5 overflow-x-auto overflow-y-hidden scrollbar-hide"
+        className="-mx-4 flex snap-x gap-4 overflow-x-auto overflow-y-hidden px-4 scrollbar-hide sm:-mx-6 sm:px-6 lg:-mx-8 lg:gap-5 lg:px-8"
       >
         {offers.slice(0, 9).map((offer) => (
-          <OfferCard key={offer.id} offer={offer} className="w-[450px] h-[250px]" />
+          <OfferCard
+            key={offer.id}
+            offer={offer}
+            className="aspect-[16/9] min-w-[min(82vw,22rem)] snap-start sm:min-w-[24rem] lg:min-w-[28rem]"
+          />
         ))}
       </div>
-    </section>
+    </Section>
   );
 }

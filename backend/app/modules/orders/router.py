@@ -213,6 +213,27 @@ def update_tracking(
 
 
 # ─────────────────────────────────────────────────────────────
+# Admin — cleanup expired unpaid orders
+# ─────────────────────────────────────────────────────────────
+
+@router.post("/cleanup-expired", status_code=status.HTTP_200_OK)
+def cleanup_expired_reservations(
+    expiry_minutes: int = Query(30, ge=5, description="Orders older than this many minutes with payment_status=PENDING will be cancelled"),
+    db: Session = Depends(get_db),
+    current_admin: Admin = Depends(get_current_admin),
+):
+    """Cancel unpaid orders older than *expiry_minutes* and restore stock to inventory.
+
+    Safe to call repeatedly (idempotent). Designed for external cron jobs
+    (e.g. GitHub Actions scheduled workflow hitting this endpoint).
+
+    Returns {\"cancelled\": int}.
+    """
+    count = order_service.release_expired_reservations(db, expiry_minutes=expiry_minutes)
+    return {"cancelled": count}
+
+
+# ─────────────────────────────────────────────────────────────
 # Customer storefront
 # ─────────────────────────────────────────────────────────────
 
@@ -233,21 +254,45 @@ def create_razorpay_order_endpoint(
     db:               Session  = Depends(get_db),
     current_customer: Customer = Depends(get_current_customer),
 ):
-    """Storefront — create a Razorpay Order for a cart session."""
+    """Storefront — create a Razorpay Order for a cart session.
+
+    Production flow: send items + address to defer order creation until after payment.
+    Legacy flow: send only cart_session_id (orders already exist in DB).
+    """
+    address = None
+    if payload.customer_name:
+        address = {
+            "customer_name": payload.customer_name,
+            "customer_phone": payload.customer_phone,
+            "address_line1": payload.address_line1,
+            "address_line2": payload.address_line2,
+            "city": payload.city,
+            "state": payload.state,
+            "country": payload.country,
+            "pincode": payload.pincode,
+        }
     return order_service.create_razorpay_order(
         db,
         cart_session_id=payload.cart_session_id,
         customer=current_customer,
+        items=payload.items,
+        address=address,
+        coupon_code=payload.coupon_code,
     )
 
 
 @router.post("/customer/razorpay/verify", response_model=list[OrderResponse])
 def verify_razorpay_payment_endpoint(
     payload:          RazorpayPaymentVerifyRequest,
+    background_tasks: BackgroundTasks,
     db:               Session  = Depends(get_db),
     current_customer: Customer = Depends(get_current_customer),
 ):
-    """Storefront — verify Razorpay payment and mark order as PAID."""
+    """Storefront — verify Razorpay payment and process the order.
+
+    For the production flow: creates orders from Razorpay notes, decrements stock,
+    sends email, and notifies admin. For the legacy flow: marks existing orders as PAID.
+    """
     return order_service.verify_razorpay_payment(
         db,
         cart_session_id=payload.cart_session_id,
@@ -255,6 +300,7 @@ def verify_razorpay_payment_endpoint(
         razorpay_payment_id=payload.razorpay_payment_id,
         razorpay_signature=payload.razorpay_signature,
         customer=current_customer,
+        background_tasks=background_tasks,
     )
 
 
@@ -404,10 +450,11 @@ async def razorpay_webhook(
             razorpay_payment_id=razorpay_payment_id,
             background_tasks=background_tasks
         )
+
         return {
             "status": "success",
             "message": f"Processed webhook event successfully. Updated {updated_count} order(s)."
         }
     except Exception as e:
-        logger.error(f"Failed to process webhook event: {e}", exc_info=True)
-        return {"status": "failed", "message": str(e)}
+        logger.error("Webhook processing failed: %s", e, exc_info=True)
+        return {"status": "failed", "message": "Webhook processing failed."}

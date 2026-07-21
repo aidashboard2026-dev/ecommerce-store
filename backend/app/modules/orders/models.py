@@ -20,7 +20,7 @@ as ItemType.PRODUCT for backward compatibility.
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Integer, Numeric, String, Text
+from sqlalchemy import Column, DateTime, Index, Integer, Numeric, String, Text
 from sqlalchemy.sql import func
 
 from app.core.database import Base
@@ -73,9 +73,11 @@ class Order(Base):
     quantity      = Column(Integer, default=1)
 
     # Numeric(10, 2) — exact decimal arithmetic; no floating-point rounding errors.
-    price        = Column(Numeric(precision=10, scale=2), default=0)
-    shipping_fee = Column(Numeric(precision=10, scale=2), default=0)
-    total_amount = Column(Numeric(precision=10, scale=2), default=0)
+    price         = Column(Numeric(precision=10, scale=2), default=0)
+    shipping_fee  = Column(Numeric(precision=10, scale=2), default=0)
+    discount_amount = Column(Numeric(precision=10, scale=2), default=0)
+    total_amount  = Column(Numeric(precision=10, scale=2), default=0)
+    coupon_code   = Column(String(50), nullable=True, index=True)
 
     # ── Payment ──────────────────────────────────────────────────────────────
     payment_method = Column(String(50), default="COD")
@@ -92,6 +94,12 @@ class Order(Base):
     tracking_note   = Column(Text)
     logistics       = Column(String(100), nullable=True)
     tracking_id     = Column(String(100), nullable=True)
+
+    # ── Composite indexes for performance-critical queries ────────────────────
+    __table_args__ = (
+        Index("ix_orders_pending_expiry", "payment_status", "tracking_status", "ordered_at"),
+        Index("ix_orders_customer_history", "customer_email", "ordered_at"),
+    )
 
     # ── Dates ────────────────────────────────────────────────────────────────
     # timezone=True ensures TIMESTAMPTZ in PostgreSQL so comparisons

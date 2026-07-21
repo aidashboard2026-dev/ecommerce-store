@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, JSON
+from sqlalchemy import Column, Index, Integer, String, Text, Boolean, DateTime, JSON
 from sqlalchemy.sql import func
 from app.core.database import Base
 
@@ -13,3 +13,7 @@ class AdminNotification(Base):
     is_read = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     metadata_json = Column("metadata", JSON, nullable=True)
+
+    __table_args__ = (
+        Index("ix_admin_notif_unread", "is_read", "created_at"),
+    )

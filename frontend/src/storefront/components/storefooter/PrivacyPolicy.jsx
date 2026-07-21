@@ -50,17 +50,17 @@ export default function PrivacyPolicy() {
   return (
     <div className="min-h-screen bg-[#F6F6F4]">
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-10">
+      <div className="max-w-4xl mx-auto px-5 sm:px-6 lg:px-8">
 
         {/* Hero */}
 
-        <section className="py-28 text-center">
+        <section className="pt-14 sm:pt-16 pb-12 sm:pb-14 text-center">
 
-          <p className="uppercase tracking-[0.35em] text-sm text-gray-500">
+          <p className="uppercase tracking-[0.3em] text-xs sm:text-sm text-gray-500">
             Privacy Policy
           </p>
 
-          <h1 className="mt-6 text-5xl md:text-6xl font-light text-gray-900">
+          <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-light leading-tight text-gray-900">
 
             Your Privacy.
             <br />
@@ -68,9 +68,9 @@ export default function PrivacyPolicy() {
 
           </h1>
 
-          <div className="w-24 h-[2px] bg-gray-300 mx-auto my-8"></div>
+          <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
 
-          <p className="max-w-3xl mx-auto text-lg leading-9 text-gray-600">
+          <p className="max-w-3xl mx-auto text-base sm:text-lg leading-8 text-gray-600">
 
             At <strong>MY DESIGNERS</strong>,
             protecting your privacy is one of our highest priorities.
@@ -78,500 +78,245 @@ export default function PrivacyPolicy() {
             <br /><br />
 
             This Privacy Policy explains how we collect,
-            use,
-            protect,
-            and manage the information you share with us.
+            use, protect and manage your information.
 
           </p>
 
         </section>
 
-        {/* Information We Collect */}
+        {/* Information */}
 
-        <section className="py-20 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold text-gray-900 mb-12">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
 
             Information We Collect
 
           </h2>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-            {collectedInfo.map((item) => (
+            We may collect your personal information,
+            shipping details,
+            order information,
+            uploaded designs and payment details
+            necessary to complete your order.
 
-              <div
-                key={item.title}
-                className="bg-white rounded-3xl border border-gray-200 p-8 hover:shadow-lg transition duration-300"
-              >
-
-                <div className="text-gray-900 mb-6">
-
-                  {item.icon}
-
-                </div>
-
-                <h3 className="text-xl font-semibold text-gray-900">
-
-                  {item.title}
-
-                </h3>
-
-                <p className="mt-4 leading-8 text-gray-600">
-
-                  {item.description}
-
-                </p>
-
-              </div>
-
-            ))}
-
-          </div>
+          </p>
 
         </section>
 
-        {/* How We Use Your Information */}
+        {/* Usage */}
 
-        <section className="py-20 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <div className="bg-white rounded-3xl border border-gray-200 p-12">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
 
-            <h2 className="text-3xl font-semibold text-gray-900">
+            How We Use Your Information
 
-              How We Use Your Information
+          </h2>
 
-            </h2>
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-            <p className="mt-8 text-lg leading-9 text-gray-600">
+            Your information helps us process orders,
+            manufacture customized products,
+            provide customer support,
+            improve our services and comply with legal requirements.
 
-              The information you provide helps us deliver
-              a better shopping experience and ensure your
-              customized products are produced accurately.
-
-            </p>
-
-            <div className="grid md:grid-cols-2 gap-5 mt-12">
-
-              {usage.map((item) => (
-
-                <div
-                  key={item}
-                  className="border border-gray-200 rounded-2xl bg-[#FAFAF9] px-6 py-5"
-                >
-
-                  <p className="text-gray-700">
-
-                    {item}
-
-                  </p>
-
-                </div>
-
-              ))}
-
-            </div>
-
-          </div>
+          </p>
 
         </section>
 
-        {/* Your Designs */}
+        {/* Designs */}
 
-        <section className="py-20 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <div className="bg-white rounded-3xl border border-gray-200 p-12">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
 
-            <h2 className="text-3xl font-semibold text-gray-900">
+            Your Designs
 
-              Your Designs, Your Ownership
+          </h2>
 
-            </h2>
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-            <p className="mt-8 text-lg leading-9 text-gray-600">
+            Logos,
+            artwork and uploaded files remain your property.
 
-              Any logo,
-              artwork,
-              image,
-              photograph,
-              or design uploaded by you remains your property.
+            <br /><br />
 
-              <br /><br />
+            They are used only to produce your customized products.
 
-              MY DESIGNERS uses these files only for
-              producing your requested customized products.
-
-              <br /><br />
-
-              We do not claim ownership of your creative work,
-              sell it,
-              or use it for unrelated commercial purposes
-              without your permission.
-
-            </p>
-
-          </div>
+          </p>
 
         </section>
 
-        {/* Payment Security */}
+        {/* Payment */}
 
-        <section className="py-20 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <div className="bg-white rounded-3xl border border-gray-200 p-12">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
 
-            <h2 className="text-3xl font-semibold text-gray-900">
+            Payment Security
 
-              Payment Security
+          </h2>
 
-            </h2>
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-            <p className="mt-8 text-lg leading-9 text-gray-600">
+            Payments are securely processed through trusted providers.
 
-              Your payment security is extremely important to us.
+            <br /><br />
 
-              <br /><br />
+            MY DESIGNERS never stores complete
+            card or banking credentials.
 
-              Transactions are processed through trusted
-              and secure payment providers.
-
-              <br /><br />
-
-              MY DESIGNERS does not store complete debit card,
-              credit card,
-              or online banking credentials.
-
-            </p>
-
-          </div>
+          </p>
 
         </section>
 
-        {/* Sharing Information */}
+        {/* Sharing */}
 
-        <section className="py-20 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <div className="bg-white rounded-3xl border border-gray-200 p-12">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
 
-            <div className="flex items-center gap-4">
+            Sharing Information
 
-              <Share2 size={30} />
+          </h2>
 
-              <h2 className="text-3xl font-semibold text-gray-900">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-                Sharing Information
+            We never sell or trade your personal data.
 
-              </h2>
+            <br /><br />
 
-            </div>
+            Information is shared only when necessary
+            with courier partners,
+            payment providers or when legally required.
 
-            <p className="mt-8 text-lg leading-9 text-gray-600">
-
-              We respect your privacy.
-
-              <br /><br />
-
-              We do not sell,
-              rent,
-              or trade your personal information.
-
-              <br /><br />
-
-              Information may only be shared when necessary with:
-
-            </p>
-
-            <div className="grid md:grid-cols-3 gap-5 mt-10">
-
-              {[
-                "Trusted Courier Partners",
-                "Secure Payment Providers",
-                "Government Authorities (if legally required)",
-              ].map((item) => (
-
-                <div
-                  key={item}
-                  className="border border-gray-200 rounded-2xl bg-[#FAFAF9] px-6 py-5 text-center"
-                >
-
-                  <p className="text-gray-700">
-
-                    {item}
-
-                  </p>
-
-                </div>
-
-              ))}
-
-            </div>
-
-          </div>
+          </p>
 
         </section>
 
-                {/* Cookies */}
+        {/* Cookies */}
 
-        <section className="py-20 border-t border-gray-200">
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-          <h2 className="text-3xl font-semibold text-gray-900 mb-10">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
+
             Cookies
+
           </h2>
 
-          <div className="max-w-5xl">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-            <p className="text-lg leading-9 text-gray-600">
+            Cookies improve browsing,
+            remember preferences
+            and enhance website performance.
 
-              Our website may use cookies and similar technologies
-              to improve your browsing experience,
-              remember your preferences,
-              and enhance website performance.
-
-              <br /><br />
-
-              Cookies help us understand how visitors use our website
-              so we can continue improving our products and services.
-
-            </p>
-
-          </div>
+          </p>
 
         </section>
 
+            {/* Data Security */}
 
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-        {/* Data Security */}
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
 
-        <section className="py-20 border-t border-gray-200">
-
-          <h2 className="text-3xl font-semibold text-gray-900 mb-12">
             Data Security
+
           </h2>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-            {[
-              "Secure Data Storage",
-              "Restricted Employee Access",
-              "Protected Customer Information",
-              "Continuous Security Monitoring",
-            ].map((item) => (
+            We use appropriate security practices
+            to protect your information against
+            unauthorized access,
+            misuse or disclosure.
 
-              <div
-                key={item}
-                className="bg-white rounded-3xl border border-gray-200 p-8 hover:shadow-lg transition"
-              >
-
-                <Shield size={28} className="mb-5" />
-
-                <h3 className="text-xl font-semibold text-gray-900">
-
-                  {item}
-
-                </h3>
-
-                <p className="mt-4 leading-8 text-gray-600">
-
-                  We take appropriate security measures
-                  to help protect your personal information
-                  from unauthorized access,
-                  misuse,
-                  or disclosure.
-
-                </p>
-
-              </div>
-
-            ))}
-
-          </div>
+          </p>
 
         </section>
 
+        {/* Rights */}
 
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-        {/* Your Rights */}
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
 
-        <section className="py-20 border-t border-gray-200">
+            Your Rights
 
-          <div className="bg-white rounded-3xl border border-gray-200 p-12">
+          </h2>
 
-            <h2 className="text-3xl font-semibold text-gray-900">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-              Your Rights
+            You may request access,
+            correction or deletion of
+            eligible personal information.
 
-            </h2>
-
-            <p className="mt-8 text-lg leading-9 text-gray-600">
-
-              As our customer,
-              you have the right to:
-
-            </p>
-
-            <div className="grid md:grid-cols-2 gap-5 mt-10">
-
-              {[
-                "Access your personal information",
-                "Request corrections to inaccurate information",
-                "Request deletion of eligible personal data",
-                "Contact us regarding privacy concerns",
-              ].map((item) => (
-
-                <div
-                  key={item}
-                  className="border border-gray-200 rounded-2xl bg-[#FAFAF9] px-6 py-5"
-                >
-
-                  <p className="text-gray-700">
-
-                    {item}
-
-                  </p>
-
-                </div>
-
-              ))}
-
-            </div>
-
-          </div>
+          </p>
 
         </section>
 
+        {/* Third Party */}
 
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-        {/* Third Party Services */}
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
 
-        <section className="py-20 border-t border-gray-200">
+            Third-Party Services
 
-          <div className="bg-white rounded-3xl border border-gray-200 p-12">
+          </h2>
 
-            <h2 className="text-3xl font-semibold text-gray-900">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-              Third-Party Services
+            We work with trusted partners
+            for payments,
+            shipping and essential services.
 
-            </h2>
-
-            <p className="mt-8 text-lg leading-9 text-gray-600">
-
-              Our website may work with trusted third-party
-              service providers for payment processing,
-              shipping,
-              website analytics,
-              and other essential business operations.
-
-              <br /><br />
-
-              These providers maintain their own privacy
-              and security policies for handling data.
-
-            </p>
-
-          </div>
+          </p>
 
         </section>
 
+        {/* Updates */}
 
+        <section className="py-8 sm:py-10 border-t border-gray-200">
 
-        {/* Policy Updates */}
-
-        <section className="py-20 border-t border-gray-200">
-
-          <h2 className="text-3xl font-semibold text-gray-900 mb-8">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-5">
 
             Policy Updates
 
           </h2>
 
-          <div className="max-w-5xl">
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
 
-            <p className="text-lg leading-9 text-gray-600">
+            This Privacy Policy may be updated
+            whenever required.
 
-              We may update this Privacy Policy
-              from time to time
-              to reflect improvements,
-              legal requirements,
-              or changes to our services.
+            <br /><br />
 
-              <br /><br />
+            The latest version will always
+            be available on this page.
 
-              The latest version will always be available
-              on this page.
-
-            </p>
-
-          </div>
+          </p>
 
         </section>
-
-
 
         {/* Contact */}
 
-        <section className="py-20 border-t border-gray-200">
+       
 
-          <h2 className="text-3xl font-semibold text-gray-900 mb-12">
+        {/* Thank You */}
 
-            Contact Us
+        <section className="py-14 text-center border-t border-gray-200">
 
-          </h2>
+          <p className="uppercase tracking-[0.3em] text-xs sm:text-sm text-gray-500">
 
-          <div className="grid md:grid-cols-3 gap-6">
-
-            <div className="bg-white rounded-3xl border border-gray-200 p-8">
-
-              <h3 className="text-xl font-semibold text-gray-900">
-                Phone
-              </h3>
-
-              <p className="mt-4 text-gray-600">
-                +91 XXXXX XXXXX
-              </p>
-
-            </div>
-
-            <div className="bg-white rounded-3xl border border-gray-200 p-8">
-
-              <h3 className="text-xl font-semibold text-gray-900">
-                Email
-              </h3>
-
-              <p className="mt-4 text-gray-600">
-                support@mydesigners.in
-              </p>
-
-            </div>
-
-            <div className="bg-white rounded-3xl border border-gray-200 p-8">
-
-              <h3 className="text-xl font-semibold text-gray-900">
-                Address
-              </h3>
-
-              <p className="mt-4 text-gray-600">
-                Dharmapuri,
-                Tamil Nadu,
-                India
-              </p>
-
-            </div>
-
-          </div>
-
-        </section>
-
-
-
-        {/* Bottom CTA */}
-
-        <section className="py-28 border-t border-gray-200 text-center">
-
-          <p className="uppercase tracking-[0.35em] text-sm text-gray-500">
             MY DESIGNERS
+
           </p>
 
-          <h2 className="mt-6 text-5xl font-light text-gray-900">
+          <h2 className="mt-4 text-3xl sm:text-4xl font-light leading-tight text-gray-900">
 
             Your Trust.
             <br />
@@ -579,21 +324,18 @@ export default function PrivacyPolicy() {
 
           </h2>
 
-          <div className="w-24 h-[2px] bg-gray-300 mx-auto my-10"></div>
+          <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
 
-          <p className="max-w-3xl mx-auto text-lg leading-9 text-gray-600">
+          <p className="max-w-3xl mx-auto text-base sm:text-lg leading-8 text-gray-600">
 
-            Protecting your personal information
-            is an important part of the trust
-            you place in MY DESIGNERS.
+            Thank you for trusting
+            <strong> MY DESIGNERS.</strong>
 
             <br /><br />
 
-            We are committed to maintaining
-            transparency,
-            security,
-            and responsible handling
-            of your information.
+            We remain committed to protecting
+            your information with transparency,
+            responsibility and care.
 
           </p>
 
@@ -602,7 +344,4 @@ export default function PrivacyPolicy() {
       </div>
 
     </div>
-
-  );
-
-}
+  )}

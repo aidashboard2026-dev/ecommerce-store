@@ -919,6 +919,22 @@ def create_product(db: Session, product_in: ProductCreate) -> ProductResponse:
         )
     slug = _ensure_unique_slug(db, base_slug)
 
+    if product_in.category_id is not None:
+        category = db.query(Category).filter(Category.id == product_in.category_id).first()
+        if not category:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Category with id {product_in.category_id} not found.",
+            )
+
+    if product_in.collection_id is not None:
+        collection = db.query(Collection).filter(Collection.id == product_in.collection_id).first()
+        if not collection:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Collection with id {product_in.collection_id} not found.",
+            )
+
     product = Product(
         title=product_in.title,
         slug=slug,
@@ -963,7 +979,12 @@ def create_product(db: Session, product_in: ProductCreate) -> ProductResponse:
 def get_product(db: Session, product_id: int) -> Product:
     product = (
         db.query(Product)
-        .options(selectinload(Product.variants), selectinload(Product.genders_rel))
+        .options(
+            selectinload(Product.variants),
+            selectinload(Product.genders_rel),
+            selectinload(Product.category),
+            selectinload(Product.collection_rel),
+        )
         .filter(Product.id == product_id, Product.deleted_at.is_(None))
         .first()
     )
@@ -976,14 +997,11 @@ def get_product_response(db: Session, product_id: int) -> ProductResponse:
     product = get_product(db, product_id)
     cat_map: dict = {}
     col_map: dict = {}
-    if product.category_id:
-        cat = db.get(Category, product.category_id)
-        if cat:
-            cat_map[cat.id] = cat.name
-    if product.collection_id:
-        col = db.get(Collection, product.collection_id)
-        if col:
-            col_map[col.id] = col.name
+    # category and collection_rel are eagerly loaded via selectinload in get_product
+    if product.category and product.category_id:
+        cat_map[product.category.id] = product.category.name
+    if product.collection_rel and product.collection_id:
+        col_map[product.collection_rel.id] = product.collection_rel.name
     return _build_product_response(product, category_map=cat_map, collection_map=col_map)
 
 
@@ -1023,7 +1041,13 @@ def update_product(db: Session, product_id: int, product_in: ProductUpdate) -> P
         patch["slug"] = _ensure_unique_slug(db, base_slug, exclude_id=product_id)
 
     if "status" in patch and patch["status"]:
-        patch["status"] = ProductStatus(patch["status"])
+        new_status = ProductStatus(patch["status"])
+        if new_status == ProductStatus.published and not product.variants:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Cannot publish a product with no variants.",
+            )
+        patch["status"] = new_status
 
     if "genders" in patch:
         product.genders_rel.clear()
@@ -1054,8 +1078,11 @@ def update_product(db: Session, product_id: int, product_in: ProductUpdate) -> P
 
 def soft_delete_product(db: Session, product_id: int) -> None:
     from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
     product = get_product(db, product_id)
-    product.deleted_at = datetime.now(timezone.utc)
+    product.deleted_at = now
+    for variant in product.variants:
+        variant.deleted_at = now
     db.commit()
 
 
@@ -1082,6 +1109,12 @@ def bulk_action(db: Session, payload: BulkActionPayload) -> dict:
     action = payload.action
 
     if action == "publish":
+        no_variants = [p.id for p in products if not p.variants]
+        if no_variants:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Cannot publish product(s) with no variants: {no_variants}",
+            )
         for p in products:
             p.status = ProductStatus.published
     elif action == "unpublish":
@@ -1091,9 +1124,26 @@ def bulk_action(db: Session, payload: BulkActionPayload) -> dict:
         for p in products:
             p.status = ProductStatus.archived
     elif action == "delete":
+        from app.shared.storage import supabase_storage
+        for p in products:
+            for attr in ["thumbnail", "image_front", "image_back", "image_size_chart"]:
+                url = getattr(p, attr, None)
+                if url:
+                    try:
+                        supabase_storage.delete_product_image(url)
+                    except Exception:
+                        pass
+            for url in p.gallery_images or []:
+                if url:
+                    try:
+                        supabase_storage.delete_product_image(url)
+                    except Exception:
+                        pass
         now = datetime.now(timezone.utc)
         for p in products:
             p.deleted_at = now
+            for variant in p.variants:
+                variant.deleted_at = now
     elif action == "move_category":
         if not payload.category_id:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "category_id required for move_category.")
@@ -1225,9 +1275,24 @@ def add_variant(db: Session, product_id: int, variant_in: VariantCreate) -> Prod
     db.add(variant)
     try:
         db.commit()
-    except Exception as e:
+    except IntegrityError as exc:
         db.rollback()
-        raise e
+        if "sku" in str(exc).lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"A variant with SKU '{variant.sku}' already exists.",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Database integrity constraint violation while adding variant.",
+        )
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"Unexpected error in add_variant: {exc}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while adding the variant.",
+        )
 
     return get_product_response(db, product_id)
 

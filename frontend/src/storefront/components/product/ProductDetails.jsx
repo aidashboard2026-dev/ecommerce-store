@@ -5,15 +5,12 @@ import toast from "react-hot-toast";
 import {
   Heart,
   ShoppingBag,
-  Zap,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
   FileText,
   ClipboardList,
-  Star,
   Truck,
-  PackageCheck,
   ExternalLink,
 } from "lucide-react";
 import clsx from "clsx";
@@ -24,11 +21,13 @@ import {
 } from "@/storefront/hooks/useProducts";
 import { getImageUrl, formatPrice } from "@/shared/utils/productUtils";
 import { addToCart, openCartDrawer } from "@/storefront/store/cartSlice";
+import { addCustomerCartItemThunk } from "@/storefront/store/customerCartThunks";
 import {
   toggleWishlist,
   selectIsWishlisted,
 } from "@/storefront/store/wishlistSlice";
 import ProductGrid from "@/storefront/components/home/ProductGrid";
+import { PageContainer } from "@/shared/components/layout";
 
 export default function ProductDetails() {
   const { slug } = useParams();
@@ -119,9 +118,9 @@ export default function ProductDetails() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-10 animate-pulse">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-          <div className="aspect-square bg-surface rounded-2xl" />
+      <PageContainer className="animate-pulse">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-10">
+          <div className="aspect-square rounded-md bg-surface" />
           <div className="flex flex-col gap-4">
             <div className="h-4 w-1/3 bg-surface rounded" />
             <div className="h-8 w-2/3 bg-surface rounded" />
@@ -129,18 +128,18 @@ export default function ProductDetails() {
             <div className="h-24 w-full bg-surface rounded" />
           </div>
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
   if (isError || !product) {
     return (
-      <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-20 text-center">
+      <PageContainer className="py-20 text-center">
         <p className="text-app font-semibold mb-4">Product not found.</p>
         <Link to="/products" className="text-brand-500 font-semibold text-sm">
           Back to shop
         </Link>
-      </div>
+      </PageContainer>
     );
   }
 
@@ -171,20 +170,42 @@ export default function ProductDetails() {
     quantity,
   });
 
-  const handleAddToCart = () => {
-    console.log("Variant :", activeVariant);
-    console.log("Stock :", activeVariant?.stock_quantity);
-    console.log("In Stock :", inStock);
-
+  const handleAddToCart = async () => {
     if (!activeVariant) return;
     if (!inStock) {
       toast.error("This variant is out of stock");
       return;
     }
-    dispatch(addToCart(buildCartItem()));
-    dispatch(openCartDrawer());
 
     const isAuthenticated = !!(token && customer);
+
+    if (isAuthenticated) {
+      try {
+        const cartItem = {
+          productId: product.id,
+          variantId: activeVariant.id,
+          title: product.title,
+          slug: product.slug,
+          thumbnail: product.thumbnail,
+          size: activeVariant.size,
+          color: activeVariant.color || null,
+          colorHex: activeVariant.color_hex || null,
+          sellingPrice: Number(activeVariant.selling_price),
+          originalPrice: Number(activeVariant.original_price),
+          stockQuantity: activeVariant.stock_quantity,
+          quantity,
+        };
+        await dispatch(addCustomerCartItemThunk(cartItem)).unwrap();
+      } catch (err) {
+        toast.error(typeof err === 'string' ? err : 'Failed to add to cart');
+        return;
+      }
+    } else {
+      dispatch(addToCart(buildCartItem()));
+    }
+
+    dispatch(openCartDrawer());
+
     const toastShown = sessionStorage.getItem("aurastore_guest_added_toast_shown");
     if (!isAuthenticated && !toastShown) {
       sessionStorage.setItem("aurastore_guest_added_toast_shown", "true");
@@ -214,7 +235,7 @@ export default function ProductDetails() {
             <button
               onClick={() => {
                 toast.dismiss(t.id);
-                navigate("/login");
+                navigate("/auth/login");
               }}
               className="w-24 border border-transparent rounded-none p-4 flex items-center justify-center text-xs font-semibold text-brand-500 hover:bg-surface hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
             >
@@ -223,20 +244,46 @@ export default function ProductDetails() {
           </div>
         </div>
       ), { duration: 5000 });
+    } else if (isAuthenticated) {
+      toast.success("Added to cart");
     } else {
       toast.success("Added to cart");
     }
   };
 
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
     if (!activeVariant) return;
     if (!inStock) {
       toast.error("This variant is out of stock");
       return;
     }
-    dispatch(addToCart(buildCartItem()));
 
     const isAuthenticated = !!(token && customer);
+
+    if (isAuthenticated) {
+      try {
+        await dispatch(addCustomerCartItemThunk({
+          productId: product.id,
+          variantId: activeVariant.id,
+          title: product.title,
+          slug: product.slug,
+          thumbnail: product.thumbnail,
+          size: activeVariant.size,
+          color: activeVariant.color || null,
+          colorHex: activeVariant.color_hex || null,
+          sellingPrice: Number(activeVariant.selling_price),
+          originalPrice: Number(activeVariant.original_price),
+          stockQuantity: activeVariant.stock_quantity,
+          quantity,
+        })).unwrap();
+      } catch (err) {
+        toast.error(typeof err === 'string' ? err : 'Failed to add to cart');
+        return;
+      }
+    } else {
+      dispatch(addToCart(buildCartItem()));
+    }
+
     if (!isAuthenticated) {
       openCheckoutAuthModal(buyNowButtonRef.current);
       return;
@@ -259,14 +306,14 @@ export default function ProductDetails() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] p-5 ">
+    <PageContainer>
       {/* Breadcrumb */}
-      <div className="mb-5 flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+      <div className="mb-6 flex flex-wrap items-center gap-1 text-sm text-muted">
         <Link to="/" className="transition-colors hover:text-app">
           Home
         </Link>
 
-        <ChevronRight size={14} className="text-muted-foreground/60" />
+        <ChevronRight size={14} className="text-muted" />
 
         <Link to="/products" className="transition-colors hover:text-app">
           Shop
@@ -274,7 +321,7 @@ export default function ProductDetails() {
 
         {product.collection_name && (
           <>
-            <ChevronRight size={14} className="text-muted-foreground/60" />
+            <ChevronRight size={14} className="text-muted" />
             <Link
               to={`/products?collection=${encodeURIComponent(
                 product.collection_name,
@@ -288,7 +335,7 @@ export default function ProductDetails() {
 
         {product.category_name && (
           <>
-            <ChevronRight size={14} className="text-muted-foreground/60" />
+            <ChevronRight size={14} className="text-muted" />
             <Link
               to={`/products?collection=${encodeURIComponent(
                 product.collection_name || "",
@@ -301,7 +348,7 @@ export default function ProductDetails() {
         )}
 
 
-        <ChevronRight size={14} className="text-muted-foreground/60" />
+        <ChevronRight size={14} className="text-muted" />
 
         <span className="font-semibold text-app truncate max-w-xs sm:max-w-md">
           {product.title}
@@ -309,12 +356,12 @@ export default function ProductDetails() {
       </div>
 
     
-       <div className="flex flex-col md:flex-row  justify-between gap-10">
+       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)] lg:gap-10 xl:gap-14">
         {/* Gallery */}
-        <div className="flex flex-1 flex-col gap-3">
+        <div className="flex min-w-0 flex-col gap-3">
           <div
             className={clsx(
-              "relative aspect-square w-full bg-surface rounded-2xl overflow-hidden border border-app cursor-zoom-in",
+              "relative aspect-square w-full cursor-zoom-in overflow-hidden rounded-md border border-app bg-surface",
             )}
             onClick={() => setZoomed((z) => !z)}
           >
@@ -324,7 +371,7 @@ export default function ProductDetails() {
                 alt={product.title}
                 onError={() => handleImageError(activeImage)}
                 className={clsx(
-                  "w-full h-full object-cover transition-transform duration-300",
+                  "h-full w-full object-cover transition-transform duration-300",
                   zoomed ? "scale-150" : "scale-100",
                 )}
               />
@@ -344,7 +391,8 @@ export default function ProductDetails() {
                       (i) => (i - 1 + images.length) % images.length,
                     );
                   }}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-app/80 hover:bg-app shadow-sm"
+                  className="focus-ring absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-app/80 p-2 shadow-sm hover:bg-app"
+                  aria-label="Previous product image"
                 >
                   <ChevronLeft size={18} />
                 </button>
@@ -353,7 +401,8 @@ export default function ProductDetails() {
                     e.stopPropagation();
                     setActiveImage((i) => (i + 1) % images.length);
                   }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-app/80 hover:bg-app shadow-sm"
+                  className="focus-ring absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-app/80 p-2 shadow-sm hover:bg-app"
+                  aria-label="Next product image"
                 >
                   <ChevronRight size={18} />
                 </button>
@@ -362,7 +411,9 @@ export default function ProductDetails() {
 
             <button
               onClick={handleWishlist}
-              className="absolute top-3 left-3 p-2 rounded-full bg-app/80 backdrop-blur-sm hover:bg-gray-200/20 text-app transition-colors duration-200"
+              className="focus-ring absolute left-3 top-3 rounded-full bg-app/80 p-2 text-app backdrop-blur-sm transition-colors duration-200 hover:bg-gray-200/20"
+              aria-label="Toggle wishlist"
+              aria-pressed={isWishlisted}
             >
               <Heart
                 size={20}
@@ -372,15 +423,16 @@ export default function ProductDetails() {
           </div>
 
           {images.length > 1 && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
               {images.map((img, i) => (
                 <button
                   key={i}
                   onClick={() => setActiveImage(i)}
                   className={clsx(
-                    "w-16 h-16 rounded-xl overflow-hidden border-2 transition-colors",
+                    "focus-ring h-16 w-16 shrink-0 overflow-hidden rounded-md border-2 transition-colors sm:h-20 sm:w-20",
                     activeImage === i ? "border-brand-500" : "border-app",
                   )}
+                  aria-label={`Show product image ${i + 1}`}
                 >
                   {!imageErrors[i] ? (
                     <img
@@ -401,14 +453,14 @@ export default function ProductDetails() {
         </div>
 
         {/* Info */}
-        <div className="flex flex-1 flex-col gap-2 md:gap-2 lg:gap-5">
+        <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-24 lg:self-start">
           {(product.collection_name || product.collection) && (
             <span className="text-xs uppercase tracking-wider text-brand font-bold">
               {product.collection_name || product.collection}
             </span>
           )}
 
-          <h1 className="font-thin text-2xl sm:text-3xl text-app">
+          <h1 className="font-display text-2xl font-semibold leading-tight text-app sm:text-3xl lg:text-4xl">
             {product.title}
           </h1>
 
@@ -419,8 +471,8 @@ export default function ProductDetails() {
           )} */}
 
           {activeVariant && (
-            <div className="flex flex-wrap items-baseline border-b pb-3 gap-3">
-              <span className="text-4xl font-bold text-app">
+            <div className="flex flex-wrap items-baseline gap-3 border-b border-app pb-4">
+              <span className="text-3xl font-bold text-app sm:text-4xl">
                 {formatPrice(activeVariant.selling_price)}
               </span>
               {hasDiscount && (
@@ -438,8 +490,8 @@ export default function ProductDetails() {
 
           {/* Size selection */}
           {sizes.length > 0 && (
-            <div className="border-b pb-3 flex gap-3 items-center">
-              <h4 className="text-lg font-normal">Size</h4>
+            <div className="flex flex-col gap-3 border-b border-app pb-4 sm:flex-row sm:items-center">
+              <h4 className="text-sm font-semibold uppercase tracking-[0.12em] text-muted sm:w-24">Size</h4>
               <div className="flex-1 flex flex-wrap gap-2">
                 {sizes.map((size) => (
                   <button
@@ -451,7 +503,7 @@ export default function ProductDetails() {
                     }}
                     aria-pressed={selectedSize === size}
                     className={clsx(
-                      "min-w-[2rem] px-2 py-1 rounded-md border text-sm font-semibold transition-colors",
+                      "focus-ring min-h-9 min-w-9 rounded-md border px-3 py-1 text-sm font-semibold transition-colors",
                       selectedSize === size
                         ? "border-brand-500 bg-brand-500 text-white"
                         : "border-app text-app hover:border-brand-500",
@@ -466,8 +518,8 @@ export default function ProductDetails() {
 
           {/* Color selection */}
           {colorsForSize.length > 0 && (
-            <div className="border-b pb-3 flex  gap-8">
-              <h4 className="text-lg font-normal">Color</h4>
+            <div className="flex flex-col gap-3 border-b border-app pb-4 sm:flex-row sm:items-center">
+              <h4 className="text-sm font-semibold uppercase tracking-[0.12em] text-muted sm:w-24">Color</h4>
               <div className="flex flex-wrap gap-2">
                 {colorsForSize.map(([color, hex]) => (
                   <button
@@ -480,7 +532,7 @@ export default function ProductDetails() {
                     aria-label={`Color option: ${color}`}
                     aria-pressed={selectedColor === color}
                     className={clsx(
-                      "h-6 w-6 rounded-full border-0 transition-all",
+                      "focus-ring h-8 w-8 rounded-full border-2 transition-all",
                       selectedColor === color
                         ? "border-brand-500 scale-110"
                         : "border-app",
@@ -512,17 +564,17 @@ export default function ProductDetails() {
           </div>
 
           {/* Quantity */}
-          <div className="flex items-center gap-4">
-            <h4 className="text-lg font-normal">Quantity</h4>
-            <div className="flex items-center border border-app rounded-lg overflow-hidden">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <h4 className="text-sm font-semibold uppercase tracking-[0.12em] text-muted sm:w-24">Quantity</h4>
+            <div className="flex h-11 w-fit items-center overflow-hidden rounded-md border border-app">
               <button
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                 aria-label="Decrease quantity"
-                className="px-3 py-1.5 text-app hover:bg-surface"
+                className="focus-ring h-full px-4 text-app hover:bg-surface"
               >
                 −
               </button>
-              <span className="px-4 py-1.5 text-sm font-semibold text-app">
+              <span className="min-w-12 px-4 text-center text-sm font-semibold text-app">
                 {quantity}
               </span>
               <button
@@ -532,7 +584,7 @@ export default function ProductDetails() {
                   )
                 }
                 aria-label="Increase quantity"
-                className="px-3 py-1.5 text-app hover:bg-surface"
+                className="focus-ring h-full px-4 text-app hover:bg-surface"
               >
                 +
               </button>
@@ -540,7 +592,7 @@ export default function ProductDetails() {
           </div>
 
           {/* Actions */}
-          <div className="flex flex-wrap gap-3 mt-2">
+          <div className="mt-1 flex flex-wrap gap-3">
             <button
               onClick={() => {
                 if (!inStock) {
@@ -551,7 +603,7 @@ export default function ProductDetails() {
                 handleAddToCart();
               }}
               className={clsx(
-                "flex-1 p-2.5 w-full text-2xl flex flex-row gap-3 items-center bg-zinc-950 dark:bg-zinc-900 text-white justify-center rounded-md duration-300"
+                "focus-ring flex h-12 w-full flex-1 flex-row items-center justify-center gap-3 rounded-md bg-zinc-950 px-5 text-base font-semibold text-white duration-300 hover:bg-zinc-800 dark:bg-zinc-900"
               )}
             >
               <ShoppingBag size={22} />
@@ -574,8 +626,8 @@ export default function ProductDetails() {
             </button> */}
           </div>
 
-          <section className="border-t border-app pt-2">
-            <h2 className="text-2xl lg:text-3xl  font-semibold text-app">
+          <section className="border-t border-app pt-4">
+            <h2 className="text-xl font-semibold text-app lg:text-2xl">
               Product Information
             </h2>
 
@@ -583,11 +635,11 @@ export default function ProductDetails() {
             <div className="border-b border-app">
               <button
                 onClick={() => toggle("details")}
-                className="flex w-full items-center justify-between py-5"
+                className="focus-ring flex w-full items-center justify-between py-5 text-left"
               >
                 <div className="flex items-center gap-4">
                   <FileText size={22} />
-                  <span className="text-lg font-medium">Product Details</span>
+                  <span className="text-base font-medium sm:text-lg">Product Details</span>
                 </div>
 
                 <ChevronDown
@@ -599,9 +651,9 @@ export default function ProductDetails() {
               </button>
 
               {open === "details" && (
-                <div className="pb-6 pl-10 text-muted">
+                <div className="pb-6 pl-0 text-muted sm:pl-10">
                   <div>
-                    <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                    <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
                       {product.material ? (
                         <li>Material: {product.material}</li>
                       ) : (
@@ -624,11 +676,11 @@ export default function ProductDetails() {
             <div className="border-b border-app">
               <button
                 onClick={() => toggle("specs")}
-                className="flex w-full items-center justify-between py-5"
+                className="focus-ring flex w-full items-center justify-between py-5 text-left"
               >
                 <div className="flex items-center gap-4">
                   <ClipboardList size={22} />
-                  <span className="text-lg font-medium">Specifications</span>
+                  <span className="text-base font-medium sm:text-lg">Specifications</span>
                 </div>
 
                 <ChevronDown
@@ -640,8 +692,8 @@ export default function ProductDetails() {
               </button>
 
               {open === "specs" && (
-                <div className="pb-6 pl-10 text-sm text-muted-foreground">
-                  <div className="grid grid-cols-2 max-w-xs gap-y-2">
+                <div className="pb-6 pl-0 text-sm text-muted sm:pl-10">
+                  <div className="grid max-w-md grid-cols-1 gap-2 sm:grid-cols-2">
                     <span className="font-semibold text-app">Material</span>
                     <span>{product.material || "Not Specified"}</span>
                     <span className="font-semibold text-app">Category</span>
@@ -661,12 +713,12 @@ export default function ProductDetails() {
             <div className="border-b border-app">
               <button
                 onClick={() => toggle("shipping")}
-                className="flex w-full items-center justify-between py-5"
+                className="focus-ring flex w-full items-center justify-between py-5 text-left"
               >
                 <div className="flex items-center gap-4">
                   {/* <PackageCheck size={22} /> */}
                   <Truck size={22} />
-                  <span className="text-lg font-medium">
+                  <span className="text-base font-medium sm:text-lg">
                     Shipping & Returns
                   </span>
                 </div>
@@ -680,7 +732,7 @@ export default function ProductDetails() {
               </button>
 
               {open === "shipping" && (
-                <div className="space-y-2 pb-2 pl-10 text-sm leading-2 text-muted-foreground">
+                <div className="space-y-2 pb-2 pl-0 text-sm leading-relaxed text-muted sm:pl-10">
                   <p>
                     We offer 5 days hassle-free returns and exchanges from the date of delivery.
                   </p>
@@ -712,13 +764,13 @@ export default function ProductDetails() {
 
       {/* Related products */}
       {relatedProducts.length > 0 && (
-        <section className="mt-16">
+        <section className="mt-12 lg:mt-16">
           <h2 className="font-display font-bold text-xl sm:text-2xl text-app mb-6">
             You May Also Like
           </h2>
           <ProductGrid products={relatedProducts} loading={false} />
         </section>
       )}
-    </div>
+    </PageContainer>
   );
 }

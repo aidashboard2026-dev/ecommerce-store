@@ -5,216 +5,116 @@ const sections = [
     title: "Our Story",
     content: `Founded in 2026, MY DESIGNERS was created with a simple vision — to make premium custom products accessible to everyone.
 
-We believe that personalized products should be more than just visually appealing. They should represent quality, creativity, and attention to detail while remaining affordable for individuals, businesses, and organizations.
+We believe personalized products should combine quality, creativity, and affordability.
 
-From a single custom order to large corporate requirements, every product is crafted with care using quality materials and modern printing techniques. Every design reflects our commitment to delivering products that customers can proudly wear, use, gift, and remember.
+Every order, whether for a single customer or a large organization, is produced using quality materials and modern printing techniques.
 
-As we continue to grow, our focus remains the same: creating products that combine excellent craftsmanship, lasting quality, and exceptional value.`,
+Our commitment is simple — deliver products that customers are proud to wear, use, gift, and remember.`,
   },
   {
     title: "Our Mission",
-    content: `Our mission is to deliver premium-quality custom products at affordable prices without compromising craftsmanship, creativity, or customer satisfaction.
+    content: `Our mission is to deliver premium-quality custom products at affordable prices without compromising craftsmanship or customer satisfaction.
 
-We are committed to making personalized products accessible for everyone by combining quality materials, modern production techniques, and reliable service.`,
-  },
-];
-
-const products = [
-  "Custom Printed T-Shirts",
-  "Embroidered T-Shirts",
-  "Hoodies",
-  "Caps",
-  "Printed Mugs",
-  "Printed Glasses",
-  "Tote Bags",
-  "Keychains",
-  "Photo Frames",
-  "Corporate Gift Kits",
-  "Personalized Gifts",
-  "Business Branding Products",
-  "Event Merchandise",
-  "Promotional Products",
-];
-
-const features = [
-  {
-    title: "Premium Quality",
-    desc: "Carefully selected materials with lasting durability and superior finish.",
-  },
-  {
-    title: "Affordable Pricing",
-    desc: "High-quality products at prices that make customization accessible.",
-  },
-  {
-    title: "Modern Production",
-    desc: "Reliable printing and embroidery techniques for exceptional results.",
-  },
-  {
-    title: "Attention to Detail",
-    desc: "Every product is crafted with precision and care, regardless of order size.",
-  },
-  {
-    title: "Customer First",
-    desc: "Building long-term relationships through trust, transparency, and service.",
-  },
-  {
-    title: "Reliable Delivery",
-    desc: "Professional production with consistent quality and dependable delivery.",
+We strive to build long-term relationships through quality, honesty, and reliable service.`,
   },
 ];
 
 export default function AboutPage() {
   return (
     <div className="bg-[#F6F6F4] min-h-screen">
-      <div className="max-w-6xl mx-auto px-6 lg:px-10">
+      <div className="max-w-4xl mx-auto px-5 sm:px-6 lg:px-8 py-14 sm:py-16">
 
-        {/* Hero */}
-        <section className="py-28 text-center">
+        <section className="text-center mb-8 sm:mb-10">
           <p className="uppercase tracking-[0.35em] text-sm text-gray-500">
             About Us
           </p>
 
-          <h1 className="mt-6 text-5xl md:text-6xl font-light text-gray-900 tracking-tight">
+          <h1 className="mt-4 text-4xl sm:text-5xl lg:text-6xl font-light leading-tight text-gray-900">
             MY DESIGNERS
           </h1>
 
-          <div className="w-24 h-[2px] bg-gray-300 mx-auto my-8" />
+          <div className="w-20 h-px bg-gray-300 mx-auto my-6"></div>
 
-          <p className="text-2xl md:text-3xl text-gray-700 font-light">
-            Crafted with Quality.
-          </p>
-
-          <p className="text-2xl md:text-3xl text-gray-700 font-light mt-2">
-            Made for You.
+          <p className="text-base sm:text-lg lg:text-xl text-gray-600">
+            Crafted with Quality. Made for You.
           </p>
         </section>
 
-        {/* Story + Mission */}
         {sections.map((section) => (
           <section
             key={section.title}
-            className="py-20 border-t border-gray-200"
+            className="border-t border-gray-200 py-8 sm:py-10"
           >
-            <h2 className="text-3xl font-semibold text-gray-900 mb-8">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 mb-5">
               {section.title}
             </h2>
 
-            <div className="max-w-4xl">
-              {section.content.split("\n\n").map((paragraph, index) => (
-                <p
-                  key={index}
-                  className="text-lg leading-9 text-gray-600 mb-8"
-                >
-                  {paragraph}
-                </p>
-              ))}
-            </div>
+            {section.content.split("\n\n").map((paragraph, index) => (
+              <p
+                key={index}
+                className="text-base sm:text-lg text-gray-600 leading-8 mb-6"
+              >
+                {paragraph}
+              </p>
+            ))}
           </section>
         ))}
 
-        {/* Products */}
-        <section className="py-20 border-t border-gray-200">
-          <h2 className="text-3xl font-semibold text-gray-900 mb-12">
+                <section className="border-t border-gray-200 py-8 sm:py-10">
+          <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 mb-5">
             What We Create
           </h2>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {products.map((item) => (
-              <div
-                key={item}
-                className="bg-white border border-gray-200 rounded-2xl px-6 py-5 hover:shadow-md transition-all duration-300"
-              >
-                <p className="text-gray-700">{item}</p>
-              </div>
-            ))}
-          </div>
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
+            MY DESIGNERS specializes in custom printed T-shirts,
+            embroidered apparel, hoodies, caps, mugs, glass products,
+            tote bags, keychains, photo frames, corporate gifts,
+            promotional merchandise, event branding, and personalized
+            products for businesses and individuals.
+          </p>
         </section>
 
-        {/* Why Choose */}
-        <section className="py-20 border-t border-gray-200">
-          <h2 className="text-3xl font-semibold text-gray-900 mb-12">
-            Why Choose MY DESIGNERS
-          </h2>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((feature) => (
-              <div
-                key={feature.title}
-                className="bg-white rounded-3xl border border-gray-200 p-8 hover:-translate-y-1 hover:shadow-lg transition duration-300"
-              >
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                  {feature.title}
-                </h3>
-
-                <p className="leading-8 text-gray-600">
-                  {feature.desc}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Promise */}
-        <section className="py-20 border-t border-gray-200">
-          <h2 className="text-3xl font-semibold text-gray-900 mb-8">
+        <section className="border-t border-gray-200 py-8 sm:py-10">
+          <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 mb-5">
             Our Promise
           </h2>
 
-          <div className="bg-white rounded-3xl border border-gray-200 p-10">
-            <p className="text-lg leading-9 text-gray-600">
-              Every product tells a story.
-              Whether it's a custom T-shirt, a personalized mug, a corporate
-              gift, or promotional merchandise, we treat every order as an
-              opportunity to create something meaningful.
-            </p>
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
+            Every order receives the same level of attention,
+            whether it is a single personalized gift or a large
+            corporate requirement.
 
-            <div className="grid md:grid-cols-2 gap-5 mt-10">
-              {[
-                "Premium Quality",
-                "Honest Pricing",
-                "Professional Craftsmanship",
-                "Reliable Service",
-                "Customer Satisfaction",
-              ].map((item) => (
-                <div
-                  key={item}
-                  className="border border-gray-200 rounded-xl px-5 py-4 text-gray-700"
-                >
-                  {item}
-                </div>
-              ))}
-            </div>
-          </div>
+            We focus on quality materials, professional production,
+            affordable pricing, and dependable customer service.
+          </p>
         </section>
 
-        {/* Looking Ahead */}
-        <section className="py-20 border-t border-gray-200">
-          <h2 className="text-3xl font-semibold text-gray-900 mb-8">
+        <section className="border-t border-gray-200 py-8 sm:py-10">
+          <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 mb-5">
             Looking Ahead
           </h2>
 
-          <p className="max-w-4xl text-lg leading-9 text-gray-600">
-            As our journey continues, MY DESIGNERS aims to become a trusted
-            destination for custom printing and personalized products. We will
-            continue expanding our collection, improving production standards,
-            and delivering creative solutions that help individuals and
-            businesses express their ideas with confidence.
+          <p className="text-base sm:text-lg leading-8 text-gray-600">
+            As we continue to grow, MY DESIGNERS aims to become one of
+            the most trusted custom printing brands by delivering
+            consistent quality, expanding our product collection,
+            and helping customers bring their ideas to life through
+            personalized products.
           </p>
         </section>
 
-        {/* Footer CTA */}
-        <section className="py-28 border-t border-gray-200 text-center">
-          <h2 className="text-4xl font-light text-gray-900">
+        <section className="border-t border-gray-200 py-14 text-center">
+          <h2 className="text-3xl sm:text-4xl font-light leading-tight text-gray-900">
             Thank You
           </h2>
 
-          <p className="max-w-3xl mx-auto mt-8 text-lg leading-9 text-gray-600">
+          <p className="mt-6 text-base sm:text-lg leading-8 text-gray-600 max-w-3xl mx-auto">
             Thank you for choosing <strong>MY DESIGNERS</strong>.
-            Your trust inspires us to create products that celebrate ideas,
-            strengthen brands, and make every occasion more memorable.
+            Your trust motivates us to continue creating products that
+            combine creativity, craftsmanship, and lasting quality.
           </p>
 
-          <p className="mt-12 text-xl text-gray-800 font-medium">
+          <p className="mt-8 text-lg sm:text-xl font-medium text-gray-800">
             Let's Create Something Meaningful Together.
           </p>
         </section>
@@ -223,4 +123,3 @@ export default function AboutPage() {
     </div>
   );
 }
-

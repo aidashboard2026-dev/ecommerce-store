@@ -124,12 +124,13 @@ ${productUrl}`;
       className={clsx(
         "group relative",
         "flex flex-col",
-        "w-full",
+        "h-full w-full min-w-0",
         "justify-between",
         "overflow-hidden",
-        "rounded-none",
+        "rounded-md",
         "transition-all duration-300",
         "hover:-translate-y-1",
+        "focus-ring",
       )}
     >
       {/* =================================================
@@ -140,7 +141,7 @@ ${productUrl}`;
         className={clsx(
           "relative flex",
           "w-full",
-          "aspect-[8/9]",
+          "aspect-[4/5]",
           "overflow-hidden",
           "rounded-none",
           "bg-surface",
@@ -256,7 +257,7 @@ ${productUrl}`;
 
       {/* PRODUCT INFORMATION */}
 
-      <div className="flex h-full flex-1 flex-col justify-between gap-1 py-3">
+      <div className="flex min-h-[8.75rem] flex-1 flex-col justify-between gap-2 py-3">
         {/* Collection */}
 
         {(product.collection_name || product.collection) && (
@@ -267,8 +268,8 @@ ${productUrl}`;
 
         {/* Product title and rating */}
 
-        <div className="flex flex-row flex-wrap items-center justify-between">
-          <h3 className="line-clamp-2 text-lg font-thin leading-snug text-app">
+        <div className="flex min-w-0 flex-row flex-wrap items-start justify-between gap-2">
+          <h3 className="min-w-0 text-sm font-medium leading-snug text-app line-clamp-2 sm:text-base lg:text-lg lg:font-light">
             {product.title}
           </h3>
 
@@ -281,10 +282,10 @@ ${productUrl}`;
 
         {/* Price */}
 
-        <div className="flex flex-wrap items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           {minPrice != null ? (
             <>
-              <span className="text-xl font-bold text-app">
+              <span className="text-base font-bold text-app sm:text-lg lg:text-xl">
                 {formatPrice(minPrice)}
 
                 {maxPrice != null &&

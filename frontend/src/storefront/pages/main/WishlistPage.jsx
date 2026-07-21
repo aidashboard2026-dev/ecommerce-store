@@ -12,7 +12,7 @@ export default function WishlistPage() {
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-20 flex flex-col items-center text-center gap-4">
+      <div className="mx-auto w-full  px-4 sm:px-6 lg:px-8 py-20 flex flex-col items-center text-center gap-4">
         <div className="h-16 w-16 rounded-full bg-surface flex items-center justify-center">
           <Heart size={28} className="text-muted" />
         </div>
@@ -31,7 +31,7 @@ export default function WishlistPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <div className="mx-auto w-full  px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       <h1 className="font-display font-bold text-2xl sm:text-3xl text-app mb-8">My Wishlist</h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">

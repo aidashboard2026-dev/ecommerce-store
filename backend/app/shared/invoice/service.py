@@ -354,13 +354,14 @@ def generate_invoice_pdf(order, db=None) -> bytes:
     invoice_number = get_invoice_number(order)
 
     # ── Financial calculations ───────────────────────────────────────────────
-    subtotal     = price * Decimal(quantity)
-    taxable      = subtotal / Decimal("1.18")
-    gst_amount   = subtotal - taxable
-    cgst         = gst_amount / Decimal("2")
-    sgst         = gst_amount / Decimal("2")
-    shipping_val = decimal_attr("shipping_fee", Decimal("0.00"))
-    grand_total  = subtotal + shipping_val
+    subtotal       = price * Decimal(quantity)
+    taxable        = subtotal / Decimal("1.18")
+    gst_amount     = subtotal - taxable
+    cgst           = gst_amount / Decimal("2")
+    sgst           = gst_amount / Decimal("2")
+    shipping_val   = decimal_attr("shipping_fee", Decimal("0.00"))
+    discount_val   = decimal_attr("discount_amount", Decimal("0.00"))
+    grand_total    = subtotal + shipping_val - discount_val
 
     def fmt_money(val: Decimal) -> str:
         return f"₹{val:,.2f}"
@@ -574,6 +575,13 @@ def generate_invoice_pdf(order, db=None) -> bytes:
             Paragraph("Subtotal", style("SR_L", fontSize=10, textColor=SECONDARY, alignment=TA_LEFT)),
             Paragraph(fmt_money(subtotal), style("SR_R", fontSize=10, textColor=PRIMARY, alignment=TA_RIGHT))
         ],
+    ]
+    if discount_val > 0:
+        summary_rows.append([
+            Paragraph("Discount", style("SR_L", fontSize=10, textColor=SUCCESS, alignment=TA_LEFT)),
+            Paragraph(f"-{fmt_money(discount_val)}", style("SR_R", fontSize=10, textColor=SUCCESS, alignment=TA_RIGHT))
+        ])
+    summary_rows.extend([
         [
             Paragraph("Shipping", style("SR_L_Ship", fontSize=10, textColor=SECONDARY, alignment=TA_LEFT)),
             Paragraph(fmt_money(shipping_val) if shipping_val > 0 else "FREE", style("SR_R_Ship", fontSize=10, textColor=PRIMARY if shipping_val > 0 else SUCCESS, fontName="Helvetica-Bold" if shipping_val == 0 else "Helvetica", alignment=TA_RIGHT))
@@ -587,7 +595,7 @@ def generate_invoice_pdf(order, db=None) -> bytes:
             Paragraph("Grand Total", style("SR_L_GT", fontSize=11, textColor=PRIMARY, fontName="Helvetica-Bold", alignment=TA_LEFT)),
             Paragraph(fmt_money(grand_total), style("SR_V", fontSize=20, textColor=PRIMARY, alignment=TA_RIGHT, fontName="Helvetica-Bold"))
         ],
-    ]
+    ])
     summary_table = Table(summary_rows, colWidths=[50 * mm, W - 130 * mm])
     summary_table.setStyle(TableStyle([
         ("LEFTPADDING", (0, 0), (-1, -1), 0),

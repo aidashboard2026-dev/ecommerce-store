@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -17,12 +15,12 @@
     
     --color-text: #0f172a;
     --color-text-muted: #64748b;
-    --color-brand: #5865f2;
-    --color-brand-hover: #404be0;
 
     /* Aliases used by storefront + admin */
     --color-text-1:       #0f172a;
     --color-primary:      #0f172a;
+
+    --count-bg : #fa9b4d;
 
     /* Typography */
     --font-sans: 'Inter', 'DM Sans', system-ui, -apple-system, sans-serif;
@@ -47,7 +45,7 @@
     --color-brand-300: #a5b4fc;
     --color-brand-400: #818cf8;
 
-    --color-brand: #6366f1;
+    --color-brand: #343535;
     --color-brand-hover: #4f46e5;
 
     --color-brand-700: #4338ca;
@@ -66,8 +64,8 @@
     
     --color-text: #fafafa;
     --color-text-muted: #a1a1aa;
-    --color-brand: #6366f1;
-    --color-brand-hover: #4f46e5;
+    --color-brand: #fdfdfde7;
+    --color-brand-hover: #a3a3a3;
     --color-primary:     #f1f5f9;
     --color-text-1:      #f1f5f9;
 
@@ -90,6 +88,17 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  html {
+    text-size-adjust: 100%;
+  }
+
+  img,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+  }
 }
 
 @layer utilities {
@@ -107,6 +116,11 @@
   }
   .text-brand{
     color: var(--color-brand);
+  }
+
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2;
+    --tw-ring-offset-color: var(--color-bg);
   }
 }
 
@@ -483,12 +497,12 @@
 
   border-radius:999px;
 
-  background:white;
+  background:rgb(255, 255, 255);
 
-  border:2px solid #111;
+  border:2px solid #292929;
 
   cursor:pointer;
-
+margin-top: 7px; 
   transition:.2s;
 }
 

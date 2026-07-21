@@ -76,13 +76,13 @@ export default function SortDropdown({
   return (
     <div
       ref={dropdownRef}
-      className="relative h-full"
+      className="relative h-full flex-1 sm:flex-none"
     >
       {/* Header */}
 
       <button
         onClick={() => setOpen(!open)}
-        className="flex h-full w-[160px] items-center justify-center gap-2 px-6 uppercase tracking-[3px] text-[12px] text-black transition hover:bg-[#f8f8f8]"
+        className="focus-ring flex h-full w-full min-w-[9rem] items-center justify-center gap-2 px-4 text-[12px] uppercase tracking-[3px] text-app transition hover:bg-surface sm:w-[160px] sm:px-6"
       >
         <span>Sort By</span>
 
@@ -97,7 +97,7 @@ export default function SortDropdown({
       {/* Dropdown */}
 
       <div
-        className={`absolute right-0 top-full z-50 mt-px w-[230px] origin-top overflow-hidden bg-[#111111] shadow-[0_10px_40px_rgba(0,0,0,.45)] transition-all duration-300
+        className={`absolute right-0 top-full z-50 mt-px w-[min(230px,calc(100vw-2rem))] origin-top overflow-hidden rounded-md bg-[#111111] shadow-[0_10px_40px_rgba(0,0,0,.45)] transition-all duration-300
         ${
           open
             ? "visible translate-y-0 opacity-100"

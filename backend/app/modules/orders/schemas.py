@@ -39,10 +39,15 @@ class OrderBase(BaseModel):
     color:    Optional[str] = Field(None, max_length=50)
     quantity: int            = Field(1, ge=1, le=1000)
 
-    # Decimal matches Numeric(10,2) on the database — no floating-point rounding.
-    price:        Decimal = Field(default=Decimal("0.00"), ge=0)
-    shipping_fee: Decimal = Field(default=Decimal("0.00"), ge=0)
-    total_amount: Decimal = Field(default=Decimal("0.00"), ge=0)
+    # SECURITY: These fields are IGNORED when received from frontend.
+    # Backend always recalculates from database prices (ProductVariant.selling_price).
+    # Values are accepted for backward compatibility but overridden server-side.
+    price:          Optional[Decimal] = Field(default=None, ge=0)
+    shipping_fee:   Optional[Decimal] = Field(default=None, ge=0)
+    discount_amount: Optional[Decimal] = Field(default=None, ge=0)
+    total_amount:   Optional[Decimal] = Field(default=None, ge=0)
+    # Frontend sends ONLY coupon_code — backend validates and calculates discount.
+    coupon_code:    Optional[str] = Field(default=None, max_length=50)
 
     payment_method: str = Field("COD",     max_length=50)
     payment_status: str = Field("PENDING", max_length=50)
@@ -127,15 +132,34 @@ class OrderResponse(OrderBase):
         return d
 
 
+class OrderStats(BaseModel):
+
+    total_orders:int
+
+    new_orders:int
+
+    processing:int
+
+    shipped:int
+
+    delivered:int
+
+    cancelled:int
+
+
 class OrderListResponse(BaseModel):
-    """Paginated list of orders — replaces the bare List[OrderResponse]."""
-    items:       List[OrderResponse]
-    total:       int
-    page:        int
-    per_page:    int
-    total_pages: int
 
+    items:list[OrderResponse]
 
+    total:int
+
+    page:int
+
+    per_page:int
+
+    total_pages:int
+
+    stats:OrderStats
 # ─────────────────────────────────────────────────────────────
 # Public tracking — strips all customer PII
 # ─────────────────────────────────────────────────────────────
@@ -183,8 +207,56 @@ class OrderTrackingResponse(BaseModel):
 # Razorpay Schemas
 # ─────────────────────────────────────────────────────────────
 
+class CartItem(BaseModel):
+    """A single cart item — used by the deferred-order online checkout flow."""
+    product_id: Optional[int] = None
+    product_name: str = Field(..., min_length=1, max_length=300)
+    product_image: Optional[str] = Field(None, max_length=2048)
+    size: Optional[str] = Field(None, max_length=50)
+    color: Optional[str] = Field(None, max_length=50)
+    quantity: int = Field(1, ge=1, le=1000)
+    # SECURITY: price, total_amount, shipping_fee, discount_amount are IGNORED
+    # from frontend. Backend always recalculates from ProductVariant.selling_price
+    # in the database and coupon validation. These fields exist for backward
+    # compatibility only.
+    price: Optional[Decimal] = Field(default=None, ge=0)
+    total_amount: Optional[Decimal] = Field(default=None, ge=0)
+    shipping_fee: Optional[Decimal] = Field(default=None, ge=0)
+    discount_amount: Optional[Decimal] = Field(default=None, ge=0)
+    coupon_code: Optional[str] = Field(default=None, max_length=50)
+    item_type: str = Field(
+        default=ItemType.PRODUCT,
+        description="PRODUCT or CUSTOM_PRODUCT",
+    )
+
+
 class RazorpayOrderCreateRequest(BaseModel):
+    """
+    Create a Razorpay Order for a cart session.
+
+    Production flow (items provided):
+      Validates cart items and stock without creating database Orders.
+      Orders are created only after payment verification succeeds.
+      Delivery address fields are required for order creation post-payment.
+
+    Legacy flow (items omitted):
+      Finds pre-existing Order rows in the database (created by create_order_customer).
+      Kept for backward compatibility.
+    """
     cart_session_id: str = Field(..., min_length=1, max_length=100)
+    items: Optional[List[CartItem]] = None
+    # SECURITY: Only coupon_code is accepted. Backend validates and calculates discount.
+    coupon_code: Optional[str] = Field(default=None, max_length=50)
+
+    # Delivery address — required when items are provided (production flow)
+    customer_name: Optional[str] = Field(None, max_length=200)
+    customer_phone: Optional[str] = Field(None, max_length=30)
+    address_line1: Optional[str] = Field(None, max_length=300)
+    address_line2: Optional[str] = Field(None, max_length=300)
+    city: Optional[str] = Field(None, max_length=100)
+    state: Optional[str] = Field(None, max_length=100)
+    country: Optional[str] = Field("India", max_length=100)
+    pincode: Optional[str] = Field(None, max_length=20)
 
 
 class RazorpayOrderCreateResponse(BaseModel):

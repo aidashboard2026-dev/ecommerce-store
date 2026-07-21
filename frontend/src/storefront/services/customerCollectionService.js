@@ -1,4 +1,4 @@
-import axios from "axios";
+import { storefrontClient } from "../../shared/services/api";
 
 
 const CUSTOMER_CART_URL =
@@ -10,13 +10,13 @@ const CUSTOMER_WISHLIST_URL =
 
 export const customerCartAPI = {
   getItems() {
-    return axios.get(
+    return storefrontClient.get(
       CUSTOMER_CART_URL,
     );
   },
 
   addItem(data) {
-    return axios.post(
+    return storefrontClient.post(
       CUSTOMER_CART_URL,
       data,
     );
@@ -26,7 +26,7 @@ export const customerCartAPI = {
     cartItemId,
     quantity,
   ) {
-    return axios.patch(
+    return storefrontClient.patch(
       `${CUSTOMER_CART_URL}/${cartItemId}`,
       {
         quantity,
@@ -37,13 +37,13 @@ export const customerCartAPI = {
   removeItem(
     cartItemId,
   ) {
-    return axios.delete(
+    return storefrontClient.delete(
       `${CUSTOMER_CART_URL}/${cartItemId}`,
     );
   },
 
   clearItems() {
-    return axios.delete(
+    return storefrontClient.delete(
       CUSTOMER_CART_URL,
     );
   },
@@ -52,7 +52,7 @@ export const customerCartAPI = {
 
 export const customerWishlistAPI = {
   getItems() {
-    return axios.get(
+    return storefrontClient.get(
       CUSTOMER_WISHLIST_URL,
     );
   },
@@ -60,7 +60,7 @@ export const customerWishlistAPI = {
   addItem(
     productId,
   ) {
-    return axios.post(
+    return storefrontClient.post(
       CUSTOMER_WISHLIST_URL,
       {
         product_id:
@@ -72,13 +72,13 @@ export const customerWishlistAPI = {
   removeItem(
     productId,
   ) {
-    return axios.delete(
+    return storefrontClient.delete(
       `${CUSTOMER_WISHLIST_URL}/product/${productId}`,
     );
   },
 
   clearItems() {
-    return axios.delete(
+    return storefrontClient.delete(
       CUSTOMER_WISHLIST_URL,
     );
   },

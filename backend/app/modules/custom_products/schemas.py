@@ -102,6 +102,8 @@ class CustomProductBase(BaseModel):
     is_new_arrival: bool = False
     seo_title: Optional[str] = None
     seo_description: Optional[str] = None
+    # Inventory — direct stock on the product (no variant-level stock)
+    stock_quantity: int = 0
     # Price range — Custom Products are production-based, not variant-based
     original_price_min: Decimal
     original_price_max: Decimal
@@ -115,9 +117,6 @@ class CustomProductBase(BaseModel):
     gallery_images:   List[str] = Field(default_factory=list)
     # WhatsApp lead generation message — pre-filled in the WhatsApp quotation link
     whatsapp_message: Optional[str] = None
-    stock_quantity: int = Field(default=0, ge=0)
-    low_stock_threshold: int = Field(default=5, ge=0)
-    size: str = "All Size"
 
 
 class CustomProductCreate(CustomProductBase):
@@ -174,15 +173,12 @@ class CustomProductUpdate(BaseModel):
     is_new_arrival:    Optional[bool] = None
     seo_title:         Optional[str] = None
     seo_description:   Optional[str] = None
+    stock_quantity:     Optional[int] = None
     original_price_min: Optional[Decimal] = None
     original_price_max: Optional[Decimal] = None
     selling_price_min:  Optional[Decimal] = None
     selling_price_max:  Optional[Decimal] = None
     whatsapp_message:   Optional[str] = None
-    stock_quantity: Optional[int] = Field(default=None, ge=0)
-    low_stock_threshold: Optional[int] = Field(default=None, ge=0)
-    size: Optional[str] = None
-
     @field_validator("title")
     @classmethod
     def title_valid(cls, v: Optional[str]) -> Optional[str]:
@@ -265,13 +261,11 @@ class CustomProductResponse(BaseModel):
     image_size_chart:  Optional[str] = None
     gallery_images:    List[Any] = Field(default_factory=list)
     images:            List[Any] = Field(default_factory=list)  # legacy alias/consolidated list
+    stock_quantity:    int = 0
     whatsapp_message:  Optional[str] = None
     view_count:        int = 0
     orders_count:      int = 0
     sales_count:       int = 0
-    stock_quantity: int = 0
-    size: str = "All Size"
-    low_stock_threshold: int = 5
     created_at:        datetime
     updated_at:        Optional[datetime] = None
 

@@ -7,6 +7,7 @@ import CategorySection from "@/storefront/components/home/CategorySection";
 import OfferSection from "@/storefront/components/home/OfferSection";
 import ProductGrid from "@/storefront/components/home/ProductGrid";
 import CustomProductSection from "@/storefront/components/Customproduct/CustomProductSection";
+import { Section } from "@/shared/components/layout";
 
 import {
   useFeaturedProducts,
@@ -19,9 +20,9 @@ import {
 
 function SectionHeader({ title, subtitle }) {
   return (
-    <div className="flex items-end justify-between mb-6">
-      <div>
-        <h2 className="font-display font-bold text-xl sm:text-2xl text-app">
+    <div className="mb-6 flex items-end justify-between gap-4">
+      <div className="min-w-0">
+        <h2 className="font-display text-xl font-bold text-app sm:text-2xl lg:text-3xl">
           {title}
         </h2>
         {subtitle && <p className="text-sm text-muted mt-1">{subtitle}</p>}
@@ -62,27 +63,21 @@ export default function HomePage() {
     .sort((a, b) => a.sort_order - b.sort_order);
 
   return (
-    <div className="flex flex-col">
+    <main className="w-full">
       <HeroSection banners={heroBanners} />
 
       <CategorySection />
 
-      {/* Offers */}
       <OfferSection
         offers={offers}
         scrollRef={scrollRef}
         handleWheel={handleWheel}
       />
-      
 
-      <CustomProductSection
-        products={customProducts}
-      />
+      <CustomProductSection products={customProducts} />
 
-
-      {/* Featured Products */}
       {(loadingFeatured || featured.length > 0) && (
-        <section className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-10">
+        <Section spacing="md">
           <SectionHeader
             title="Featured Products"
             subtitle="Hand-picked styles, just for you"
@@ -93,11 +88,10 @@ export default function HomePage() {
             skeletonCount={4}
             limit={8}
           />
-        </section>
+        </Section>
       )}
 
-      {/* New Arrivals */}
-      <section className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-10">
+      <Section spacing="md">
         <SectionHeader
           title="New Arrivals"
           subtitle="Fresh off the production line"
@@ -108,11 +102,10 @@ export default function HomePage() {
           skeletonCount={4}
           limit={8}
         />
-      </section>
+      </Section>
 
-      {/* Best Sellers */}
       {(loadingBest || bestSellers.length > 0) && (
-        <section className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-10">
+        <Section spacing="md">
           <SectionHeader
             title="Best Sellers"
             subtitle="Customer favorites, in high demand"
@@ -123,8 +116,8 @@ export default function HomePage() {
             skeletonCount={4}
             limit={8}
           />
-        </section>
+        </Section>
       )}
-    </div>
+    </main>
   );
 }

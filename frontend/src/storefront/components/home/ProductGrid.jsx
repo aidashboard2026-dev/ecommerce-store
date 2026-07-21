@@ -1,9 +1,10 @@
 import React from "react";
 import ProductCard from "@/storefront/components/product/ProductCard";
+import { ResponsiveGrid } from "@/shared/components/layout";
 
 function ProductSkeleton() {
   return (
-    <div className="flex flex-col rounded-2xl border border-app overflow-hidden animate-pulse">
+    <div className="flex h-full flex-col overflow-hidden rounded-md border border-app animate-pulse">
       <div className="aspect-[4/5] bg-surface" />
       <div className="p-3.5 flex flex-col gap-2">
         <div className="h-2.5 w-1/3 bg-surface rounded" />
@@ -24,11 +25,11 @@ export default function ProductGrid({
 }) {
   if (loading && (!products || products.length === 0)) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 w-full">
+      <ResponsiveGrid variant="products">
         {Array.from({ length: skeletonCount }).map((_, i) => (
           <ProductSkeleton key={i} />
         ))}
-      </div>
+      </ResponsiveGrid>
     );
   }
 
@@ -44,9 +45,7 @@ export default function ProductGrid({
 
   return (
     <div className="w-full">
-      <div
-        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 w-full"
-      >
+      <ResponsiveGrid variant="products">
         {itemsToShow.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
@@ -56,7 +55,7 @@ export default function ProductGrid({
         }).map((_, i) => (
           <ProductSkeleton key={`empty-${i}`} />
         ))} */}
-      </div>
+      </ResponsiveGrid>
     </div>
   );
 }

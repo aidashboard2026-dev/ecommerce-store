@@ -13,6 +13,23 @@ from sqlalchemy import desc, asc, and_, or_
 from app.modules.contact.models import ContactMessage, ContactStatus
 
 
+# Allowlist of sortable columns for contact messages.
+# Using getattr() on a model class is unsafe because an attacker could
+# reference internal SQLAlchemy attributes or relationships that return
+# unexpected column expressions.  This explicit dict restricts sorting
+# to known safe columns only.
+_ALLOWED_SORT_FIELDS = {
+    "id": ContactMessage.id,
+    "name": ContactMessage.name,
+    "email": ContactMessage.email,
+    "subject": ContactMessage.subject,
+    "status": ContactMessage.status,
+    "replied_at": ContactMessage.replied_at,
+    "created_at": ContactMessage.created_at,
+    "updated_at": ContactMessage.updated_at,
+}
+
+
 class ContactRepository:
     """Repository for contact message database operations."""
 
@@ -88,7 +105,7 @@ class ContactRepository:
         total = query.count()
 
         # Apply sorting
-        sort_column = getattr(ContactMessage, sort_by, ContactMessage.created_at)
+        sort_column = _ALLOWED_SORT_FIELDS.get(sort_by, ContactMessage.created_at)
         if sort_order.lower() == "asc":
             query = query.order_by(asc(sort_column))
         else:
@@ -123,7 +140,7 @@ class ContactRepository:
         if status:
             query = query.filter(ContactMessage.status == status)
 
-        sort_column = getattr(ContactMessage, sort_by, ContactMessage.created_at)
+        sort_column = _ALLOWED_SORT_FIELDS.get(sort_by, ContactMessage.created_at)
         if sort_order.lower() == "asc":
             query = query.order_by(asc(sort_column))
         else:
@@ -191,36 +208,33 @@ class ContactRepository:
     @staticmethod
     def get_stats(db: Session) -> dict:
         """Get contact message statistics."""
+        from sqlalchemy import case, func as sqla_func
+
         today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         week_ago = today - timedelta(days=7)
         month_ago = today - timedelta(days=30)
 
-        total_messages = db.query(ContactMessage).count()
-        today_messages = db.query(ContactMessage).filter(
-            ContactMessage.created_at >= today
-        ).count()
-        week_messages = db.query(ContactMessage).filter(
-            ContactMessage.created_at >= week_ago
-        ).count()
-        month_messages = db.query(ContactMessage).filter(
-            ContactMessage.created_at >= month_ago
-        ).count()
+        # Single query for all time-windowed counts
+        time_stats = db.query(
+            sqla_func.count(ContactMessage.id).label("total"),
+            sqla_func.sum(case((ContactMessage.created_at >= today, 1), else_=0)).label("today"),
+            sqla_func.sum(case((ContactMessage.created_at >= week_ago, 1), else_=0)).label("week"),
+            sqla_func.sum(case((ContactMessage.created_at >= month_ago, 1), else_=0)).label("month"),
+        ).one()
 
-        pending_count = db.query(ContactMessage).filter(
-            ContactMessage.status.in_([ContactStatus.NEW, ContactStatus.PENDING])
-        ).count()
-
-        closed_count = db.query(ContactMessage).filter(
-            ContactMessage.status == ContactStatus.CLOSED
-        ).count()
+        # Single query for status-based counts
+        status_stats = db.query(
+            sqla_func.sum(case((ContactMessage.status.in_([ContactStatus.NEW, ContactStatus.PENDING]), 1), else_=0)).label("pending"),
+            sqla_func.sum(case((ContactMessage.status == ContactStatus.CLOSED, 1), else_=0)).label("closed"),
+        ).one()
 
         return {
-            "total_messages": total_messages,
-            "today_messages": today_messages,
-            "week_messages": week_messages,
-            "month_messages": month_messages,
-            "pending_count": pending_count,
-            "closed_count": closed_count,
+            "total_messages": int(time_stats.total or 0),
+            "today_messages": int(time_stats.today or 0),
+            "week_messages": int(time_stats.week or 0),
+            "month_messages": int(time_stats.month or 0),
+            "pending_count": int(status_stats.pending or 0),
+            "closed_count": int(status_stats.closed or 0),
         }
 
     @staticmethod

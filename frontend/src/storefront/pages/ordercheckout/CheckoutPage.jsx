@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useRef, useState } from "react";
+﻿import React, { useMemo, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useQuery } from "@tanstack/react-query";
@@ -25,6 +25,7 @@ import {
 } from "@/storefront/hooks/useOrders";
 import { storefrontAPI } from "@/shared/services/api";
 import GuestAuthModal from "@/storefront/components/checkout/GuestAuthModal";
+import { PageContainer } from "@/shared/components/layout";
 
 // ============================================================================
 // LOGGING HELPERS
@@ -329,13 +330,8 @@ const EMPTY_CHECKOUT_FORM = {
   city: "",
   state: "",
   pincode: "",
-  billingType: "same",
-  billing_full_name: "",
-  billing_phone: "",
-  billing_address: "",
-  billing_city: "",
-  billing_state: "",
-  billing_pincode: "",
+  // Billing address fields removed — billing is always "same as delivery".
+  // See BillingAddress.jsx for details.
 };
 
 // ============================================================================
@@ -371,7 +367,7 @@ const validateRazorpayPrerequisites = ({ sessionId, orders, rzpOrder }) => {
 
 const isActivePendingOrder = (order) =>
   order.payment_status === "PENDING" &&
-  order.payment_method === "ONLINE" &&
+  (order.payment_method === "ONLINE" || order.payment_method === "RAZORPAY") &&
   order.tracking_status !== "CANCELLED";
 
 // ============================================================================
@@ -386,6 +382,7 @@ const buildOrderPayload = ({
   form,
   sessionId,
   shippingFee = 0,
+  couponCode,
 }) => ({
   customer_name: selectedAddress.full_name,
   customer_email: customer?.email || form.email || null,
@@ -404,11 +401,46 @@ const buildOrderPayload = ({
   quantity: item.quantity,
   price: item.sellingPrice,
   shipping_fee: shippingFee,
-  total_amount: item.sellingPrice * item.quantity + shippingFee,
+  total_amount: (item.sellingPrice * item.quantity) + shippingFee,
   payment_method: paymentMethod,
   payment_status: "PENDING",
   tracking_status: "PLACED",
   cart_session_id: sessionId,
+  coupon_code: couponCode || null,
+});
+
+// Build the checkout payload for the production (deferred) flow
+const buildCheckoutPayload = ({
+  items,
+  customer,
+  selectedAddress,
+  form,
+  sessionId,
+  shippingFee = 0,
+  couponCode,
+}) => ({
+  cart_session_id: sessionId,
+  items: items.map((item, index) => ({
+    product_id: item.productId,
+    product_name: item.title,
+    product_image: item.thumbnail,
+    size: item.size,
+    color: item.color,
+    quantity: item.quantity,
+    price: item.sellingPrice,
+    total_amount: (item.sellingPrice * item.quantity) + (index === 0 ? shippingFee : 0),
+    shipping_fee: index === 0 ? shippingFee : 0,
+    item_type: "PRODUCT",
+  })),
+  coupon_code: couponCode || null,
+  customer_name: selectedAddress.full_name,
+  customer_phone: selectedAddress.phone,
+  address_line1: selectedAddress.address_line1 || selectedAddress.address,
+  address_line2: selectedAddress.address_line2 || null,
+  city: selectedAddress.city,
+  state: selectedAddress.state,
+  country: "India",
+  pincode: selectedAddress.pincode,
 });
 
 // ============================================================================
@@ -454,6 +486,7 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const items = useSelector((state) => state.cart.items);
   const cartTotals = useSelector(selectCartTotals);
+  const couponCode = useSelector((state) => state.cart.couponCode);
   const selectedAddress = useSelector(selectSelectedAddress);
   const paymentMethod = useSelector((state) => state.checkout.paymentMethod);
   const placingOrder = useSelector((state) => state.checkout.placingOrder);
@@ -653,17 +686,14 @@ export default function CheckoutPage() {
       form,
       sessionId,
       shippingFee: itemShippingFee,
+      couponCode,
     });
-    logApiCall("createOrderMutation", {
-      sessionId,
-      ordersCount: undefined,
-      paymentMethod,
-    });
+    logApiCall("createOrderMutation", { sessionId, ordersCount: undefined, paymentMethod });
     return measureApi(
       "createOrderMutation",
       () => createOrderMutation.mutateAsync(payload),
       (created) => ({ orderId: created?.id, item: item.title }),
-      () => ({ item: item.title }),
+      () => ({ item: item.title })
     );
   };
 
@@ -673,13 +703,9 @@ export default function CheckoutPage() {
   };
 
   const cleanupStaleSession = async (ordersList) => {
-    logStep("Cleaning up confirmed-stale session", {
-      orderIds: ordersList.map((o) => o.id),
-    });
+    logStep("Cleaning up confirmed-stale session", { orderIds: ordersList.map((o) => o.id) });
     try {
-      await Promise.all(
-        ordersList.map((order) => storefrontAPI.cancelOrder(order.id)),
-      );
+      await Promise.all(ordersList.map((order) => storefrontAPI.cancelOrder(order.id)));
     } catch (err) {
       logFailure({
         step: "cleanupStaleSession",
@@ -696,69 +722,47 @@ export default function CheckoutPage() {
   // ============================================================================
 
   const isPaidSession = (sessionOrders) => {
-    return (
-      sessionOrders.length > 0 &&
-      sessionOrders.every((o) => o.payment_status === "PAID")
-    );
+    return sessionOrders.length > 0 && sessionOrders.every((o) => o.payment_status === "PAID");
   };
 
   const findMatchingSession = (customerOrders, activeSessionId) => {
     if (activeSessionId) {
       const sessionOrders = customerOrders.filter(
-        (o) =>
-          o.cart_session_id === activeSessionId &&
-          o.tracking_status !== "CANCELLED",
+        (o) => o.cart_session_id === activeSessionId && o.tracking_status !== "CANCELLED"
       );
       if (sessionOrders.length > 0 && cartMatchesOrders(sessionOrders, items)) {
-        return {
-          sessionId: activeSessionId,
-          orders: sessionOrders,
-          type: "active",
-        };
+        return { sessionId: activeSessionId, orders: sessionOrders, type: "active" };
       }
     }
 
     const otherPendingOrders = customerOrders.filter(
-      (o) => isActivePendingOrder(o) && o.cart_session_id,
+      (o) => isActivePendingOrder(o) && o.cart_session_id
     );
     if (otherPendingOrders.length > 0) {
       const sessions = groupOrdersBySession(otherPendingOrders);
       const recoveredSessionId = Object.keys(sessions)[0];
       const sessionOrders = sessions[recoveredSessionId];
       if (cartMatchesOrders(sessionOrders, items)) {
-        return {
-          sessionId: recoveredSessionId,
-          orders: sessionOrders,
-          type: "other",
-        };
+        return { sessionId: recoveredSessionId, orders: sessionOrders, type: "other" };
       }
     }
     return null;
   };
 
-  const resumeExistingCheckout = async (customerOrders, activeSessionId) => {
+  const resumeExistingCheckout = (customerOrders, activeSessionId) => {
     if (activeSessionId) {
       const sessionOrders = customerOrders.filter(
-        (o) =>
-          o.cart_session_id === activeSessionId &&
-          o.tracking_status !== "CANCELLED",
+        (o) => o.cart_session_id === activeSessionId && o.tracking_status !== "CANCELLED"
       );
       if (isPaidSession(sessionOrders)) {
-        dispatch(
-          setLastOrder({
-            orders: sessionOrders,
-            totals,
-            paymentMethod: "ONLINE",
-          }),
-        );
-        await clearCompletedCustomerCart();
+        dispatch(setLastOrder({ orders: sessionOrders, totals, paymentMethod: "ONLINE" }));
+        dispatch(clearCart());
+        sessionStorage.removeItem("aurastore_active_cart_session_id");
         navigate("/order-success", {
           state: { orders: sessionOrders, totals, paymentMethod: "ONLINE" },
           replace: true,
         });
-        logStep(
-          "Mount recovery: existing session already PAID, navigated to order-success",
-        );
+        logStep("Mount recovery: existing session already PAID, navigated to order-success");
         return true;
       }
     }
@@ -766,56 +770,36 @@ export default function CheckoutPage() {
     const match = findMatchingSession(customerOrders, activeSessionId);
     if (match) {
       if (match.type === "active") {
-        setCheckoutState({
-          cartSessionId: match.sessionId,
-          orders: match.orders,
-        });
-        logStep("Mount recovery: resumed matching pending session", {
-          sessionId: match.sessionId,
-        });
+        setCheckoutState({ cartSessionId: match.sessionId, orders: match.orders });
+        logStep("Mount recovery: resumed matching pending session", { sessionId: match.sessionId });
       } else {
-        sessionStorage.setItem(
-          "aurastore_active_cart_session_id",
-          match.sessionId,
-        );
-        setCheckoutState({
-          cartSessionId: match.sessionId,
-          orders: match.orders,
-        });
+        sessionStorage.setItem("aurastore_active_cart_session_id", match.sessionId);
+        setCheckoutState({ cartSessionId: match.sessionId, orders: match.orders });
         toast.success("Resumed your previous pending checkout session.");
-        logStep("Mount recovery: resumed other-tab pending session", {
-          sessionId: match.sessionId,
-        });
+        logStep("Mount recovery: resumed other-tab pending session", { sessionId: match.sessionId });
       }
       return true;
     }
 
     if (activeSessionId) {
       const sessionOrders = customerOrders.filter(
-        (o) =>
-          o.cart_session_id === activeSessionId &&
-          o.tracking_status !== "CANCELLED",
+        (o) => o.cart_session_id === activeSessionId && o.tracking_status !== "CANCELLED"
       );
       if (sessionOrders.length > 0) {
         setCheckoutState({ cartSessionId: null, orders: [] });
         sessionStorage.removeItem("aurastore_active_cart_session_id");
-        logStep(
-          "Mount recovery: local session cleared (cart no longer matches); no backend mutation performed",
-        );
+        logStep("Mount recovery: local session cleared (cart no longer matches); no backend mutation performed");
       }
     }
 
     const otherPendingOrders = customerOrders.filter(
-      (o) => isActivePendingOrder(o) && o.cart_session_id,
+      (o) => isActivePendingOrder(o) && o.cart_session_id
     );
     if (otherPendingOrders.length > 0) {
       const sessions = groupOrdersBySession(otherPendingOrders);
-      logStep(
-        "Mount recovery: other pending sessions found but do not match cart — leaving untouched (no cleanup on mount)",
-        {
-          sessionIds: Object.keys(sessions),
-        },
-      );
+      logStep("Mount recovery: other pending sessions found but do not match cart — leaving untouched (no cleanup on mount)", {
+        sessionIds: Object.keys(sessions),
+      });
     }
     return false;
   };
@@ -827,12 +811,13 @@ export default function CheckoutPage() {
       error: null,
     });
     try {
-      const res = await measureApi("getOrders (recovery)", () =>
-        storefrontAPI.getOrders(),
+      const res = await measureApi(
+        "getOrders (recovery)",
+        () => storefrontAPI.getOrders()
       );
       const customerOrders = res.data?.items || [];
       const otherPendingOrders = customerOrders.filter(
-        (o) => isActivePendingOrder(o) && o.cart_session_id,
+        (o) => isActivePendingOrder(o) && o.cart_session_id
       );
 
       if (otherPendingOrders.length === 0) {
@@ -847,25 +832,15 @@ export default function CheckoutPage() {
       if (cartMatchesOrders(sessionOrders, items)) {
         commitCheckoutSession(recoveredSessionId, sessionOrders);
         setRecoveryState((prev) => ({ ...prev, isRecovering: false }));
-        return {
-          status: "resumed",
-          sessionId: recoveredSessionId,
-          orders: sessionOrders,
-        };
+        return { status: "resumed", sessionId: recoveredSessionId, orders: sessionOrders };
       }
 
       setRecoveryState((prev) => ({ ...prev, isRecovering: false }));
       return { status: "mismatch", staleSessions: sessions };
     } catch (recoveryErr) {
       const recErrInfo = getPaymentErrorMessage(recoveryErr);
-      setRecoveryState({
-        isRecovering: true,
-        message: "",
-        error: recErrInfo.message,
-      });
-      throw Object.assign(new Error(recErrInfo.message), {
-        code: recErrInfo.code,
-      });
+      setRecoveryState({ isRecovering: true, message: "", error: recErrInfo.message });
+      throw Object.assign(new Error(recErrInfo.message), { code: recErrInfo.code });
     }
   };
 
@@ -874,9 +849,7 @@ export default function CheckoutPage() {
   // ============================================================================
 
   const buildInputsSignature = () => {
-    const itemsPart = items
-      .map((i) => `${i.productId}:${i.size}:${i.color}:${i.quantity}`)
-      .join("|");
+    const itemsPart = items.map((i) => `${i.productId}:${i.size}:${i.color}:${i.quantity}`).join("|");
     const addressPart = selectedAddress
       ? `${selectedAddress.id || ""}:${selectedAddress.address_line1 || selectedAddress.address || ""}:${selectedAddress.pincode || ""}`
       : "null";
@@ -934,6 +907,8 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!customer || !token) return;
+    let isMounted = true;
+    setPhase(CHECKOUT_PHASE.RECOVERING, { source: "mount" });
 
     let cancelled = false;
 
@@ -956,6 +931,13 @@ export default function CheckoutPage() {
         }
 
         const customerOrders = res.data?.items || [];
+
+        // Re-check cancelled flag before calling resumeExistingCheckout,
+        // which may call navigate(), dispatch(), and setCheckoutState()
+        // — these should not fire after component unmount.
+        if (cancelled) {
+          return;
+        }
 
         await resumeExistingCheckout(customerOrders, activeSessionId);
       } catch (err) {
@@ -1021,13 +1003,7 @@ export default function CheckoutPage() {
       const itemShippingFee = i === 0 ? totals.shipping : 0;
 
       try {
-        const created = await persistOrderItem(
-          item,
-          currentSessionId,
-          itemShippingFee,
-        );
-
-        currentOrders.push(created);
+        const created = await persistOrderItem(item, currentSessionId, itemShippingFee);
       } catch (itemErr) {
         const errInfo = getPaymentErrorMessage(itemErr);
 
@@ -1136,7 +1112,6 @@ export default function CheckoutPage() {
       );
       return;
     }
-
     if (!selectedAddress) {
       logExit({
         step: "STEP 2 (address check)",
@@ -1227,6 +1202,227 @@ export default function CheckoutPage() {
     };
 
     try {
+      // ═══════════════════════════════════════════════════════════════════
+      // PRODUCTION FLOW: ONLINE payments — orders created AFTER payment
+      // ═══════════════════════════════════════════════════════════════════
+      if (paymentMethod === "ONLINE") {
+        // For ONLINE: skip order creation, go straight to Razorpay checkout
+        if (!currentSessionId) {
+          currentSessionId = crypto.randomUUID();
+          setCheckoutState({ cartSessionId: currentSessionId, orders: [] });
+          sessionStorage.setItem("aurastore_active_cart_session_id", currentSessionId);
+        }
+
+        updatePhase(CHECKOUT_PHASE.CREATING_RAZORPAY_ORDER);
+
+        const checkoutPayload = buildCheckoutPayload({
+          items,
+          customer,
+          selectedAddress,
+          form,
+          sessionId: currentSessionId,
+          shippingFee: totals.shipping,
+          couponCode,
+        });
+
+        try {
+          rzpOrder = await measureApi(
+            "createRazorpayOrderMutation",
+            () => createRazorpayOrderMutation.mutateAsync(checkoutPayload),
+            (order) => ({
+              order_id: order.id,
+              amount: order.amount,
+              currency: order.currency,
+            }),
+          );
+        } catch (rzpErr) {
+          const errInfo = getPaymentErrorMessage(rzpErr);
+
+          if (errInfo.code === "UNAUTHORIZED") {
+            toast.error(errInfo.message);
+            setTimeout(() => navigate("/auth/login", { state: { from: "/checkout" } }), 3000);
+            return;
+          }
+
+          if (errInfo.code === "ORDER_ALREADY_PAID") {
+            toast.success("Order already paid!");
+            updatePhase(CHECKOUT_PHASE.SUCCESS);
+            await clearCompletedCustomerCart();
+            try {
+              const res = await storefrontAPI.getOrders();
+              const customerOrders = res.data?.items || [];
+              const sessionOrders = customerOrders.filter(
+                (o) => o.cart_session_id === currentSessionId,
+              );
+              dispatch(setLastOrder({ orders: sessionOrders, totals, paymentMethod: "ONLINE" }));
+              navigate("/order-success", {
+                state: { orders: sessionOrders, totals, paymentMethod: "ONLINE" },
+                replace: true,
+              });
+            } catch (e) {
+              navigate("/order-success", {
+                state: { orders: [], totals, paymentMethod: "ONLINE" },
+                replace: true,
+              });
+            }
+            return;
+          }
+
+          // ACTIVE_CHECKOUT_EXISTS recovery for ONLINE path
+          // Uses the same recoverActiveSession helper as COD so behaviour is
+          // consistent across both payment methods.
+          if (errInfo.code === "ACTIVE_CHECKOUT_EXISTS") {
+            const recovery = await recoverActiveSession();
+
+            if (recovery.status === "resumed") {
+              // Recovered — retry Razorpay order creation with the resumed session
+              currentSessionId = recovery.sessionId;
+              setCheckoutState({ cartSessionId: recovery.sessionId, orders: recovery.orders });
+              sessionStorage.setItem("aurastore_active_cart_session_id", recovery.sessionId);
+
+              const retryPayload = buildCheckoutPayload({
+                items, customer, selectedAddress, form,
+                sessionId: currentSessionId,
+                shippingFee: totals.shipping,
+                couponCode,
+              });
+
+              rzpOrder = await measureApi(
+                "createRazorpayOrderMutation (retry)",
+                () => createRazorpayOrderMutation.mutateAsync(retryPayload),
+                (order) => ({
+                  order_id: order.id,
+                  amount: order.amount,
+                  currency: order.currency,
+                }),
+              );
+              // rzpOrder is set — flow continues to Razorpay popup below
+            } else if (recovery.status === "mismatch") {
+              // Clean up stale sessions and retry with a fresh session
+              for (const [sessionId, orders] of Object.entries(recovery.staleSessions)) {
+                await cleanupStaleSession(orders);
+              }
+              currentSessionId = crypto.randomUUID();
+              setCheckoutState({ cartSessionId: currentSessionId, orders: [] });
+              sessionStorage.setItem("aurastore_active_cart_session_id", currentSessionId);
+
+              const freshPayload = buildCheckoutPayload({
+                items, customer, selectedAddress, form,
+                sessionId: currentSessionId,
+                shippingFee: totals.shipping,
+                couponCode,
+              });
+
+              rzpOrder = await measureApi(
+                "createRazorpayOrderMutation (retry)",
+                () => createRazorpayOrderMutation.mutateAsync(freshPayload),
+                (order) => ({
+                  order_id: order.id,
+                  amount: order.amount,
+                  currency: order.currency,
+                }),
+              );
+            } else {
+              // No recoverable session found — show error
+              toast.error("Unable to recover your checkout session. Please try again.");
+              updatePhase(CHECKOUT_PHASE.FAILED);
+              return;
+            }
+          } else {
+            throw Object.assign(new Error(errInfo.message), { code: errInfo.code });
+          }
+        }
+
+        // Open Razorpay popup
+        if (!window.Razorpay) {
+          let attempts = 0;
+          await new Promise((resolve) => {
+            const interval = setInterval(() => {
+              attempts++;
+              if (window.Razorpay || attempts >= 20) {
+                clearInterval(interval);
+                resolve();
+              }
+            }, 100);
+          });
+        }
+
+        const options = {
+          key: rzpOrder.key || import.meta.env.VITE_RAZORPAY_KEY_ID,
+          amount: rzpOrder.amount,
+          currency: rzpOrder.currency,
+          name: import.meta.env.VITE_STORE_NAME || "My Designers",
+          description: "Order Checkout Payment",
+          order_id: rzpOrder.id,
+          handler: async (response) => {
+            // Payment success — verify and create orders
+            setPhase(CHECKOUT_PHASE.VERIFYING);
+            try {
+              const verifiedOrders = await measureApi(
+                "verifyRazorpayPaymentMutation",
+                () =>
+                  verifyRazorpayPaymentMutation.mutateAsync({
+                    cart_session_id: currentSessionId,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature,
+                  }),
+              );
+
+              dispatch(setLastOrder({ orders: verifiedOrders, totals, paymentMethod }));
+              await clearCompletedCustomerCart();
+              toast.success("Payment verified and order confirmed!");
+
+              setPhase(CHECKOUT_PHASE.VERIFY_SUCCESS);
+              await new Promise((resolve) => setTimeout(resolve, 600));
+              setPhase(CHECKOUT_PHASE.SUCCESS);
+
+              navigate("/order-success", {
+                state: { orders: verifiedOrders, totals, paymentMethod },
+                replace: true,
+              });
+            } catch (verifyErr) {
+              const errInfo = getPaymentErrorMessage(verifyErr);
+
+              if (errInfo.code === "UNAUTHORIZED") {
+                toast.error(errInfo.message);
+                setPhase(CHECKOUT_PHASE.FAILED);
+                setTimeout(() => navigate("/auth/login", { state: { from: "/checkout" } }), 3000);
+                return;
+              }
+
+              dispatch(setOrderError(errInfo.message));
+              toast.error(errInfo.message);
+              setPhase(CHECKOUT_PHASE.FAILED);
+            }
+          },
+          prefill: {
+            name: selectedAddress.full_name,
+            email: customer?.email || form.email || null,
+            contact: selectedAddress.phone,
+          },
+          theme: { color: "#000000" },
+          modal: {
+            ondismiss: () => {
+              toast.error("Payment cancelled by user.");
+              setPhase(CHECKOUT_PHASE.FAILED);
+            },
+          },
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.on("payment.failed", (response) => {
+          toast.error(response.error.description || "Payment failed. Please try again.");
+          setPhase(CHECKOUT_PHASE.FAILED);
+        });
+        updatePhase(CHECKOUT_PHASE.AWAITING_PAYMENT);
+        rzp.open();
+        return;
+      }
+
+      // ═══════════════════════════════════════════════════════════════════
+      // COD FLOW — unchanged (orders created immediately)
+      // ═══════════════════════════════════════════════════════════════════
       if (!currentSessionId) {
         updatePhase(CHECKOUT_PHASE.CREATING_ORDERS);
         const MAX_SESSION_ATTEMPTS = 3;
@@ -1276,372 +1472,27 @@ export default function CheckoutPage() {
         );
       }
 
-      if (paymentMethod === "COD") {
-        dispatch(
-          setLastOrder({
-            orders: currentOrders,
-            totals,
-            paymentMethod,
-          }),
-        );
-
-        await clearCompletedCustomerCart();
-
-        toast.success("Order placed successfully!");
-        updatePhase(CHECKOUT_PHASE.SUCCESS);
-        logExit({
-          step: "STEP 7 (COD complete)",
-          reason: "COD order placed, no online payment needed",
-          sessionId: currentSessionId,
-          ordersCount: currentOrders.length,
+      dispatch(
+        setLastOrder({
+          orders: currentOrders,
+          totals,
           paymentMethod,
-          nextApi: "createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
-        });
-        navigate("/order-success", {
-          state: {
-            orders: currentOrders,
-            totals,
-            paymentMethod,
-          },
-          replace: true,
-        });
-        return;
-      }
+        }),
+      );
 
-      if (!sessionFreshlyVerified) {
-        try {
-          const res = await measureApi("getOrders (dedupe check)", () =>
-            storefrontAPI.getOrders(),
-          );
-          const customerOrders = res.data?.items || [];
-          const sessionOrders = customerOrders.filter(
-            (o) => o.cart_session_id === currentSessionId,
-          );
-          if (
-            sessionOrders.length > 0 &&
-            sessionOrders.every((o) => o.payment_status === "PAID")
-          ) {
-            dispatch(
-              setLastOrder({
-                orders: sessionOrders,
-                totals,
-                paymentMethod: "ONLINE",
-              }),
-            );
-            await clearCompletedCustomerCart();
-            toast.success("Payment already completed!");
-            updatePhase(CHECKOUT_PHASE.SUCCESS);
-            logExit({
-              step: "STEP 7 (dedupe check)",
-              reason: "Session already PAID",
-              sessionId: currentSessionId,
-              ordersCount: sessionOrders.length,
-              paymentMethod,
-              nextApi:
-                "createRazorpayOrderMutation, verifyRazorpayPaymentMutation",
-            });
-            navigate("/order-success", {
-              state: { orders: sessionOrders, totals, paymentMethod: "ONLINE" },
-              replace: true,
-            });
-            return;
-          }
-        } catch (checkErr) {
-          logFailure({
-            step: "STEP 7 (dedupe check)",
-            error: checkErr,
-            sessionId: currentSessionId,
-            ordersCount: currentOrders.length,
-            nextApiSkipped: "none — non-fatal, continuing to Razorpay create",
-          });
-        }
-      } else {
-        logStep(
-          "STEP 7: Skipping dedupe getOrders() call — session was freshly created/recovered this run",
-          { sessionId: currentSessionId },
-        );
-      }
+      await clearCompletedCustomerCart();
 
-      updatePhase(CHECKOUT_PHASE.CREATING_RAZORPAY_ORDER);
-      logStep("STEP 8: Validating state before Razorpay Create call", {
-        checkoutState,
-        currentSessionId,
-        currentOrdersLength: currentOrders.length,
-        paymentMethod,
-        selectedAddress,
-        customerEmail: customer?.email,
-        razorpayExists: typeof window.Razorpay !== "undefined",
-      });
-      logApiCall("createRazorpayOrderMutation", {
-        sessionId: currentSessionId,
-        ordersCount: currentOrders.length,
-        paymentMethod,
-      });
-
-      try {
-        rzpOrder = await measureApi(
-          "createRazorpayOrderMutation",
-          () =>
-            createRazorpayOrderMutation.mutateAsync({
-              cart_session_id: currentSessionId,
-            }),
-          (order) => ({
-            order_id: order.id,
-            amount: order.amount,
-            currency: order.currency,
-          }),
-        );
-        logStep("STEP 9: Received Razorpay Order", {
-          order_id: rzpOrder.id,
-          amount: rzpOrder.amount,
-          currency: rzpOrder.currency,
-        });
-      } catch (rzpErr) {
-        const errInfo = getPaymentErrorMessage(rzpErr);
-        logFailure({
-          step: "STEP 8 (Razorpay create)",
-          error: rzpErr,
-          sessionId: currentSessionId,
-          ordersCount: currentOrders.length,
-          nextApiSkipped: "verifyRazorpayPaymentMutation",
-        });
-        logExit({
-          step: "STEP 8 (Razorpay create)",
-          reason: `${errInfo.code}: ${errInfo.message}`,
-          sessionId: currentSessionId,
-          ordersCount: currentOrders.length,
+      toast.success("Order placed successfully!");
+      updatePhase(CHECKOUT_PHASE.SUCCESS);
+      navigate("/order-success", {
+        state: {
+          orders: currentOrders,
+          totals,
           paymentMethod,
-          nextApi: "verifyRazorpayPaymentMutation",
-        });
-
-        if (errInfo.code === "UNAUTHORIZED") {
-          toast.error(errInfo.message);
-          setTimeout(
-            () => navigate("/login", { state: { from: "/checkout" } }),
-            3000,
-          );
-          return;
-        }
-
-        if (errInfo.code === "ORDER_ALREADY_PAID") {
-          toast.success("Order already paid!");
-          updatePhase(CHECKOUT_PHASE.SUCCESS);
-          // for (const item of items) {
-          //   dispatch(
-          //     removeFromCart({
-          //       productId: item.productId,
-          //       size: item.size,
-          //       color: item.color,
-          //     }),
-          //   );
-          // }
-          await clearCompletedCustomerCart();
-          try {
-            const res = await storefrontAPI.getOrders();
-            const customerOrders = res.data?.items || [];
-            const sessionOrders = customerOrders.filter(
-              (o) => o.cart_session_id === currentSessionId,
-            );
-            dispatch(
-              setLastOrder({
-                orders: sessionOrders,
-                totals,
-                paymentMethod: "ONLINE",
-              }),
-            );
-            navigate("/order-success", {
-              state: { orders: sessionOrders, totals, paymentMethod: "ONLINE" },
-              replace: true,
-            });
-          } catch (e) {
-            dispatch(
-              setLastOrder({
-                orders: currentOrders,
-                totals,
-                paymentMethod: "ONLINE",
-              }),
-            );
-            navigate("/order-success", {
-              state: { orders: currentOrders, totals, paymentMethod: "ONLINE" },
-              replace: true,
-            });
-          }
-          return;
-        }
-        if (errInfo.code === "ORDER_NOT_FOUND") {
-          setCheckoutState({ cartSessionId: null, orders: [] });
-          sessionStorage.removeItem("aurastore_active_cart_session_id");
-        }
-
-        throw Object.assign(new Error(errInfo.message), { code: errInfo.code });
-      }
-
-      if (!window.Razorpay) {
-        let attempts = 0;
-        await new Promise((resolve) => {
-          const interval = setInterval(() => {
-            attempts++;
-            if (window.Razorpay || attempts >= 20) {
-              clearInterval(interval);
-              resolve();
-            }
-          }, 100);
-        });
-      }
-
-      const prereqCheck = validateRazorpayPrerequisites({
-        sessionId: currentSessionId,
-        orders: currentOrders,
-        rzpOrder,
-      });
-      if (!prereqCheck.passed) {
-        logExit({
-          step: "STEP 10 (Razorpay instance)",
-          reason: `Prerequisites failed: ${prereqCheck.failed.join(", ")}`,
-          sessionId: currentSessionId,
-          ordersCount: currentOrders.length,
-          paymentMethod,
-          nextApi: "rzp.open(), verifyRazorpayPaymentMutation",
-        });
-        throw new Error("Razorpay SDK is not initialized. Please try again.");
-      }
-
-      logStep("STEP 10: Creating Razorpay instance", {
-        prereqChecks: prereqCheck.checks,
-      });
-      const options = {
-        key: rzpOrder.key || import.meta.env.VITE_RAZORPAY_KEY_ID,
-        amount: rzpOrder.amount,
-        currency: rzpOrder.currency,
-        name: import.meta.env.VITE_STORE_NAME || "My Designers",
-        description: "Order Checkout Payment",
-        order_id: rzpOrder.id,
-        handler: async (response) => {
-          logStep("STEP 12: Payment Success Callback", response);
-          setPhase(CHECKOUT_PHASE.VERIFYING);
-          try {
-            logStep("STEP 13: Calling Verify API");
-            logApiCall("verifyRazorpayPaymentMutation", {
-              sessionId: currentSessionId,
-              ordersCount: currentOrders.length,
-              paymentMethod,
-            });
-
-            const verifiedOrders = await measureApi(
-              "verifyRazorpayPaymentMutation",
-              () =>
-                verifyRazorpayPaymentMutation.mutateAsync({
-                  cart_session_id: currentSessionId,
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                }),
-            );
-
-            logStep("STEP 14: Verification Success", verifiedOrders);
-
-            dispatch(
-              setLastOrder({
-                orders: verifiedOrders,
-                totals,
-                paymentMethod,
-              }),
-            );
-
-            await clearCompletedCustomerCart();
-
-            toast.success("Payment verified and order confirmed!");
-
-            setPhase(CHECKOUT_PHASE.VERIFY_SUCCESS);
-
-            await new Promise((resolve) => setTimeout(resolve, 600));
-
-            setPhase(CHECKOUT_PHASE.SUCCESS);
-
-            navigate("/order-success", {
-              state: {
-                orders: verifiedOrders,
-                totals,
-                paymentMethod,
-              },
-              replace: true,
-            });
-          } catch (verifyErr) {
-            const errInfo = getPaymentErrorMessage(verifyErr);
-            logFailure({
-              step: "STEP 13 (verify)",
-              error: verifyErr,
-              sessionId: currentSessionId,
-              ordersCount: currentOrders.length,
-              nextApiSkipped: "none — verification was the last step",
-            });
-            logExit({
-              step: "STEP 13 (verify)",
-              reason: `${errInfo.code}: ${errInfo.message}`,
-              sessionId: currentSessionId,
-              ordersCount: currentOrders.length,
-              paymentMethod,
-              nextApi: "none — verification was the last step",
-            });
-
-            if (errInfo.code === "UNAUTHORIZED") {
-              toast.error(errInfo.message);
-              setPhase(CHECKOUT_PHASE.FAILED);
-              setTimeout(
-                () => navigate("/login", { state: { from: "/checkout" } }),
-                3000,
-              );
-              return;
-            }
-
-            if (errInfo.code === "ORDER_NOT_FOUND") {
-              setCheckoutState({ cartSessionId: null, orders: [] });
-              sessionStorage.removeItem("aurastore_active_cart_session_id");
-            }
-
-            dispatch(setOrderError(errInfo.message));
-            toast.error(errInfo.message);
-            setPhase(CHECKOUT_PHASE.FAILED);
-          }
         },
-        prefill: {
-          name: selectedAddress.full_name,
-          email: customer?.email || form.email || null,
-          contact: selectedAddress.phone,
-        },
-        theme: { color: "#000000" },
-        modal: {
-          ondismiss: () => {
-            logExit({
-              step: "STEP 11 (popup dismissed)",
-              reason: "User closed the Razorpay popup",
-              sessionId: currentSessionId,
-              ordersCount: currentOrders.length,
-              paymentMethod,
-              nextApi: "verifyRazorpayPaymentMutation",
-            });
-            toast.error("Payment cancelled by user.");
-            setPhase(CHECKOUT_PHASE.FAILED);
-          },
-        },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.on("payment.failed", (response) => {
-        logFailure({
-          step: "Razorpay payment.failed event",
-          error: response.error,
-          sessionId: currentSessionId,
-          ordersCount: currentOrders.length,
-        });
-        toast.error(
-          response.error.description || "Payment failed. Please try again.",
-        );
-        setPhase(CHECKOUT_PHASE.FAILED);
+        replace: true,
       });
-      updatePhase(CHECKOUT_PHASE.AWAITING_PAYMENT);
-      logStep("STEP 11: Opening Razorpay popup");
-      rzp.open();
+      return;
     } catch (err) {
       if (err.code === "UNAUTHORIZED") {
         return;
@@ -1696,7 +1547,7 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-20 flex flex-col items-center text-center gap-4">
+      <PageContainer className="flex flex-col items-center gap-4 py-20 text-center">
         <div className="h-16 w-16 rounded-full bg-surface flex items-center justify-center">
           <ShoppingBag size={28} className="text-muted" />
         </div>
@@ -1712,12 +1563,12 @@ export default function CheckoutPage() {
         >
           Browse Products
         </Link>
-      </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <PageContainer>
       {/* Screen Reader Live Announcements */}
       <div className="sr-only" role="status" aria-live="polite">
         {checkoutPhase === CHECKOUT_PHASE.CREATING_ORDERS ||
@@ -1887,19 +1738,19 @@ export default function CheckoutPage() {
           </div>
         </div>
       )}
-      <div className="grid grid-cols-1 md:grid-cols-[50%_45%] gap-8">
-        <div className=" flex flex-col gap-8 ">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(24rem,0.85fr)] xl:gap-10">
+        <div className="flex min-w-0 flex-col gap-6 lg:gap-8">
           <div className="">
             <h2 className="font-display font-bold text-lg text-app mb-4">
               Review Items
             </h2>
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 rounded-md border border-app p-3 sm:p-4">
               {items.map((item) => (
                 <div
                   key={`${item.productId}-${item.size}-${item.color}`}
-                  className="flex gap-4"
+                  className="flex min-w-0 gap-3 sm:gap-4"
                 >
-                  <div className="w-16 h-20 rounded-xl bg-surface overflow-hidden border border-app shrink-0">
+                  <div className="aspect-[4/5] w-16 shrink-0 overflow-hidden rounded-md border border-app bg-surface">
                     {item.thumbnail ? (
                       <img
                         src={getImageUrl(item.thumbnail)}
@@ -1912,7 +1763,7 @@ export default function CheckoutPage() {
                       </div>
                     )}
                   </div>
-                  <div className="flex-1">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-app line-clamp-1">
                       {item.title}
                     </p>
@@ -1922,15 +1773,15 @@ export default function CheckoutPage() {
                       {item.quantity}
                     </p>
                   </div>
-                  <p className="text-sm font-bold text-app">
+                  <p className="shrink-0 text-sm font-bold text-app">
                     {formatPrice(item.sellingPrice * item.quantity)}
                   </p>
                 </div>
               ))}
             </div>
           </div>
-          <div className="">
-            <div className="flex flex-col gap-4 ">
+          <div className="rounded-md border border-app p-4">
+            <div className="flex flex-col gap-4">
               <h3 className="font-display font-bold text-lg text-app">
                 Order Total
               </h3>
@@ -1973,26 +1824,22 @@ export default function CheckoutPage() {
             </div>
           </div>
         </div>
-        <div className="flex flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-24 lg:self-start">
           <ContactSection form={form} update={update} />
           <DeliveryAddress form={form} setForm={setForm} update={update} />
           <PaymentSection />
-          <BillingAddress form={form} update={update} />
+          <BillingAddress />
           <button
             type="button"
             onClick={() => handlePlaceOrder()}
-            disabled={
-              submitting || placingOrder || paymentMethodsList.length === 0
-            }
-            aria-disabled={
-              submitting || placingOrder || paymentMethodsList.length === 0
-            }
-            className="w-full h-12 flex items-center justify-center bg-brand-500 hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 text-white font-semibold text-sm rounded-full shadow-glow-sm transition-colors"
+            disabled={submitting || placingOrder || paymentMethodsList.length === 0}
+            aria-disabled={submitting || placingOrder || paymentMethodsList.length === 0}
+            className="focus-ring flex h-12 w-full items-center justify-center rounded-md bg-brand-500 px-6 text-sm font-semibold text-white shadow-glow-sm transition-colors hover:bg-brand-600 disabled:opacity-60"
           >
             {getButtonText()}
           </button>
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }

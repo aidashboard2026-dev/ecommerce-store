@@ -45,7 +45,6 @@ api.interceptors.response.use(
                         error.config?.url?.endsWith('/auth/signup')
     if (error.response?.status === 401 && !isAuthRoute) {
       localStorage.removeItem('admin_token')
-      localStorage.removeItem('admin_user')
       window.dispatchEvent(new CustomEvent('auth:unauthorized'))
     }
     return Promise.reject(error)
@@ -60,7 +59,7 @@ export default api
 // withCredentials stays true only so any future session/CSRF cookie usage
 // works without another wiring pass; it has no effect on the bearer flow.
 
-const storefrontClient = axios.create({
+export const storefrontClient = axios.create({
   baseURL: BASE_URL,
   withCredentials: true,
   paramsSerializer,
@@ -171,6 +170,7 @@ export const productsAPI = {
   update: (id, data) => api.patch(`/products/admin/${id}`, data),
   delete: (id)       => api.delete(`/products/admin/${id}`),
   getColors: ()      => api.get('/products/colors'),
+  resolveColor: (name) => api.get('/colors/resolve', { params: { name } }),
 
   // ── Bulk actions ────────────────────────────────────────────────────────────
 
@@ -367,11 +367,11 @@ export const dashboardAPI = {
 
   // ── Contact Messages ────────────────────────────────────────────────────────
 
-  getContactMessages: (params = {}) => api.get('/contact', { params }),
-  getContactMessage: (id) => api.get(`/contact/${id}`),
-  replyToContactMessage: (id, data) => api.post(`/contact/${id}/reply`, data),
-  updateContactMessageStatus: (id, status) => api.put(`/contact/${id}`, { status }),
-  deleteContactMessage: (id) => api.delete(`/contact/${id}`),
+  getContactMessages: (params = {}) => api.get('/contact/admin/list', { params }),
+  getContactMessage: (id) => api.get(`/contact/admin/${id}`),
+  replyToContactMessage: (id, data) => api.post(`/contact/admin/${id}/reply`, data),
+  updateContactMessageStatus: (id, status) => api.put(`/contact/admin/${id}/status`, { status }),
+  deleteContactMessage: (id) => api.delete(`/contact/admin/${id}`),
   getContactStats: () => api.get('/contact/admin/stats'),
 }
 

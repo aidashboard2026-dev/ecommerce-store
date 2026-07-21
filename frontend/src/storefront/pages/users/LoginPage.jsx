@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+﻿import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { loginThunk, clearError } from '../../store/authSlice'
 import { useTheme } from '../../hooks/useAuth'
@@ -32,14 +32,14 @@ export default function LoginPage() {
       })
     )
 
-    console.log("RESULT =", result)
+    if (import.meta.env.DEV) console.log("RESULT =", result)
 
     
 
-    console.log("BEFORE REDIRECT")
+    if (import.meta.env.DEV) console.log("BEFORE REDIRECT")
 
 
-    console.log("AFTER REDIRECT")
+    if (import.meta.env.DEV) console.log("AFTER REDIRECT")
   }
 
   return (
@@ -108,7 +108,7 @@ export default function LoginPage() {
                   type={showPwd ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                   className="input-field pr-11"
                   autoComplete="current-password"
                   required
@@ -141,7 +141,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-xs text-muted mt-5">
-          Protected by JWT Authentication · AdminDash Pro
+          Protected by JWT Authentication Â· AdminDash Pro
         </p>
       </div>
     </div>

@@ -25,8 +25,10 @@ from sqlalchemy.orm import Session
 from app.modules.orders.models import Order
 from app.modules.orders.constants import ItemType, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.modules.products.models import Product, ProductVariant
-from app.shared.exceptions import NotFoundError
+from app.shared.exceptions import BusinessRuleError, NotFoundError
 from app.shared.repositories import BaseRepository
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +42,26 @@ class OrderRepository(BaseRepository[Order]):
 
     def __init__(self, db: Session) -> None:
         super().__init__(Order, db)
+
+    def get_order_stats(self):
+        from sqlalchemy import case
+        stats = self.db.query(
+            sqla_func.count(Order.id).label("total"),
+            sqla_func.sum(case((Order.tracking_status == "PLACED", 1), else_=0)).label("placed"),
+            sqla_func.sum(case((Order.tracking_status == "PROCESSING", 1), else_=0)).label("processing"),
+            sqla_func.sum(case((Order.tracking_status == "SHIPPED", 1), else_=0)).label("shipped"),
+            sqla_func.sum(case((Order.tracking_status == "DELIVERED", 1), else_=0)).label("delivered"),
+            sqla_func.sum(case((Order.tracking_status == "CANCELLED", 1), else_=0)).label("cancelled"),
+        ).one()
+
+        return {
+            "total_orders": int(stats.total or 0),
+            "new_orders": int(stats.placed or 0),
+            "processing": int(stats.processing or 0),
+            "shipped": int(stats.shipped or 0),
+            "delivered": int(stats.delivered or 0),
+            "cancelled": int(stats.cancelled or 0),
+        }
 
     # ─────────────────────────────────────────────────────────
     # Read
@@ -261,6 +283,18 @@ class OrderRepository(BaseRepository[Order]):
 
     def decrement_stock(self, variant: ProductVariant, quantity: int) -> None:
         """Decrement variant stock. Must be called inside a locked transaction."""
+        if variant.stock_quantity < quantity:
+            raise BusinessRuleError(
+                f"Insufficient stock for variant #{variant.id} (size: {variant.size}). "
+                f"Available: {variant.stock_quantity}, requested: {quantity}.",
+                code="INSUFFICIENT_STOCK",
+                context={
+                    "variant_id": variant.id,
+                    "size": variant.size,
+                    "available": variant.stock_quantity,
+                    "requested": quantity,
+                },
+            )
         variant.stock_quantity -= quantity
         self.db.flush()
 

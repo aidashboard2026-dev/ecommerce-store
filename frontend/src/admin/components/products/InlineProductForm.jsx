@@ -1,4 +1,4 @@
-import React, {
+﻿import React, {
   useState,
   useEffect,
   useRef,
@@ -49,14 +49,14 @@ import {
   TableCell,
 } from "@/shared/components/ui/Table";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const STATUS_OPTIONS = ["draft", "published", "archived"];
 const MAX_IMAGES = 7;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "XXL"];
-// COLLECTION_OPTIONS kept from branch — used as fallback display labels only;
+// COLLECTION_OPTIONS kept from branch â€” used as fallback display labels only;
 // the actual dropdown is driven by the collections API (FK-based).
 const COLLECTION_OPTIONS = [
   "Oversized",
@@ -69,7 +69,7 @@ const COLLECTION_OPTIONS = [
   "Limited Edition",
 ];
 
-// ─── Blank variant form (module-level — stable ref, no hook needed) ───────────
+// â”€â”€â”€ Blank variant form (module-level â€” stable ref, no hook needed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const BLANK_VARIANT_FORM = {
   size: "M",
@@ -86,7 +86,7 @@ const BLANK_VARIANT_FORM = {
 const getErrorMessage = (error, fallback = "Something went wrong") => {
   if (!error) return fallback;
 
-  // Axios error → backend response data
+  // Axios error â†’ backend response data
   const data = error?.response?.data ?? error;
 
   // Normal string error
@@ -113,7 +113,7 @@ const getErrorMessage = (error, fallback = "Something went wrong") => {
         }
 
         const field = Array.isArray(item?.loc)
-          ? item.loc.filter((part) => part !== "body").join(" → ")
+          ? item.loc.filter((part) => part !== "body").join(" â†’ ")
           : "";
 
         const message =
@@ -149,7 +149,7 @@ const getErrorMessage = (error, fallback = "Something went wrong") => {
   return fallback;
 };
 
-// ─── Shared primitives ────────────────────────────────────────────────────────
+// â”€â”€â”€ Shared primitives â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function FormField({ label, required, hint, htmlFor, children }) {
   return (
@@ -183,7 +183,7 @@ function StyledSelect({ children, className, ...props }) {
   );
 }
 
-// ─── Stock badge ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Stock badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function StockBadge({ stock }) {
   if (stock === 0) return <Badge label="Out" variant="danger" dot />;
@@ -191,7 +191,7 @@ function StockBadge({ stock }) {
   return <Badge label={`${stock} stock`} variant="success" />;
 }
 
-// ─── Creatable size selector with suggestions ─────────────────────────────────
+// â”€â”€â”€ Creatable size selector with suggestions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function CreatableSizeSelect({ value, onChange, disabled }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -311,6 +311,7 @@ function CreatableSizeSelect({ value, onChange, disabled }) {
 function CreatableColorSelect({ value, onChange, onHexChange, disabled }) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState(value || '')
+  const [resolving, setResolving] = useState(false)
   const containerRef = useRef(null)
 
   const { data: backendColors = [] } = useQuery({
@@ -348,12 +349,24 @@ function CreatableColorSelect({ value, onChange, onHexChange, disabled }) {
 
   const showCreateOption = search.trim() !== '' && !backendColors.some(c => c.name.toLowerCase() === search.trim().toLowerCase())
 
-  const handleSelect = (val) => {
+  const handleSelect = async (val) => {
     const matched = backendColors.find(c => c.name.toLowerCase() === val.toLowerCase())
     onChange(val)
     setSearch(val)
     if (matched) {
       onHexChange(matched.hex)
+    } else {
+      setResolving(true)
+      try {
+        const res = await productsApi.resolveColor(val)
+        if (res.data?.found && res.data.hex) {
+          onHexChange(res.data.hex)
+        }
+      } catch {
+        // resolve failed â€” leave hex editable
+      } finally {
+        setResolving(false)
+      }
     }
     setIsOpen(false)
   }
@@ -434,7 +447,7 @@ function CreatableColorSelect({ value, onChange, onHexChange, disabled }) {
   )
 }
 
-// ─── Save Progress Overlay ────────────────────────────────────────────────────
+// â”€â”€â”€ Save Progress Overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function SaveProgressOverlay({ steps, onClose }) {
   const hasError = steps.some((s) => s.status === "error");
@@ -450,7 +463,7 @@ function SaveProgressOverlay({ steps, onClose }) {
     >
       <div className="bg-app border border-app rounded-2xl p-6 w-80 shadow-2xl space-y-4">
         <p className="text-sm font-semibold text-app">
-          {hasError && allDone ? "Completed with issues" : "Saving product…"}
+          {hasError && allDone ? "Completed with issues" : "Saving productâ€¦"}
         </p>
         <div className="space-y-3">
           {steps.map((step) => (
@@ -496,7 +509,7 @@ function SaveProgressOverlay({ steps, onClose }) {
             </div>
           ))}
         </div>
-        {/* Branch: <Button> component; HEAD had raw <button> — Button is correct here */}
+        {/* Branch: <Button> component; HEAD had raw <button> â€” Button is correct here */}
         {hasError && allDone && onClose && (
           <Button
             type="button"
@@ -512,7 +525,7 @@ function SaveProgressOverlay({ steps, onClose }) {
   );
 }
 
-// ─── Local Variant Form (new product only) ────────────────────────────────────
+// â”€â”€â”€ Local Variant Form (new product only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function LocalVariantForm({ onAdd, existingVariants = [], limits }) {
   const [form, setForm] = useState(BLANK_VARIANT_FORM);
@@ -529,7 +542,7 @@ function LocalVariantForm({ onAdd, existingVariants = [], limits }) {
 
   const sellNum = parseFloat(form.selling_price || 0);
   const origNum = parseFloat(form.original_price || 0);
-  // HEAD named this `priceErr` — branch renamed to `priceError` but forgot to
+  // HEAD named this `priceErr` â€” branch renamed to `priceError` but forgot to
   // update the JSX references, causing a ReferenceError. Keeping `priceErr`.
   const priceErr =
     !isNaN(sellNum) &&
@@ -822,7 +835,7 @@ function VariantInlineForm({ productId, product, editingVariantId, onClose, limi
 
   const mutation = useMutation({
     mutationFn: data => {
-      console.log('[DEBUG] Variant API request start', { productId, editingVariantId, data })
+      if (import.meta.env.DEV) console.log('[DEBUG] Variant API request start', { productId, editingVariantId, data })
       if (isEditMode) {
         return productsApi.updateVariant(productId, editingVariantId, data)
       } else {
@@ -830,7 +843,7 @@ function VariantInlineForm({ productId, product, editingVariantId, onClose, limi
       }
     },
     onSuccess: (response) => {
-      console.log('[DEBUG] Variant API success response', response)
+      if (import.meta.env.DEV) console.log('[DEBUG] Variant API success response', response)
       toast.success(isEditMode ? 'Variant updated successfully.' : 'Variant added successfully.')
       qc.invalidateQueries({ queryKey: ['products'] })
       qc.invalidateQueries({ queryKey: ['products', productId] })
@@ -860,7 +873,7 @@ function VariantInlineForm({ productId, product, editingVariantId, onClose, limi
   const handleSubmit = e => {
     if (e && e.preventDefault) e.preventDefault()
     if (e && e.stopPropagation) e.stopPropagation()
-    console.log('[DEBUG] Variant form submission triggered', { isEditMode, editingVariantId, form })
+    if (import.meta.env.DEV) console.log('[DEBUG] Variant form submission triggered', { isEditMode, editingVariantId, form })
     if (!limits) {
       toast.error("Store limits not loaded yet. Please wait.")
       return
@@ -1150,6 +1163,7 @@ export default function InlineProductForm({
   };
 
   const handleCloseVariantForm = () => {
+    setActiveVariantForm(null);
     const newParams = new URLSearchParams(searchParams);
     newParams.delete('variant');
     setSearchParams(newParams);
@@ -1163,7 +1177,7 @@ export default function InlineProductForm({
   } = useBusinessLimits();
   const isEdit = !!product;
 
-  // ─── Blank form ref ──────────────────────────────────────────────────────────
+  // â”€â”€â”€ Blank form ref â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const blankForm = useRef({
     title: "",
     description: "",
@@ -1182,10 +1196,10 @@ export default function InlineProductForm({
     seo_description: "",
   });
 
-  // ─── Form state — must be declared BEFORE any hook that reads `form` ─────────
+  // â”€â”€â”€ Form state â€” must be declared BEFORE any hook that reads `form` â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [form, setForm] = useState(blankForm.current);
 
-  // ─── BUG-1 FIX: useQuery calls moved here, after `form` is declared ──────────
+  // â”€â”€â”€ BUG-1 FIX: useQuery calls moved here, after `form` is declared â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const { data: categories = [] } = useQuery({
     queryKey: ["categories", "admin"],
     queryFn: () => categoriesAPI.list().then((r) => r.data),
@@ -1225,7 +1239,7 @@ export default function InlineProductForm({
     );
   }, [collections, form.category_id, categories]);
 
-  // ─── Other state ─────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Other state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [localImages, setLocalImages] = useState({
     thumbnail: null,
     gallery_images: [],
@@ -1303,7 +1317,7 @@ export default function InlineProductForm({
     setLocalVariants([]);
   }, [product?.id]);
 
-  // ─── Unsaved-changes guard ────────────────────────────────────────────────────
+  // â”€â”€â”€ Unsaved-changes guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const localImagesCount = useMemo(() => {
     let count = 0;
@@ -1348,7 +1362,7 @@ export default function InlineProductForm({
     onClose();
   }, [hasUnsavedChanges, localImages, onClose]);
 
-  // ─── Helpers ─────────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -1408,7 +1422,7 @@ export default function InlineProductForm({
     return true;
   };
 
-  // ─── Edit mutations ───────────────────────────────────────────────────────────
+  // â”€â”€â”€ Edit mutations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const editMutation = useMutation({
     mutationFn: (data) => productsApi.update(product.id, data),
@@ -1437,7 +1451,7 @@ export default function InlineProductForm({
     },
   });
 
-  // ─── Variant delete mutation (edit mode) ──────────────────────────────────────
+  // â”€â”€â”€ Variant delete mutation (edit mode) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const deleteVariantMutation = useMutation({
     mutationFn: (variantId) => productsApi.deleteVariant(product.id, variantId),
@@ -1459,7 +1473,7 @@ export default function InlineProductForm({
     },
   });
 
-  // ─── New product: batch save ──────────────────────────────────────────────────
+  // â”€â”€â”€ New product: batch save â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const batchSave = async (overrideStatus) => {
     if (isSavingRef.current) return;
@@ -1536,7 +1550,7 @@ export default function InlineProductForm({
     let createdProduct = null;
     let hadPartialFailure = false;
 
-    // ── Step 1: Create product ──────────────────────────────────────────────────
+    // â”€â”€ Step 1: Create product â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     try {
       updateStep("create-product", { status: "loading" });
       const res = await productsApi.create(data);
@@ -1560,7 +1574,7 @@ export default function InlineProductForm({
       return;
     }
 
-    // ── Step 2: Upload images ───────────────────────────────────────────────────
+    // â”€â”€ Step 2: Upload images â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (imgCount > 0) {
       updateStep("upload-images", { status: "loading" });
       let imgSucceeded = 0;
@@ -1569,7 +1583,7 @@ export default function InlineProductForm({
       for (let i = 0; i < imagesToUpload.length; i++) {
         const { file, type, setAsPrimary } = imagesToUpload[i];
         try {
-          // BUG-2 FIX: pass file (raw File) — api.js builds FormData internally
+          // BUG-2 FIX: pass file (raw File) â€” api.js builds FormData internally
           await productsApi.uploadImage(
             createdProduct.id,
             file,
@@ -1595,17 +1609,17 @@ export default function InlineProductForm({
         });
         toast.error(
           imgSucceeded > 0
-            ? `${imgFailed} image${imgFailed > 1 ? "s" : ""} failed — add them later`
-            : "Image upload failed — add images later via Edit",
+            ? `${imgFailed} image${imgFailed > 1 ? "s" : ""} failed â€” add them later`
+            : "Image upload failed â€” add images later via Edit",
         );
       }
     }
 
-    // ── Step 3: Create variants ─────────────────────────────────────────────────
+    // â”€â”€ Step 3: Create variants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (varCount > 0) {
       updateStep("create-variants", { status: "loading" });
       try {
-        // BUG-3 FIX: wrap array in { variants: [...] } — matches BulkVariantCreate schema
+        // BUG-3 FIX: wrap array in { variants: [...] } â€” matches BulkVariantCreate schema
         const variantsPayload = localVariants.map(({ _localId, ...v }) => v);
         const bulkRes = await productsApi.bulkCreateVariants(
           createdProduct.id,
@@ -1630,7 +1644,7 @@ export default function InlineProductForm({
             details: `${varSucceeded} created, ${varFailed} failed`,
           });
           toast.error(
-            `${varFailed} variant${varFailed > 1 ? "s" : ""} failed — add them later via Edit`,
+            `${varFailed} variant${varFailed > 1 ? "s" : ""} failed â€” add them later via Edit`,
           );
         }
       } catch (e) {
@@ -1649,7 +1663,7 @@ export default function InlineProductForm({
       }
     }
 
-    // ── Finish ──────────────────────────────────────────────────────────────────
+    // â”€â”€ Finish â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     revokeLocalImages(localImages);
     await new Promise((r) => setTimeout(r, hadPartialFailure ? 1500 : 800));
 
@@ -1677,7 +1691,7 @@ export default function InlineProductForm({
     isCriticalFailureRef.current = false;
   }, [onClose]);
 
-  // ─── Local image handlers (new product only) ──────────────────────────────────
+  // â”€â”€â”€ Local image handlers (new product only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const handleUploadLocal = useCallback((type, files) => {
     if (type === "gallery") {
@@ -1747,7 +1761,7 @@ export default function InlineProductForm({
     [],
   );
 
-  // ─── Derived values ───────────────────────────────────────────────────────────
+  // â”€â”€â”€ Derived values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const thumbnailUrl = isEdit
     ? getImageUrl(product?.thumbnail)
@@ -1776,7 +1790,7 @@ export default function InlineProductForm({
     };
   }, [localImages]);
 
-  // ─── Render ───────────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   return (
     <>
@@ -1784,7 +1798,7 @@ export default function InlineProductForm({
         <SaveProgressOverlay steps={saveSteps} onClose={handleOverlayClose} />
       )}
 
-      {/* HEAD: card wrapper + shadow; branch: bg-app — merged both */}
+      {/* HEAD: card wrapper + shadow; branch: bg-app â€” merged both */}
       <div className="card overflow-hidden mt-6 shadow-md bg-app">
         <form
           className="flex flex-col"
@@ -1839,7 +1853,7 @@ export default function InlineProductForm({
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-8 p-4 sm:p-6">
-            {/* ── LEFT: image panel ── */}
+            {/* â”€â”€ LEFT: image panel â”€â”€ */}
             <div className="flex flex-col items-center gap-3.5">
               <div
                 className="w-full max-w-[180px] sm:max-w-[220px] md:max-w-none h-40 sm:h-52 md:aspect-square border-2 border-dashed border-brand-500/50 hover:border-brand-500 rounded-2xl bg-app overflow-hidden cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01] mx-auto"
@@ -1872,7 +1886,7 @@ export default function InlineProductForm({
               </Button>
             </div>
 
-            {/* ── RIGHT: fields ── */}
+            {/* â”€â”€ RIGHT: fields â”€â”€ */}
             <div className="flex flex-col gap-4">
               {/* Product Name */}
               <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
@@ -1921,7 +1935,7 @@ export default function InlineProductForm({
                     set("collection_id", "");
                   }}
                 >
-                  <option value="">— None —</option>
+                  <option value="">â€” None â€”</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -1930,7 +1944,7 @@ export default function InlineProductForm({
                 </select>
               </div>
 
-              {/* Collection — HEAD: FK-based select driven by API (correct); branch had
+              {/* Collection â€” HEAD: FK-based select driven by API (correct); branch had
                   hardcoded COLLECTION_OPTIONS string dropdown which ignores the DB. */}
               <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
                 <label className="text-xs font-bold text-muted">
@@ -1941,7 +1955,7 @@ export default function InlineProductForm({
                   value={form.collection_id}
                   onChange={(e) => set("collection_id", e.target.value)}
                 >
-                  <option value="">— None —</option>
+                  <option value="">â€” None â€”</option>
                   {filteredCollections.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -2023,7 +2037,7 @@ export default function InlineProductForm({
                     className="input-field py-2.5 text-xs"
                     value={form.tags}
                     onChange={(e) => set("tags", e.target.value)}
-                    placeholder="Black, White…"
+                    placeholder="Black, Whiteâ€¦"
                   />
                 </div>
               </div>
@@ -2038,7 +2052,7 @@ export default function InlineProductForm({
                   className="input-field py-2.5 text-xs resize-none"
                   value={form.short_description}
                   onChange={(e) => set("short_description", e.target.value)}
-                  placeholder="One-liner for product cards…"
+                  placeholder="One-liner for product cardsâ€¦"
                   maxLength={500}
                 />
               </div>
@@ -2048,10 +2062,10 @@ export default function InlineProductForm({
                 <label className="text-xs font-bold text-muted">Flags</label>
                 <div className="flex flex-wrap gap-3">
                   {[
-                    { key: "is_featured", label: "⭐ Featured" },
-                    { key: "is_trending", label: "🔥 Trending" },
-                    { key: "is_best_seller", label: "⚡ Best Seller" },
-                    { key: "is_new_arrival", label: "🆕 New Arrival" },
+                    { key: "is_featured", label: "â­ Featured" },
+                    { key: "is_trending", label: "ðŸ”¥ Trending" },
+                    { key: "is_best_seller", label: "âš¡ Best Seller" },
+                    { key: "is_new_arrival", label: "ðŸ†• New Arrival" },
                   ].map((f) => (
                     <label
                       key={f.key}
@@ -2073,7 +2087,7 @@ export default function InlineProductForm({
             </div>
           </div>
 
-          {/* ── Variants section ── */}
+          {/* â”€â”€ Variants section â”€â”€ */}
           <div className="px-6 pt-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-3">
               Variants
@@ -2097,7 +2111,7 @@ export default function InlineProductForm({
                         key={isEdit ? v.id : v._localId}
                         className={isEdit && activeVariantForm === v.id ? "bg-brand-500/10 dark:bg-brand-500/20 border-l-2 border-brand-500 transition-colors" : ""}
                       >
-                        {/* HEAD: Badge component — cleaner than branch's oversized text-xl cell */}
+                        {/* HEAD: Badge component â€” cleaner than branch's oversized text-xl cell */}
                         <TableCell>
                           <Badge label={v.size} variant="info" />
                         </TableCell>
@@ -2110,7 +2124,7 @@ export default function InlineProductForm({
                         <TableCell className="font-medium text-amber-600">
                           {v.discount_percentage
                             ? `${parseFloat(v.discount_percentage).toFixed(0)}%`
-                            : "—"}
+                            : "â€”"}
                         </TableCell>
                         <TableCell className="font-semibold">
                           {isEdit ? (
@@ -2201,7 +2215,7 @@ export default function InlineProductForm({
             )}
           </div>
 
-          {/* ── Description ── */}
+          {/* â”€â”€ Description â”€â”€ */}
           <div className="px-6 pt-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-3">
               Description
@@ -2211,7 +2225,7 @@ export default function InlineProductForm({
               rows={3}
               value={form.description}
               onChange={(e) => set("description", e.target.value)}
-              placeholder="Product description…"
+              placeholder="Product descriptionâ€¦"
             />
           </div>
 
@@ -2233,8 +2247,8 @@ export default function InlineProductForm({
             </div>
           )}
 
-          {/* ── Action buttons — branch color scheme (emerald Save, sky Publish) +
-                HEAD's border-t border-app mt-6 container ── */}
+          {/* â”€â”€ Action buttons â€” branch color scheme (emerald Save, sky Publish) +
+                HEAD's border-t border-app mt-6 container â”€â”€ */}
           <div className="grid gap-3 p-6 border-t border-app mt-6">
             <div className="flex gap-3">
               <button
@@ -2291,3 +2305,4 @@ export default function InlineProductForm({
     </>
   );
 }
+

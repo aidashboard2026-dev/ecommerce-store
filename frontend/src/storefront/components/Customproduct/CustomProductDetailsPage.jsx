@@ -94,7 +94,7 @@ export default function CustomProductDetailsPage({ product }) {
 
   if (!product) {
     return (
-      <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-20 text-center">
+      <div className="mx-auto w-full  px-4 sm:px-6 lg:px-8 py-20 text-center">
         <p className="text-app font-semibold mb-4">Product not found.</p>
         <Link to="/custom" className="text-brand-500 font-semibold text-sm">
           Back to Custom Orders
@@ -103,8 +103,7 @@ export default function CustomProductDetailsPage({ product }) {
     );
   }
 
-  const inStock =
-    (product?.stock_quantity ?? 0) > 0;
+  const published = product?.status === "published";
  
 
 
@@ -180,7 +179,7 @@ export default function CustomProductDetailsPage({ product }) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <div className="mx-auto w-full  px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       {/* Breadcrumb */}
       <div className="mb-6 flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
         <Link to="/" className="transition-colors hover:text-app">
@@ -399,7 +398,10 @@ export default function CustomProductDetailsPage({ product }) {
 
                         <span className="mt-1 text-sm font-medium text-pink-500">
 
-                            ✔ In Stock ({product.stock_quantity})
+                            {product.stock_quantity > 0
+                              ? `✔ In Stock (${product.stock_quantity})`
+                              : '✕ Out of Stock'
+                            }
 
                         </span>
 
@@ -415,7 +417,7 @@ export default function CustomProductDetailsPage({ product }) {
             <div className="flex flex-wrap gap-3 mt-6">
                 <button
                     onClick={handleWhatsApp}
-                    disabled={!inStock}
+                    disabled={!published}
                     className={`
                     flex-1 w-full
                     flex items-center justify-center gap-3

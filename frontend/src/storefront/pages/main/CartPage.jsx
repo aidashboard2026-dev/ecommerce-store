@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { ShoppingBag } from 'lucide-react'
 import { CartItem, CartSummary } from '@/storefront/components/shoppingcart'
+import { PageContainer } from '@/shared/components/layout'
 
 export default function CartPage() {
   const items = useSelector((s) => s.cart.items)
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-20 flex flex-col items-center text-center gap-4">
+      <PageContainer className="flex flex-col items-center gap-4 py-20 text-center">
         <div className="h-16 w-16 rounded-full bg-surface flex items-center justify-center">
           <ShoppingBag size={28} className="text-muted" />
         </div>
@@ -21,27 +22,27 @@ export default function CartPage() {
           to="/products"
           className="inline-flex items-center justify-center bg-brand-900 hover:bg-brand-600 text-white font-semibold text-sm px-6 py-3 rounded-full shadow-glow-sm transition-colors"
         >
-          Start Shoppin
+          Start Shopping
         </Link>
-      </div>
+      </PageContainer>
     )
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      <h1 className="font-display font-bold text-2xl sm:text-3xl text-app mb-8">Shopping Cart</h1>
+    <PageContainer>
+      <h1 className="mb-8 font-display text-2xl font-bold text-app sm:text-3xl lg:text-4xl">Shopping Cart</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-app border border-app rounded-2xl p-4 sm:p-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_26rem] xl:gap-8">
+        <div className="rounded-md border border-app bg-app p-3 sm:p-5">
           {items.map((item) => (
             <CartItem key={`${item.productId}-${item.size}-${item.color}`} item={item} />
           ))}
         </div>
 
-        <div className="lg:col-span-1">
+        <div className="lg:sticky lg:top-24 lg:self-start">
           <CartSummary />
         </div>
       </div>
-    </div>
+    </PageContainer>
   )
 }

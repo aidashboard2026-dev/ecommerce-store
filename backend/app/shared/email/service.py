@@ -646,6 +646,7 @@ async def send_order_confirmation_with_invoice(
     qty = int(getattr(order, "quantity", 1) or 1)
     subtotal = price * qty
     shipping_fee = float(getattr(order, "shipping_fee", 0) or 0)
+    discount_amount = float(getattr(order, "discount_amount", 0) or 0)
     total_amount = float(getattr(order, "total_amount", 0) or 0)
 
     variant_parts = []
@@ -666,6 +667,7 @@ async def send_order_confirmation_with_invoice(
         "quantity": qty,
         "subtotal": subtotal,
         "shipping_fee": shipping_fee,
+        "discount_amount": discount_amount,
         "total_amount": total_amount,
         "product_name": getattr(order, "product_name", "Product"),
         "variant_str": variant_str,

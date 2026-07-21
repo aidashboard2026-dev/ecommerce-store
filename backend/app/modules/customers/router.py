@@ -103,6 +103,18 @@ def customer_profile(
     return get_customer_profile(db, customer_id)
 
 
+# ─── Customer Own Profile Update ──────────────────────────────────────────────
+
+@router.put("/profile/update", response_model=CustomerResponse)
+def update_profile(
+    profile_data: CustomerUpdate,
+    db: Session = Depends(get_db),
+    current_customer: Customer = Depends(get_current_customer),
+):
+    """Update customer's own profile details."""
+    return update_customer_profile(db, current_customer, profile_data)
+
+
 # ─── Single customer ──────────────────────────────────────────────────────────
 
 @router.get("/{customer_id}", response_model=CustomerResponse)
@@ -162,12 +174,3 @@ def update_tags(
     """Replace the full tag list for a customer."""
     return update_customer_tags(db, customer_id, data.tags)
 
-
-@router.put("/profile/update", response_model=CustomerResponse)
-def update_profile(
-    profile_data: CustomerUpdate,
-    db: Session = Depends(get_db),
-    current_customer: Customer = Depends(get_current_customer),
-):
-    """Update customer's own profile details."""
-    return update_customer_profile(db, current_customer, profile_data)

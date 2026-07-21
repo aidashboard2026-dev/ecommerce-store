@@ -24,6 +24,7 @@ from app.modules.admins.models import Admin
 from app.modules.audit.service import audit
 from app.modules.auth.dependencies import get_current_admin
 from app.modules.products.models import Product, ProductStatus
+from app.modules.colors.resolver import resolver as color_resolver
 from app.modules.products.schemas import (
     BulkActionPayload, BulkVariantCreate,
     CategoryCreate, CategoryResponse, CategoryUpdate,
@@ -260,7 +261,8 @@ def delete_product_image_by_type(
         db.commit()
     except Exception as e:
         db.rollback()
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, f"Database transaction failed: {str(e)}")
+        logger.error("Database transaction failed: %s", e, exc_info=True)
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Database transaction failed.")
 
     try:
         supabase_storage.delete_product_image(old_url)
@@ -637,10 +639,10 @@ def upload_product_image(
             image_type=image_type,
         )
     except Exception as exc:
-        logger.error(f"Storage upload failed: {exc}")
+        logger.error("Storage upload failed: %s", exc, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Storage upload failed: {str(exc)}"
+            detail="Storage upload failed. Please try again."
         )
 
     field_name = IMAGE_TYPE_FIELDS.get(image_type)
@@ -661,9 +663,10 @@ def upload_product_image(
                 supabase_storage.delete_product_image(image_url)
             except Exception:
                 pass
+            logger.error("Database update failed for gallery image: %s", e, exc_info=True)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Database update failed. Image was discarded: {str(e)}"
+                detail="Database update failed. Image was discarded."
             )
         resolved_url = supabase_storage.get_product_image_url(image_url)
         return {"id": product.id, "url": resolved_url, "image_type": "gallery",
@@ -692,9 +695,10 @@ def upload_product_image(
                 supabase_storage.delete_product_image(image_url)
             except Exception:
                 pass
+            logger.error("Database update failed for product image: %s", e, exc_info=True)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Database update failed. Image was discarded: {str(e)}"
+                detail="Database update failed. Image was discarded."
             )
         resolved_url = supabase_storage.get_product_image_url(image_url)
         return {"id": product.id, "url": resolved_url, "image_type": image_type,
@@ -778,6 +782,11 @@ def get_product_by_slug_endpoint(slug: str, db: Session = Depends(get_db)):
 @router.get("/id/{product_id}", response_model=ProductResponse)
 def get_product_by_id_public(product_id: int, db: Session = Depends(get_db)):
     """Public endpoint to fetch a product by ID, e.g. for legacy redirects."""
+    product = get_product(db, product_id)
+    # Only published products are accessible via the public endpoint.
+    # Admin endpoints use get_product() directly and are unaffected.
+    if product.status != ProductStatus.published:
+        raise NotFoundError(f"Product {product_id} not found.", code="PRODUCT_NOT_FOUND")
     return get_product_response(db, product_id)
 
 
@@ -793,27 +802,5 @@ def get_related_products_endpoint(
 
 @router.get("/colors", response_model=List[ColorOption])
 def get_colors():
-    return [
-        {"name": "Black", "hex": "#000000"},
-        {"name": "White", "hex": "#FFFFFF"},
-        {"name": "Red", "hex": "#FF0000"},
-        {"name": "Blue", "hex": "#0000FF"},
-        {"name": "Green", "hex": "#008000"},
-        {"name": "Yellow", "hex": "#FFFF00"},
-        {"name": "Orange", "hex": "#FFA500"},
-        {"name": "Purple", "hex": "#800080"},
-        {"name": "Pink", "hex": "#FFC0CB"},
-        {"name": "Grey", "hex": "#808080"},
-        {"name": "Gray", "hex": "#808080"},
-        {"name": "Brown", "hex": "#A52A2A"},
-        {"name": "Navy", "hex": "#000080"},
-        {"name": "Sky Blue", "hex": "#87CEEB"},
-        {"name": "Maroon", "hex": "#800000"},
-        {"name": "Olive", "hex": "#808000"},
-        {"name": "Teal", "hex": "#008080"},
-        {"name": "Beige", "hex": "#F5F5DC"},
-        {"name": "Cream", "hex": "#FFFDD0"},
-        {"name": "Gold", "hex": "#FFD700"},
-        {"name": "Silver", "hex": "#C0C0C0"}
-    ]
+    return color_resolver.get_all_colors()
 

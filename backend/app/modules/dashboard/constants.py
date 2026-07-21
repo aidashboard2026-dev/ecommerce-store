@@ -6,18 +6,18 @@ alongside SQL queries and business logic.
 """
 
 # ── Order status filters ──────────────────────────────────────────────────────
-# Lowercase — compared using func.lower() in queries.
+# Uppercase — matches database values directly; no func.lower() needed.
 
 # Orders that count toward "active sales" in the stats widget
-ACTIVE_SALES_STATUSES = ("placed", "pending", "processing", "shipped", "delivered")
+ACTIVE_SALES_STATUSES = ("PLACED", "PROCESSING", "SHIPPED", "DELIVERED")
 
 # Only DELIVERED + PAID orders count as realised revenue
-REVENUE_STATUS  = "delivered"
-REVENUE_PAYMENT = "paid"
+REVENUE_STATUS  = "DELIVERED"
+REVENUE_PAYMENT = "PAID"
 
 # ── Payment method groupings ──────────────────────────────────────────────────
-CASH_PAYMENT_METHODS = ("cod", "cash", "cash on delivery")
-UPI_PAYMENT_METHODS  = ("paid", "upi", "online", "razorpay")
+CASH_PAYMENT_METHODS = ("COD", "CASH", "CASH ON DELIVERY")
+UPI_PAYMENT_METHODS  = ("UPI", "ONLINE", "RAZORPAY")
 
 # ── Chart labels ──────────────────────────────────────────────────────────────
 WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]

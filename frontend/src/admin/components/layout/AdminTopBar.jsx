@@ -5,7 +5,6 @@ import clsx from 'clsx'
 
 import {
   Search,
-  Bell,
   Sun,
   Moon,
   LogOut,
@@ -19,7 +18,7 @@ import Avatar from '@/shared/components/ui/Avatar'
 import NotificationBell from '@/admin/components/layout/NotificationBell'
 
 
-export default function PageHeader({ title }) {
+export default function AdminTopBar({ title }) {
   const { admin } = useAuth()
   const { isDark, toggle } = useTheme()
   const dispatch = useDispatch()
@@ -57,9 +56,9 @@ export default function PageHeader({ title }) {
   const lastName = names[1] || ''
 
   return (
-    <div className="hidden md:flex md:border-b border-app md:bg-surface md:shadow-sm transition-all duration-300 py-3 px-6 items-center top-0 justify-between gap-4 h-[53px] ">
+    <div className="hidden md:flex md:border-b border-app md:bg-surface md:shadow-sm transition-all duration-300 py-3 px-6 items-center top-0 justify-between gap-4 h-[53px]">
       {/* Left Side */}
-      <div className=''>
+      <div>
         <h1 className="text-xs font-bold uppercase tracking-wider text-app">
           {title}
         </h1>

@@ -1,4 +1,4 @@
-// import React, { useEffect, useState } from "react";
+﻿// import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Users,
@@ -106,6 +106,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState(null);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [paymentActivity, setPaymentActivity] = useState([]);
   const [notificationActivity, setNotificationActivity] = useState([]);
@@ -123,9 +124,11 @@ export default function DashboardPage() {
         if (active) {
           setStats(statsRes.data);
           setActivity(actRes.data.activities || []);
+          setError(null);
         }
       } catch (e) {
         console.error(e);
+        setError('Failed to load dashboard data. Pull to refresh or try again later.');
       } finally {
         if (active) setLoading(false);
       }
@@ -181,8 +184,21 @@ export default function DashboardPage() {
 
   if (loading) return <PageLoader />;
 
+  if (error) {
+    return (
+      <div className="space-y-6  mx-auto animate-fade-in">
+        <PageHeader title="Dashboard" className={'border-b-0'} />
+        <div className="rounded-xl border border-red-400/30 bg-red-500/5 p-6 text-center">
+          <AlertTriangle size={36} className="mx-auto mb-3 text-red-400" />
+          <p className="text-sm font-semibold text-red-400">{error}</p>
+          <button onClick={() => window.location.reload()} className="mt-4 btn-primary text-sm">Retry</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 max-w-[1400px] mx-auto animate-fade-in">
+    <div className="space-y-6  mx-auto animate-fade-in">
       <PageHeader
               title="Dashboard"
               className={'border-b-0'}
@@ -198,7 +214,7 @@ export default function DashboardPage() {
           }}
         />
         <div className="relative z-10 flex flex-col justify-between items-start  gap-6">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 text-white/95 text-[9px] font-bold uppercase tracking-wider border border-white/10">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface/10 text-white/95 text-[9px] font-bold uppercase tracking-wider border border-white/10">
             <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse shadow-glow-sm" />
             Live Merchant
           </span>
@@ -217,7 +233,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => navigate("/admin/settings")}
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-zinc-100 text-zinc-950 text-xs font-bold transition-all active:scale-95 shadow-sm"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-surface hover:bg-zinc-100 text-zinc-950 text-xs font-bold transition-all active:scale-95 shadow-sm"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -238,7 +254,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => navigate("/admin/products")}
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition-all active:scale-95 border border-white/15 shadow-sm"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-surface/10 hover:bg-surface/15 text-white text-xs font-bold transition-all active:scale-95 border border-white/15 shadow-sm"
             >
               <Eye size={14} />
               Products List
@@ -397,14 +413,14 @@ export default function DashboardPage() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {stats.recent_contact_messages.slice(0, 4).map((message) => (
-              <div key={message.id} className="rounded-2xl border border-app p-4 bg-white shadow-sm">
+              <div key={message.id} className="rounded-2xl border border-app p-4 bg-surface shadow-sm">
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <p className="text-sm font-semibold text-app truncate">{message.subject}</p>
                   <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                     {message.status}
                   </span>
                 </div>
-                <p className="text-xs text-muted mb-2">{message.name} · {new Date(message.created_at).toLocaleDateString()}</p>
+                <p className="text-xs text-muted mb-2">{message.name} Â· {new Date(message.created_at).toLocaleDateString()}</p>
                 <p className="text-sm text-gray-600 line-clamp-3">{message.message}</p>
               </div>
             ))}
@@ -419,7 +435,7 @@ export default function DashboardPage() {
           tabIndex={0}
           onClick={() => navigate("/admin/settings")}
           onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && navigate("/admin/settings")}
-          aria-label="Payment Activity — go to Settings"
+          aria-label="Payment Activity â€” go to Settings"
           className="cursor-pointer rounded-xl border border-amber-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-amber-900/40 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-amber-400/60"
         >
           <div className="mb-5 flex items-center justify-between">
@@ -471,7 +487,7 @@ export default function DashboardPage() {
           tabIndex={0}
           onClick={() => navigate("/admin/settings")}
           onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && navigate("/admin/settings")}
-          aria-label="Notification Activity — go to Settings"
+          aria-label="Notification Activity â€” go to Settings"
           className="cursor-pointer rounded-xl border border-rose-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-rose-900/40 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-rose-400/60"
         >
           <div className="mb-5 flex items-center justify-between">
@@ -573,3 +589,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

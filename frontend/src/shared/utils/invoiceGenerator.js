@@ -220,8 +220,9 @@ export async function generateInvoice(order) {
 
   bold(pdf,8);
 
+  const gstin = import.meta.env.VITE_BUSINESS_GSTIN;
   pdf.text(
-    "GSTIN : XXXXXXXXXXXXXXX",
+    gstin ? `GSTIN : ${gstin}` : "GSTIN : Not Configured",
     10,
     28
   );
@@ -442,7 +443,7 @@ export async function generateInvoice(order) {
     : "India";
   const storePhoneShip   = safe(localStorage.getItem('store_phone')) !== "-"
     ? localStorage.getItem('store_phone')
-    : "+91 9876543210";
+    : (import.meta.env.VITE_BUSINESS_PHONE || "Not Configured");
 
   pdf.text(
     safe(storeNameShip).toUpperCase(),
@@ -1197,26 +1198,31 @@ export async function generateInvoice(order) {
 
   normal(pdf, 7);
 
+  const bankName = import.meta.env.VITE_BUSINESS_BANK_NAME;
+  const bankAc   = import.meta.env.VITE_BUSINESS_ACCOUNT_NUMBER;
+  const bankIfsc = import.meta.env.VITE_BUSINESS_IFSC;
+  const bankUpi  = import.meta.env.VITE_BUSINESS_UPI;
+
   pdf.text(
-    "Bank : State Bank of India",
+    bankName ? `Bank : ${bankName}` : "Bank : Not Configured",
     14,
     currentY + 12
   );
 
   pdf.text(
-    "A/C : 123456789012",
+    bankAc ? `A/C : ${bankAc}` : "A/C : Not Configured",
     14,
     currentY + 17
   );
 
   pdf.text(
-    "IFSC : SBIN0001234",
+    bankIfsc ? `IFSC : ${bankIfsc}` : "IFSC : Not Configured",
     14,
     currentY + 22
   );
 
   pdf.text(
-    "UPI : payments@mydesign",
+    bankUpi ? `UPI : ${bankUpi}` : "UPI : Not Configured",
     14,
     currentY + 27
   );
@@ -1261,20 +1267,24 @@ export async function generateInvoice(order) {
 
   gray(pdf, 7);
 
+  const carePhone = import.meta.env.VITE_BUSINESS_PHONE;
+  const careEmail = import.meta.env.VITE_BUSINESS_EMAIL;
+  const careWeb   = import.meta.env.VITE_BUSINESS_WEBSITE;
+
   pdf.text(
-    "Customer Care : +91 9876543210",
+    carePhone ? `Customer Care : ${carePhone}` : "Customer Care : Not Configured",
     10,
     currentY
   );
 
   pdf.text(
-    "support@mydesign.com",
+    careEmail || "Not Configured",
     75,
     currentY
   );
 
   pdf.text(
-    "www.mydesign.com",
+    careWeb || "Not Configured",
     145,
     currentY
   );

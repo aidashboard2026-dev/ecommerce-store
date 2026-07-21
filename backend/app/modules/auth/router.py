@@ -96,62 +96,44 @@ MAX_ATTEMPTS = 5
 WINDOW_SECONDS = 300
 
 
-def _check_rate_limit(
-    ip: str,
-) -> None:
-
+def _attempt_failure(ip: str) -> None:
+    """Atomically check rate limit and record a failed attempt.
+    
+    Prunes expired entries, then records this attempt and checks
+    whether the limit is exceeded — all under a single lock to
+    eliminate the TOCTOU race between check and record.
+    
+    Raises HTTPException (429) when blocked.
+    """
     now = time.monotonic()
-
     with _RATE_LOCK:
-
-        _attempts[ip] = [
-            attempt_time
-            for attempt_time
-            in _attempts[ip]
-            if (
-                now
-                - attempt_time
-                < WINDOW_SECONDS
-            )
-        ]
-
-        if (
-            len(_attempts[ip])
-            >= MAX_ATTEMPTS
-        ):
-            logger.warning(
-                "Rate Limit Event | IP: %s",
-                ip,
-            )
-
+        _attempts[ip] = [t for t in _attempts[ip] if now - t < WINDOW_SECONDS]
+        if len(_attempts[ip]) >= MAX_ATTEMPTS:
+            logger.warning("Rate Limit Event | IP: %s", ip)
             raise HTTPException(
-                status_code=(
-                    status
-                    .HTTP_429_TOO_MANY_REQUESTS
-                ),
-                detail=(
-                    "Too many failed "
-                    "login attempts. "
-                    "Please wait 5 minutes."
-                ),
-                headers={
-                    "Retry-After":
-                    str(
-                        WINDOW_SECONDS
-                    )
-                },
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many failed login attempts. Please wait 5 minutes.",
+                headers={"Retry-After": str(WINDOW_SECONDS)},
             )
+        _attempts[ip].append(now)
 
 
-def _record_failure(
-    ip: str,
-) -> None:
-
+def _check_rate_limit_only(ip: str) -> None:
+    """Check rate limit WITHOUT recording an attempt.
+    
+    Used before bcrypt verification to avoid wasting CPU on
+    locked-out accounts. Does NOT count as a failed attempt.
+    """
+    now = time.monotonic()
     with _RATE_LOCK:
-
-        _attempts[ip].append(
-            time.monotonic()
-        )
+        _attempts[ip] = [t for t in _attempts[ip] if now - t < WINDOW_SECONDS]
+        if len(_attempts[ip]) >= MAX_ATTEMPTS:
+            logger.warning("Rate Limit Check (pre-bcrypt) | IP: %s", ip)
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many failed login attempts. Please wait 5 minutes.",
+                headers={"Retry-After": str(WINDOW_SECONDS)},
+            )
 
 
 def _clear_failures(
@@ -210,16 +192,31 @@ def admin_login(
     admin_exists = db.query(Admin).filter(Admin.email == norm_email).first()
 
     if not admin_exists:
-        return {
-            "auth_type": "customer",
-            "access_token": None,
-            "token_type": None,
-            "admin": None
-        }
+        # Atomically check rate limit AND record this failure.
+        # A non-existent email still counts toward the per-IP limit
+        # to prevent attackers from probing valid addresses.
+        _attempt_failure(ip)
 
-    _check_rate_limit(
-        ip
-    )
+        logger.warning(
+            "Admin Login Failure | IP: %s | Email: %s | Error: Invalid email or password",
+            ip,
+            login_data.email,
+        )
+
+        raise HTTPException(
+            status_code=(
+                status
+                .HTTP_401_UNAUTHORIZED
+            ),
+            detail=(
+                "Invalid email or password."
+            ),
+        )
+
+    # Pre-bcrypt rate check — prevents wasting bcrypt cycles on locked-out IPs.
+    # This does NOT count as a failed attempt; the actual failure is recorded
+    # atomically via _attempt_failure below.
+    _check_rate_limit_only(ip)
 
     result = login_admin(
         db,
@@ -228,10 +225,11 @@ def admin_login(
     )
 
     if not result:
-
-        _record_failure(
-            ip
-        )
+        # Atomically check rate limit AND record this failure.
+        # The re-check inside _attempt_failure catches any concurrent
+        # requests that passed _check_rate_limit_only between our check
+        # and this record.
+        _attempt_failure(ip)
 
         logger.warning(
             "Admin Login Failure | IP: %s | Email: %s | Error: Invalid email or password",
@@ -431,19 +429,21 @@ def firebase_customer_login(
 
     except Exception as error:
         db.rollback()
-        import traceback
-        error_details = f"ROUTER GENERIC ERROR:\n{repr(error)}\nTraceback:\n{traceback.format_exc()}\n"
         logger.exception("Firebase customer login failed")
         logger.warning(
             "Customer Login Failure | IP: %s | Error: %s",
             ip,
             str(error),
         )
-        try:
-            with open("firebase_error.log", "a") as f:
-                f.write(error_details)
-        except Exception:
-            pass
+        if settings.ENVIRONMENT != "production":
+            import traceback
+            error_details = f"ROUTER GENERIC ERROR:\n{repr(error)}\nTraceback:\n{traceback.format_exc()}\n"
+            logger.warning("Writing full traceback to firebase_error.log (dev only)")
+            try:
+                with open("firebase_error.log", "a") as f:
+                    f.write(error_details)
+            except Exception:
+                pass
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
