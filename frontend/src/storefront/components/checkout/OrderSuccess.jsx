@@ -1,5 +1,6 @@
 import React from "react";
 import { Link, useLocation, Navigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import {
   CheckCircle2,
   Package,
@@ -13,36 +14,28 @@ import {
 import { formatPrice, getImageUrl } from "@/shared/utils/productUtils";
 
 export default function OrderSuccess() {
-  const { state } = useLocation();
+  const { state: locationState } = useLocation();
+  const reduxLastOrder = useSelector((state) => state.checkout?.lastOrder);
 
-  if (!state?.orders?.length) {
-    return <Navigate to="/" replace />;
+  const rawOrders = locationState?.orders || reduxLastOrder?.orders;
+  const orders = Array.isArray(rawOrders)
+    ? rawOrders
+    : rawOrders
+    ? [rawOrders]
+    : [];
+
+  if (!orders || orders.length === 0) {
+    return <Navigate to="/orders" replace />;
   }
 
-  const orders = state?.orders || [
-    {
-      id: "ORD-1001",
-      customer_name: "Bharath",
-      customer_phone: "9876543210",
-      address_line1: "12, AnnaNagar",
-      city: "Chennai",
-      state: "TamilNadu",
-      pincode: "600001",
-      product_name: "Nike Air Max",
-      product_image: "",
-      quantity: 1,
-      total_amount: 2999,
-    },
-  ];
-
-  const totals = state?.totals || {
-    subtotal: 2999,
+  const totals = locationState?.totals || reduxLastOrder?.totals || {
+    subtotal: 0,
     shipping: 0,
     tax: 0,
     total: 0,
   };
 
-  const paymentMethod = state?.paymentMethod || "COD";
+  const paymentMethod = locationState?.paymentMethod || reduxLastOrder?.paymentMethod || "COD";
 
   const firstOrder = orders?.[0] || null;
 

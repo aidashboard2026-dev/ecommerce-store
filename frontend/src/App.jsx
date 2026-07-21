@@ -4,6 +4,8 @@ import { BrowserRouter } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Toaster } from "react-hot-toast";
 
+import OfflinePage from "./pages/OfflinePage";
+
 import { fetchMeThunk } from "@/admin/store/authSlice";
 import {
   fetchCustomerMeThunk,
@@ -12,10 +14,14 @@ import {
 import AppRoutes from "@/shared/routes/AppRoutes";
 import ErrorBoundary from "@/shared/components/common/ErrorBoundary";
 import useStoreSettings from "@/shared/hooks/useStoreSettings";
+import useInternetStatus from "@/shared/hooks/useInternetStatus";
 
 import { loadCustomerCollectionsThunk } from "@/storefront/store/customerCollectionThunks";
+
 function App() {
   const dispatch = useDispatch();
+
+  
 
   // Admin authentication
   const adminToken = useSelector((state) => state.auth.token);
@@ -23,13 +29,19 @@ function App() {
 
   // Customer authentication
   const customerToken = useSelector((state) => state.customer.token);
-
   const customerInitialized = useSelector(
-    (state) => state.customer.initialized,
+    (state) => state.customer.initialized
   );
 
   const { settings, isLoading: settingsLoading } = useStoreSettings();
 
+  // useEffect...
+  // useEffect...
+  // useEffect...
+
+ 
+
+ 
   // --------------------------------------------------
   // Store settings
   // --------------------------------------------------
@@ -104,9 +116,13 @@ function App() {
     initializeCustomer();
   }, [customerToken, dispatch]);
 
+  const isOffline = useInternetStatus();
+    if (isOffline) {
+        return <OfflinePage />;
+    }
   // --------------------------------------------------
   // Application loading
-  // --------------------------------------------------
+  // --------------------------------------------------\
 
   if (!adminInitialized || !customerInitialized || settingsLoading) {
     return (

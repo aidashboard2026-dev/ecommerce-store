@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
-import { getImageUrl } from "@/shared/utils/productUtils";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useDestinationResolver } from "@/storefront/routing/DestinationResolver";
 import { Section, ContentWrapper } from "@/shared/components/layout";
+import BannerRenderer from "@/shared/components/BannerRenderer";
 
 const AUTO_ROTATE_MS = 6000;
 
@@ -53,7 +53,6 @@ function HeroCta({ banner }) {
 function BannerSlide({ banner }) {
   if (!banner) return null;
 
-  const imageUrl = getImageUrl(banner.banner_image);
   return (
     <Section spacing="md">
       <ContentWrapper>

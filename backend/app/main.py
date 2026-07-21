@@ -247,34 +247,26 @@ async def security_headers_middleware(request: Request, call_next):
     response.headers["X-XSS-Protection"] = "1; mode=block"
 
     # Content-Security-Policy
-    # - default-src 'self': baseline — everything loads from same origin
-    # - script-src 'self' https://checkout.razorpay.com https://*.firebaseio.com:
-    #   Razorpay Checkout SDK and Firebase SDK injected scripts
-    # - frame-src https://checkout.razorpay.com: Razorpay payment popup
-    # - connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://api.razorpay.com:
-    #   Firebase realtime DB + Razorpay API
-    # - img-src 'self' data: blob: https: https://*.supabase.co:
-    #   self-hosted + Supabase storage + data: for inline images + blob: for camera
-    # - style-src 'self' 'unsafe-inline' https://fonts.googleapis.com:
-    #   'unsafe-inline' required by React and shadcn/ui components
-    # - font-src 'self' https://fonts.gstatic.com: Google Fonts
-    # - object-src 'none': block plugins
-    # - base-uri 'self': prevent <base> tag injection
-    # - form-action 'self': prevent form-jacking
-    # - frame-ancestors 'none': block clickjacking (same intent as X-Frame-Options)
-    response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; "
-        "script-src 'self' https://checkout.razorpay.com https://*.firebaseio.com; "
-        "frame-src https://checkout.razorpay.com; "
-        "connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://api.razorpay.com; "
-        "img-src 'self' data: blob: https: https://*.supabase.co; "
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        "font-src 'self' https://fonts.gstatic.com; "
-        "object-src 'none'; "
-        "base-uri 'self'; "
-        "form-action 'self'; "
-        "frame-ancestors 'none'"
-    )
+    # Exclude documentation routes (/docs, /redoc, /openapi.json) so Swagger UI and ReDoc static assets
+    # (loaded from CDNs like cdn.jsdelivr.net with inline scripts) render without CSP violations.
+    # All application APIs and production endpoints retain strict CSP.
+    path = request.url.path
+    is_docs_route = path in {"/docs", "/redoc", "/openapi.json"} or path.startswith(("/docs/", "/redoc/"))
+
+    if not is_docs_route:
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' https://checkout.razorpay.com https://*.firebaseio.com; "
+            "frame-src https://checkout.razorpay.com; "
+            "connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://api.razorpay.com; "
+            "img-src 'self' data: blob: https: https://*.supabase.co; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "object-src 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self'; "
+            "frame-ancestors 'none'"
+        )
 
     if _IS_PRODUCTION:
         response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"

@@ -2,10 +2,10 @@ import { storefrontClient } from "../../shared/services/api";
 
 
 const CUSTOMER_CART_URL =
-  "/api/v1/customer/cart";
+  "/customer/cart";
 
 const CUSTOMER_WISHLIST_URL =
-  "/api/v1/customer/wishlist";
+  "/customer/wishlist";
 
 
 export const customerCartAPI = {

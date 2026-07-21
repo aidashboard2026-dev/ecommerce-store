@@ -61,24 +61,29 @@ export default function CustomProductDetailsPage({ product }) {
   // Related products — use the backend's priority-ordered related endpoint
 
 
-  // Image gallery — build from all available image fields, deduplicated
-    const images = useMemo(() => {
-        const seen = new Set();
-        const result = [];
-        const addImg = (url) => {
-            if (url && !seen.has(url)) {
-                seen.add(url);
-                result.push(url);
-            }
-        };
-        addImg(product?.thumbnail);
-        addImg(product?.image_front);
-        addImg(product?.image_back);
-        addImg(product?.image_size_chart);
-        (product?.gallery_images || []).forEach(addImg);
-        (product?.images || []).forEach(addImg);
-        return result;
-    }, [product]);
+  // Image gallery — build from valid images/gallery_images returned by API
+  const images = useMemo(() => {
+    const seen = new Set();
+    const result = [];
+    const addImg = (url) => {
+      if (
+        url &&
+        typeof url === "string" &&
+        url.trim() !== "" &&
+        !url.includes("placeholder-product.png") &&
+        !seen.has(url)
+      ) {
+        seen.add(url);
+        result.push(url);
+      }
+    };
+    (product?.gallery_images || []).forEach(addImg);
+    (product?.images || []).forEach(addImg);
+    if (result.length === 0 && product?.thumbnail) {
+      addImg(product.thumbnail);
+    }
+    return result;
+  }, [product]);
 
     const { data } = useCustomProducts();
 

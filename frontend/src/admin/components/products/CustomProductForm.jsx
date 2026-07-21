@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Plus, X, Camera, ImageIcon, 
+  Plus, X, Camera, ImageIcon,
   AlertTriangle, CheckCircle, Loader2,
 } from 'lucide-react'
+import ImageUploadModal from './ImageUploadModal'
 import toast from 'react-hot-toast'
 import {
   customProductsAPI,
   customCategoriesAPI,
 } from "@/shared/services/api"
 import {
-  formatPrice, getImageUrl, revokeObjectURLs, genLocalId, isDuplicateFile,
+  getImageUrl, revokeObjectURLs,
   getApiErrorMessage,
 } from '@/shared/utils/productUtils'
 import useBusinessLimits from '@/shared/hooks/useBusinessLimits'
@@ -25,9 +26,6 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 
 const STATUS_OPTIONS = ['draft', 'published', 'archived']
 
-const MAX_FILE_SIZE  = 10 * 1024 * 1024
-const ALLOWED_TYPES  = ['image/jpeg', 'image/png', 'image/webp']
-const SIZE_OPTIONS   = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
 
 
 // Branch versions: properly use clsx + component props (HEAD had broken duplicate
@@ -110,7 +108,8 @@ export default function CustomProductForm({
 }) {
   const qc     = useQueryClient()
   const { limits, isLoading: limitsLoading, error: limitsError, refetch: refetchLimits } = useBusinessLimits()
-  const isEdit = !!product
+  const isEdit      = !!product
+  const isLocalFlow = !isEdit  // alias: new-product flow (no product.id yet)
 
 
   // ─── Blank form ref ──────────────────────────────────────────────────────────
@@ -152,8 +151,9 @@ export default function CustomProductForm({
   })
 
   // ─── Other state ─────────────────────────────────────────────────────────────
-  const [localImages, setLocalImages]     = useState([])
-  const [editImages, setEditImages] = useState([])
+  const [localImages, setLocalImages]     = useState([])  // [{id, file, previewUrl}] — new product staging
+  const [editImages, setEditImages] = useState([])         // [{id, file, previewUrl}] — edit product pending gallery uploads
+  const [isGalleryModalOpen, setIsGalleryModalOpen] = useState(false)
   // const [localVariants, setLocalVariants] = useState([])
   const [saveSteps, setSaveSteps]         = useState(null)
   // const [deletingVariantIds, setDeletingVariantIds] = useState(() => new Set())
@@ -162,7 +162,6 @@ export default function CustomProductForm({
   const isCriticalFailureRef = useRef(false)
   const localImagesRef       = useRef(localImages)
   const productRef           = useRef(product)
-  const localFileRef         = useRef(null)
 
   useEffect(() => { localImagesRef.current = localImages }, [localImages])
   useEffect(() => { productRef.current = product }, [product])
@@ -223,6 +222,7 @@ export default function CustomProductForm({
 
     setLocalImages([])
     setEditImages([])
+    setIsGalleryModalOpen(false)
   }, [product?.id])
 
   // ─── Unsaved-changes guard ────────────────────────────────────────────────────
@@ -425,18 +425,19 @@ export default function CustomProductForm({
 
         return;
       }
-    // ── Step 2: Upload images ───────────────────────────────────────────────────
+    // ── Step 2: Upload images ─────────────────────────────────────────────────
+    // All images from Custom Products are gallery images. The backend decides
+    // primary/cover based on position — no thumbnail type needed here.
     if (imgCount > 0) {
       updateStep('upload-images', { status: 'loading' })
       let imgSucceeded = 0
       let imgFailed    = 0
 
       for (let i = 0; i < localImages.length; i++) {
-        const img       = localImages[i]
-        const imageType = i === 0 ? 'thumbnail' : 'gallery'
+        const img = localImages[i]
         try {
-          // BUG-2 FIX: pass img.file (raw File) — api.js builds FormData internally
-          await customProductsAPI.uploadImage(createdProduct.id, img.file, imageType, i === 0)
+          // All staged images are uploaded as gallery images
+          await customProductsAPI.uploadImage(createdProduct.id, img.file, 'gallery', false)
           imgSucceeded++
         } catch (_) {
           imgFailed++
@@ -489,91 +490,21 @@ export default function CustomProductForm({
     isCriticalFailureRef.current = false
   }, [onClose])
 
-  // ─── Local image handlers (new product only) ──────────────────────────────────
-
-  const pickLocalImage = useCallback((f) => {
-    if (!f || !limits) return
-    if (!ALLOWED_TYPES.includes(f.type))  { toast.error('Only JPG, PNG, WebP allowed'); return }
-    if (f.size > limits.max_image_size)   { toast.error(`File must be under ${limits.max_image_size / (1024 * 1024)} MB`); return }
-    setLocalImages(prev => {
-      if (prev.length >= limits.max_custom_product_images) { toast.error(`Maximum ${limits.max_custom_product_images} images`); return prev }
-      if (isDuplicateFile(f, prev))                 { toast.error('This image is already added');  return prev }
-      return [...prev, { id: genLocalId(), file: f, previewUrl: URL.createObjectURL(f) }]
-    })
-    if (localFileRef.current) localFileRef.current.value = ''
-  }, [limits])
-
-
-  const removeLocalImage = useCallback((id) => {
-    setLocalImages(prev => {
-      const item = prev.find(img => img.id === id)
-      if (item) URL.revokeObjectURL(item.previewUrl)
-      return prev.filter(img => img.id !== id)
-    })
-  }, [])
-
-  const pickEditImage = useCallback((file) => {
-    if (!file || !limits) return
-
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      toast.error("Only JPG, PNG, WebP allowed")
-      return
-    }
-
-    if (file.size > limits.max_image_size) {
-      toast.error(
-        `File must be under ${limits.max_image_size / (1024 * 1024)} MB`
-      )
-      return
-    }
-
-    setEditImages((prev) => {
-      if (prev.length >= limits.max_custom_product_images) {
-        toast.error(
-          `Maximum ${limits.max_custom_product_images} images allowed`
-        )
-        return prev
-      }
-
-      return [
-        ...prev,
-        {
-          id: genLocalId(),
-          file,
-          previewUrl: URL.createObjectURL(file),
-        },
-      ]
-    })
-
-    if (localFileRef.current) {
-      localFileRef.current.value = ""
-    }
-  }, [limits])
-
-
-  const removeEditImage = (id) => {
-    setEditImages((prev) => {
-      const item = prev.find((x) => x.id === id)
-
-      if (item) {
-        URL.revokeObjectURL(item.previewUrl)
-      }
-
-      return prev.filter((x) => x.id !== id)
-    })
-  }
   // ─── Derived values ───────────────────────────────────────────────────────────
 
-  const thumbnailUrl =
-    isEdit
-        ? (
-            editImages.length
-                ? editImages[0].previewUrl
-                : getImageUrl(product?.thumbnail)
-          )
-        : (
-            localImages[0]?.previewUrl || null
-          )
+  // Cover image = first gallery image (or first pending upload)
+  const thumbnailUrl = isEdit
+    ? (
+        editImages.length
+          ? editImages[0].previewUrl
+          : getImageUrl((product?.gallery_images || [])[0])
+      )
+    : (localImages[0]?.previewUrl || null)
+
+  const galleryCount = isEdit
+    ? (product?.gallery_images?.length || 0) + editImages.length
+    : localImages.length
+
   // const variants      = isEdit ? (product?.variants || []) : localVariants
   const isBatchSaving = saveSteps !== null
 
@@ -582,6 +513,43 @@ export default function CustomProductForm({
   return (
     <>
       {isBatchSaving && <SaveProgressOverlay steps={saveSteps} onClose={handleOverlayClose} />}
+
+      {/* Gallery Image Manager — reuses ImageUploadModal in gallery mode */}
+      <ImageUploadModal
+        isOpen={isGalleryModalOpen}
+        onClose={() => setIsGalleryModalOpen(false)}
+        mode="gallery"
+        product={isEdit ? product : { id: null }}
+        api={customProductsAPI}
+        queryKeyPrefix="custom-products"
+        detailQueryKey="custom-product"
+        limitKey="max_custom_product_images"
+        galleryImages={isEdit ? (product?.gallery_images || []) : []}
+        onGalleryDelete={isEdit
+          ? (index) => customProductsAPI.deleteGalleryImage(product.id, index)
+          : null
+        }
+        onSaveLocal={(files) => {
+          if (isEdit) {
+            // Edit mode: files are uploaded immediately in the modal; nothing to stage
+          } else {
+            // New product: stage files; wrap each as { id, file, previewUrl }
+            const newItems = files.map(f => ({
+              id: `${Date.now()}-${Math.random()}`,
+              file: f,
+              previewUrl: URL.createObjectURL(f),
+            }))
+            setLocalImages(prev => {
+              prev.forEach(img => URL.revokeObjectURL(img.previewUrl))
+              return newItems
+            })
+          }
+        }}
+        onSaved={() => {
+          qc.invalidateQueries({ queryKey: ['custom-products'] })
+          qc.invalidateQueries({ queryKey: ['custom-product'] })
+        }}
+      />
 
       {/* HEAD: card wrapper + shadow; branch: bg-app — merged both */}
       <div className="card overflow-hidden mt-6 shadow-md bg-app">
@@ -630,128 +598,41 @@ export default function CustomProductForm({
 
             {/* ── LEFT: image panel ── */}
             <div className="flex flex-col items-center gap-3.5">
-              {isEdit ? (
-                <>
-                  <div
-                    className="w-full max-w-[180px] sm:max-w-[220px] md:max-w-none h-40 sm:h-52 md:aspect-square border-2 border-dashed border-brand-500/50 hover:border-brand-500 rounded-2xl bg-app overflow-hidden cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01] mx-auto"
-                    onClick={() => localFileRef.current?.click()}
-                    title="Click to manage images"
-                  >
-                    {thumbnailUrl
-                      ? <img src={thumbnailUrl} alt={form.title} className="w-full h-full object-cover" />
-                      : <div className="flex flex-col items-center gap-1.5 text-muted">
-                          <Camera size={32} className="text-muted opacity-40" />
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted mt-1">Add Image</span>
-                        </div>
-                    }
+              {/* Cover / main image preview */}
+              <div
+                className="w-full max-w-[180px] sm:max-w-[220px] md:max-w-none h-40 sm:h-52 md:aspect-square border-2 border-dashed border-brand-500/50 hover:border-brand-500 rounded-2xl bg-app overflow-hidden cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01] mx-auto"
+                onClick={() => setIsGalleryModalOpen(true)}
+                title="Click to manage gallery images"
+              >
+                {thumbnailUrl ? (
+                  <img src={thumbnailUrl} alt={form.title || 'Cover'} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="flex flex-col items-center gap-1.5 text-muted">
+                    <Camera size={32} className="text-muted opacity-40" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted mt-1">No Images</span>
                   </div>
-                  <input
-                      ref={localFileRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="hidden"
-                      onChange={(e)=>{
-                          if(e.target.files?.length){
-                              pickEditImage(e.target.files[0])
-                          }
-                      }}
-                  />
+                )}
+              </div>
 
-                  <Button
-                      type="button"
-                      onClick={() => localFileRef.current?.click()}
-                      variant="secondary"
-                      icon={Plus}
-                      className="w-full"
-                  >
-                      Add More
-                  </Button>
-                  {editImages.length > 1 && (
-                  <div className="flex gap-1.5 flex-wrap mt-1">
-                      {editImages.slice(1).map(img => (
-                          <div
-                              key={img.id}
-                              className="relative w-8 h-9 rounded overflow-hidden border border-app"
-                          >
-                              <img
-                                  src={img.previewUrl}
-                                  className="w-full h-full object-cover"
-                              />
+              {/* Image count badge */}
+              {galleryCount > 0 && (
+                <div className="flex items-center gap-1.5 text-[10px] text-muted font-medium">
+                  <ImageIcon size={11} />
+                  <span>{galleryCount} image{galleryCount !== 1 ? 's' : ''}</span>
+                </div>
+              )}
 
-                              <Button
-                                  type="button"
-                                  onClick={() => removeEditImage(img.id)}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="absolute inset-0 h-full w-full p-0 rounded-none bg-black/50 opacity-0 hover:opacity-100"
-                              >
-                                  <X
-                                      size={10}
-                                      className="text-white"
-                                  />
-                              </Button>
-                          </div>
-                      ))}
-                  </div>
-                  
-              )}
-                  {editImages.length > 0 && (
-                      <Button
-                          type="button"
-                          onClick={() => removeEditImage(editImages[0].id)}
-                          variant="ghost"
-                          size="sm"
-                          icon={X}
-                          className="mt-1.5 p-0 text-[10px] text-red-500 hover:text-red-600 hover:bg-transparent"
-                      >
-                          Remove
-                      </Button>
-                  )}
-                </>
-              ) : (
-                <>
-                  <div
-                    className="w-full max-w-[250px] mx-auto h-40 sm:h-auto sm:aspect-square border-2 border-dashed border-gray-500/50 hover:border-brand-500 rounded-2xl bg-app overflow-hidden cursor-pointer flex items-center justify-center"
-                    onClick={() => localFileRef.current?.click()}
-                    title="Click to add image"
-                  >
-                    {localImages.length > 0
-                      ? <img src={localImages[0].previewUrl} alt="preview" className="w-full h-full object-cover" />
-                      : <div className="flex flex-col items-center gap-1.5 text-muted">
-                          <Camera size={32} className="text-muted opacity-40" />
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted mt-1">Click to add</span>
-                        </div>
-                    }
-                  </div>
-                  <input ref={localFileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
-                    onChange={e => pickLocalImage(e.target.files[0])} />
-                  {localImages.length > 1 && (
-                    <div className="flex gap-1.5 flex-wrap mt-1">
-                      {localImages.slice(1).map(img => (
-                        <div key={img.id} className="relative w-8 h-9 rounded overflow-hidden border border-app">
-                          <img src={img.previewUrl} alt="" className="w-full h-full object-cover" />
-                          <Button type="button" onClick={() => removeLocalImage(img.id)}
-                            aria-label="Remove image"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute inset-0 h-full w-full p-0 rounded-none bg-black/50 opacity-0 hover:opacity-100">
-                            <X size={10} className="text-white" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <Button type="button" onClick={() => localFileRef.current?.click()} variant="secondary" icon={Plus} className="w-full" disabled={limitsLoading || !!limitsError || (limits && localImages.length >= limits.max_custom_product_images)}>
-                    {limitsLoading ? 'Loading limits...' : (localImages.length > 0 ? 'Add More' : 'Add Image')}
-                  </Button>
-                  {localImages.length > 0 && (
-                    <Button type="button" onClick={() => removeLocalImage(localImages[0].id)}
-                      variant="ghost" size="sm" icon={X} className="mt-1.5 p-0 text-[10px] text-red-500 hover:text-red-600 hover:bg-transparent">
-                      Remove
-                    </Button>
-                  )}
-                </>
-              )}
+              {/* Open modal button */}
+              <Button
+                type="button"
+                onClick={() => setIsGalleryModalOpen(true)}
+                variant="secondary"
+                icon={galleryCount > 0 ? ImageIcon : Plus}
+                className="w-full"
+                disabled={limitsLoading || !!limitsError}
+              >
+                {limitsLoading ? 'Loading…' : (galleryCount > 0 ? 'Manage Images' : 'Add Images')}
+              </Button>
             </div>
 
             {/* ── RIGHT: fields ── */}

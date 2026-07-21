@@ -226,20 +226,6 @@ def delete_custom_product_endpoint(
 ):
     product = get_custom_product_orm(db, product_id)
     title   = product.title
-    # Cleanup images from dedicated custom-product bucket before soft-delete
-    for attr in ["thumbnail", "image_front", "image_back", "image_size_chart"]:
-        url = getattr(product, attr, None)
-        if url:
-            try:
-                supabase_storage.delete_custom_product_image(url)
-            except Exception:
-                pass
-    for url in product.gallery_images or []:
-        if url:
-            try:
-                supabase_storage.delete_custom_product_image(url)
-            except Exception:
-                pass
     delete_custom_product(db, product_id)
     audit.deleted(
         db=db, admin=current_admin,
