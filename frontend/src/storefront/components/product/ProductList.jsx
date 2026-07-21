@@ -227,32 +227,6 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
     }));
   };
 
-  // const handleReset = () => {
-
-  //   if(
-  //       !hasActiveFilters
-  //   ){
-  //       return;
-  //   }
-
-  //   setSearch("");
-
-  //   setFilters({
-  //       ...DEFAULT_FILTERS,
-  //       category: "",
-  //       category_id: "",
-  //       collection: "",
-  //       collection_id: "",
-  //   });
-
-  //   setSearchParams(
-  //       {},
-  //       {
-  //         replace:true
-  //       }
-  //   );
-
-  // }
   const hasActiveFilters = useMemo(() => {
     const drawerFilters =
       filters.sort_by !== "newest" ||
@@ -293,7 +267,7 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
      
   }, [filters, categories, queryFilters]);
   return (
-    <PageContainer>
+    <PageContainer className="p-3">
       <div className="flex flex-col gap-2 mb-6">
         <h1 className="font-display text-2xl font-bold text-app sm:text-3xl lg:text-4xl">
             {pageTitle}
@@ -307,7 +281,7 @@ export default function ProductsList({ forcedFilters = {}, title = 'Shop Catalog
 
       {/* Search + mobile filter trigger */}
 
-      <div className="mb-8 flex flex-col justify-between overflow-hidden border-y border-app sm:flex-row sm:items-center">
+      <div className="mb-8 flex flex-col justify-between overflow-visible border-y border-app sm:flex-row sm:items-center">
 
       {/* Left Side */}
       <div className="flex min-h-[58px] flex-1 items-center px-3 py-2 sm:px-5">

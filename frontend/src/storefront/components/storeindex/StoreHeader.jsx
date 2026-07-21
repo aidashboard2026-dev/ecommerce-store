@@ -166,11 +166,11 @@ const StoreHeaderComponent = function StoreHeader({
   return (
     <>
       {/* ════════════════════ HEADER BAR ════════════════════ */}
-      <Section spacing="md" className="bg-green-400">
+      <Section spacing="md" >
         <header
           className={clsx(
-            "sticky top-0 z-40 bg-orange-400 transition-all duration-300 w-full border-b border-app",
-            "py-3 px-3 sm:px-10",
+            "sticky top-0 z-40 transition-all duration-300 w-full border-b border-app",
+            "p-2",
             "shadow-[0_1px_20px_rgba(0,0,0,0.12)]",
             scrolled && "py-2 shadow-[0_4px_30px_rgba(0,0,0,0.2)]",
           )}
@@ -376,13 +376,13 @@ const StoreHeaderComponent = function StoreHeader({
             </div> 
             {mobileMenuOpen && (
               <nav
-                className="absolute top-full right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-app border border-app rounded-2xl shadow-2xl z-[9999] overflow-hidden"
+                className="fixed top-[52px] right-0 mt-2 h-full w-80 max-w-[calc(100vw-2rem)] bg-app border border-app shadow-2xl z-[9999] overflow-hidden"
                 role="dialog"
                 aria-modal="true"
                 aria-label="Navigation menu"
               >
               {/* Drawer Header */}
-              <div className="flex items-center justify-between  p-4 border-b border-app">
+              <div className="flex items-center justify-between p-3 border-b border-app">
                 <span className="font-display font-bold text-app">Menu</span>
                 <div className="flex flex-row items-center gap-2">
                   <button
@@ -435,7 +435,7 @@ const StoreHeaderComponent = function StoreHeader({
               </div>
 
               {/* Scrollable Links */}
-              <div className="max-h-[65vh] overflow-y-auto py-2">
+              <div className="h-fit overflow-y-auto py-2">
                 {MOBILE_NAV_LINKS.map((link) => (
                   <Link
                     key={link.to}
@@ -450,7 +450,7 @@ const StoreHeaderComponent = function StoreHeader({
               </div>
 
               {/* Mobile Actions Drawer Footer */}
-              <div className="mt-auto p-3 border-t border-app  flex items-center justify-around">
+              <div className="mt-auto p-3 border-t border-app flex items-center justify-around">
                 {token && customer ? (
                   <>
                     <div>
@@ -501,7 +501,7 @@ const StoreHeaderComponent = function StoreHeader({
                   <Link
                     to="/auth/login"
                     onClick={closeMobileMenu}
-                    className="flex items-center gap-3 px-5 py-3 text-sm text-app hover:bg-surface transition-colors"
+                    className="flex items-center gap-3 px-5 py-2 text-sm text-app hover:bg-surface transition-colors"
                   >
                     <User size={16} /> Login / Sign Up
                   </Link>

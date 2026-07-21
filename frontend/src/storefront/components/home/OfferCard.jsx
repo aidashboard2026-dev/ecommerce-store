@@ -4,15 +4,6 @@ import { Tag } from "lucide-react";
 import clsx from "clsx";
 import { getImageUrl } from "@/shared/utils/productUtils";
 
-/**
- * Single promotional offer card.
- *
- * Extracted out of OfferSection so the homepage strip and the dedicated
- * /offers page render identical markup instead of two copies drifting apart.
- * Offers are store-wide banners (see app/modules/offers/models.py — no
- * product_id/category_id on the Offer model), so every card intentionally
- * links to the general catalog rather than a filtered subset.
- */
 export default function OfferCard({ offer, className }) {
   return (
     <Link

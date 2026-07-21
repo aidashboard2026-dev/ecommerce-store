@@ -7,7 +7,7 @@ export default function CustomProductSection({ products = [] }) {
   if (!products.length) return null;
 
   return (
-    <Section spacing="md">
+    <Section spacing="md " className="p-3">
 
       <div className="mb-6 flex items-end justify-between gap-4">
 
