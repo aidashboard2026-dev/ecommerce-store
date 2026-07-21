@@ -1,5 +1,7 @@
-import axios from 'axios'
-import { compressImage } from '../utils/imageCompression'
+import axios from "axios";
+import { compressImage } from "../utils/imageCompression";
+import { store } from "@/shared/store/store";
+import { setOffline, setOnline } from "@/shared/store/networkSlice";
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
 
@@ -31,25 +33,36 @@ const api = axios.create({
 
 // ── Attach JWT token to every request ────────────────────────────────────────
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('admin_token')
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
+  // Every successful request attempt -> assume online
+  store.dispatch(setOnline());
+
+  const token = localStorage.getItem("admin_token");
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
 
 // ── Handle 401s globally ──────────────────────────────────────────────────────
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    store.dispatch(setOnline());
+    return response;
+  },
   (error) => {
-    const isAuthRoute = error.config?.url?.endsWith('/auth/login') ||
-                        error.config?.url?.endsWith('/auth/logout') ||
-                        error.config?.url?.endsWith('/auth/signup')
-    if (error.response?.status === 401 && !isAuthRoute) {
-      localStorage.removeItem('admin_token')
-      window.dispatchEvent(new CustomEvent('auth:unauthorized'))
+    console.log("API ERROR:", error);
+
+    if (!error.response) {
+      console.log("OFFLINE DETECTED");
+      store.dispatch(setOffline());
     }
-    return Promise.reject(error)
+
+    return Promise.reject(error);
   }
-)
+);
+
 
 export default api
 
@@ -66,24 +79,42 @@ const storefrontClient = axios.create({
 })
 
 storefrontClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('customer_token')
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
+  store.dispatch(setOnline());
+
+  const token = localStorage.getItem('customer_token');
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
 
 storefrontClient.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    const isAuthRoute = err.config?.url?.endsWith('/auth/firebase/login')
-    if (err.response?.status === 401 && !isAuthRoute) {
-      localStorage.removeItem('customer_token')
-      localStorage.removeItem('customer')
-      window.dispatchEvent(new CustomEvent('customer:unauthorized'))
-    }
-    return Promise.reject(err)
-  }
-)
+  (response) => {
+    store.dispatch(setOnline());
+    return response;
+  },
+  (error) => {
+    console.log("STOREFRONT ERROR:", error);
 
+    if (!error.response) {
+      console.log("STOREFRONT OFFLINE");
+      store.dispatch(setOffline());
+    }
+
+    const isAuthRoute =
+      error.config?.url?.endsWith("/auth/firebase/login");
+
+    if (error.response?.status === 401 && !isAuthRoute) {
+      localStorage.removeItem("customer_token");
+      localStorage.removeItem("customer");
+      window.dispatchEvent(new CustomEvent("customer:unauthorized"));
+    }
+
+    return Promise.reject(error);
+  }
+);
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 export const authAPI = {
