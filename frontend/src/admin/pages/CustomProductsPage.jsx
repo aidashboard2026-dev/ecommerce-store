@@ -1,4 +1,4 @@
-/**
+﻿/**
  * src/pages/AdminPage/ProductsPage.jsx
  * Enhanced with category, collection, stock status, and merchandising flag filters.
  * Adds bulk actions UI. Preserves existing UI/UX completely.
@@ -668,7 +668,7 @@ export default function ProductsPage() {
                           / product.original_price_max
                         ) * 100
                       )}%`
-                    : 'â€”'
+                    : ''
                 const statusMap = { published: 'success', draft: 'default', archived: 'warning' }
                 return (
                   <TableRow key={product.id}>
@@ -697,12 +697,12 @@ export default function ProductsPage() {
                     </TableCell>
                     <TableCell>
                       <span className="text-[10px] text-muted">
-                        {product.custom_category_name || 'â€”'}
+                        {product.custom_category_name || ''}
                       </span>
                     </TableCell>
                     <TableCell>
                       <span className="font-mono text-[10px] bg-app border border-app px-2 py-0.5 rounded text-app font-semibold">
-                        {product.sku || 'â€”'}
+                        {product.sku || ''}
                       </span>
                     </TableCell>
                     <TableCell className="font-medium text-app">

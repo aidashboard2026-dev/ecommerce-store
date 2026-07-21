@@ -1609,8 +1609,8 @@ export default function InlineProductForm({
         });
         toast.error(
           imgSucceeded > 0
-            ? `${imgFailed} image${imgFailed > 1 ? "s" : ""} failed â€” add them later`
-            : "Image upload failed â€” add images later via Edit",
+            ? `${imgFailed} image${imgFailed > 1 ? "s" : ""} failed ” add them later`
+            : "Image upload failed ” add images later via Edit",
         );
       }
     }
@@ -1937,7 +1937,7 @@ export default function InlineProductForm({
                     set("collection_id", "");
                   }}
                 >
-                  <option value="">â€” None â€”</option>
+                  <option value="">None</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -1957,7 +1957,7 @@ export default function InlineProductForm({
                   value={form.collection_id}
                   onChange={(e) => set("collection_id", e.target.value)}
                 >
-                  <option value="">â€” None â€”</option>
+                  <option value="">None</option>
                   {filteredCollections.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -2064,10 +2064,10 @@ export default function InlineProductForm({
                 <label className="text-xs font-bold text-muted">Flags</label>
                 <div className="flex flex-wrap gap-3">
                   {[
-                    { key: "is_featured", label: "â­ Featured" },
-                    { key: "is_trending", label: "ðŸ”¥ Trending" },
-                    { key: "is_best_seller", label: "âš¡ Best Seller" },
-                    { key: "is_new_arrival", label: "ðŸ†• New Arrival" },
+                    { key: "is_featured", label: "Featured" },
+                    { key: "is_trending", label: " Trending" },
+                    { key: "is_best_seller", label: " Best Seller" },
+                    { key: "is_new_arrival", label: " New Arrival" },
                   ].map((f) => (
                     <label
                       key={f.key}
