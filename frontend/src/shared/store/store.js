@@ -6,7 +6,6 @@ import customerReducer from '@/storefront/store/customerSlice'
 import cartReducer from '@/storefront/store/cartSlice'
 import wishlistReducer from '@/storefront/store/wishlistSlice'
 import checkoutReducer from '@/storefront/store/checkoutStore'
-import networkReducer from "./networkSlice";
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +17,5 @@ export const store = configureStore({
       wishlist: wishlistReducer,
       checkout: checkoutReducer,
 
-      network: networkReducer,
   },
 })

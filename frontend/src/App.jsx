@@ -4,7 +4,6 @@ import { BrowserRouter } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Toaster } from "react-hot-toast";
 
-import OfflinePage from "./pages/OfflinePage";
 
 import { fetchMeThunk } from "@/admin/store/authSlice";
 import {
@@ -14,7 +13,6 @@ import {
 import AppRoutes from "@/shared/routes/AppRoutes";
 import ErrorBoundary from "@/shared/components/common/ErrorBoundary";
 import useStoreSettings from "@/shared/hooks/useStoreSettings";
-import useInternetStatus from "@/shared/hooks/useInternetStatus";
 
 import { loadCustomerCollectionsThunk } from "@/storefront/store/customerCollectionThunks";
 
@@ -116,10 +114,7 @@ function App() {
     initializeCustomer();
   }, [customerToken, dispatch]);
 
-  const isOffline = useInternetStatus();
-    if (isOffline) {
-        return <OfflinePage />;
-    }
+
   // --------------------------------------------------
   // Application loading
   // --------------------------------------------------\

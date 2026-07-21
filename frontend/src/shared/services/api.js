@@ -1,7 +1,6 @@
 import axios from "axios";
 import { compressImage } from "../utils/imageCompression";
 import { store } from "@/shared/store/store";
-import { setOffline, setOnline } from "@/shared/store/networkSlice";
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
 
@@ -33,9 +32,6 @@ const api = axios.create({
 
 // ── Attach JWT token to every request ────────────────────────────────────────
 api.interceptors.request.use((config) => {
-  // Every successful request attempt -> assume online
-  store.dispatch(setOnline());
-
   const token = localStorage.getItem("admin_token");
 
   if (token) {
@@ -48,16 +44,10 @@ api.interceptors.request.use((config) => {
 // ── Handle 401s globally ──────────────────────────────────────────────────────
 api.interceptors.response.use(
   (response) => {
-    store.dispatch(setOnline());
     return response;
   },
   (error) => {
     console.log("API ERROR:", error);
-
-    if (!error.response) {
-      console.log("OFFLINE DETECTED");
-      store.dispatch(setOffline());
-    }
 
     return Promise.reject(error);
   }
@@ -79,8 +69,6 @@ export const storefrontClient = axios.create({
 })
 
 storefrontClient.interceptors.request.use((config) => {
-  store.dispatch(setOnline());
-
   const token = localStorage.getItem('customer_token');
 
   if (token) {
@@ -92,16 +80,10 @@ storefrontClient.interceptors.request.use((config) => {
 
 storefrontClient.interceptors.response.use(
   (response) => {
-    store.dispatch(setOnline());
     return response;
   },
   (error) => {
     console.log("STOREFRONT ERROR:", error);
-
-    if (!error.response) {
-      console.log("STOREFRONT OFFLINE");
-      store.dispatch(setOffline());
-    }
 
     const isAuthRoute =
       error.config?.url?.endsWith("/auth/firebase/login");
