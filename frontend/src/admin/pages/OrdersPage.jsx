@@ -31,30 +31,19 @@ import {
 } from "@/admin/services/order_Service";
 import { useDebounce, getApiErrorMessage } from "@/shared/utils/productUtils";
 import { generateInvoice } from "@/shared/utils/invoiceGenerator";
+
 function Pagination({ page, totalPages, onPageChange }) {
   return (
     <div className="flex items-center justify-center gap-2">
-
-      <button
-        onClick={() => onPageChange(page - 1)}
-        disabled={page <= 1}
-        className="p-2 rounded-lg border border-app text-muted hover:text-app hover:bg-surface disabled:opacity-30 transition-all"
-      >
+      <button onClick={() => onPageChange(page - 1)} disabled={page <= 1}
+        className="p-2 rounded-lg border border-app text-muted hover:text-app hover:bg-surface disabled:opacity-30 transition-all">
         <ChevronLeft size={14} />
       </button>
-
-      <span className="text-xs text-muted px-2 font-medium">
-        Page {page} of {totalPages}
-      </span>
-
-      <button
-        onClick={() => onPageChange(page + 1)}
-        disabled={page >= totalPages}
-        className="p-2 rounded-lg border border-app text-muted hover:text-app hover:bg-surface disabled:opacity-30 transition-all"
-      >
+      <span className="text-xs text-muted px-2 font-medium">Page {page} of {totalPages}</span>
+      <button onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}
+        className="p-2 rounded-lg border border-app text-muted hover:text-app hover:bg-surface disabled:opacity-30 transition-all">
         <ChevronRight size={14} />
       </button>
-
     </div>
   )
 }
@@ -512,7 +501,7 @@ export default function OrdersPage() {
                         <p>Size: <span className="font-bold text-app">{order.size}</span></p>
                         <p>Color: <span className="font-bold text-app">{order.color}</span></p>
                         <p>Qty: <span className="font-bold text-app">{order.quantity}</span></p>
-                        <p>Price: <span className="font-bold text-app">â‚¹{order.price}</span></p>
+                        <p>Price: <span className="font-bold text-app">{order.price}</span></p>
                       </div>
                     </div>
                   </div>
@@ -521,17 +510,17 @@ export default function OrdersPage() {
                   <div className="border-t border-app pt-4 space-y-2 text-xs">
                     <div className="flex justify-between">
                       <span className="text-muted">Subtotal</span>
-                      <span className="font-medium text-app">â‚¹{order.price * order.quantity}</span>
+                      <span className="font-medium text-app">{order.price * order.quantity}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted">Shipping</span>
                       <span className={order.shipping_fee > 0 ? "font-medium text-app" : "font-bold text-emerald-500 uppercase text-[10px]"}>
-                        {order.shipping_fee > 0 ? `â‚¹${order.shipping_fee}` : "FREE"}
+                        {order.shipping_fee > 0 ? `${order.shipping_fee}` : "FREE"}
                       </span>
                     </div>
                     <div className="flex justify-between border-t border-app pt-2 font-bold text-sm">
                       <span className="text-app">Total Amount</span>
-                      <span className="text-emerald-500">â‚¹{order.total_amount}</span>
+                      <span className="text-emerald-500">{order.total_amount}</span>
                     </div>
                     <div className="pt-2 flex flex-col gap-1.5 border-t border-app">
                       <div className="flex justify-between">
@@ -577,7 +566,7 @@ export default function OrdersPage() {
                   </div>
                    <div className="text-center pt-2">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Receipt Settled</p>
-                      <p className="text-xl font-bold font-display text-app">â‚¹{order.total_amount}</p>
+                      <p className="text-xl font-bold font-display text-app">{order.total_amount}</p>
                       <div className="mt-1.5">
                         <Badge
                           label={order.payment_status}
@@ -602,48 +591,41 @@ export default function OrdersPage() {
       </div>
 
       {/* â”€â”€ Pagination â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-app mt-2">
-          <p className="text-sm text-muted">
-            Page <span className="font-medium text-app">{currentPage}</span> of{" "}
-            <span className="font-medium text-app">{totalPages}</span>{" "}
-            &mdash; {totalOrders} total orders
-          </p>
-          <div className="flex gap-2">
-            <button
-              disabled={currentPage <= 1}
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              className="px-3 py-1 text-sm rounded bg-app text-app disabled:opacity-40 hover:bg-surface-hover transition-colors"
-            >
-              ← Prev
-            </button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
-              const page  = start + i;
-              return page <= totalPages ? (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`px-3 py-1 text-sm rounded transition-colors ${
-                    page === currentPage
-                      ? "bg-brand-500 text-app"
-                      : "bg-app text-muted hover:bg-surface-hover"
-                  }`}
-                >
-                  {page}
-                </button>
-              ) : null;
-            })}
-            <button
-              disabled={currentPage >= totalPages}
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              className="px-3 py-1 text-sm rounded bg-app text-app disabled:opacity-40 hover:bg-surface-hover transition-colors"
-            >
-              Next →
-            </button>
+      {/* {totalPages > 1 && (
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-t border-app pt-5 mt-6">
+
+          <div className="text-sm text-muted">
+            Showing{" "}
+            <span className="font-semibold text-app">
+              {(currentPage - 1) * PAGE_SIZE + 1}
+            </span>
+            {" - "}
+            <span className="font-semibold text-app">
+              {Math.min(currentPage * PAGE_SIZE, totalOrders)}
+            </span>
+            {" of "}
+            <span className="font-semibold text-app">
+              {totalOrders}
+            </span>
+            {" Orders"}
           </div>
+
+          <Pagination
+            page={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+
         </div>
-      )}
+      )} */}
+
+      {totalPages > 1 && (
+    <Pagination
+        page={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+    />
+)}
     </div>
   );
 }

@@ -160,11 +160,15 @@ class OrderRepository(BaseRepository[Order]):
             q = q.filter(Order.item_type == item_type.upper())
         if search:
             term = f"%{search.strip()}%"
+
             q = q.filter(
                 Order.order_number.ilike(term)
                 | Order.customer_name.ilike(term)
                 | Order.customer_email.ilike(term)
                 | Order.product_name.ilike(term)
+                | Order.tracking_status.ilike(term)
+                | Order.payment_status.ilike(term)
+                | Order.payment_method.ilike(term)
             )
 
         total = q.with_entities(sqla_func.count(Order.id)).scalar() or 0

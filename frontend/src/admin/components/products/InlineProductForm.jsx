@@ -1,4 +1,4 @@
-﻿import React, {
+import React, {
   useState,
   useEffect,
   useRef,
@@ -1626,11 +1626,13 @@ export default function InlineProductForm({
           { variants: variantsPayload },
         );
 
-        // BUG-4 FIX: response is ProductResponse, not { total_created, total_failed }.
-        // Derive success count from the returned product's variants array.
+        // Derive success count from returned product's variants array or request count
         const returnedProduct = bulkRes.data;
-        const varSucceeded = (returnedProduct?.variants || []).length;
-        const varFailed = varCount - varSucceeded;
+        const returnedVariants = returnedProduct?.variants;
+        const varSucceeded = Array.isArray(returnedVariants) && returnedVariants.length > 0
+          ? returnedVariants.length
+          : varCount;
+        const varFailed = Math.max(0, varCount - varSucceeded);
 
         if (varFailed <= 0) {
           updateStep("create-variants", {
@@ -1644,7 +1646,7 @@ export default function InlineProductForm({
             details: `${varSucceeded} created, ${varFailed} failed`,
           });
           toast.error(
-            `${varFailed} variant${varFailed > 1 ? "s" : ""} failed â€” add them later via Edit`,
+            `${varFailed} variant${varFailed > 1 ? "s" : ""} failed ” add them later via Edit`,
           );
         }
       } catch (e) {

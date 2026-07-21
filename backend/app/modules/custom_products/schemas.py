@@ -274,23 +274,28 @@ class CustomProductResponse(BaseModel):
     def resolve_image_urls(cls, data: Any) -> Any:
         from app.shared.storage.supabase_storage import get_custom_product_image_url
 
-        if isinstance(data, dict):
-            # Resolve image URLs
-            data["thumbnail"] = get_custom_product_image_url(data.get("thumbnail"))
-            data["image_front"] = get_custom_product_image_url(data.get("image_front"))
-            data["image_back"] = get_custom_product_image_url(data.get("image_back"))
-            data["image_size_chart"] = get_custom_product_image_url(data.get("image_size_chart"))
-            
-            gallery = data.get("gallery_images") or []
-            resolved_gallery = [get_custom_product_image_url(img) for img in gallery]
-            data["gallery_images"] = resolved_gallery
+        def _resolve_optional_img(val: Optional[str]) -> Optional[str]:
+            if not val or not str(val).strip():
+                return None
+            res = get_custom_product_image_url(val)
+            if res and res.endswith("placeholder-product.png"):
+                return None
+            return res
 
-            # Populate legacy/consolidated images list
-            all_imgs = []
-            for img in [data["thumbnail"], data["image_front"], data["image_back"], data["image_size_chart"]] + resolved_gallery:
-                if img and not img.endswith("placeholder-product.png"):
-                    all_imgs.append(img)
-            data["images"] = all_imgs
+        if isinstance(data, dict):
+            gallery = data.get("gallery_images") or []
+            resolved_gallery = []
+            for img in gallery:
+                r = _resolve_optional_img(img)
+                if r and r not in resolved_gallery:
+                    resolved_gallery.append(r)
+            
+            data["gallery_images"] = resolved_gallery
+            data["images"] = list(resolved_gallery)
+            data["thumbnail"] = resolved_gallery[0] if resolved_gallery else None
+            data["image_front"] = _resolve_optional_img(data.get("image_front"))
+            data["image_back"] = _resolve_optional_img(data.get("image_back"))
+            data["image_size_chart"] = _resolve_optional_img(data.get("image_size_chart"))
         else:
             d = {}
             for field in cls.model_fields.keys():
@@ -301,21 +306,19 @@ class CustomProductResponse(BaseModel):
                 if hasattr(data, extra):
                     d[extra] = getattr(data, extra)
             
-            d["thumbnail"] = get_custom_product_image_url(d.get("thumbnail"))
-            d["image_front"] = get_custom_product_image_url(d.get("image_front"))
-            d["image_back"] = get_custom_product_image_url(d.get("image_back"))
-            d["image_size_chart"] = get_custom_product_image_url(d.get("image_size_chart"))
-            
             gallery = d.get("gallery_images") or []
-            resolved_gallery = [get_custom_product_image_url(img) for img in gallery]
+            resolved_gallery = []
+            for img in gallery:
+                r = _resolve_optional_img(img)
+                if r and r not in resolved_gallery:
+                    resolved_gallery.append(r)
+            
             d["gallery_images"] = resolved_gallery
-
-            # Populate legacy/consolidated images list
-            all_imgs = []
-            for img in [d["thumbnail"], d["image_front"], d["image_back"], d["image_size_chart"]] + resolved_gallery:
-                if img and not img.endswith("placeholder-product.png"):
-                    all_imgs.append(img)
-            d["images"] = all_imgs
+            d["images"] = list(resolved_gallery)
+            d["thumbnail"] = resolved_gallery[0] if resolved_gallery else None
+            d["image_front"] = _resolve_optional_img(d.get("image_front"))
+            d["image_back"] = _resolve_optional_img(d.get("image_back"))
+            d["image_size_chart"] = _resolve_optional_img(d.get("image_size_chart"))
             
             return d
             

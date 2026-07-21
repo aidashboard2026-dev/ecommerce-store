@@ -108,7 +108,10 @@ class Settings(BaseSettings):
     #   BACKEND_CORS_ORIGINS=http://localhost:5173,https://yourdomain.com
     # ------------------------------------------------------------------
 
-    BACKEND_CORS_ORIGINS: List[str] = []
+    BACKEND_CORS_ORIGINS: List[str] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
 
     PRODUCTION_FRONTEND_URL: str = ""
 

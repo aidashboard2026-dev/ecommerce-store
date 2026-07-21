@@ -1078,8 +1078,10 @@ def update_product(db: Session, product_id: int, product_in: ProductUpdate) -> P
 
 def soft_delete_product(db: Session, product_id: int) -> None:
     from datetime import datetime, timezone
+    from app.shared.storage import supabase_storage
     now = datetime.now(timezone.utc)
     product = get_product(db, product_id)
+    supabase_storage.delete_all_product_images(product)
     product.deleted_at = now
     for variant in product.variants:
         variant.deleted_at = now
@@ -1126,19 +1128,7 @@ def bulk_action(db: Session, payload: BulkActionPayload) -> dict:
     elif action == "delete":
         from app.shared.storage import supabase_storage
         for p in products:
-            for attr in ["thumbnail", "image_front", "image_back", "image_size_chart"]:
-                url = getattr(p, attr, None)
-                if url:
-                    try:
-                        supabase_storage.delete_product_image(url)
-                    except Exception:
-                        pass
-            for url in p.gallery_images or []:
-                if url:
-                    try:
-                        supabase_storage.delete_product_image(url)
-                    except Exception:
-                        pass
+            supabase_storage.delete_all_product_images(p)
         now = datetime.now(timezone.utc)
         for p in products:
             p.deleted_at = now
@@ -1294,6 +1284,7 @@ def add_variant(db: Session, product_id: int, variant_in: VariantCreate) -> Prod
             detail="An unexpected error occurred while adding the variant.",
         )
 
+    db.expire_all()
     return get_product_response(db, product_id)
 
 
@@ -1547,7 +1538,8 @@ def add_variants_bulk(db: Session, product_id: int, variants_in: list) -> Produc
             product_id, exc, exc_info=True,
         )
         raise
-
+    
+    db.expire_all()
     return get_product_response(db, product_id)
 
 

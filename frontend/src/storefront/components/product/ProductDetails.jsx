@@ -50,7 +50,7 @@ export default function ProductDetails() {
     setImageErrors((prev) => ({ ...prev, [index]: true }));
   };
 
-  const [open, setOpen] = useState("");
+  const [open, setOpen] = useState("details");
 
   const toggle = (section) => {
     setOpen((prev) => (prev === section ? "" : section));
@@ -98,12 +98,18 @@ export default function ProductDetails() {
   // Related products — use the backend's priority-ordered related endpoint
   const { data: relatedProducts = [] } = useRelatedProducts(slug, 4);
 
-  // Image gallery — build from all available image fields, deduplicated
+  // Image gallery — build from all available valid image fields, deduplicated
   const images = useMemo(() => {
     const seen = new Set();
     const result = [];
     const addImg = (url) => {
-      if (url && !seen.has(url)) {
+      if (
+        url &&
+        typeof url === "string" &&
+        url.trim() !== "" &&
+        !url.includes("placeholder-product.png") &&
+        !seen.has(url)
+      ) {
         seen.add(url);
         result.push(url);
       }
@@ -488,6 +494,13 @@ export default function ProductDetails() {
             </div>
           )}
 
+          {/* Short Description */}
+          {product.short_description && (
+            <p className="text-sm text-muted leading-relaxed whitespace-pre-line border-b border-app pb-4">
+              {product.short_description}
+            </p>
+          )}
+
           {/* Size selection */}
           {sizes.length > 0 && (
             <div className="flex flex-col gap-3 border-b border-app pb-4 sm:flex-row sm:items-center">
@@ -651,7 +664,13 @@ export default function ProductDetails() {
               </button>
 
               {open === "details" && (
-                <div className="pb-6 pl-0 text-muted sm:pl-10">
+                <div className="pb-6 pl-0 text-muted sm:pl-10 space-y-4">
+                  {product.description && (
+                    <div className="text-sm text-app leading-relaxed whitespace-pre-line">
+                      {product.description}
+                    </div>
+                  )}
+
                   <div>
                     <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
                       {product.material ? (

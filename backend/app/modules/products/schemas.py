@@ -548,21 +548,38 @@ class ProductResponse(ProductBase):
     def resolve_image_urls(cls, data: Any) -> Any:
         from app.shared.storage.supabase_storage import get_product_image_url
 
+        def _resolve_optional_img(val: Optional[str]) -> Optional[str]:
+            if not val or not str(val).strip():
+                return None
+            res = get_product_image_url(val)
+            if res and res.endswith("placeholder-product.png"):
+                return None
+            return res
+
+        def _resolve_thumbnail(val: Optional[str]) -> Optional[str]:
+            if not val or not str(val).strip():
+                return get_product_image_url(None)
+            return get_product_image_url(val)
+
         if isinstance(data, dict):
             # Resolve image URLs
-            data["thumbnail"] = get_product_image_url(data.get("thumbnail"))
-            data["image_front"] = get_product_image_url(data.get("image_front"))
-            data["image_back"] = get_product_image_url(data.get("image_back"))
-            data["image_size_chart"] = get_product_image_url(data.get("image_size_chart"))
+            data["thumbnail"] = _resolve_thumbnail(data.get("thumbnail"))
+            data["image_front"] = _resolve_optional_img(data.get("image_front"))
+            data["image_back"] = _resolve_optional_img(data.get("image_back"))
+            data["image_size_chart"] = _resolve_optional_img(data.get("image_size_chart"))
             
             gallery = data.get("gallery_images") or []
-            resolved_gallery = [get_product_image_url(img) for img in gallery]
+            resolved_gallery = []
+            for img in gallery:
+                r = _resolve_optional_img(img)
+                if r and r not in resolved_gallery:
+                    resolved_gallery.append(r)
             data["gallery_images"] = resolved_gallery
             
             # Populate legacy images list
             all_imgs = []
             for img in [data["thumbnail"], data["image_front"], data["image_back"], data["image_size_chart"]] + resolved_gallery:
-                if img and not img.endswith("placeholder-product.png"):
+                if img and not img.endswith("placeholder-product.png") and img not in all_imgs:
                     all_imgs.append(img)
             data["images"] = all_imgs
         else:
@@ -580,18 +597,22 @@ class ProductResponse(ProductBase):
             if not d.get("collection_name") and hasattr(data, "collection_rel") and data.collection_rel:
                 d["collection_name"] = data.collection_rel.name
                 
-            d["thumbnail"] = get_product_image_url(d.get("thumbnail"))
-            d["image_front"] = get_product_image_url(d.get("image_front"))
-            d["image_back"] = get_product_image_url(d.get("image_back"))
-            d["image_size_chart"] = get_product_image_url(d.get("image_size_chart"))
+            d["thumbnail"] = _resolve_thumbnail(d.get("thumbnail"))
+            d["image_front"] = _resolve_optional_img(d.get("image_front"))
+            d["image_back"] = _resolve_optional_img(d.get("image_back"))
+            d["image_size_chart"] = _resolve_optional_img(d.get("image_size_chart"))
             
             gallery = d.get("gallery_images") or []
-            resolved_gallery = [get_product_image_url(img) for img in gallery]
+            resolved_gallery = []
+            for img in gallery:
+                r = _resolve_optional_img(img)
+                if r and r not in resolved_gallery:
+                    resolved_gallery.append(r)
             d["gallery_images"] = resolved_gallery
             
             all_imgs = []
             for img in [d["thumbnail"], d["image_front"], d["image_back"], d["image_size_chart"]] + resolved_gallery:
-                if img and not img.endswith("placeholder-product.png"):
+                if img and not img.endswith("placeholder-product.png") and img not in all_imgs:
                     all_imgs.append(img)
             d["images"] = all_imgs
             
