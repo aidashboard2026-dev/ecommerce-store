@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useQuery } from "@tanstack/react-query";
@@ -18,7 +18,12 @@ import {
   setPlacingOrder,
   setPaymentMethod,
 } from "@/storefront/store/checkoutStore";
-import { clearCart, selectCartTotals } from "@/storefront/store/cartSlice";
+import {
+  clearCart,
+  selectCartLineItems,
+  selectCartTotals,
+  setShippingFee,
+} from "@/storefront/store/cartSlice";
 import {
   useCreateOrder,
   useCreateRazorpayOrder,
@@ -27,6 +32,10 @@ import {
 import { storefrontAPI } from "@/shared/services/api";
 import GuestAuthModal from "@/storefront/components/checkout/GuestAuthModal";
 import { PageContainer } from "@/shared/components/layout";
+import {
+  formatQuantitySubtotal,
+  resolveShippingFeeFromPayments,
+} from "@/shared/utils/checkoutTotals";
 
 // ============================================================================
 // LOGGING HELPERS
@@ -487,6 +496,7 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const items = useSelector((state) => state.cart.items);
   const cartTotals = useSelector(selectCartTotals);
+  const lineItems = useSelector(selectCartLineItems);
   const couponCode = useSelector((state) => state.cart.couponCode);
   const selectedAddress = useSelector(selectSelectedAddress);
   const paymentMethod = useSelector((state) => state.checkout.paymentMethod);
@@ -512,6 +522,17 @@ export default function CheckoutPage() {
     }
   }, [paymentMethodsList, paymentMethod, dispatch]);
 
+  useEffect(() => {
+    if (paymentMethodsList.length === 0) {
+      return;
+    }
+    const shippingFee = resolveShippingFeeFromPayments(
+      paymentMethodsList,
+      paymentMethod,
+    );
+    dispatch(setShippingFee(shippingFee));
+  }, [paymentMethodsList, paymentMethod, dispatch]);
+
   const clearCompletedCustomerCart = async () => {
     try {
       const databaseCartItems = items.filter(
@@ -535,57 +556,7 @@ export default function CheckoutPage() {
     }
   };
 
-  const totals = useMemo(() => {
-    const nameToFind =
-      paymentMethod === "ONLINE" ? "Online Payment" : "Cash On Delivery";
-    const selectedMethod = paymentMethodsList.find(
-      (m) => m.name.toLowerCase() === nameToFind.toLowerCase(),
-    );
-    const shipping = selectedMethod ? parseFloat(selectedMethod.fee || 0) : 0;
-    const subtotal = cartTotals.subtotal;
-    const discountAmount = cartTotals.discountAmount;
-    const discountedSubtotal = subtotal - discountAmount;
-    /*
-    =========================================================
-    Future Feature
-
-    GST / Tax Module
-
-    When Tax Settings module is implemented:
-
-    const tax = discountedSubtotal * GST_RATE;
-
-    const total =
-        discountedSubtotal +
-        shipping +
-        tax;
-
-    return {
-        subtotal,
-        discountAmount,
-        discountedSubtotal,
-        shipping,
-        tax,
-        total,
-    };
-
-    =========================================================
-    */
-    const total = discountedSubtotal + shipping;
-
-    return {
-      subtotal,
-      discountAmount,
-      discountedSubtotal,
-      shipping,
-      total,
-    };
-  }, [
-    paymentMethod,
-    paymentMethodsList,
-    cartTotals.subtotal,
-    cartTotals.discountAmount,
-  ]);
+  const totals = cartTotals;
 
   const createOrderMutation = useCreateOrder();
   const createRazorpayOrderMutation = useCreateRazorpayOrder();
@@ -1770,7 +1741,11 @@ export default function CheckoutPage() {
                     </p>
                   </div>
                   <p className="shrink-0 text-sm font-bold text-app">
-                    {formatPrice(item.sellingPrice * item.quantity)}
+                    {formatQuantitySubtotal(
+                      item.sellingPrice,
+                      item.quantity,
+                      formatPrice,
+                    )}
                   </p>
                 </div>
               ))}
@@ -1783,12 +1758,42 @@ export default function CheckoutPage() {
               </h3>
 
               <div className="flex flex-col gap-2.5 text-sm">
-                <div className="flex justify-between text-muted">
-                  <span>Subtotal</span>
-                  <span className="text-app font-medium">
-                    {formatPrice(totals.subtotal)}
-                  </span>
-                </div>
+                {lineItems.length > 1
+                  ? lineItems.map((lineItem) => (
+                      <div
+                        key={lineItem.id}
+                        className="flex justify-between text-muted"
+                      >
+                        <span>{lineItem.title}</span>
+                        <span className="text-app font-medium">
+                          {formatQuantitySubtotal(
+                            lineItem.price,
+                            lineItem.quantity,
+                            formatPrice,
+                          )}
+                        </span>
+                      </div>
+                    ))
+                  : lineItems.length === 1 && (
+                      <div className="flex justify-between text-muted">
+                        <span>Subtotal</span>
+                        <span className="text-app font-medium">
+                          {formatQuantitySubtotal(
+                            lineItems[0].price,
+                            lineItems[0].quantity,
+                            formatPrice,
+                          )}
+                        </span>
+                      </div>
+                    )}
+                {lineItems.length > 1 && (
+                  <div className="flex justify-between text-muted">
+                    <span>Subtotal</span>
+                    <span className="text-app font-medium">
+                      {formatPrice(totals.subtotal)}
+                    </span>
+                  </div>
+                )}
                 {totals.discountAmount > 0 && (
                   <div className="flex justify-between text-green-600">
                     <span>Discount</span>

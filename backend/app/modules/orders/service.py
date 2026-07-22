@@ -42,6 +42,7 @@ from fastapi import BackgroundTasks
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.core.config import settings
+from app.modules.orders.pricing import calculate_amount_paise, resolve_shipping_fee
 
 from app.modules.customers.models import Customer
 from app.modules.orders.constants import (
@@ -85,6 +86,15 @@ def _calculate_delivery(city: Optional[str], ordered_at: datetime) -> Tuple[int,
     days     = DELIVERY_DAYS_MAP.get(cleaned_city, DEFAULT_DELIVERY_DAYS)
     due_date = ordered_at + timedelta(days=days)
     return days, due_date
+
+
+def _line_item_subtotal(line_items) -> Decimal:
+    subtotal = Decimal("0.00")
+    for line_item in line_items or []:
+        quantity = Decimal(str(line_item.get("quantity", 1) or 1))
+        price = Decimal(str(line_item.get("price", "0.00")))
+        subtotal += price * quantity
+    return subtotal
 
 
 # ─────────────────────────────────────────────────────────────
@@ -275,11 +285,10 @@ def _build_and_persist_order(
         db_price = Decimal(str(db_price))
 
     data["price"] = db_price
-    data["total_amount"] = db_price * qty
-    # SECURITY: shipping_fee is calculated server-side at the cart level.
-    # Individual orders are stored with 0.00 shipping; the cart-level total
-    # (including shipping) is computed by create_razorpay_order / merge logic.
-    data["shipping_fee"] = Decimal("0.00")
+    item_subtotal = db_price * qty
+    shipping_fee = resolve_shipping_fee(repo.db, order_in.payment_method)
+    data["shipping_fee"] = shipping_fee
+    data["total_amount"] = item_subtotal + shipping_fee
 
     # ── SECURITY: Coupon validation ──────────────────────────────────────
     # Only coupon_code is accepted from frontend. Backend does all validation
@@ -288,7 +297,6 @@ def _build_and_persist_order(
     coupon_code = order_in.coupon_code
     if coupon_code:
         data["coupon_code"] = coupon_code.strip().upper()
-        item_subtotal = db_price * qty
         customer_email = data.get("customer_email")
         from app.modules.coupons.service import validate_coupon, record_usage
         result = validate_coupon(repo.db, code=coupon_code, subtotal=item_subtotal, customer_email=customer_email)
@@ -300,6 +308,8 @@ def _build_and_persist_order(
     else:
         data["coupon_code"] = None
         data["discount_amount"] = Decimal("0.00")
+
+    data["total_amount"] = data["total_amount"] - data["discount_amount"]
 
     # ── Inventory check + decrement (atomic with the order INSERT) ────────────
     _check_and_decrement_stock(repo, order_in)
@@ -950,12 +960,17 @@ def create_order_customer(
             }
             current_line_items.append(new_item)
 
-            # Recalculate order totals server-side from all line items
-            SHIPPING_THRESHOLD = Decimal("999.00")
-            FLAT_SHIPPING_FEE = Decimal("79.00")
-            line_subtotal = sum(Decimal(str(li.get("total_amount", 0))) for li in current_line_items)
-            total_shipping = Decimal("0.00") if line_subtotal >= SHIPPING_THRESHOLD else FLAT_SHIPPING_FEE
-            # Apply shipping to first line item for compatibility
+            # Recalculate order totals server-side from item price × quantity.
+            line_subtotal = _line_item_subtotal(current_line_items)
+            total_shipping = resolve_shipping_fee(
+                repo.db,
+                existing_session_order.payment_method or order_in.payment_method,
+            )
+            for line_item in current_line_items:
+                line_price = Decimal(str(line_item.get("price", "0.00")))
+                line_qty = Decimal(str(line_item.get("quantity", 1) or 1))
+                line_item["total_amount"] = str(line_price * line_qty)
+                line_item["shipping_fee"] = "0.00"
             if current_line_items and total_shipping > 0:
                 first_total = Decimal(str(current_line_items[0]["total_amount"]))
                 current_line_items[0]["total_amount"] = str(first_total + total_shipping)
@@ -1412,7 +1427,7 @@ def _create_razorpay_order_from_items(
             except Exception as fetch_err:
                 logger.warning("Could not reuse Razorpay Order %s: %s. Creating new one.", existing_rzp_id, fetch_err)
     else:
-        total_shipping = Decimal("0.00")
+        total_shipping = resolve_shipping_fee(db, "ONLINE")
         total_amount = Decimal("0.00")
 
         for item in items:
@@ -1462,22 +1477,11 @@ def _create_razorpay_order_from_items(
         # Store the item subtotal (before shipping) for coupon validation
         item_subtotal = total_amount
 
-        # ── SECURITY: Calculate shipping fee server-side ────────────────
-        # Simple rule: free shipping for orders >= ₹999, otherwise flat ₹79
-        # This matches the frontend logic in cartSlice.js (SHIPPING_THRESHOLD=999, FLAT_SHIPPING_FEE=79)
-        SHIPPING_THRESHOLD = Decimal("999.00")
-        FLAT_SHIPPING_FEE = Decimal("79.00")
-        if item_subtotal >= SHIPPING_THRESHOLD:
-            total_shipping = Decimal("0.00")
-        else:
-            total_shipping = FLAT_SHIPPING_FEE
         # Apply shipping to the first item in resolved_items
         if resolved_items and total_shipping > 0:
             first_item_total = Decimal(str(resolved_items[0]["total_amount"]))
             resolved_items[0]["total_amount"] = str(first_item_total + total_shipping)
             resolved_items[0]["shipping_fee"] = str(total_shipping)
-
-        total_amount = item_subtotal + total_shipping
 
         # ── SECURITY: Apply coupon discount server-side ────────────────
         # Only coupon_code is accepted from frontend; validation and discount
@@ -1491,8 +1495,23 @@ def _create_razorpay_order_from_items(
                 coupon_code_normalized = coupon_code.strip().upper()
             else:
                 logger.warning("Invalid coupon '%s' during Razorpay order creation: %s", coupon_code, result["message"])
-        total_amount -= discount_amount
-        amount_paise = int(round(total_amount * 100))
+        final_total, amount_paise = calculate_amount_paise(item_subtotal, total_shipping, discount_amount)
+
+        expected_amount_paise = int(round(final_total * 100))
+        if amount_paise != expected_amount_paise:
+            raise BusinessRuleError(
+                "Checkout total verification failed before Razorpay order creation.",
+                code="INVALID_AMOUNT",
+            )
+
+        logger.info(
+            "Razorpay pricing breakdown: subtotal=%s shipping=%s discount=%s final_total=%s amount_paise=%s",
+            item_subtotal,
+            total_shipping,
+            discount_amount,
+            final_total,
+            amount_paise,
+        )
 
     if amount_paise < 100:
         raise BusinessRuleError("The minimum transaction amount is 1.00 INR (100 paise).", code="INVALID_AMOUNT")
@@ -1521,6 +1540,12 @@ def _create_razorpay_order_from_items(
     except Exception as e:
         logger.exception("Razorpay SDK order creation failed")
         raise ExternalServiceError(f"Razorpay API failure: {str(e)}", code="RAZORPAY_API_FAILURE")
+
+    if int(razorpay_order.get("amount", 0) or 0) != amount_paise:
+        raise BusinessRuleError(
+            "Razorpay returned an amount that does not match the computed checkout total.",
+            code="INVALID_AMOUNT",
+        )
 
     if existing_orders:
         try:
@@ -1606,6 +1631,12 @@ def _create_razorpay_order_from_existing_orders(
     except Exception as e:
         logger.exception("Razorpay SDK order creation failed")
         raise ExternalServiceError(f"Razorpay API failure: {str(e)}", code="RAZORPAY_API_FAILURE")
+
+    if int(razorpay_order.get("amount", 0) or 0) != amount_paise:
+        raise BusinessRuleError(
+            "Razorpay returned an amount that does not match the computed checkout total.",
+            code="INVALID_AMOUNT",
+        )
 
     try:
         for order in orders:

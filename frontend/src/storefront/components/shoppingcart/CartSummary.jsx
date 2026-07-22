@@ -2,13 +2,19 @@ import React, { useRef } from 'react'
 import { useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { formatPrice } from '@/shared/utils/productUtils'
-import { selectCartTotals, selectCartCount, SHIPPING_THRESHOLD } from '@/storefront/store/cartSlice'
+import {
+  selectCartLineItems,
+  selectCartTotals,
+  selectCartCount,
+} from '@/storefront/store/cartSlice'
 import { useCheckoutAuthModal } from '@/storefront/layouts/StorefrontLayout'
 import CartCoupon from './CartCoupon'
+import { formatQuantitySubtotal } from '@/shared/utils/checkoutTotals'
 
 export default function CartSummary({ showCheckoutButton = true }) {
   const navigate = useNavigate()
   const totals = useSelector(selectCartTotals)
+  const lineItems = useSelector(selectCartLineItems)
   const count = useSelector(selectCartCount)
   const { couponCode, couponDiscount } = useSelector((s) => s.cart)
   const { token, customer } = useSelector((s) => s.customer)
@@ -34,10 +40,38 @@ export default function CartSummary({ showCheckoutButton = true }) {
       <CartCoupon />
 
       <div className="flex flex-col gap-2.5 text-sm">
-        <div className="flex justify-between text-muted">
-          <span>Subtotal ({count} {count === 1 ? 'item' : 'items'})</span>
-          <span className="text-app font-medium">{formatPrice(totals.subtotal)}</span>
-        </div>
+        {lineItems.length > 1
+          ? lineItems.map((lineItem) => (
+              <div key={lineItem.id} className="flex justify-between text-muted">
+                <span className="pr-3">{lineItem.title}</span>
+                <span className="text-app font-medium text-right">
+                  {formatQuantitySubtotal(
+                    lineItem.price,
+                    lineItem.quantity,
+                    formatPrice,
+                  )}
+                </span>
+              </div>
+            ))
+          : lineItems.length === 1 && (
+              <div className="flex justify-between text-muted">
+                <span>Subtotal</span>
+                <span className="text-app font-medium">
+                  {formatQuantitySubtotal(
+                    lineItems[0].price,
+                    lineItems[0].quantity,
+                    formatPrice,
+                  )}
+                </span>
+              </div>
+            )}
+
+        {lineItems.length > 1 && (
+          <div className="flex justify-between text-muted">
+            <span>Subtotal</span>
+            <span className="text-app font-medium">{formatPrice(totals.subtotal)}</span>
+          </div>
+        )}
 
         {couponCode && (
           <div className="flex justify-between text-green-600">
@@ -52,17 +86,6 @@ export default function CartSummary({ showCheckoutButton = true }) {
             {totals.shipping === 0 ? 'Free' : formatPrice(totals.shipping)}
           </span>
         </div>
-
-        {/* <div className="flex justify-between text-muted">
-          <span>Tax (5% GST)</span>
-          <span className="text-app font-medium">{formatPrice(totals.tax)}</span>
-        </div> */}
-
-        {totals.subtotal > 0 && totals.subtotal < SHIPPING_THRESHOLD && (
-          <p className="text-[11px] text-brand-500">
-            Add {formatPrice(SHIPPING_THRESHOLD - totals.subtotal)} more for free shipping!
-          </p>
-        )}
       </div>
 
       <div className="flex justify-between items-baseline pt-4 border-t border-app">

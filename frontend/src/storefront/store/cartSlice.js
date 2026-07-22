@@ -8,9 +8,14 @@ import {
 } from "./customerCartThunks";
 
 import { normalizeCartItem } from "../services/customerCollectionSync";
+import {
+  calculateCheckoutTotals,
+  calculateLineTotal,
+} from "@/shared/utils/checkoutTotals";
 
 const GUEST_CART_KEY = "aurastore_guest_cart";
 const COUPON_KEY = "aurastore_coupon";
+const SHIPPING_FEE_KEY = "aurastore_shipping_fee";
 
 function loadCoupon() {
   try {
@@ -25,6 +30,25 @@ function loadCoupon() {
 function persistCoupon(code, discount, error) {
   try {
     localStorage.setItem(COUPON_KEY, JSON.stringify({ couponCode: code, couponDiscount: discount, couponError: error }));
+  } catch { /* ignore */ }
+}
+
+function loadShippingFee() {
+  try {
+    const raw = localStorage.getItem(SHIPPING_FEE_KEY);
+    if (raw === null || raw === undefined || raw === "") {
+      return 0;
+    }
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function persistShippingFee(fee) {
+  try {
+    localStorage.setItem(SHIPPING_FEE_KEY, String(Number(fee) || 0));
   } catch { /* ignore */ }
 }
 
@@ -83,6 +107,7 @@ const cartSlice = createSlice({
     couponCode: initialCoupon.couponCode ?? null,
     couponDiscount: initialCoupon.couponDiscount ?? 0,
     couponError: initialCoupon.couponError ?? null,
+    shippingFee: loadShippingFee(),
     isDrawerOpen: false,
     syncLoading: false,
     syncError: null,
@@ -164,6 +189,12 @@ const cartSlice = createSlice({
       state.couponDiscount = 0;
       state.couponError = null;
       persistCoupon(null, 0, null);
+    },
+
+    setShippingFee(state, action) {
+      const fee = Number(action.payload) || 0;
+      state.shippingFee = fee >= 0 ? fee : 0;
+      persistShippingFee(state.shippingFee);
     },
 
     openCartDrawer(state) {
@@ -289,6 +320,7 @@ export const {
   applyCoupon,
   setCouponError,
   removeCoupon,
+  setShippingFee,
 
   openCartDrawer,
   closeCartDrawer,
@@ -322,16 +354,9 @@ export const selectCartCount = createSelector(
   (items) => items.reduce((sum, item) => sum + item.quantity, 0),
 );
 
-// Simple shipping rule: free over ₹999, otherwise flat ₹79
-export const SHIPPING_THRESHOLD = 999;
-export const FLAT_SHIPPING_FEE = 79;
-
 export const selectShippingCost = createSelector(
-  [selectCartSubtotal],
-  (subtotal) => {
-    if (subtotal === 0) return 0;
-    return subtotal >= SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING_FEE;
-  },
+  [selectCartSubtotal, (state) => state.cart.shippingFee],
+  (subtotal, shippingFee) => (subtotal > 0 ? Number(shippingFee) || 0 : 0),
 );
 
 // GST-style flat tax rate applied to subtotal after discount
@@ -339,22 +364,26 @@ export const TAX_RATE = 0.05;
 
 export const selectCartTotals = createSelector(
   [
-    selectCartSubtotal,
+    (state) => state.cart.items,
     selectShippingCost,
     (state) => state.cart.couponDiscount,
   ],
-  (subtotal, shipping, couponDiscount) => {
-    const discountAmount = (subtotal * (couponDiscount || 0)) / 100;
-    const discountedSubtotal = subtotal - discountAmount;
-    // const tax = discountedSubtotal * TAX_RATE;
-    const total = discountedSubtotal + shipping;
+  (items, shipping, couponDiscount) =>
+    calculateCheckoutTotals({
+      items,
+      couponDiscount,
+      shippingFee: shipping,
+    }),
+);
 
-    return {
-      subtotal,
-      discountAmount,
-      discountedSubtotal,
-      shipping,
-      total,
-    };
-  },
+export const selectCartLineItems = createSelector(
+  [(state) => state.cart.items],
+  (items) =>
+    items.map((item) => ({
+      id: `${item.productId}-${item.size}-${item.color}`,
+      title: item.title,
+      price: Number(item.sellingPrice) || 0,
+      quantity: Number(item.quantity) || 1,
+      lineTotal: calculateLineTotal(item.sellingPrice, item.quantity),
+    })),
 );

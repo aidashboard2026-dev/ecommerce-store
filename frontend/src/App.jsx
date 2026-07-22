@@ -3,6 +3,7 @@ import axios from "axios";
 import { BrowserRouter } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Toaster } from "react-hot-toast";
+import { useQuery } from "@tanstack/react-query";
 
 
 import { fetchMeThunk } from "@/admin/store/authSlice";
@@ -13,6 +14,9 @@ import {
 import AppRoutes from "@/shared/routes/AppRoutes";
 import ErrorBoundary from "@/shared/components/common/ErrorBoundary";
 import useStoreSettings from "@/shared/hooks/useStoreSettings";
+import { storefrontAPI } from "@/shared/services/api";
+import { resolveShippingFeeFromPayments } from "@/shared/utils/checkoutTotals";
+import { setShippingFee } from "@/storefront/store/cartSlice";
 
 import { loadCustomerCollectionsThunk } from "@/storefront/store/customerCollectionThunks";
 
@@ -32,6 +36,19 @@ function App() {
   );
 
   const { settings, isLoading: settingsLoading } = useStoreSettings();
+  const { data: publicPayments = [] } = useQuery({
+    queryKey: ["publicPayments"],
+    queryFn: async () => {
+      const response = await storefrontAPI.getPublicPayments();
+      return response.data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    retry: 1,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+  });
 
   // useEffect...
   // useEffect...
@@ -70,6 +87,11 @@ function App() {
       localStorage.setItem("store_phone", settings.support_phone);
     }
   }, [settings]);
+
+  useEffect(() => {
+    const shippingFee = resolveShippingFeeFromPayments(publicPayments, "ONLINE");
+    dispatch(setShippingFee(shippingFee));
+  }, [publicPayments, dispatch]);
 
   // --------------------------------------------------
   // Admin authentication initialization
