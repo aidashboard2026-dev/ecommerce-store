@@ -34,7 +34,7 @@ export default function BannerRenderer({
 
   return (
     <div
-      className="relative w-full overflow-hidden text-white bg-gradient-to-br from-brand-600 via-brand-500 to-indigo-600 max-h-[70vh] lg:max-h-[640px]"
+      className="relative w-full overflow-hidden text-white max-h-[70vh] lg:max-h-[640px]"
       style={{ aspectRatio: BANNER_ASPECT_RATIO }}
     >
       {imageUrl && (
@@ -46,7 +46,7 @@ export default function BannerRenderer({
         />
       )}
 
-      <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/30 to-transparent" />
+      <div className="absolute inset-0" />
 
       <div
         className="
@@ -77,7 +77,9 @@ export default function BannerRenderer({
 
         <div className="mt-[clamp(0.125rem,1vw,0.5rem)]">
           {children}
-          {!children && banner.cta_text && <DefaultCta text={banner.cta_text} />}
+          {!children && banner.cta_text && (
+            <DefaultCta text={banner.cta_text} />
+          )}
         </div>
       </div>
     </div>
