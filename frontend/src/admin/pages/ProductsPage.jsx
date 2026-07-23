@@ -1,0 +1,1030 @@
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { useSearchParams, useParams, useNavigate } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  Plus, Search, Edit, Eye, EyeOff, Package,
+  Trash2, ChevronLeft, ChevronRight, CheckSquare,
+  AlertTriangle, Layers, MoreVertical, ImageIcon, Loader2,
+  TrendingUp, Star, Zap, ChevronDown, X, Tag, Settings2,
+} from 'lucide-react'
+import toast from 'react-hot-toast'
+import clsx from 'clsx'
+import { productsAPI as productsApi, categoriesAPI, collectionsAPI } from '@/shared/services/api'
+import { formatPrice, getImageUrl, useDebounce, getApiErrorMessage } from '@/shared/utils/productUtils'
+import InlineProductForm from '@/admin/components/products/InlineProductForm'
+import ImageUploadModal from '@/admin/components/products/ImageUploadModal'
+import VariantFormModal from '@/admin/components/products/VariantFormModal'
+import CategoryCollectionModal from '@/admin/components/products/CategoryCollectionModal'
+import QuickCategoryEditModal from '@/admin/components/products/QuickCategoryEditModal'
+import Modal from '@/shared/components/common/Modal'
+import PageHeader from '@/shared/components/ui/PageHeader'
+import SearchBar from '@/shared/components/ui/SearchBar'
+import Badge from '@/shared/components/ui/Badge'
+import Button from '@/shared/components/ui/Button'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/shared/components/ui/Table'
+
+// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+const STATUS_OPTIONS  = ['draft', 'published', 'archived']
+const STOCK_OPTIONS   = [
+  { value: 'in_stock',     label: 'In Stock' },
+  { value: 'low_stock',    label: 'Low Stock' },
+  { value: 'out_of_stock', label: 'Out of Stock' },
+]
+const FLAG_OPTIONS = [
+  { key: 'is_featured',    label: 'Featured',    icon: <Star size={11} /> },
+  { key: 'is_trending',    label: 'Trending',    icon: <TrendingUp size={11} /> },
+  { key: 'is_best_seller', label: 'Best Seller', icon: <Zap size={11} /> },
+  { key: 'is_new_arrival', label: 'New',         icon: <Layers size={11} /> },
+]
+const BULK_ACTIONS = [
+  { value: 'publish',         label: 'Publish' },
+  { value: 'unpublish',       label: 'Unpublish' },
+  { value: 'archive',         label: 'Archive' },
+  { value: 'move_category',   label: 'Move to Categoryâ€¦' },
+  { value: 'move_collection', label: 'Move to Collectionâ€¦' },
+  { value: 'delete',          label: 'Delete Selected', danger: true },
+]
+
+// â”€â”€â”€ Error Boundary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+class ProductErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null } }
+  static getDerivedStateFromError(error) { return { hasError: true, error } }
+  componentDidCatch(error, info) { console.error('[ProductErrorBoundary]', error, info?.componentStack) }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="rounded-xl border border-red-400/30 bg-red-500/5 p-4 text-center">
+          <AlertTriangle size={20} className="mx-auto mb-2 text-red-400" />
+          <p className="text-sm font-semibold text-red-400">{this.props.title || 'Something went wrong'}</p>
+          <p className="text-xs text-muted mt-1">{this.state.error?.message}</p>
+          <button onClick={() => this.setState({ hasError: false, error: null })}
+            className="mt-3 text-xs underline text-muted hover:text-app">Try again</button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
+// â”€â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+const ImageStrip = React.memo(function ImageStrip({ thumbnail }) {
+  const resolvedUrl = getImageUrl(thumbnail)
+  return (
+    <div className="w-8 h-9 rounded bg-surface flex-shrink-0 overflow-hidden border border-app">
+      {resolvedUrl ? (
+        <img src={resolvedUrl} alt="Product thumbnail" className="w-full h-full object-cover" loading="lazy"
+          onError={e => { e.currentTarget.style.display = 'none' }} />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center">
+          <Package size={11} className="text-muted" />
+        </div>
+      )}
+    </div>
+  )
+})
+
+// Mirrors the backend's low-stock rule exactly (service.py _stock_having_clause):
+// threshold = min(variant.low_stock_threshold) across a product's variants, default 5.
+// out_of_stock: total === 0 | low_stock: 0 < total <= threshold | in_stock: total > threshold
+function getEffectiveLowStockThreshold(product) {
+  const thresholds = (product?.variants || [])
+    .map(v => v?.low_stock_threshold)
+    .filter(t => typeof t === 'number')
+  return thresholds.length ? Math.min(...thresholds) : 5
+}
+
+function getStockStatusKey(product) {
+  const stock = product?.total_stock ?? 0
+  if (stock === 0) return 'out_of_stock'
+  return stock <= getEffectiveLowStockThreshold(product) ? 'low_stock' : 'in_stock'
+}
+
+function StockBadge({ stock, threshold = 5 }) {
+  if (stock === 0)        return <Badge label="Out" variant="danger" dot />
+  if (stock <= threshold) return <Badge label={`${stock} Low`} variant="warning" dot />
+  return <Badge label={`${stock} stock`} variant="success" />
+}
+
+function DeleteButton({ onConfirm, loading }) {
+  const [confirming, setConfirming] = useState(false)
+  const timerRef = React.useRef(null)
+  const handleClick = () => {
+    if (!confirming) { setConfirming(true); timerRef.current = setTimeout(() => setConfirming(false), 3000) }
+    else { clearTimeout(timerRef.current); setConfirming(false); onConfirm() }
+  }
+  React.useEffect(() => () => clearTimeout(timerRef.current), [])
+  return (
+    <button onClick={handleClick} disabled={loading} title={confirming ? 'Confirm delete?' : 'Delete'}
+      className={`btn-tbl-delete ${confirming ? 'confirming' : ''}`}>
+      {loading ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+    </button>
+  )
+}
+
+const MobileActions = React.memo(function MobileActions({ product, onEdit, onImage, onToggleStatus, onVariant, onDelete, onCategoryEdit }) {
+  const [open, setOpen] = useState(false)
+  const ref = React.useRef(null)
+  React.useEffect(() => {
+    if (!open) return
+    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+  const item = (label, icon, action, danger = false) => (
+    <button onClick={() => { setOpen(false); action() }}
+      className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-colors ${danger ? 'text-red-400 hover:bg-red-500/10' : 'text-app hover:bg-surface'}`}>
+      {icon}{label}
+    </button>
+  )
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen(o => !o)} aria-label="Product actions menu"
+        className="p-2 rounded-lg text-muted hover:text-app hover:bg-surface transition-all">
+        <MoreVertical size={16} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 w-44 rounded-xl border border-app bg-app shadow-xl z-50 overflow-hidden">
+          {item('Edit', <Edit size={14} />, onEdit)}
+          {item('Edit Category', <Tag size={14} />, onCategoryEdit)}
+          {item('Manage Images', <ImageIcon size={14} />, onImage)}
+          {item(product.status === 'published' ? 'Unpublish' : 'Publish',
+            product.status === 'published' ? <EyeOff size={14} /> : <Eye size={14} />, onToggleStatus)}
+          {item('Variants', <Layers size={14} />, onVariant)}
+          {item('Delete', <Trash2 size={14} />, onDelete, true)}
+        </div>
+      )}
+    </div>
+  )
+})
+
+function ProductCard({ product, onEdit, onImage, onToggleStatus, onVariant, onDelete, onCategoryEdit, deleteLoading }) {
+  const borderMap = { published: 'border-l-emerald-500', draft: 'border-l-slate-400', archived: 'border-l-amber-400' }
+  return (
+    <div className={`card p-3 space-y-2 border-l-4 ${borderMap[product.status] || 'border-l-slate-400'}`}>
+      <div className="flex items-start gap-3">
+        <ImageStrip thumbnail={product.thumbnail} />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-app truncate">{product.title}</p>
+          <p className="text-[10px] text-muted font-mono truncate">{product.category_name || product.collection || product.slug}</p>
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            <span className={`status-pill ${product.status}`}>{product.status}</span>
+            {product.is_featured    && <span className="text-[9px] bg-amber-500/10 text-amber-500 px-1 py-0.5 rounded border border-amber-500/20">â­ Featured</span>}
+            {product.is_trending    && <span className="text-[9px] bg-blue-500/10 text-blue-500 px-1 py-0.5 rounded border border-blue-500/20">ðŸ”¥ Trending</span>}
+            {product.is_best_seller && <span className="text-[9px] bg-purple-500/10 text-purple-500 px-1 py-0.5 rounded border border-purple-500/20">âš¡ Best Seller</span>}
+            {product.is_new_arrival && <span className="text-[9px] bg-green-500/10 text-green-500 px-1 py-0.5 rounded border border-green-500/20">ðŸ†• New</span>}
+          </div>
+        </div>
+        <MobileActions product={product} onEdit={() => onEdit(product)} onImage={() => onImage(product)}
+          onToggleStatus={() => onToggleStatus(product)} onVariant={() => onVariant(product)}
+          onDelete={() => onDelete(product)} onCategoryEdit={() => onCategoryEdit(product)} />
+      </div>
+    </div>
+  )
+}
+
+function Pagination({ page, totalPages, onPageChange }) {
+  return (
+    <div className="flex items-center justify-center gap-2">
+      <button onClick={() => onPageChange(page - 1)} disabled={page <= 1}
+        className="p-2 rounded-lg border border-app text-muted hover:text-app hover:bg-surface disabled:opacity-30 transition-all">
+        <ChevronLeft size={14} />
+      </button>
+      <span className="text-xs text-muted px-2 font-medium">Page {page} of {totalPages}</span>
+      <button onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}
+        className="p-2 rounded-lg border border-app text-muted hover:text-app hover:bg-surface disabled:opacity-30 transition-all">
+        <ChevronRight size={14} />
+      </button>
+    </div>
+  )
+}
+
+// â”€â”€â”€ Filter pill â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+function FilterPill({ active, label, onClick, onClear }) {
+  return (
+    <button onClick={onClick}
+      className={clsx(
+        'flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition-all whitespace-nowrap',
+        active
+          ? 'bg-brand-500 text-white border-brand-500'
+          : 'border-app text-muted hover:text-app hover:bg-surface'
+      )}>
+      {label}
+      {active && (
+        <span onClick={e => { e.stopPropagation(); onClear() }}
+          className="ml-1 rounded-full bg-white/20 hover:bg-white/30 p-0.5 transition-all">
+          <X size={9} />
+        </span>
+      )}
+    </button>
+  )
+}
+
+// â”€â”€â”€ Bulk Actions Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+function BulkActionsBar({ selectedIds, onAction, categories, collections, onClear }) {
+  const [open, setOpen] = useState(false)
+  const [pendingAction, setPendingAction] = useState(null)
+  const [targetCategoryId, setTargetCategoryId] = useState('')
+  const [targetCollectionId, setTargetCollectionId] = useState('')
+  const ref = React.useRef(null)
+
+  React.useEffect(() => {
+    if (!open) return
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [open])
+
+  const handleAction = (action) => {
+    setOpen(false)
+    if (action === 'move_category' || action === 'move_collection') {
+      setPendingAction(action)
+    } else {
+      onAction(action, {})
+    }
+  }
+
+  const confirmMove = () => {
+    if (pendingAction === 'move_category') {
+      onAction('move_category', { category_id: Number(targetCategoryId) })
+    } else if (pendingAction === 'move_collection') {
+      onAction('move_collection', { collection_id: Number(targetCollectionId) })
+    }
+    setPendingAction(null)
+    setTargetCategoryId('')
+    setTargetCollectionId('')
+  }
+
+  if (selectedIds.size === 0) return null
+
+  return (
+    <div className="flex items-center gap-3 bg-brand-500/10 border border-brand-500/20 rounded-xl px-4 py-2.5">
+      <span className="text-xs font-bold text-brand-500">{selectedIds.size} selected</span>
+      <button onClick={onClear} className="text-xs text-muted hover:text-app underline">Clear</button>
+
+      {pendingAction ? (
+        <div className="flex items-center gap-2 ml-auto">
+          {pendingAction === 'move_category' ? (
+            <select value={targetCategoryId} onChange={e => setTargetCategoryId(e.target.value)}
+              className="input-field py-1 text-xs">
+              <option value="">Select categoryâ€¦</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          ) : (
+            <select value={targetCollectionId} onChange={e => setTargetCollectionId(e.target.value)}
+              className="input-field py-1 text-xs">
+              <option value="">Select collectionâ€¦</option>
+              {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          )}
+          <button onClick={confirmMove}
+            disabled={
+              pendingAction === 'move_category' ? !targetCategoryId : !targetCollectionId
+            }
+            className="btn-primary text-xs py-1 px-3 disabled:opacity-40">Confirm</button>
+          <button onClick={() => setPendingAction(null)} className="text-xs text-muted hover:text-app">Cancel</button>
+        </div>
+      ) : (
+        <div className="relative ml-auto" ref={ref}>
+          <button onClick={() => setOpen(o => !o)}
+            className="flex items-center gap-1.5 btn-secondary text-xs py-1 px-3">
+            Actions <ChevronDown size={12} />
+          </button>
+          {open && (
+            <div className="absolute right-0 top-full mt-1 w-48 rounded-xl border border-app bg-app shadow-xl z-50 overflow-hidden">
+              {BULK_ACTIONS.map(a => (
+                <button key={a.value} onClick={() => handleAction(a.value)}
+                  className={clsx(
+                    'w-full text-left px-4 py-2.5 text-sm transition-colors',
+                    a.danger ? 'text-red-400 hover:bg-red-500/10' : 'text-app hover:bg-surface'
+                  )}>
+                  {a.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+export default function ProductsPage() {
+  const qc = useQueryClient()
+  const [searchParams] = useSearchParams()
+  const { id: urlProductId } = useParams()          // /admin/products/:id/edit
+  const urlVariantId = searchParams.get('variant')
+  const navigate = useNavigate()
+  // Track whether the modal was auto-opened from URL so we can close via back-nav
+  const urlOpenedRef = useRef(false)
+
+  // â”€â”€ URL-seeded initial filter values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const urlStock  = searchParams.get('stock') || ''   // e.g. 'low', 'out'
+  const urlStatus = searchParams.get('status') || ''  // e.g. 'published', 'draft'
+
+  // Map URL stock param to internal stock_status enum values
+  const initialStockStatus = (() => {
+    const map = { low: 'low_stock', out: 'out_of_stock', in: 'in_stock' }
+    return map[urlStock] || ''
+  })()
+
+  // â”€â”€ Filter state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const [search, setSearch]             = useState('')
+  const [statusFilter, setStatusFilter] = useState(urlStatus)
+  const [categoryId, setCategoryId]     = useState('')
+  const [collectionId, setCollectionId] = useState('')
+  const [genderFilter, setGenderFilter] = useState('')
+  const [stockStatus, setStockStatus]   = useState(initialStockStatus)
+  const [flagFilters, setFlagFilters]   = useState({})
+  const [sortBy, setSortBy]             = useState('')
+  const [page, setPage]                 = useState(1)
+  const [selectedIds, setSelectedIds]   = useState(new Set())
+
+  const debouncedSearch = useDebounce(search, 400)
+
+  // â”€â”€ Modals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const [formModal,      setFormModal]      = useState({ open: false, product: null })
+  const [variantModal,   setVariantModal]   = useState({ open: false, productId: null, product: null, editingVariantId: null })
+  const [imageModal,     setImageModal]     = useState({ open: false, product: null })
+  const [quickEditModal, setQuickEditModal] = useState({ open: false, product: null })
+  const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false)
+
+  // â”€â”€ URL-param driven: auto-open edit modal for /admin/products/:id/edit â”€â”€â”€â”€â”€
+  // NOTE: This effect references `data` which is declared below â€” it is
+  // intentionally placed here but the effect body only reads data?.items,
+  // which will be undefined on first render and cause a harmless no-op.
+  // The effect will re-run once `data` becomes available after the query resolves.
+
+  // Stable key derived from flagFilters â€” avoids JSON.stringify inside deps array
+  // which produces a new string reference every render even when flags haven't changed.
+  const flagKey = Object.keys(flagFilters).filter(k => flagFilters[k]).sort().join(',')
+
+  // Reset page on any filter change
+  React.useEffect(() => { setPage(1); setSelectedIds(new Set()) },
+    [debouncedSearch, statusFilter, categoryId, collectionId, genderFilter, stockStatus, flagKey, sortBy])
+
+  // â”€â”€ Data queries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  const queryParams = {
+    search:         debouncedSearch,
+    status_filter:  statusFilter,
+    category_id:    categoryId    || undefined,
+    collection_id:  collectionId  || undefined,
+    genders:        genderFilter  ? [genderFilter] : undefined,
+    stock_status:   stockStatus   || undefined,
+    is_featured:    flagFilters.is_featured    || undefined,
+    is_trending:    flagFilters.is_trending    || undefined,
+    is_best_seller: flagFilters.is_best_seller || undefined,
+    is_new_arrival: flagFilters.is_new_arrival || undefined,
+    sort_by:        sortBy        || undefined,
+    page,
+    per_page: 15,
+  }
+
+  const { data, isLoading, isFetching, isError } = useQuery({
+    queryKey: ['products', queryParams],
+    queryFn:  () => productsApi.adminList(queryParams).then(r => r.data),
+    placeholderData: prev => prev,
+  })
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories', 'admin'],
+    queryFn:  () => categoriesAPI.list().then(r => r.data),
+    staleTime: 5 * 60_000,
+  })
+
+  const { data: collections = [] } = useQuery({
+    queryKey: ['collections', 'admin'],
+    queryFn:  () => collectionsAPI.list().then(r => r.data),
+    staleTime: 5 * 60_000,
+  })
+
+  // Filter collections to those belonging to the selected category.
+  // If no category is selected, show all collections.
+  const filteredCollections = useMemo(() => {
+    if (!categoryId) return collections
+    return collections.filter(c => String(c.category_id) === String(categoryId))
+  }, [collections, categoryId])
+
+  // â”€â”€ Direct product fetch (for URL-driven edit mode when product
+  //     is not on the currently loaded listing page) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const shouldFetchProduct = !!urlProductId && urlProductId !== 'new' && !urlOpenedRef.current
+  const { data: directProduct } = useQuery({
+    queryKey: ['product', 'direct', urlProductId],
+    queryFn: () => productsApi.get(urlProductId).then(r => r.data),
+    enabled: shouldFetchProduct,
+    retry: 1,
+    staleTime: 60_000,
+  })
+
+  // â”€â”€ URL-param driven: auto-open edit modal for /admin/products/:id/edit â”€â”€â”€â”€â”€
+  // Placed AFTER data query so the closure correctly captures data.
+  // We only auto-open once (urlOpenedRef guards against re-triggering).
+  useEffect(() => {
+    if (!urlProductId || urlOpenedRef.current) return
+    if (urlProductId === 'new') {
+      urlOpenedRef.current = true
+      setFormModal({ open: true, product: null })
+      return
+    }
+    // First try to find the product in the current listing
+    if (data?.items) {
+      const found = data.items.find(p => String(p.id) === String(urlProductId))
+      if (found) {
+        urlOpenedRef.current = true
+        setFormModal({ open: true, product: found })
+        return
+      }
+    }
+    // If not in listing, use the directly fetched product
+    if (directProduct) {
+      urlOpenedRef.current = true
+      setFormModal({ open: true, product: directProduct })
+    }
+  }, [urlProductId, data?.items, directProduct])
+
+  // Auto-open/close variant modal from URL
+  useEffect(() => {
+    if (!urlProductId || !data?.items) return
+
+    if (urlVariantId && !formModal.open) {
+      const foundProduct = data.items.find(p => String(p.id) === String(urlProductId))
+      if (foundProduct) {
+        const foundVariant = foundProduct.variants?.find(v => String(v.id) === String(urlVariantId))
+        if (foundVariant) {
+          setVariantModal(prev => {
+            if (prev.open && String(prev.editingVariantId) === String(urlVariantId)) return prev
+            return {
+              open: true,
+              productId: foundProduct.id,
+              product: foundProduct,
+              editingVariantId: Number(urlVariantId)
+            }
+          })
+        }
+      }
+    } else {
+      setVariantModal(prev => {
+        if (prev.open) {
+          return { open: false, productId: null, product: null, editingVariantId: null }
+        }
+        return prev
+      })
+    }
+  }, [urlProductId, urlVariantId, data?.items, formModal.open])
+
+
+  // â”€â”€ Mutations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  // Use prefix-only invalidation so this callback stays stable across filter
+  // changes and mutation closures never capture a stale queryParams snapshot.
+  // Invalidates both the admin list ('products') and the storefront detail
+  // query ('product', singular) - two distinct key namespaces that must both
+  // be busted whenever a product's data changes.
+  const invalidate = useCallback(
+    () => {
+      qc.invalidateQueries({ queryKey: ['products'] })
+      qc.invalidateQueries({ queryKey: ['product'] })
+    },
+    [qc]
+  )
+
+  const toggleStatus = useMutation({
+    mutationFn: ({ id, status }) => productsApi.update(id, { status }),
+    onMutate: async ({ id, status }) => {
+      // Cancel only the active products queries (prefix match) so the optimistic
+      // update is applied to whatever page the user is currently on, regardless
+      // of filter changes since the mutation was created.
+      await qc.cancelQueries({ queryKey: ['products'] })
+      // Snapshot all active product cache entries so we can roll back any of them
+      const snapshots = qc.getQueriesData({ queryKey: ['products'] })
+      qc.setQueriesData({ queryKey: ['products'] }, (old) =>
+        old ? { ...old, items: (old.items || []).map(p => p.id === id ? { ...p, status } : p) } : old
+      )
+      return { snapshots }
+    },
+    onError: (_, __, ctx) => {
+      // Restore every snapshotted cache entry on failure
+      ctx?.snapshots?.forEach(([key, data]) => qc.setQueryData(key, data))
+      toast.error('Failed to update status')
+    },
+    onSettled: invalidate,
+  })
+
+  const [deletingIds, setDeletingIds] = useState(() => new Set())
+
+  const deleteProduct = useMutation({
+    mutationFn: id => productsApi.delete(id),
+    onMutate:  id  => setDeletingIds(prev => new Set([...prev, id])),
+    onSettled: (_, __, id) => setDeletingIds(prev => { const s = new Set(prev); s.delete(id); return s }),
+    onSuccess: () => {
+      toast.success('Product deleted successfully.')
+      // Invalidate first, unconditionally, so every cached page (not just the
+      // one we might navigate away from) is marked stale â€” otherwise a page
+      // visited earlier keeps serving the deleted product from cache for the
+      // remainder of its staleTime window.
+      invalidate()
+      const cached = qc.getQueryData(['products', queryParams])
+      const isLastOnPage = (cached?.items?.length ?? 0) === 1
+      if (isLastOnPage && page > 1) setPage(p => p - 1)
+    },
+    onError: e => toast.error(getApiErrorMessage(e, 'Delete failed')),
+  })
+
+  const bulkMutation = useMutation({
+    mutationFn: (payload) => productsApi.bulkAction(payload),
+    onSuccess: (res) => {
+      toast.success(`${res.data?.updated ?? 0} products updated successfully.`)
+      setSelectedIds(new Set())
+      invalidate()
+    },
+    onError: e => toast.error(getApiErrorMessage(e, 'Bulk action failed')),
+  })
+
+  // â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  // Open edit modal AND push a deep-link URL so browser Back/Forward works
+  const openEdit = useCallback(p => {
+    if (p?.id) {
+      navigate(`/admin/products/${p.id}/edit`, { replace: false })
+    } else {
+      navigate('/admin/products/new', { replace: false })
+    }
+    setFormModal({ open: true, product: p })
+  }, [navigate])
+
+  // Close form modal and return to /admin/products listing
+  const closeFormModal = useCallback(() => {
+    setFormModal({ open: false, product: null })
+    urlOpenedRef.current = false
+    if (urlProductId) {
+      navigate('/admin/products', { replace: true })
+    }
+  }, [navigate, urlProductId])
+
+  const openImage     = useCallback(p => setImageModal({ open: true, product: p }), [])
+  const openVariant   = useCallback((p, variantId) => {
+    if (variantId) {
+      navigate(`/admin/products/${p.id}/edit?variant=${variantId}`, { replace: false })
+    } else {
+      navigate(`/admin/products/${p.id}/edit?variant=new`, { replace: false })
+    }
+  }, [navigate])
+  const closeVariantModal = useCallback(() => {
+    setVariantModal({ open: false, productId: null, product: null, editingVariantId: null })
+    if (urlVariantId) {
+      navigate(`/admin/products/${urlProductId}/edit`, { replace: true })
+    }
+  }, [navigate, urlProductId, urlVariantId])
+  const openQuickEdit = useCallback(p => setQuickEditModal({ open: true, product: p }), [])
+  const doToggle      = useCallback(p => toggleStatus.mutate({ id: p.id, status: p.status === 'published' ? 'draft' : 'published' }), [toggleStatus])
+  const doDelete      = useCallback(p => deleteProduct.mutate(p.id), [deleteProduct])
+
+  const toggleFlag = (key) => setFlagFilters(prev => ({ ...prev, [key]: prev[key] ? undefined : true }))
+
+  const toggleSelect = (id) => setSelectedIds(prev => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === data?.items?.length) setSelectedIds(new Set())
+    else setSelectedIds(new Set(data?.items?.map(p => p.id) || []))
+  }
+
+  const handleBulkAction = (action, extra) => {
+    if (!selectedIds.size) return
+    if (action === 'delete' && !window.confirm(`Delete ${selectedIds.size} products? This cannot be undone.`)) return
+    bulkMutation.mutate({ product_ids: [...selectedIds], action, ...extra })
+  }
+
+  const hasFilters = !!(statusFilter || categoryId || collectionId || genderFilter || stockStatus || sortBy || Object.keys(flagFilters).some(k => flagFilters[k]))
+
+  const emptyState = useMemo(() => (
+    <div className="py-20 text-center">
+      <Package size={36} className="mx-auto mb-3 text-muted opacity-40" />
+      <p className="text-sm text-muted">No products found</p>
+      {!hasFilters && !search && (
+        <button onClick={() => openEdit(null)} className="mt-4 btn-primary text-sm">
+          Create your first product
+        </button>
+      )}
+    </div>
+  ), [hasFilters, search, openEdit])
+
+  const errorState = useMemo(() => (
+    <div className="py-20 text-center">
+      <AlertTriangle size={36} className="mx-auto mb-3 text-amber-400 opacity-60" />
+      <p className="text-sm text-muted">Failed to load products</p>
+      <button onClick={invalidate} className="mt-3 btn-secondary text-sm">Retry</button>
+    </div>
+  ), [invalidate])
+
+  const getLatestProduct = useCallback((p) => {
+    if (!p) return null;
+    const foundInList = data?.items?.find(item => item.id === p.id);
+    if (foundInList) return foundInList;
+    if (directProduct && directProduct.id === p.id) return directProduct;
+    return p;
+  }, [data?.items, directProduct]);
+
+  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  return (
+    <div className="space-y-6 py-2">
+
+      {/* â”€â”€ Header â”€â”€ */}
+      <PageHeader
+        title="Products"
+        description={
+          <span className="flex items-center gap-1.5 leading-none">
+            <span className="inline-flex items-center justify-center text-[10px] font-bold rounded">
+              {data?.total ?? 0}
+            </span>
+            total items
+            {isFetching && !isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-500" />}
+          </span>
+        }
+        actions={
+          <div className="flex gap-2">
+            <Button onClick={() => setIsCatalogModalOpen(true)} variant="secondary" icon={Settings2}>
+              Manage Catalog
+            </Button>
+            <Button onClick={() => openEdit(null)} icon={Plus}>
+              Add Product
+            </Button>
+          </div>
+        }
+      />
+
+      {/* â”€â”€ Filters â”€â”€ */}
+      <div className="space-y-3">
+
+        {/* Row 1: Search + Status pills */}
+        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+          <SearchBar
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            onClear={() => setSearch('')}
+            placeholder="Search products, SKU, category, collectionâ€¦"
+            className="max-w-md w-full"
+          />
+          <div className="flex gap-1 self-start sm:self-auto overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+            {['', ...STATUS_OPTIONS].map(s => (
+              <button key={s} onClick={() => setStatusFilter(s)}
+                className={clsx(
+                  'px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all whitespace-nowrap',
+                  statusFilter === s
+                    ? 'bg-brand-500 text-white border-brand-500'
+                    : 'border-app text-muted hover:text-app hover:bg-surface-hover'
+                )}>
+                {s ? s.charAt(0).toUpperCase() + s.slice(1) : 'All'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Row 2: Category + Collection + Stock + Flag filters */}
+        <div className="flex flex-wrap gap-2 items-center">
+
+          {/* Category filter */}
+          {categories.length > 0 && (
+            <select value={categoryId} onChange={e => { setCategoryId(e.target.value); setCollectionId('') }}
+              className="input-field py-1.5 text-xs max-w-[160px]">
+              <option value="">All Categories</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          )}
+
+          {/* Collection filter (scoped to selected category) */}
+          {filteredCollections.length > 0 && (
+            <select value={collectionId} onChange={e => setCollectionId(e.target.value)}
+              className="input-field py-1.5 text-xs max-w-[160px]">
+              <option value="">All Collections</option>
+              {filteredCollections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          )}
+
+          {/* Gender filter */}
+          <select value={genderFilter} onChange={e => setGenderFilter(e.target.value)}
+            className="input-field py-1.5 text-xs max-w-[160px]">
+            <option value="">All Genders</option>
+            {['Men', 'Women', 'Kids'].map(g => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+
+          {/* Stock status filter pills */}
+          {STOCK_OPTIONS.map(opt => (
+            <FilterPill
+              key={opt.value}
+              active={stockStatus === opt.value}
+              label={opt.label}
+              onClick={() => setStockStatus(stockStatus === opt.value ? '' : opt.value)}
+              onClear={() => setStockStatus('')}
+            />
+          ))}
+
+          {/* Merchandising flag filters */}
+          {FLAG_OPTIONS.map(f => (
+            <FilterPill
+              key={f.key}
+              active={!!flagFilters[f.key]}
+              label={<span className="flex items-center gap-1">{f.icon}{f.label}</span>}
+              onClick={() => toggleFlag(f.key)}
+              onClear={() => setFlagFilters(prev => ({ ...prev, [f.key]: undefined }))}
+            />
+          ))}
+
+          {/* Clear all filters */}
+          {hasFilters && (
+            <button onClick={() => {
+              setStatusFilter(''); setCategoryId(''); setCollectionId('')
+              setGenderFilter(''); setStockStatus(''); setFlagFilters({}); setSortBy('')
+            }} className="text-xs text-muted hover:text-app underline flex items-center gap-1">
+              <X size={10} /> Clear filters
+            </button>
+          )}
+        </div>
+
+        {/* Row 3: Bulk actions bar (only visible when rows are selected) */}
+        <BulkActionsBar
+          selectedIds={selectedIds}
+          onAction={handleBulkAction}
+          categories={categories}
+          collections={collections}
+          onClear={() => setSelectedIds(new Set())}
+        />
+      </div>
+
+      {/* â”€â”€ Mobile / Tablet: Card list â”€â”€ */}
+      <div className="lg:hidden space-y-3">
+        {isLoading ? (
+          Array(4).fill(0).map((_, i) => (
+            <div key={i} className="card p-4 space-y-3 animate-pulse">
+              <div className="flex gap-3">
+                <div className="w-10 h-12 rounded-lg bg-surface" />
+                <div className="flex-1 space-y-2 pt-1">
+                  <div className="h-4 bg-surface rounded w-3/4" />
+                  <div className="h-3 bg-surface rounded w-1/2" />
+                </div>
+              </div>
+            </div>
+          ))
+        ) : isError ? (
+          <div className="card p-6">{errorState}</div>
+        ) : data?.items?.length === 0 ? (
+          <div className="card p-6">{emptyState}</div>
+        ) : (
+          data?.items?.map(product => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              onEdit={openEdit}
+              onImage={openImage}
+              onToggleStatus={doToggle}
+              onVariant={openVariant}
+              onDelete={doDelete}
+              onCategoryEdit={openQuickEdit}
+              deleteLoading={deletingIds.has(product.id)}
+            />
+          ))
+        )}
+      </div>
+
+      {/* â”€â”€ Desktop: Table â”€â”€ */}
+      <div className="hidden lg:block card overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow hover={false}>
+              <TableHead className="w-8">
+                <input type="checkbox"
+                  checked={!!data?.items?.length && selectedIds.size === data.items.length}
+                  onChange={toggleSelectAll}
+                  className="w-3.5 h-3.5 accent-brand-500" />
+              </TableHead>
+              <TableHead>Products</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Code</TableHead>
+              <TableHead>Original Price</TableHead>
+              <TableHead>Selling Price</TableHead>
+              <TableHead>Discount</TableHead>
+              <TableHead>Stock</TableHead>
+              <TableHead>Size</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="w-10">Edit</TableHead>
+              <TableHead className="w-10">Category</TableHead>
+              <TableHead className="w-10">Delete</TableHead>
+              <TableHead className="w-24">Publish</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              Array(8).fill(0).map((_, i) => (
+                <TableRow key={i} hover={false}>
+                  {Array(14).fill(0).map((_, j) => (
+                    <TableCell key={j}>
+                      <div className={clsx("h-3.5 bg-app border border-app/50 rounded animate-pulse", j === 1 ? "w-32" : "w-12")} />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : isError ? (
+              <TableRow hover={false}><TableCell colSpan={14}>{errorState}</TableCell></TableRow>
+            ) : data?.items?.length === 0 ? (
+              <TableRow hover={false}><TableCell colSpan={14}>{emptyState}</TableCell></TableRow>
+            ) : (
+              data?.items?.map(product => {
+                const v0 = (product.variants || [])[0]
+
+                // Filter variants based on the active inventory (stock) filter pill.
+                // When a stock filter is active, the Stock/Size columns should reflect
+                // only the matching variants â€” e.g. clicking "Low Stock" shows just the
+                // low-stock variant's size and quantity, not the product's full set.
+                const filteredVariants = (product.variants || []).filter(v => {
+                  if (!stockStatus) return true
+                  if (stockStatus === 'in_stock')     return v.stock_quantity > (v.low_stock_threshold ?? 5)
+                  if (stockStatus === 'low_stock')    return v.stock_quantity > 0 && v.stock_quantity <= (v.low_stock_threshold ?? 5)
+                  if (stockStatus === 'out_of_stock') return v.stock_quantity === 0
+                  return true
+                })
+
+                const displaySizes  = [...new Set(filteredVariants.map(v => v.size))].join(', ')
+                const displayStocks = filteredVariants.map(v => v.stock_quantity).join(',')
+
+                const discPct = v0?.discount_percentage ? `${parseFloat(v0.discount_percentage).toFixed(0)}%` : ''
+                const statusMap = { published: 'success', draft: 'default', archived: 'warning' }
+                return (
+                  <TableRow key={product.id}>
+                    <TableCell>
+                      <input type="checkbox"
+                        checked={selectedIds.has(product.id)}
+                        onChange={() => toggleSelect(product.id)}
+                        className="w-3.5 h-3.5 accent-brand-500" />
+                    </TableCell>
+                    <TableCell>
+                      {/* Clicking title/image opens the edit form with URL update */}
+                      <button
+                        type="button"
+                        onClick={() => openEdit(product)}
+                        className="flex items-center gap-3 text-left group w-full hover:opacity-80 transition-opacity"
+                        title={`Edit ${product.title}`}
+                      >
+                        <ImageStrip thumbnail={product.thumbnail} />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-semibold text-app truncate max-w-[140px] group-hover:text-brand-500 transition-colors">{product.title}</p>
+                            {product.is_featured    && <Star size={9} className="text-amber-500 flex-shrink-0" />}
+                            {product.is_trending    && <TrendingUp size={9} className="text-blue-500 flex-shrink-0" />}
+                            {product.is_best_seller && <Zap size={9} className="text-purple-500 flex-shrink-0" />}
+                            {product.is_new_arrival && <Layers size={9} className="text-green-500 flex-shrink-0" />}
+                          </div>
+                          <p className="text-[10px] text-muted font-mono truncate max-w-[140px]">
+                            {product.collection_name || product.collection || product.slug}
+                          </p>
+                        </div>
+                      </button>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-[10px] text-muted">
+                        {product.category_name || ''}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-mono text-[10px] bg-app border border-app px-2 py-0.5 rounded text-app font-semibold">
+                        {v0?.sku || ''}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-medium text-app">{formatPrice(v0?.original_price ?? product.min_price)}</TableCell>
+                    <TableCell className="font-semibold text-emerald-600 dark:text-emerald-400">{formatPrice(v0?.selling_price)}</TableCell>
+                    <TableCell className="font-medium text-amber-600">{discPct}</TableCell>
+                    {/* Clickable stock badge â€” filters listing by stock status.
+                        Uses getStockStatusKey() so the click target matches the backend's
+                        actual low-stock threshold rule rather than a hardcoded "<= 5". */}
+                    <TableCell>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const s = getStockStatusKey(product)
+                          setStockStatus(prev => prev === s ? '' : s)
+                        }}
+                        className="cursor-pointer hover:opacity-70 transition-opacity focus:outline-none"
+                        title="Filter by this stock status"
+                      >
+                        {stockStatus ? (
+                          <Badge
+                            label={displayStocks || '0'}
+                            variant={stockStatus === 'in_stock' ? 'success' : stockStatus === 'low_stock' ? 'warning' : 'danger'}
+                            dot={stockStatus !== 'in_stock'}
+                          />
+                        ) : (
+                          <StockBadge stock={product.total_stock} threshold={getEffectiveLowStockThreshold(product)} />
+                        )}
+                      </button>
+                    </TableCell>
+                    <TableCell className="text-muted">{displaySizes || 'â€”'}</TableCell>
+                    {/* Clickable status badge â€” applies status filter for this product's status */}
+                    <TableCell>
+                      <button
+                        type="button"
+                        onClick={() => setStatusFilter(prev => prev === product.status ? '' : product.status)}
+                        className="cursor-pointer hover:opacity-70 transition-opacity focus:outline-none"
+                        title={`Filter by ${product.status}`}
+                      >
+                        <Badge label={product.status} variant={statusMap[product.status] || 'default'} />
+                      </button>
+                    </TableCell>
+                    <TableCell>
+                      <button onClick={() => openEdit(product)} title="Edit" className="btn-tbl-edit">
+                        <Edit size={12} />
+                      </button>
+                    </TableCell>
+                    <TableCell>
+                      <button onClick={() => openQuickEdit(product)} title="Edit Category & Collection"
+                        className="btn-tbl-edit">
+                        <Tag size={12} />
+                      </button>
+                    </TableCell>
+                    <TableCell>
+                      <DeleteButton onConfirm={() => doDelete(product)} loading={deletingIds.has(product.id)} />
+                    </TableCell>
+                    <TableCell>
+                      <button onClick={() => doToggle(product)}
+                        className={clsx("btn-tbl-publish", product.status === 'published' ? 'is-published' : 'not-published')}>
+                        {product.status === 'published' ? <><EyeOff size={10} />Unpublish</> : <><Eye size={10} />Publish</>}
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* â”€â”€ Pagination â”€â”€ */}
+      {(data?.total_pages ?? 0) > 1 && (
+        <Pagination page={page} totalPages={data.total_pages} onPageChange={setPage} />
+      )}
+
+      {/* â”€â”€ Inline Product Form (modal) â”€â”€ */}
+      {formModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-5xl max-h-[90vh] overflow-hidden rounded-2xl bg-app shadow-2xl">
+            <div className="max-h-[90vh] overflow-y-auto">
+              <ProductErrorBoundary title="Product form error">
+                <InlineProductForm
+                  product={getLatestProduct(formModal.product)}
+                  onClose={closeFormModal}
+                  onOpenVariant={(p, vId) => openVariant(p, vId)}
+                  onOpenImage={p => setImageModal({ open: true, product: p })}
+                />
+              </ProductErrorBoundary>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* â”€â”€ Other modals â”€â”€ */}
+      <ProductErrorBoundary title="Variant form error">
+        <VariantFormModal
+          isOpen={variantModal.open}
+          onClose={closeVariantModal}
+          productId={variantModal.productId}
+          product={getLatestProduct(variantModal.product || data?.items?.find(p => p.id === variantModal.productId))}
+          editingVariantId={variantModal.editingVariantId}
+        />
+      </ProductErrorBoundary>
+      <ProductErrorBoundary title="Image manager error">
+        <ImageUploadModal
+          isOpen={imageModal.open}
+          onClose={() => setImageModal({ open: false, product: null })}
+          product={getLatestProduct(imageModal.product || data?.items?.find(p => p.id === imageModal.product?.id))}
+        />
+      </ProductErrorBoundary>
+      <ProductErrorBoundary title="Quick edit error">
+        <QuickCategoryEditModal
+          isOpen={quickEditModal.open}
+          onClose={() => setQuickEditModal({ open: false, product: null })}
+          product={getLatestProduct(quickEditModal.product || data?.items?.find(p => p.id === quickEditModal.product?.id))}
+        />
+      </ProductErrorBoundary>
+      <ProductErrorBoundary title="Manage Catalog error">
+        <CategoryCollectionModal
+          isOpen={isCatalogModalOpen}
+          onClose={() => setIsCatalogModalOpen(false)}
+        />
+      </ProductErrorBoundary>
+
+    </div>
+  )
+}

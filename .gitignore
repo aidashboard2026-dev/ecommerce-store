@@ -1,0 +1,104 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.env/
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Environment files (keep .env.example, not actual .env)
+.env
+.env.local
+.env.production
+
+# Docker volumes
+postgres_data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# TypeScript
+*.tsbuildinfo
+
+# Runtime uploads
+backend/uploads/products/*
+!backend/uploads/products/.gitkeep
+
+# Secrets
+backend/secrets/
+
+# Reports
+reports/
+*.md
+
+# Performance reports
+reports/performance/
+
+# Test reports
+coverage/
+htmlcov/
+.pytest_cache/
+
+# Tests
+tests/
+
+# Playwright
+playwright-report/
+test-results/
+
+#vitest
+.vitest
+
+#hyothesis
+.hyothesis
+
+#coverage
+coverage
+
+#.agents
+.agents
+.opencode
+.hypothesis
+
+#report related files
+reports/
+PRODUCTION_AUDIT_REPORT.pdf
+check_report.py
+expand_report.py
+gen_engine.py
+gen_findings_old.py
+gen_mods_old.py
+gen_pages_old.py
+gen_part1_old.py
+generate_report_old.py
+generate_report.py
+PRODUCTION_AUDIT_REPORT.html
+render_pdf.js
+report_data_old.py
+temp_gen_header.py
+temp_part1.py
+
+#grahify files
+graphify-out/

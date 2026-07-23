@@ -1,0 +1,140 @@
+services:
+  # ─── Local PostgreSQL removed ────────────────────────────────────────────────
+  # The application now connects to Supabase PostgreSQL (db.ebhcfggtfepgromoincc.supabase.co).
+  # No local 'db' container is needed. The backend healthcheck probe and Alembic
+  # both reach Supabase directly over TLS (sslmode=require).
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    networks:
+      - admindash_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+
+    env_file:
+      - .env
+    environment:
+      POSTGRES_SERVER: ${POSTGRES_SERVER}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in your .env file}
+      ACCESS_TOKEN_EXPIRE_MINUTES: 1440
+      INITIAL_ADMIN_NAME: ${INITIAL_ADMIN_NAME:-Admin}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@mail.com}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-admin1234}
+      UPLOAD_DIR: /app/uploads
+      SUPABASE_URL: ${SUPABASE_URL:?Set SUPABASE_URL in your .env file}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?Set SUPABASE_SERVICE_ROLE_KEY in your .env file}
+      SUPABASE_PRODUCT_BUCKET: ${SUPABASE_PRODUCT_BUCKET:-product-images}
+      SUPABASE_CUSTOM_PRODUCT_BUCKET: ${SUPABASE_CUSTOM_PRODUCT_BUCKET:-custom-product-images}
+      SUPABASE_BANNER_BUCKET: ${SUPABASE_BANNER_BUCKET:-banners}
+      SUPABASE_CATEGORY_BUCKET: ${SUPABASE_CATEGORY_BUCKET:-category-images}
+      REDIS_URL: redis://redis:6379
+      # ── Email ──────────────────────────────────────────────────────────────────
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_ENABLED: ${RESEND_ENABLED:-true}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
+      RESEND_FROM_NAME: ${RESEND_FROM_NAME:-My Designers}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
+      STORE_NAME: ${STORE_NAME:-My Designers}
+      STORE_URL: ${STORE_URL:-}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      # ── Razorpay ──────────────────────────────────────────────────────────────
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+      # ── Firebase ──────────────────────────────────────────────────────────────
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_CREDENTIALS_PATH: ${FIREBASE_CREDENTIALS_PATH:-}
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+      - ./backend/secrets:/app/secrets:ro
+      - ./uploads:/app/uploads
+    networks:
+      - admindash_network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+
+    environment:
+      - VITE_API_URL=/api/v1
+      - VITE_BACKEND_URL=
+      - DOCKER=true
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+
+    ports:
+      - "5173:5173"
+
+    depends_on:
+      backend:
+        condition: service_healthy
+
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+    networks:
+    - admindash_network
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    networks:
+      - admindash_network
+
+  adminer:
+    image: adminer:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+
+
+volumes:
+  product_uploads:
+
+networks:
+  admindash_network:
+    driver: bridge
+  
+# networks:
+#   admindash_network:
+#     driver: bridge
+#     enable_ipv6: true
+#     ipam:
+#       config:
+#         - subnet: 172.19.0.0/16
+#         - subnet: fd00:1234:5678::/64
