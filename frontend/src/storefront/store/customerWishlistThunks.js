@@ -122,7 +122,7 @@ export const removeCustomerWishlistItemThunk =
     ) => {
       try {
         await storefrontClient.delete(
-          `${WISHLIST_API}/${productId}`,
+          `${WISHLIST_API}/product/${productId}`,
         );
 
         return Number(productId);

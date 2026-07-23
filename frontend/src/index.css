@@ -45,7 +45,7 @@
     --color-brand-300: #a5b4fc;
     --color-brand-400: #818cf8;
 
-    --color-brand: #343535;
+    --color-brand-500: #343535;
     --color-brand-hover: #18181b;
 
     --color-brand-700: #4338ca;
@@ -64,14 +64,14 @@
     
     --color-text: #fafafa;
     --color-text-muted: #a1a1aa;
-    --color-brand: #fdfdfde7;
+    /* --color-brand: #fdfdfde7; */
     --color-brand-hover: #a3a3a3;
     --color-primary:     #f1f5f9;
     --color-text-1:      #f1f5f9;
 
     color-scheme: dark;
-    --color-brand: #818cf8;
-    --color-brand-hover: #6366f1;
+    --color-brand-500: #343535;
+    --color-brand-hover: #27272a;
     --color-surface-hover: #27272a;
   }
 

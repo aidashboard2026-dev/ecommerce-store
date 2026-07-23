@@ -39,7 +39,7 @@ export default {
           200: "var(--color-brand-200)",
           300: "var(--color-brand-300)",
           400: "var(--color-brand-400)",
-          500: "var(--color-brand)",
+          500: "var(--color-brand-500)",
           600: "var(--color-brand-hover)",
           700: "var(--color-brand-700)",
           800: "var(--color-brand-800)",

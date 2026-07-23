@@ -69,7 +69,9 @@ const wishlistSlice = createSlice({
       state.items = [];
     },
   },
+  
 });
+
 
 export const {
   toggleWishlist,

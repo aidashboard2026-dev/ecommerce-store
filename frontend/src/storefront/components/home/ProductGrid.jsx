@@ -4,7 +4,7 @@ import { ResponsiveGrid } from "@/shared/components/layout";
 
 function ProductSkeleton() {
   return (
-    <div className="flex h-full flex-col p-3 bg-orange-500 overflow-hidden rounded-md border border-app animate-pulse">
+    <div className="flex h-full flex-col p-3 bg-gray-200 overflow-hidden rounded-md border border-app animate-pulse">
       <div className="aspect-[4/5] bg-surface" />
       <div className="p-3.5 flex flex-col gap-2">
         <div className="h-2.5 w-1/3 bg-surface rounded" />
