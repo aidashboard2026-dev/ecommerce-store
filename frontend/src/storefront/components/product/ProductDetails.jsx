@@ -96,7 +96,7 @@ export default function ProductDetails() {
   }, [variants, selectedSize, selectedColor, colorsForSize]);
 
   // Related products — use the backend's priority-ordered related endpoint
-  const { data: relatedProducts = [] } = useRelatedProducts(slug, 4);
+  const { data: relatedProducts = [] } = useRelatedProducts(slug, 8);
 
   // Image gallery — build from all available valid image fields, deduplicated
   const images = useMemo(() => {

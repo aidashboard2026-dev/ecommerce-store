@@ -283,7 +283,7 @@ export default function RegisterForm() {
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-60 text-white font-semibold text-sm py-3 rounded-full shadow-glow-sm transition-colors mt-2"
+            className="inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 hover:text-white disabled:opacity-60 text-app font-semibold text-sm py-3 rounded-full border transition-colors mt-2"
           >
             <UserPlus size={16} />
             {loading ? "Creating Account..." : "Create Account"}

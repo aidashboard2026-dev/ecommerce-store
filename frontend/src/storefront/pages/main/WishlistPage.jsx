@@ -1,14 +1,32 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
-import { useDispatch, useSelector } from 'react-redux'
-import { Heart, X, ShoppingBag } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { getImageUrl, formatPrice } from '@/shared/utils/productUtils'
-import { removeFromWishlist } from '@/storefront/store/wishlistSlice'
+import React from "react";
+import { Link } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { Heart, X, ShoppingBag } from "lucide-react";
+import toast from "react-hot-toast";
+import { getImageUrl, formatPrice } from "@/shared/utils/productUtils";
+import { removeFromWishlist } from "@/storefront/store/wishlistSlice";
+import {
+  removeCustomerWishlistItemThunk,
+} from "@/storefront/store/customerWishlistThunks";
 
 export default function WishlistPage() {
-  const dispatch = useDispatch()
-  const items = useSelector((s) => s.wishlist.items)
+  const dispatch = useDispatch();
+  const items = useSelector((s) => s.wishlist.items);
+  const handleRemove = async (item) => {
+    try {
+      await dispatch(
+        removeCustomerWishlistItemThunk({
+          productId: item.productId,
+        }),
+      ).unwrap();
+
+      dispatch(removeFromWishlist(item.productId));
+
+      toast.success("Removed from wishlist");
+    } catch (error) {
+      toast.error(error || "Unable to remove wishlist item");
+    }
+  };
 
   if (items.length === 0) {
     return (
@@ -16,7 +34,9 @@ export default function WishlistPage() {
         <div className="h-16 w-16 rounded-full bg-surface flex items-center justify-center">
           <Heart size={28} className="text-muted" />
         </div>
-        <h1 className="font-display font-bold text-xl text-app">Your wishlist is empty</h1>
+        <h1 className="font-display font-bold text-xl text-app">
+          Your wishlist is empty
+        </h1>
         <p className="text-sm text-muted max-w-sm">
           Tap the heart icon on any product to save it here for later.
         </p>
@@ -27,12 +47,14 @@ export default function WishlistPage() {
           <ShoppingBag size={16} className="mr-2" /> Browse Products
         </Link>
       </div>
-    )
+    );
   }
 
   return (
     <div className="mx-auto w-full  px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      <h1 className="font-display font-bold text-2xl sm:text-3xl text-app mb-8">My Wishlist</h1>
+      <h1 className="font-display font-bold text-2xl sm:text-3xl text-app mb-8">
+        My Wishlist
+      </h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
         {items.map((item) => (
@@ -42,8 +64,8 @@ export default function WishlistPage() {
           >
             <button
               onClick={() => {
-                dispatch(removeFromWishlist(item.productId))
-                toast.success('Removed from wishlist')
+                handleRemove(item);
+                // toast.success("Removed from wishlist");
               }}
               className="absolute top-3 right-3 z-10 p-2 rounded-full bg-app/80 backdrop-blur-sm hover:bg-app text-app shadow-sm"
               aria-label="Remove from wishlist"
@@ -51,7 +73,10 @@ export default function WishlistPage() {
               <X size={14} />
             </button>
 
-            <Link to={`/products/${item.slug}`} className="aspect-[4/5] bg-surface overflow-hidden">
+            <Link
+              to={`/products/${item.slug}`}
+              className="aspect-[4/5] bg-surface overflow-hidden"
+            >
               {item.thumbnail ? (
                 <img
                   src={getImageUrl(item.thumbnail)}
@@ -67,16 +92,21 @@ export default function WishlistPage() {
             </Link>
 
             <div className="flex flex-col gap-1 p-3.5">
-              <Link to={`/products/${item.slug}`} className="text-sm font-semibold text-app line-clamp-2 hover:text-brand-500">
+              <Link
+                to={`/products/${item.slug}`}
+                className="text-sm font-semibold text-app line-clamp-2 hover:text-brand-500"
+              >
                 {item.title}
               </Link>
               {item.minPrice != null && (
-                <span className="text-sm font-bold text-app">{formatPrice(item.minPrice)}</span>
+                <span className="text-sm font-bold text-app">
+                  {formatPrice(item.minPrice)}
+                </span>
               )}
             </div>
           </div>
         ))}
       </div>
     </div>
-  )
+  );
 }

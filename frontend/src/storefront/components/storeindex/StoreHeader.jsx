@@ -24,7 +24,10 @@ import { Section, ContentWrapper } from "@/shared/components/layout";
 const MOBILE_NAV_LINKS = [
   { label: "Home", to: "/" },
   { label: "T-Shirt for Mens", to: "/products?category=t-shirts&gender=Men" },
-  { label: "Track Pant for Mens", to: "/products?category=track-pants&gender=Men",},
+  {
+    label: "Track Pant for Mens",
+    to: "/products?category=track-pants&gender=Men",
+  },
   { label: "Trousers for Mens", to: "/products?category=trousers&gender=Men" },
   { label: "Shirt for Mens", to: "/products?category=shirts&gender=Men" },
   { label: "Custom products", to: "/custom" },
@@ -67,8 +70,9 @@ const StoreHeaderComponent = function StoreHeader({
   handleLogout,
 }) {
   const dispatch = useDispatch();
-  const { settings } = useStoreSettings();
-  const logoUrl = settings?.logo;
+  const { settings, loading } = useStoreSettings();
+
+  const logoUrl = loading ? null : settings?.logo;
   const storeName = import.meta.env.VITE_STORE_NAME || "My Designers";
   const navigate = useNavigate();
   const location = useLocation();
@@ -166,7 +170,7 @@ const StoreHeaderComponent = function StoreHeader({
   return (
     <>
       {/* ════════════════════ HEADER BAR ════════════════════ */}
-      <Section spacing="md" >
+      <Section spacing="md">
         <header
           className={clsx(
             "sticky top-0 z-40 transition-all duration-300 w-full border-b border-app",
@@ -188,11 +192,7 @@ const StoreHeaderComponent = function StoreHeader({
                     alt={storeName}
                     className="h-9 w-9 rounded-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
-                ) : (
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-indigo-600 text-white shadow-glow-sm transition-transform duration-300 group-hover:scale-105">
-                    <Zap size={18} strokeWidth={2.5} />
-                  </div>
-                )}
+                ) : null}
                 <span className="font-display font-bold text-lg text-app tracking-tight">
                   {storeName}
                 </span>
@@ -373,7 +373,7 @@ const StoreHeaderComponent = function StoreHeader({
                   <Menu size={22} />
                 </button>
               </div>
-            </div> 
+            </div>
             {mobileMenuOpen && (
               <nav
                 className="fixed top-[52px] right-0 mt-2 h-full w-80 max-w-[calc(100vw-2rem)] bg-app border border-app shadow-2xl z-[9999] overflow-hidden"
@@ -381,134 +381,134 @@ const StoreHeaderComponent = function StoreHeader({
                 aria-modal="true"
                 aria-label="Navigation menu"
               >
-              {/* Drawer Header */}
-              <div className="flex items-center justify-between p-3 border-b border-app">
-                <span className="font-display font-bold text-app">Menu</span>
-                <div className="flex flex-row items-center gap-2">
-                  <button
-                    onClick={toggleTheme}
-                    className="w-12 h-12 flex sm:hidden items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors"
-                    aria-label="Toggle Theme"
-                  >
-                    {isDark ? <Sun size={20} /> : <Moon size={20} />}
-                  </button>
-                  <button
-                    onClick={closeMobileMenu}
-                    className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface text-app transition-colors"
-                    aria-label="Close menu"
-                  >
-                    <X size={22} />
-                  </button>
+                {/* Drawer Header */}
+                <div className="flex items-center justify-between p-3 border-b border-app">
+                  <span className="font-display font-bold text-app">Menu</span>
+                  <div className="flex flex-row items-center gap-2">
+                    <button
+                      onClick={toggleTheme}
+                      className="w-12 h-12 flex sm:hidden items-center justify-center rounded-full hover:bg-surface text-app focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 transition-colors"
+                      aria-label="Toggle Theme"
+                    >
+                      {isDark ? <Sun size={20} /> : <Moon size={20} />}
+                    </button>
+                    <button
+                      onClick={closeMobileMenu}
+                      className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface text-app transition-colors"
+                      aria-label="Close menu"
+                    >
+                      <X size={22} />
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              {/* Mobile Search Button */}
-              <div
-                ref={searchRef}
-                className={clsx(
-                  "relative flex sm:hidden items-center p-1 justify-end transition-all duration-300",
-                )}
-              >
-                <form
-                  onSubmit={handleSearchSubmit}
+                {/* Mobile Search Button */}
+                <div
+                  ref={searchRef}
                   className={clsx(
-                    "relative w-full transition-all duration-300 ease-in-out overflow-hidden",
+                    "relative flex sm:hidden items-center p-1 justify-end transition-all duration-300",
                   )}
                 >
-                  <input
-                    autoFocus
-                    type="text"
-                    placeholder="Search premium apparel…"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="flex-1 w-full bg-surface border border-app rounded-md py-2 px-5 text-app text-sm"
-                    aria-label="Search products"
-                  />
-                </form>
-                <button
-                  type="button"
-                  className="absolute right-0 z-10 w-11 h-11 flex items-center justify-center rounded-full  text-app "
-                  aria-label={showSearch ? "Submit search" : "Open search"}
-                >
-                  <Search size={20} />
-                </button>
-              </div>
-
-              {/* Scrollable Links */}
-              <div className="h-fit overflow-y-auto py-2">
-                {MOBILE_NAV_LINKS.map((link) => (
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    state={{ fromMenu: true }}
-                    onClick={closeMobileMenu}
-                    className="block px-5 py-3.5 uppercase text-sm font-semibold tracking-wider text-app hover:bg-surface transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
+                  <form
+                    onSubmit={handleSearchSubmit}
+                    className={clsx(
+                      "relative w-full transition-all duration-300 ease-in-out overflow-hidden",
+                    )}
                   >
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
+                    <input
+                      autoFocus
+                      type="text"
+                      placeholder="Search premium apparel…"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="flex-1 w-full bg-surface border border-app rounded-md py-2 px-5 text-app text-sm"
+                      aria-label="Search products"
+                    />
+                  </form>
+                  <button
+                    type="button"
+                    className="absolute right-0 z-10 w-11 h-11 flex items-center justify-center rounded-full  text-app "
+                    aria-label={showSearch ? "Submit search" : "Open search"}
+                  >
+                    <Search size={20} />
+                  </button>
+                </div>
 
-              {/* Mobile Actions Drawer Footer */}
-              <div className="mt-auto p-3 border-t border-app flex items-center justify-around">
-                {token && customer ? (
-                  <>
-                    <div>
-                      <div className="flex items-center gap-3 px-5 py-4">
-                        {customer.photo_url ? (
-                          <img
-                            src={customer.photo_url}
-                            alt={customerName}
-                            className="h-11 w-11 rounded-full object-cover border border-app shrink-0"
-                            referrerPolicy="no-referrer"
-                          />
-                        ) : (
-                          <div className="h-11 w-11 rounded-full bg-cyan-600 flex items-center justify-center text-white text-sm font-semibold shrink-0">
-                            {generateInitials(customerName)}
+                {/* Scrollable Links */}
+                <div className="h-fit overflow-y-auto py-2">
+                  {MOBILE_NAV_LINKS.map((link) => (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      state={{ fromMenu: true }}
+                      onClick={closeMobileMenu}
+                      className="block px-5 py-3.5 uppercase text-sm font-semibold tracking-wider text-app hover:bg-surface transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+
+                {/* Mobile Actions Drawer Footer */}
+                <div className="mt-auto p-3 border-t border-app flex items-center justify-around">
+                  {token && customer ? (
+                    <>
+                      <div>
+                        <div className="flex items-center gap-3 px-5 py-4">
+                          {customer.photo_url ? (
+                            <img
+                              src={customer.photo_url}
+                              alt={customerName}
+                              className="h-11 w-11 rounded-full object-cover border border-app shrink-0"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="h-11 w-11 rounded-full bg-cyan-600 flex items-center justify-center text-white text-sm font-semibold shrink-0">
+                              {generateInitials(customerName)}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-app truncate">
+                              {customerName}
+                            </p>
+                            <p className="text-xs text-muted truncate">
+                              {customer.email}
+                            </p>
                           </div>
-                        )}
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-app truncate">
-                            {customerName}
-                          </p>
-                          <p className="text-xs text-muted truncate">
-                            {customer.email}
-                          </p>
                         </div>
+                        <hr className="border-app" />
+                        <Link
+                          to="/profile"
+                          onClick={closeMobileMenu}
+                          className="flex items-center gap-3 px-5 py-3 text-sm text-app hover:bg-surface transition-colors"
+                        >
+                          <User size={16} /> My Account
+                        </Link>
+                        <hr className="border-app my-2" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            closeMobileMenu();
+                            handleLogout();
+                          }}
+                          className="flex w-full items-center gap-3 px-5 py-3 text-sm text-red-500 hover:bg-surface text-left transition-colors"
+                        >
+                          <LogOut size={16} /> Logout
+                        </button>
                       </div>
-                      <hr className="border-app" />
-                      <Link
-                        to="/profile"
-                        onClick={closeMobileMenu}
-                        className="flex items-center gap-3 px-5 py-3 text-sm text-app hover:bg-surface transition-colors"
-                      >
-                        <User size={16} /> My Account
-                      </Link>
-                      <hr className="border-app my-2" />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          closeMobileMenu();
-                          handleLogout();
-                        }}
-                        className="flex w-full items-center gap-3 px-5 py-3 text-sm text-red-500 hover:bg-surface text-left transition-colors"
-                      >
-                        <LogOut size={16} /> Logout
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <Link
-                    to="/auth/login"
-                    onClick={closeMobileMenu}
-                    className="flex items-center gap-3 px-5 py-2 text-sm text-app hover:bg-surface transition-colors"
-                  >
-                    <User size={16} /> Login / Sign Up
-                  </Link>
-                )}
-              </div>
-            </nav>
-        )}
+                    </>
+                  ) : (
+                    <Link
+                      to="/auth/login"
+                      onClick={closeMobileMenu}
+                      className="flex items-center gap-3 px-5 py-2 text-sm text-app hover:bg-surface transition-colors"
+                    >
+                      <User size={16} /> Login / Sign Up
+                    </Link>
+                  )}
+                </div>
+              </nav>
+            )}
           </ContentWrapper>
         </header>
       </Section>

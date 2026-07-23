@@ -9,9 +9,7 @@ import {
   setCredentials,
 } from "@/storefront/store/customerSlice";
 import { googleLogin, login, logout } from "@/firebase/auth";
-import {
-  syncCustomerCollectionsThunk,
-} from "@/storefront/store/customerCollectionThunks";
+import { syncCustomerCollectionsThunk } from "@/storefront/store/customerCollectionThunks";
 
 const FIREBASE_BACKEND_URL = "/api/v1/auth/firebase/login";
 
@@ -85,7 +83,11 @@ export default function LoginForm() {
 
   const saveCustomerSession = (responseData) => {
     const accessToken = responseData.access_token;
-    if (import.meta.env.DEV) console.log("[Auth Isolation: Customer] Saving customer session for:", responseData.customer?.email);
+    if (import.meta.env.DEV)
+      console.log(
+        "[Auth Isolation: Customer] Saving customer session for:",
+        responseData.customer?.email,
+      );
 
     axios.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
 
@@ -219,12 +221,16 @@ export default function LoginForm() {
     try {
       // 1. Dispatch backend login check (Admin flow)
       const { loginThunk } = await import("@/admin/store/authSlice");
-      const resultAction = await dispatch(loginThunk({ email: normalizedEmail, password }));
+      const resultAction = await dispatch(
+        loginThunk({ email: normalizedEmail, password }),
+      );
 
       if (loginThunk.fulfilled.match(resultAction)) {
         const data = resultAction.payload;
         if (data.auth_type === "admin") {
-          console.log("[Auth Isolation: Admin] Login Success. Redirecting to admin dashboard.");
+          console.log(
+            "[Auth Isolation: Admin] Login Success. Redirecting to admin dashboard.",
+          );
           toast.success("Welcome back, Admin!");
           localStorage.removeItem("login_cooldown_expiry");
           navigate("/admin/dashboard", { replace: true });
@@ -252,7 +258,9 @@ export default function LoginForm() {
         }
       }
 
-      console.log("[Auth Isolation: Customer] Admin check bypassed. Initializing Firebase customer login flow.");
+      console.log(
+        "[Auth Isolation: Customer] Admin check bypassed. Initializing Firebase customer login flow.",
+      );
 
       // 2. Firebase email login (Customer flow)
       const userCredential = await login(
@@ -264,7 +272,10 @@ export default function LoginForm() {
       const firebaseUser = userCredential.user;
 
       // Block login until email verification, except for test accounts ending in @example.com
-      if (!normalizedEmail.endsWith("@example.com") && !firebaseUser.emailVerified) {
+      if (
+        !normalizedEmail.endsWith("@example.com") &&
+        !firebaseUser.emailVerified
+      ) {
         await logout();
         toast.error("Please verify your email before signing in.");
         return;
@@ -284,18 +295,26 @@ export default function LoginForm() {
       let errorMessage = "Invalid email or password.";
 
       if (err.response?.status === 429) {
-        errorMessage = err.response?.data?.detail || "Too many login attempts. Please try again later.";
+        errorMessage =
+          err.response?.data?.detail ||
+          "Too many login attempts. Please try again later.";
         const expiry = Date.now() + 5 * 60 * 1000;
         localStorage.setItem("login_cooldown_expiry", expiry.toString());
         setCooldownTimeLeft(300);
-      } else if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
-        errorMessage = "Invalid email or password. Please check your credentials and try again.";
-      // } else if (err.code === "auth/invalid-email") {
-      //   errorMessage = "Invalid email address.";
+      } else if (
+        err.code === "auth/invalid-credential" ||
+        err.code === "auth/user-not-found" ||
+        err.code === "auth/wrong-password"
+      ) {
+        errorMessage =
+          "Invalid email or password. Please check your credentials and try again.";
+        // } else if (err.code === "auth/invalid-email") {
+        //   errorMessage = "Invalid email address.";
       } else if (err.code === "auth/user-disabled") {
         errorMessage = "This account has been disabled.";
       } else if (err.code === "auth/too-many-requests") {
-        errorMessage = "Too many failed login attempts. Please try again later.";
+        errorMessage =
+          "Too many failed login attempts. Please try again later.";
       } else if (err.message) {
         errorMessage = err.message;
       }
@@ -327,7 +346,7 @@ export default function LoginForm() {
       // account to backend
 
       await connectFirebaseToBackend(userCredential.user);
-      await dispatch(syncCustomerCollectionsThunk(),).unwrap();
+      await dispatch(syncCustomerCollectionsThunk()).unwrap();
 
       toast.success("Welcome!");
 
@@ -353,7 +372,7 @@ export default function LoginForm() {
       // original method first. Guide them clearly — no duplicate is created.
       if (error.code === "auth/account-exists-with-different-credential") {
         toast.error(
-          "An account with this email already exists. Please sign in with your email and password first."
+          "An account with this email already exists. Please sign in with your email and password first.",
         );
         return;
       }
@@ -608,7 +627,7 @@ export default function LoginForm() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full h-12 flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 text-white font-semibold text-sm rounded-full shadow-glow-sm transition-colors mt-2"
+            className="w-full h-12 flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 text-app font-semibold text-sm rounded-full border transition-colors mt-2"
           >
             {loadingType === "email" && cooldownTimeLeft <= 0 ? (
               <Loader2
@@ -624,8 +643,8 @@ export default function LoginForm() {
             {cooldownTimeLeft > 0
               ? `Sign In (${formatCooldownTime(cooldownTimeLeft)})`
               : loadingType === "email"
-              ? "Signing in..."
-              : "Sign In"}
+                ? "Signing in..."
+                : "Sign In"}
           </button>
 
           {/* OR */}
@@ -684,7 +703,14 @@ export default function LoginForm() {
                 Connecting...
               </>
             ) : (
-              "Continue with Google"
+              <>
+                <img
+                  src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                  alt="Google"
+                  className="w-5 h-5 mr-3"
+                />
+                Continue with Google
+              </>
             )}
           </button>
         </form>
