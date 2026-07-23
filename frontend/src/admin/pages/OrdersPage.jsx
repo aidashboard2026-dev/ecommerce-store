@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Download,
@@ -399,6 +399,19 @@ export default function OrdersPage() {
               </div>
 
               
+              {order.tracking_status === "CANCELLED" &&
+               (order.payment_method || "").toUpperCase() !== "COD" &&
+               (order.payment_status || "").toUpperCase() === "PAID" && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-xs mb-4">
+                  <div className="flex items-center gap-2 font-bold text-amber-600 dark:text-amber-400 mb-1 text-sm">
+                    <span>⚠️</span> Manual Refund Required
+                  </div>
+                  <p className="text-app leading-relaxed">
+                    This order was paid online via Razorpay. If a refund is approved, please process it manually from the <strong>Razorpay Dashboard</strong> (dashboard.razorpay.com). This application does not automatically refund Razorpay payments.
+                  </p>
+                </div>
+              )}
+
               {/* Order Grid details */}
               <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1.5fr_220px] gap-8">
                 

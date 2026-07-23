@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 import useBusinessLimits from "@/shared/hooks/useBusinessLimits";
 import { useTheme } from "@/shared/hooks/useAuth";
 import { BannerPreviewModal } from "./BannerPage";
-import { getApiErrorMessage } from "@/shared/utils/productUtils";
+import { getApiErrorMessage, getImageUrl } from "@/shared/utils/productUtils";
 import { compressImage } from "@/shared/utils/imageCompression";
 
 import {
@@ -121,13 +121,7 @@ export default function OffersPage() {
     };
   }, []);
 
-  const getOfferImageUrl = (path) => {
-    if (!path) return "";
-    if (path.startsWith("http://") || path.startsWith("https://")) return path;
-    const origin = (import.meta.env.VITE_BACKEND_URL ?? "").replace(/\/$/, "");
-    const base = origin || "http://localhost:8000";
-    return path.startsWith("/") ? `${base}${path}` : `${base}/${path}`;
-  };
+
 
   const filteredOffers = offers
     .filter((offer) => offer.title?.toLowerCase().includes(search.toLowerCase()))
@@ -218,7 +212,7 @@ export default function OffersPage() {
     setBannerFile(null);
     setFileSizeStr(""); // size unknown for a server-stored image
 
-    const imageUrl = getOfferImageUrl(offer.banner_image);
+    const imageUrl = getImageUrl(offer.banner_image);
     setBanner(imageUrl || null);
 
     if (offer.banner_image) {
@@ -582,7 +576,7 @@ export default function OffersPage() {
                 <div className="h-40 bg-app border-b border-app relative overflow-hidden group">
                   {offer.banner_image ? (
                     <img
-                      src={getOfferImageUrl(offer.banner_image)}
+                      src={getImageUrl(offer.banner_image)}
                       alt={offer.title}
                       className="w-full h-full object-cover transition-all duration-200 ease-in opacity-0"
                       onLoad={(e) => {

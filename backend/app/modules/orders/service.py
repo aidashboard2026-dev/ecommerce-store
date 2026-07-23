@@ -1196,13 +1196,30 @@ def cancel_order_customer(
     repo.update_order_fields(order, {"tracking_status": TrackingStatus.CANCELLED})
     try:
         from app.modules.notifications.service import create_admin_notification
+        is_paid_online = (
+            (order.payment_method or "").upper() not in ("COD", "CASH ON DELIVERY", "CASH_ON_DELIVERY")
+            and (order.payment_status or "").upper() == "PAID"
+        )
+        if is_paid_online:
+            notif_title = "⚠️ Paid Order Cancelled — Manual Refund Required"
+            notif_msg = (
+                f"Customer cancelled a paid online order (#{order.order_number}, {order.payment_method}). "
+                f"Manual refund action may be required. Please verify the order and process the refund "
+                f"from the Razorpay Dashboard if applicable."
+            )
+            notif_type = "warning"
+        else:
+            notif_title = "❌ Order Cancelled"
+            notif_msg = f"Order #{order.order_number}"
+            notif_type = "error"
+
         create_admin_notification(
             db=db,
-            title="❌ Order Cancelled",
-            message=f"Order #{order.order_number}",
-            type="error",
+            title=notif_title,
+            message=notif_msg,
+            type=notif_type,
             event="Order Cancelled",
-            metadata={"order_number": order.order_number}
+            metadata={"order_number": order.order_number, "payment_method": order.payment_method, "payment_status": order.payment_status}
         )
     except Exception as e:
         logger.error(f"Failed to create admin notification for cancellation: {e}")

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { ImagePlus, Loader2, Pencil, Plus, Trash2, X, AlertTriangle, WifiOff } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -6,10 +6,8 @@ import toast from "react-hot-toast";
 import { homepageCategoriesAPI } from "@/shared/services/api";
 import { compressImage } from "@/shared/utils/imageCompression";
 import { useTheme } from "@/shared/hooks/useAuth";
-import { getApiErrorMessage } from "@/shared/utils/productUtils";
+import { getApiErrorMessage, getImageUrl } from "@/shared/utils/productUtils";
 import RoutePicker from "@/shared/components/ui/RoutePicker";
-
-const BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/$/, "");
 
 const CATEGORY_OPTIONS = [
   { type: "category", id: null, title: "T-Shirts", name: "T-Shirts", slug: "t-shirts", route: "/products?category=t-shirts" },
@@ -26,14 +24,7 @@ const emptyForm = {
   imageFile: null,
 };
 
-function getImageUrl(path) {
-  if (!path) return "";
-  if (path.startsWith("blob:") || path.startsWith("http://") || path.startsWith("https://")) {
-    return path;
-  }
-  if (path.startsWith("/")) return `${BACKEND_ORIGIN}${path}`;
-  return `${BACKEND_ORIGIN}/uploads/categories/${path}`;
-}
+
 
 /* ---------------------------------------------------------------------- */
 /* Small shared building blocks (no visual/design changes, only polish)    */

@@ -276,11 +276,7 @@ function ProductCard({ product }) {
       <div className="relative flex w-full overflow-hidden bg-surface aspect-[4/5]">
         {product.thumbnail && !imageError ? (
           <img
-            src={
-              imageError || !product.thumbnail
-                ? getImageUrl("/uploads/placeholder-product.png")
-                : getImageUrl(product.thumbnail)
-            }
+            src={getImageUrl(product.thumbnail)}
             alt={product.title}
             loading="lazy"
             onError={(event) => {

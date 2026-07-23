@@ -108,18 +108,21 @@ async def send_notification(
                 reference_id = f"ORD-{getattr(order, 'order_number', 'N/A')}"
                 pay_method = getattr(order, "payment_method", "COD").upper()
                 pay_status = getattr(order, "payment_status", "CANCELLED").upper()
-                refund_status_text = "Not applicable (Cash on Delivery)"
-                if pay_method not in ("COD", "CASH ON DELIVERY", "CASH_ON_DELIVERY"):
-                    if pay_status == "PAID":
-                         refund_status_text = "Processing refund (usually takes 5-7 business days)."
-                    else:
-                         refund_status_text = "No charges were processed."
+                is_online_paid = pay_method not in ("COD", "CASH ON DELIVERY", "CASH_ON_DELIVERY") and pay_status == "PAID"
+                
+                if is_online_paid:
+                    refund_status_text = "Manual refund required (please contact support to request your refund)."
+                elif pay_method in ("COD", "CASH ON DELIVERY", "CASH_ON_DELIVERY"):
+                    refund_status_text = "Not applicable (Cash on Delivery)"
+                else:
+                    refund_status_text = "No charges were processed."
                 
                 order_data = {
                     "order_number": getattr(order, "order_number", "N/A"),
                     "reason": getattr(order, "tracking_note", "Cancelled upon request.") or "Cancelled upon request.",
                     "refund_status_text": refund_status_text,
                     "customer_name": getattr(order, "customer_name", "Customer"),
+                    "is_online_paid": is_online_paid,
                 }
                 html_body, text_body = build_order_cancelled(branding, order_data, reference_id)
         except Exception as err:

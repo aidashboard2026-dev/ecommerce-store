@@ -65,6 +65,24 @@ export default function OrderDetails() {
           </div>
         </div>
 
+        {order.tracking_status === 'CANCELLED' &&
+         (order.payment_method || '').toUpperCase() !== 'COD' &&
+         (order.payment_status || '').toUpperCase() === 'PAID' && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-5 text-sm">
+            <div className="flex items-center gap-2 font-bold text-amber-600 dark:text-amber-400 mb-2">
+              <span>⚠️</span> Refund Information
+            </div>
+            <p className="text-app mb-3 text-xs leading-relaxed">
+              This order has been cancelled. Online payments (Razorpay) are refunded manually after verification. Please contact our support team to request your refund.
+            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs text-muted pt-2 border-t border-amber-500/20">
+              <p><strong>Email:</strong> {import.meta.env.VITE_SUPPORT_EMAIL || 'support@mydesigners.store'}</p>
+              <span className="hidden sm:inline">·</span>
+              <p><strong>Refunds:</strong> Processed manually after verification</p>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm pt-4 border-t border-app">
           <div>
             <p className="text-xs text-muted mb-1">Shipping Address</p>

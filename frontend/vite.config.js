@@ -35,12 +35,6 @@ export default defineConfig(({ mode }) => {
           secure: false,
         },
 
-        '/uploads': {
-          target: proxyTarget,
-          changeOrigin: true,
-          secure: false,
-        },
-
         '/health': {
           target: proxyTarget,
           changeOrigin: true,

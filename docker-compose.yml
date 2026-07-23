@@ -46,8 +46,11 @@ services:
       RESEND_FROM_NAME: ${RESEND_FROM_NAME:-My Designers}
       SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
       STORE_NAME: ${STORE_NAME:-My Designers}
-      STORE_URL: ${STORE_URL:-}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
+      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-https://mydesigners.store,http://localhost:5173}
+      STORE_URL: ${STORE_URL:-https://mydesigners.store}
+      FRONTEND_URL: ${FRONTEND_URL:-https://mydesigners.store}
       # ── Razorpay ──────────────────────────────────────────────────────────────
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
@@ -120,11 +123,8 @@ services:
     image: adminer:latest
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
 
-
-volumes:
-  product_uploads:
 
 networks:
   admindash_network:

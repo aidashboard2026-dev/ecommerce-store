@@ -24,7 +24,7 @@ export default function WishlistPage() {
 
       toast.success("Removed from wishlist");
     } catch (error) {
-      toast.error(error || "Unable to remove wishlist item");
+      toast.error(error || "Unable to remove wishlist item Please Login/Signup first");
     }
   };
 

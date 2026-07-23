@@ -129,7 +129,7 @@ export const removeCustomerWishlistItemThunk =
       } catch (error) {
         return rejectWithValue(
           error.response?.data?.detail ||
-            "Unable to remove wishlist item",
+            "Unable to remove wishlist item Please Login/Signup first",
         );
       }
     },

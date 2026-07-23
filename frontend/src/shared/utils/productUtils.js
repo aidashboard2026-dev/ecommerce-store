@@ -1,41 +1,29 @@
 import { useState, useEffect } from 'react'
-const BACKEND_ORIGIN = (
-  import.meta.env.VITE_BACKEND_URL ||
-  "http://localhost:8000"
-).replace(/\/$/, "");
 
+/**
+ * Resolve an image URL for rendering.
+ *
+ * Architecture: images are stored 100% in Supabase Storage.
+ * Every persisted image URL in the database is an absolute https:// URL.
+ *
+ * Rules:
+ *   1. Falsy / empty → return '' (component renders its own fallback UI)
+ *   2. blob: / data: → return as-is (local file previews during upload)
+ *   3. http:// or https:// → return as-is (Supabase, Firebase, CDN — all real URLs)
+ *   4. Anything else (legacy relative paths, /uploads/...) → return ''
+ *      These cannot be served in a Supabase-only architecture.
+ */
 export function getImageUrl(path) {
-  if (!path) return "";
-
-  const imagePath = String(path).trim();
-
-  // Firebase, Supabase, Cloudinary or other external URL
-  if (
-    imagePath.startsWith("http://") ||
-    imagePath.startsWith("https://") ||
-    imagePath.startsWith("blob:") ||
-    imagePath.startsWith("data:")
-  ) {
-    return imagePath;
-  }
-
-  // Remove starting slashes
-  const cleanPath = imagePath.replace(/^\/+/, "");
-
-  // Already contains uploads/
-  if (cleanPath.startsWith("uploads/")) {
-    return `${BACKEND_ORIGIN}/${cleanPath}`;
-  }
-
-  // DB value:
-  // products/shirt/product-name/thumbnail.jpg
-  if (cleanPath.startsWith("products/")) {
-    return `${BACKEND_ORIGIN}/uploads/${cleanPath}`;
-  }
-
-  // DB value:
-  // shirt/product-name/thumbnail.jpg
-  return `${BACKEND_ORIGIN}/uploads/products/${cleanPath}`;
+  if (!path || typeof path !== 'string') return '';
+  const trimmed = path.trim();
+  if (!trimmed) return '';
+  // Blob previews and data URIs — local upload previews before the file is persisted
+  if (trimmed.startsWith('blob:') || trimmed.startsWith('data:')) return trimmed;
+  // Absolute URLs (Supabase public URL, any https:// CDN link) — return unchanged
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+  // Relative paths and legacy /uploads/... paths cannot be resolved without a backend.
+  // Return '' so the calling component falls through to its own placeholder/fallback UI.
+  return '';
 }
 
 /** Revoke all blob object URLs in an array of { previewUrl } items */

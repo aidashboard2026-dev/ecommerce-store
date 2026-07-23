@@ -715,11 +715,32 @@ def build_order_cancelled(branding: dict, order_data: dict, reference_id: str) -
     reason = order_data.get("reason", "Cancelled upon request.")
     refund_status_text = order_data.get("refund_status_text", "No charges were processed.")
     customer_name = order_data.get("customer_name", "Customer").split()[0]
+    is_online_paid = order_data.get("is_online_paid", False)
+    
+    support_email = branding.get("support_email") or "support@mydesigners.store"
+    support_phone = branding.get("support_phone") or ""
+
+    refund_info_box = ""
+    if is_online_paid:
+        contact_line = f"Email: <strong>{support_email}</strong>"
+        if support_phone:
+            contact_line += f" | Phone: <strong>{support_phone}</strong>"
+            
+        refund_info_box = f"""
+        <div style="border: 1px solid #FEF08A; background-color: #FEFCE8; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+          <h4 style="margin: 0 0 8px; color: #854D0E; font-size: 14px; font-weight: bold;">Refund Information</h4>
+          <p style="margin: 0 0 8px; color: #713F12; font-size: 13px;">If you paid online using Razorpay, your refund will not be processed automatically. Please contact our support team to request your refund.</p>
+          <p style="margin: 0; color: #713F12; font-size: 12px;">{contact_line}</p>
+          <p style="margin: 6px 0 0; color: #854D0E; font-size: 12px; font-style: italic;">Refunds will be processed manually after verification.</p>
+        </div>
+        """
     
     html_content = f"""
     <h2 style="margin: 0 0 16px; color: #111827; font-size: 20px; font-weight: bold;">Hello {customer_name},</h2>
     <p style="margin: 0 0 24px;">Your order <strong>#{order_number}</strong> has been cancelled.</p>
     
+    {refund_info_box}
+
     <div class="card-item" style="border: 1px solid #E5E7EB; border-radius: 8px; padding: 20px; margin-bottom: 24px; background-color: #FFFFFF;">
       <h3 style="margin: 0 0 16px; color: #111827; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Cancellation Info</h3>
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size: 14px; line-height: 2.0; color: #374151;">
@@ -745,8 +766,13 @@ def build_order_cancelled(branding: dict, order_data: dict, reference_id: str) -
         reference_id=reference_id
     )
 
+    text_refund_part = ""
+    if is_online_paid:
+        text_refund_part = f"\nREFUND INFORMATION:\nIf you paid online using Razorpay, your refund will not be processed automatically. Please contact our support team ({support_email} / {support_phone}) to request your refund.\n"
+
     text = f"Hello {customer_name},\n\n" \
-           f"Your order #{order_number} has been cancelled.\n\n" \
+           f"Your order #{order_number} has been cancelled.\n" \
+           f"{text_refund_part}\n" \
            f"CANCELLATION DETAILS:\n" \
            f"- Reason: {reason}\n" \
            f"- Refund Status: {refund_status_text}\n\n" \

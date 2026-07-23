@@ -15,11 +15,20 @@ function OrderCard({ order }) {
 
   const canCancel = !['SHIPPED', 'DELIVERED', 'CANCELLED'].includes((order.tracking_status || '').toUpperCase())
 
+  const isPaidOnline = (order.payment_method || '').toUpperCase() !== 'COD' && (order.payment_status || '').toUpperCase() === 'PAID'
+
   const handleCancel = async () => {
     if (!window.confirm('Cancel this order?')) return
     try {
       await cancelMutation.mutateAsync(order.id)
-      toast.success('Order cancelled')
+      if (isPaidOnline) {
+        toast.success(
+          'Order cancelled. If paid online using Razorpay, refunds are processed manually after verification. Please contact support.',
+          { duration: 7000 }
+        )
+      } else {
+        toast.success('Order cancelled successfully')
+      }
     } catch (err) {
       toast.error(err?.response?.data?.detail || 'Failed to cancel order')
     }
@@ -66,16 +75,23 @@ function OrderCard({ order }) {
           <p className="text-xs text-muted">
             {order.order_number} · {new Date(order.ordered_at || order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
           </p>
-          <span
-            className={clsx(
-              'inline-flex items-center text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full mt-1.5',
-              order.tracking_status === 'DELIVERED' && 'bg-green-500/15 text-green-600',
-              order.tracking_status === 'CANCELLED' && 'bg-red-500/15 text-red-500',
-              !['DELIVERED', 'CANCELLED'].includes(order.tracking_status) && 'bg-brand-500/15 text-brand-500'
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
+            <span
+              className={clsx(
+                'inline-flex items-center text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full',
+                order.tracking_status === 'DELIVERED' && 'bg-green-500/15 text-green-600',
+                order.tracking_status === 'CANCELLED' && 'bg-red-500/15 text-red-500',
+                !['DELIVERED', 'CANCELLED'].includes(order.tracking_status) && 'bg-brand-500/15 text-brand-500'
+              )}
+            >
+              {order.tracking_status}
+            </span>
+            {order.tracking_status === 'CANCELLED' && isPaidOnline && (
+              <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600">
+                Manual Refund Required
+              </span>
             )}
-          >
-            {order.tracking_status}
-          </span>
+          </div>
         </div>
 
         <div className="text-right shrink-0">
@@ -89,6 +105,15 @@ function OrderCard({ order }) {
       {expanded && (
         <div className="border-t border-app p-4 sm:p-5 flex flex-col gap-5">
           <OrderTimeline status={order.tracking_status} expectedDeliveryDate={order.expected_delivery_date} />
+
+          {order.tracking_status === 'CANCELLED' && isPaidOnline && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-xs">
+              <p className="font-bold text-amber-600 dark:text-amber-400 mb-1">⚠️ Refund Information</p>
+              <p className="text-app leading-relaxed">
+                This order was paid online using Razorpay. Online payments are refunded manually after verification. Please contact support to request your refund.
+              </p>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4 text-xs">
             <div>

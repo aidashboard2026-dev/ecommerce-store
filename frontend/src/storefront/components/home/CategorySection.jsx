@@ -4,24 +4,9 @@ import { Link } from "react-router-dom";
 import { useDestinationResolver } from "@/storefront/routing/DestinationResolver";
 import { storefrontAPI } from "@/shared/services/api";
 import { Section, ResponsiveGrid } from "@/shared/components/layout";
+import { getImageUrl } from "@/shared/utils/productUtils";
 
-const BACKEND_ORIGIN = (import.meta.env.VITE_BACKEND_URL || "").replace(
-  /\/$/,
-  "",
-);
 
-function getImageUrl(path) {
-  if (!path) return "";
-  if (
-    path.startsWith("blob:") ||
-    path.startsWith("http://") ||
-    path.startsWith("https://")
-  ) {
-    return path;
-  }
-  if (path.startsWith("/")) return `${BACKEND_ORIGIN}${path}`;
-  return `${BACKEND_ORIGIN}/uploads/categories/${path}`;
-}
 
 export default function CategorySection() {
   const {
