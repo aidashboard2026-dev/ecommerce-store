@@ -18,7 +18,7 @@ function OrderCard({ order }) {
   const isPaidOnline = (order.payment_method || '').toUpperCase() !== 'COD' && (order.payment_status || '').toUpperCase() === 'PAID'
 
   const handleCancel = async () => {
-    if (!window.confirm('Cancel this order?')) return
+    if (cancelMutation.isPending) return;
     try {
       await cancelMutation.mutateAsync(order.id)
       if (isPaidOnline) {
@@ -151,7 +151,12 @@ function OrderCard({ order }) {
                 disabled={cancelMutation.isPending}
                 className="flex-1 inline-flex items-center justify-center gap-1.5 border border-red-500/30 text-red-500 rounded-full py-2.5 text-sm font-semibold hover:bg-red-500/5 transition-colors disabled:opacity-60"
               >
-                <XCircle size={14} /> Cancel Order
+                {cancelMutation.isPending ? (
+                  <span className="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin shrink-0" />
+                ) : (
+                  <XCircle size={14} />
+                )}
+                <span>{cancelMutation.isPending ? 'Cancelling...' : 'Cancel Order'}</span>
               </button>
             )}
           </div>

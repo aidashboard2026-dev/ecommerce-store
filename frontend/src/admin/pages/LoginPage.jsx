@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Eye, EyeOff, Loader2, Lock, LogIn, Mail } from "lucide-react";
@@ -161,13 +161,16 @@ export default function LoginForm() {
   // Email and Password Login
   // =========================================================
 
+  const submittingRef = useRef(false);
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (isSubmitting || loadingType) {
+    if (submittingRef.current || isSubmitting || loadingType) {
       return;
     }
 
+    submittingRef.current = true;
     const normalizedEmail = email.trim().toLowerCase();
 
     setIsSubmitting(true);
@@ -237,6 +240,7 @@ export default function LoginForm() {
 
       toast.error(errorMessage);
     } finally {
+      submittingRef.current = false;
       setLoadingType(null);
       setIsSubmitting(false);
     }

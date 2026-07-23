@@ -4,7 +4,7 @@
  * Adds bulk actions UI. Preserves existing UI/UX completely.
  */
 
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Search, Edit, Eye, EyeOff, Package,
@@ -25,23 +25,25 @@ import ImageUploadModal from '@/admin/components/products/ImageUploadModal'
 import CustomCategoryCollectionModel from '@/admin/components/products/CustomCategoryCollectionModel'
 import QuickCustomCategoryEditModal from '@/admin/components/products/QuickCustomCategoryEditModal'
 import Modal from '@/shared/components/common/Modal'
+import ConfirmDialog from '@/admin/components/common/ConfirmDialog'
+import useBusinessLimits from '@/shared/hooks/useBusinessLimits'
 import PageHeader from '@/shared/components/ui/PageHeader'
 import SearchBar from '@/shared/components/ui/SearchBar'
 import Badge from '@/shared/components/ui/Badge'
 import Button from '@/shared/components/ui/Button'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/shared/components/ui/Table'
 
-// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ————————————————————————————————————————————————————————————————————————————
 
 const STATUS_OPTIONS  = ['draft', 'published', 'archived']
-// STOCK_OPTIONS removed â€” Custom Printing domain has no inventory
+// STOCK_OPTIONS removed — Custom Printing domain has no inventory
 
 const BULK_ACTIONS = [
   { value: 'publish',         label: 'Publish' },
   { value: 'unpublish',       label: 'Unpublish' },
   { value: 'archive',         label: 'Archive' },
-  { value: 'move_category',   label: 'Move to Categoryâ€¦' },
-  { value: 'move_collection', label: 'Move to Collectionâ€¦' },
+  { value: 'move_category',   label: 'Move to Category...' },
+  { value: 'move_collection', label: 'Move to Collection...' },
   { value: 'delete',          label: 'Delete Selected', danger: true },
 ]
 
@@ -155,10 +157,10 @@ function ProductCard({ product, onEdit, onImage, onToggleStatus, onVariant, onDe
           <p className="text-[10px] text-muted font-mono truncate">{product.category_name || product.collection || product.slug}</p>
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
             <span className={`status-pill ${product.status}`}>{product.status}</span>
-            {product.is_featured    && <span className="text-[9px] bg-amber-500/10 text-amber-500 px-1 py-0.5 rounded border border-amber-500/20">â­ Featured</span>}
-            {product.is_trending    && <span className="text-[9px] bg-blue-500/10 text-blue-500 px-1 py-0.5 rounded border border-blue-500/20">ðŸ”¥ Trending</span>}
-            {product.is_best_seller && <span className="text-[9px] bg-purple-500/10 text-purple-500 px-1 py-0.5 rounded border border-purple-500/20">âš¡ Best Seller</span>}
-            {product.is_new_arrival && <span className="text-[9px] bg-green-500/10 text-green-500 px-1 py-0.5 rounded border border-green-500/20">ðŸ†• New</span>}
+            {product.is_featured    && <span className="text-[9px] bg-amber-500/10 text-amber-500 px-1 py-0.5 rounded border border-amber-500/20">⭐ Featured</span>}
+            {product.is_trending    && <span className="text-[9px] bg-blue-500/10 text-blue-500 px-1 py-0.5 rounded border border-blue-500/20">🔥 Trending</span>}
+            {product.is_best_seller && <span className="text-[9px] bg-purple-500/10 text-purple-500 px-1 py-0.5 rounded border border-purple-500/20">⚡ Best Seller</span>}
+            {product.is_new_arrival && <span className="text-[9px] bg-green-500/10 text-green-500 px-1 py-0.5 rounded border border-green-500/20">🆕 New</span>}
           </div>
         </div>
         <MobileActions product={product} onEdit={() => onEdit(product)} onImage={() => onImage(product)}
@@ -255,13 +257,13 @@ function BulkActionsBar({ selectedIds, onAction, categories, collections, onClea
           {pendingAction === 'move_category' ? (
             <select value={targetCategoryId} onChange={e => setTargetCategoryId(e.target.value)}
               className="input-field py-1 text-xs">
-              <option value="">Select categoryâ€¦</option>
+              <option value="">Select category...</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           ) : (
             <select value={targetCollectionId} onChange={e => setTargetCollectionId(e.target.value)}
               className="input-field py-1 text-xs">
-              <option value="">Select collectionâ€¦</option>
+              <option value="">Select collection...</option>
               {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )}
@@ -377,9 +379,9 @@ export default function ProductsPage() {
       )
       return { snapshots }
     },
-    onError: (_, __, ctx) => {
+    onError: (err, __, ctx) => {
       ctx?.snapshots?.forEach(([key, data]) => qc.setQueryData(key, data))
-      toast.error('Failed to update status')
+      toast.error(getApiErrorMessage(err, 'Failed to update status'))
     },
     onSettled: invalidate,
   })
@@ -435,10 +437,24 @@ export default function ProductsPage() {
     else setSelectedIds(new Set(data?.items?.map(p => p.id) || []))
   }
 
+  const { limits } = useBusinessLimits()
+  const maxProducts = limits?.max_products || 100
+  const isProductLimitReached = (data?.total ?? 0) >= maxProducts
+
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState({ isOpen: false, count: 0 })
+
   const handleBulkAction = (action, extra) => {
     if (!selectedIds.size) return
-    if (action === 'delete' && !window.confirm(`Delete ${selectedIds.size} products? This cannot be undone.`)) return
+    if (action === 'delete') {
+      setBulkDeleteConfirm({ isOpen: true, count: selectedIds.size })
+      return
+    }
     bulkMutation.mutate({ product_ids: [...selectedIds], action, ...extra })
+  }
+
+  const executeBulkDelete = () => {
+    bulkMutation.mutate({ product_ids: [...selectedIds], action: 'delete' })
+    setBulkDeleteConfirm({ isOpen: false, count: 0 })
   }
 
   const hasFilters = !!(
@@ -471,12 +487,10 @@ export default function ProductsPage() {
     return data?.items?.find(item => item.id === p.id) || p;
   }, [data?.items]);
 
-  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
   return (
     <div className="space-y-6 py-2">
 
-      {/* â”€â”€ Header â”€â”€ */}
+      {/* Header */}
       <PageHeader
         title="Custom Products"
         description={
@@ -489,13 +503,17 @@ export default function ProductsPage() {
           </span>
         }
         actions={
-          // HEAD: both buttons kept â€” branch silently dropped "Manage Categories" which
-          // is the only entry point to CategoryCollectionModal. Upgraded to <Button>.
           <div className="flex items-center gap-2">
             <Button onClick={() => setManageModal(true)} variant="secondary" icon={Settings2}>
               Manage Categories
             </Button>
-            <Button onClick={() => setFormModal({ open: true, product: null })} icon={Plus}>
+            <Button
+              onClick={() => setFormModal({ open: true, product: null })}
+              icon={Plus}
+              disabled={isProductLimitReached}
+              title={isProductLimitReached ? `Maximum product limit reached (${maxProducts}). Delete an existing product before creating a new one.` : 'Add a new custom product'}
+              className={clsx(isProductLimitReached && "opacity-50 cursor-not-allowed pointer-events-none")}
+            >
               Add Custom Product
             </Button>
           </div>
@@ -514,7 +532,7 @@ export default function ProductsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             onClear={() => setSearch('')}
-            placeholder="Search products, SKU, categoryâ€¦"
+            placeholder="Search products, SKU, category..."
             className="max-w-md w-full"
           />
           <div className="flex gap-1 self-start sm:self-auto overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
@@ -816,6 +834,18 @@ export default function ProductsPage() {
         />
       </ProductErrorBoundary>
 
+      {/* Bulk Delete Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={bulkDeleteConfirm.isOpen}
+        title="Delete Selected Custom Products"
+        message={`Are you sure you want to delete ${bulkDeleteConfirm.count} selected product(s)? This action cannot be undone.`}
+        confirmText="Delete Products"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={bulkMutation.isPending}
+        onConfirm={executeBulkDelete}
+        onCancel={() => setBulkDeleteConfirm({ isOpen: false, count: 0 })}
+      />
 
     </div>
   )

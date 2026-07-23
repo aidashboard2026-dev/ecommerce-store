@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -9,9 +9,12 @@ export default function Drawer({
   subtitle,
   children,
   size = 'md',
-  className
+  className,
+  isLoading = false,
+  preventClose = false,
 }) {
   const panelRef = useRef(null)
+  const isLocked = isLoading || preventClose;
 
   useEffect(() => {
     if (isOpen) {
@@ -27,13 +30,13 @@ export default function Drawer({
   // Focus trap / Close on Esc
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape' && isOpen && !isLocked && onClose) {
         onClose()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose])
+  }, [isOpen, onClose, isLocked])
 
   if (!isOpen) return null
 
@@ -51,7 +54,9 @@ export default function Drawer({
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 transition-opacity duration-300 animate-fade-in"
-        onClick={onClose}
+        onClick={() => {
+          if (!isLocked && onClose) onClose();
+        }}
       />
 
       {/* Drawer Container */}
@@ -75,8 +80,9 @@ export default function Drawer({
           </div>
           <button
             onClick={onClose}
+            disabled={isLocked}
             aria-label="Close panel"
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-app text-muted hover:text-app hover:bg-app transition-all active:scale-95"
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-app text-muted hover:text-app hover:bg-app transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <X size={15} />
           </button>

@@ -66,9 +66,9 @@ function GlobalStyles() {
       .bp-modal-anim { animation: bp-modal-in .18s cubic-bezier(.16,1,.3,1); }
       .bp-fade-in { animation: bp-fade-in .15s ease; }
 
-      .bp-btn { transition: filter .2s ease, transform .1s ease, opacity .2s ease, box-shadow .2s ease; }
-      .bp-btn:hover:not(:disabled) { filter: brightness(1.08); }
-      .bp-btn:active:not(:disabled) { transform: scale(.98); }
+      .bp-btn { transition: filter .2s ease, transform .1s ease, opacity .2s ease, box-shadow .2s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+      .bp-btn:hover:not(:disabled) { filter: brightness(1.08); transform: scale(1.02); box-shadow: 0 4px 14px rgba(0,0,0,0.12); }
+      .bp-btn:active:not(:disabled) { transform: scale(.97); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
       .bp-btn:disabled { opacity: .6; cursor: not-allowed !important; }
       .bp-btn:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
 
@@ -631,8 +631,11 @@ export default function BannerPage() {
     }
   };
 
+  const deletingRef = useRef(false);
+
   const deleteBanner = async (id) => {
-    if (deleting) return;
+    if (deletingRef.current || deleting) return;
+    deletingRef.current = true;
     setDeleting(true);
     try {
       await api.delete(`/banners/admin/${id}`);
@@ -643,6 +646,7 @@ export default function BannerPage() {
       console.error(err);
       toast.error(getApiErrorMessage(err, "Failed to delete banner"));
     } finally {
+      deletingRef.current = false;
       setDeleting(false);
     }
   };
@@ -737,7 +741,7 @@ export default function BannerPage() {
           disabled={newBannerDisabled}
           title={limitsLoading ? "Loading store configuration..." : limitsError ? "Unable to load configuration" : (limits && banners.length >= limits.max_banners) ? "Maximum limit reached.\nDelete an existing item to continue." : ""}
           className="bp-btn"
-          style={{ ...btn.base, height: 40, padding: "0 18px", background: (limits && banners.length >= limits.max_banners) ? "#4b5563" : "#2563eb", color: "#fff", display: "flex", alignItems: "center", gap: 6 }}
+          style={{ ...btn.base, height: 40, padding: "0 18px", background: (limits && banners.length >= limits.max_banners) ? "#4b5563" : "#2563eb", color: "#fff", display: "flex", alignItems: "center", gap: 6, ...(newBannerDisabled ? { opacity: 0.5, cursor: "not-allowed", pointerEvents: "none" } : {}) }}
         >
           {limitsLoading ? <Spinner size={16} /> : <Plus size={16} />}
           New Banner
@@ -844,6 +848,7 @@ export default function BannerPage() {
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
+                ...(!limits || banners.length >= limits.max_banners) ? { opacity: 0.5, cursor: "not-allowed", pointerEvents: "none" } : {},
               }}
             >
               <Plus size={16} /> New Banner

@@ -55,9 +55,18 @@ function StockBadge({ stock }) {
 function SaveProgressOverlay({ steps, onClose }) {
   const hasError = steps.some(s => s.status === 'error')
   const allDone  = steps.every(s => s.status === 'done' || s.status === 'error')
+
+  useEffect(() => {
+    if (!hasError || !allDone) return
+    const handleEsc = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handleEsc)
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [hasError, allDone, onClose])
+
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      role="dialog" aria-modal="true" aria-label="Save progress">
+      role="dialog" aria-modal="true" aria-label="Save progress"
+      onClick={hasError && allDone ? onClose : undefined}>
       <div className="bg-app border border-app rounded-2xl p-6 w-80 shadow-2xl space-y-4">
         <p className="text-sm font-semibold text-app">
           {hasError && allDone ? 'Completed with issues' : 'Saving product…'}
@@ -243,10 +252,9 @@ export default function CustomProductForm({
   }, [hasUnsavedChanges])
 
   const handleClose = useCallback(() => {
-    if (hasUnsavedChanges && !window.confirm('You have unsaved changes. Discard?')) return
     revokeObjectURLs(localImages)
     onClose()
-  }, [hasUnsavedChanges, localImages, onClose])
+  }, [localImages, onClose])
 
   // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -524,25 +532,47 @@ export default function CustomProductForm({
         queryKeyPrefix="custom-products"
         detailQueryKey="custom-product"
         limitKey="max_custom_product_images"
-        galleryImages={isEdit ? (product?.gallery_images || []) : []}
+        galleryImages={isEdit ? (product?.gallery_images || []) : localImages.map(img => img.previewUrl || getImageUrl(img.file || img))}
+        onUploadLocal={(type, files) => {
+          if (type === "gallery") {
+            const fileList = Array.isArray(files) ? files : [files];
+            const newItems = fileList.map(f => ({
+              id: `${Date.now()}-${Math.random()}`,
+              file: f,
+              previewUrl: URL.createObjectURL(f),
+            }));
+            setLocalImages(prev => [...prev, ...newItems]);
+          }
+        }}
+        onDeleteLocal={(type, index) => {
+          if (type === "gallery") {
+            setLocalImages(prev => {
+              const updated = [...prev];
+              if (updated[index]?.previewUrl) URL.revokeObjectURL(updated[index].previewUrl);
+              updated.splice(index, 1);
+              return updated;
+            });
+          }
+        }}
         onGalleryDelete={isEdit
           ? (index) => customProductsAPI.deleteGalleryImage(product.id, index)
-          : null
+          : (index) => {
+              setLocalImages(prev => {
+                const updated = [...prev];
+                if (updated[index]?.previewUrl) URL.revokeObjectURL(updated[index].previewUrl);
+                updated.splice(index, 1);
+                return updated;
+              });
+            }
         }
         onSaveLocal={(files) => {
-          if (isEdit) {
-            // Edit mode: files are uploaded immediately in the modal; nothing to stage
-          } else {
-            // New product: stage files; wrap each as { id, file, previewUrl }
+          if (!isEdit) {
             const newItems = files.map(f => ({
               id: `${Date.now()}-${Math.random()}`,
               file: f,
               previewUrl: URL.createObjectURL(f),
-            }))
-            setLocalImages(prev => {
-              prev.forEach(img => URL.revokeObjectURL(img.previewUrl))
-              return newItems
-            })
+            }));
+            setLocalImages(prev => [...prev, ...newItems]);
           }
         }}
         onSaved={() => {

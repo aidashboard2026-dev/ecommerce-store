@@ -105,13 +105,14 @@ export function normalizeCartItem(raw) {
   const color = raw.color ?? null;
   const colorHex = raw.colorHex ?? raw.color_hex ?? null;
 
-  let rawSelling = raw.sellingPrice ?? raw.selling_price;
+  let rawSelling = raw.sellingPrice ?? raw.selling_price ?? raw.price ?? raw.minPrice ?? raw.min_price;
   let sellingPrice = rawSelling != null ? Number(rawSelling) : 0;
   if (!Number.isFinite(sellingPrice)) sellingPrice = 0;
 
-  let rawOriginal = raw.originalPrice ?? raw.original_price;
+  let rawOriginal = raw.originalPrice ?? raw.original_price ?? raw.price ?? raw.sellingPrice ?? raw.selling_price;
   let originalPrice = rawOriginal != null ? Number(rawOriginal) : 0;
   if (!Number.isFinite(originalPrice)) originalPrice = 0;
+  if (originalPrice < sellingPrice) originalPrice = sellingPrice;
 
   let rawStock = raw.stockQuantity ?? raw.stock_quantity;
   let stockQuantity = rawStock != null ? Number(rawStock) : 0;

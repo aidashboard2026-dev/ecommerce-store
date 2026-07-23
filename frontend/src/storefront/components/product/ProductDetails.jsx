@@ -122,6 +122,9 @@ export default function ProductDetails() {
     return result;
   }, [product]);
 
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const addingRef = useRef(false);
+
   if (isLoading) {
     return (
       <PageContainer className="animate-pulse">
@@ -164,29 +167,34 @@ export default function ProductDetails() {
 
   const buildCartItem = () => ({
     productId: product.id,
+    variantId: activeVariant?.id ?? null,
     slug: product.slug,
     title: product.title,
     thumbnail: product.thumbnail,
-    size: activeVariant.size,
-    color: activeVariant.color || null,
-    colorHex: activeVariant.color_hex || null,
-    sellingPrice: Number(activeVariant.selling_price),
-    originalPrice: Number(activeVariant.original_price),
-    stockQuantity: activeVariant.stock_quantity,
+    size: activeVariant?.size ?? null,
+    color: activeVariant?.color || null,
+    colorHex: activeVariant?.color_hex || null,
+    sellingPrice: Number(activeVariant?.selling_price) || 0,
+    originalPrice: Number(activeVariant?.original_price) || 0,
+    stockQuantity: activeVariant?.stock_quantity ?? 0,
     quantity,
   });
 
   const handleAddToCart = async () => {
+    if (addingRef.current || isAddingToCart) return;
     if (!activeVariant) return;
     if (!inStock) {
       toast.error("This variant is out of stock");
       return;
     }
 
-    const isAuthenticated = !!(token && customer);
+    addingRef.current = true;
+    setIsAddingToCart(true);
 
-    if (isAuthenticated) {
-      try {
+    try {
+      const isAuthenticated = !!(token && customer);
+
+      if (isAuthenticated) {
         const cartItem = {
           productId: product.id,
           variantId: activeVariant.id,
@@ -202,58 +210,41 @@ export default function ProductDetails() {
           quantity,
         };
         await dispatch(addCustomerCartItemThunk(cartItem)).unwrap();
-      } catch (err) {
-        toast.error(typeof err === 'string' ? err : 'Failed to add to cart');
-        return;
+      } else {
+        dispatch(addToCart(buildCartItem()));
       }
-    } else {
-      dispatch(addToCart(buildCartItem()));
-    }
 
-    dispatch(openCartDrawer());
+      dispatch(openCartDrawer());
 
-    const toastShown = sessionStorage.getItem("aurastore_guest_added_toast_shown");
-    if (!isAuthenticated && !toastShown) {
-      sessionStorage.setItem("aurastore_guest_added_toast_shown", "true");
-      toast.custom((t) => (
-        <div
-          className={clsx(
-            "max-w-md w-full bg-app border border-app shadow-lg rounded-2xl pointer-events-auto flex overflow-hidden transition-all duration-350",
-            t.visible ? "animate-fade-in opacity-100 translate-y-0" : "opacity-0 translate-y-2"
-          )}
-        >
-          <div className="flex-1 p-4">
-            <div className="flex items-start">
-              <div className="flex-shrink-0 pt-0.5 text-green-500 font-bold text-base">
-                ✓
+      const toastShown = sessionStorage.getItem("aurastore_guest_added_toast_shown");
+      if (!isAuthenticated && !toastShown) {
+        sessionStorage.setItem("aurastore_guest_added_toast_shown", "true");
+        toast.custom((t) => (
+          <div
+            className={clsx(
+              "max-w-md w-full bg-app border border-app shadow-lg rounded-2xl pointer-events-auto flex overflow-hidden transition-all duration-350",
+              t.visible ? "animate-fade-in opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+            )}
+          >
+            <div className="flex-1 w-0 p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+                <ShoppingBag className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <div className="ml-3 flex-1">
-                <p className="text-sm font-semibold text-app">
-                  Added to Cart
-                </p>
-                <p className="mt-0.5 text-xs text-muted leading-relaxed">
-                  Sign in to save your cart across devices and enjoy faster checkout.
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-app">Item Added to Guest Cart</p>
+                <p className="text-[11px] text-muted truncate mt-0.5">
+                  Sign in anytime to sync your cart across devices!
                 </p>
               </div>
             </div>
           </div>
-          <div className="flex border-l border-app shrink-0">
-            <button
-              onClick={() => {
-                toast.dismiss(t.id);
-                navigate("/auth/login");
-              }}
-              className="w-24 border border-transparent rounded-none p-4 flex items-center justify-center text-xs font-semibold text-brand-500 hover:bg-surface hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-            >
-              Sign In
-            </button>
-          </div>
-        </div>
-      ), { duration: 5000 });
-    } else if (isAuthenticated) {
-      toast.success("Added to cart");
-    } else {
-      toast.success("Added to cart");
+        ), { duration: 4000 });
+      }
+    } catch (err) {
+      toast.error(typeof err === 'string' ? err : 'Failed to add to cart');
+    } finally {
+      addingRef.current = false;
+      setIsAddingToCart(false);
     }
   };
 
@@ -612,15 +603,19 @@ export default function ProductDetails() {
                   toast.error("This product is out of stock.");
                   return;
                 }
-
                 handleAddToCart();
               }}
+              disabled={!inStock || isAddingToCart}
               className={clsx(
-                "focus-ring flex h-12 w-full flex-1 flex-row items-center justify-center gap-3 rounded-md bg-zinc-950 px-5 text-base font-semibold text-white duration-300 hover:bg-zinc-800 dark:bg-zinc-900"
+                "focus-ring flex h-12 w-full flex-1 flex-row items-center justify-center gap-3 rounded-md bg-zinc-950 px-5 text-base font-semibold text-white shadow-md shadow-black/20 transition-all duration-150 hover:scale-[1.02] hover:shadow-lg hover:shadow-black/25 hover:bg-zinc-800 dark:bg-zinc-900 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none"
               )}
             >
-              <ShoppingBag size={22} />
-              Add to Cart
+              {isAddingToCart ? (
+                <span className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin shrink-0" />
+              ) : (
+                <ShoppingBag size={22} />
+              )}
+              <span>{isAddingToCart ? "Adding to Cart..." : "Add to Cart"}</span>
             </button>
 
             

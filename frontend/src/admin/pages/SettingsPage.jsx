@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useId } from "react";
+import ConfirmDialog from "@/admin/components/common/ConfirmDialog";
 import { useForm } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -201,7 +202,7 @@ function SaveButton({ loading, disabled, children }) {
     <button
       type="submit"
       disabled={disabled || loading}
-      className="inline-flex items-center justify-center gap-2 rounded-lg border border-indigo-600 bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex items-center justify-center gap-2 rounded-lg border border-indigo-600 bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-md shadow-indigo-600/20 transition hover:scale-[1.02] hover:shadow-lg hover:shadow-indigo-600/25 hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
     >
       {loading ? (
         <>
@@ -332,23 +333,35 @@ export default function SettingsPage() {
     required: "Current password is required",
   });
 
-  async function handleRemoveLogo() {
-    const confirmed = window.confirm("Are you sure you want to remove the store logo?");
-    if (!confirmed) return;
+  const [confirmState, setConfirmState] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: null,
+  });
 
-    try {
-      const res = await settingsService.deleteLogo();
-      setLogoPreview("");
-      profileForm.setValue("logo", "", { shouldDirty: false });
-      if (res.data) {
-        setSettings(res.data);
-      }
-      queryClient.invalidateQueries({ queryKey: ["storeSettings"] });
-      toast.success("Logo removed");
-    } catch (err) {
-      toast.error(apiError(err, "Failed to remove logo"));
-    }
-  }
+  const promptRemoveLogo = () => {
+    setConfirmState({
+      isOpen: true,
+      title: "Remove Store Logo",
+      message: "Are you sure you want to remove the store logo? This will revert to default branding.",
+      onConfirm: async () => {
+        setConfirmState((prev) => ({ ...prev, isOpen: false }));
+        try {
+          const res = await settingsService.deleteLogo();
+          setLogoPreview("");
+          profileForm.setValue("logo", "", { shouldDirty: false });
+          if (res.data) {
+            setSettings(res.data);
+          }
+          queryClient.invalidateQueries({ queryKey: ["storeSettings"] });
+          toast.success("Logo removed");
+        } catch (err) {
+          toast.error(apiError(err, "Failed to remove logo"));
+        }
+      },
+    });
+  };
   useEffect(() => {
     let mounted = true;
 
@@ -570,38 +583,39 @@ export default function SettingsPage() {
     }
   }
 
-  async function toggleTwoFactor(value) {
+  function toggleTwoFactor(value) {
     const action = value ? "enable" : "disable";
-    const confirmed = window.confirm(`Are you sure you want to ${action} Two-Factor Authentication?`);
-    if (!confirmed) {
-      // rollback UI switch immediately
-      securityForm.setValue("two_factor_enabled", !value);
-      return;
-    }
-
-    securityForm.setValue("two_factor_enabled", value);
-    setSaving((state) => ({ ...state, twoFactor: true }));
-    try {
-      const response = await settingsService.updateSecurity({
-        two_factor_enabled: value,
-      });
-      setSecurity(response.data);
-      securityForm.reset({
-        two_factor_enabled: response.data.two_factor_enabled || false,
-      });
-      toast.success(
-        value
-          ? "Two factor authentication enabled"
-          : "Two factor authentication disabled",
-      );
-    } catch (error) {
-      securityForm.setValue("two_factor_enabled", !value);
-      toast.error(
-        apiError(error, "Failed to update two factor authentication"),
-      );
-    } finally {
-      setSaving((state) => ({ ...state, twoFactor: false }));
-    }
+    setConfirmState({
+      isOpen: true,
+      title: `${value ? "Enable" : "Disable"} Two-Factor Authentication`,
+      message: `Are you sure you want to ${action} Two-Factor Authentication for your store admin account?`,
+      onConfirm: async () => {
+        setConfirmState((prev) => ({ ...prev, isOpen: false }));
+        securityForm.setValue("two_factor_enabled", value);
+        setSaving((state) => ({ ...state, twoFactor: true }));
+        try {
+          const response = await settingsService.updateSecurity({
+            two_factor_enabled: value,
+          });
+          setSecurity(response.data);
+          securityForm.reset({
+            two_factor_enabled: response.data.two_factor_enabled || false,
+          });
+          toast.success(
+            value
+              ? "Two factor authentication enabled"
+              : "Two factor authentication disabled",
+          );
+        } catch (error) {
+          securityForm.setValue("two_factor_enabled", !value);
+          toast.error(
+            apiError(error, "Failed to update two factor authentication"),
+          );
+        } finally {
+          setSaving((state) => ({ ...state, twoFactor: false }));
+        }
+      },
+    });
   }
 
   function handleLogoUpload(event) {
@@ -902,7 +916,7 @@ export default function SettingsPage() {
                   {logoPreview && (
                     <Button
                       type="button"
-                      onClick={handleRemoveLogo}
+                      onClick={promptRemoveLogo}
                       variant="delete"
                       className="inline-flex items-center !text-sm !font-medium  gap-2 p-2 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:!bg-red-500/90 dark:hover:!border-red-500/50"
                     >
@@ -1526,6 +1540,17 @@ export default function SettingsPage() {
           ))}
         </div>
       </SettingsCard>
+
+      <ConfirmDialog
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText="Confirm"
+        cancelText="Cancel"
+        variant="warning"
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

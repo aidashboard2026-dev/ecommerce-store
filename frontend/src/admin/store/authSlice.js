@@ -1,14 +1,14 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { authAPI } from '@/shared/services/api'
 
-// â”€â”€ Boot-time rehydration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Boot-time rehydration --------------------------------------------------
 // Read persisted session from localStorage so Redux starts with the real state.
-// Without this, token is always null on page load â†’ fetchMeThunk never fires â†’
-// initialized stays false â†’ every ProtectedRoute spins forever.
+// Without this, token is always null on page load -> fetchMeThunk never fires ->
+// initialized stays false -> every ProtectedRoute spins forever.
 
 const _persistedToken = localStorage.getItem('admin_token')
 
-// â”€â”€ Thunks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Thunks ------------------------------------------------------------------
 
 export const loginThunk = createAsyncThunk(
   'auth/login',
@@ -69,7 +69,7 @@ export const logoutThunk = createAsyncThunk(
   }
 )
 
-// â”€â”€ Slice â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Slice -------------------------------------------------------------------
 
 const authSlice = createSlice({
   name: 'auth',
@@ -78,8 +78,8 @@ const authSlice = createSlice({
     admin: null,
     loading: false,
     error: null,
-    // If no token exists at boot, there is nothing to fetch â†’ already initialized.
-    // If a token exists, App.jsx will dispatch fetchMeThunk â†’ initialized flips
+    // If no token exists at boot, there is nothing to fetch -> already initialized.
+    // If a token exists, App.jsx will dispatch fetchMeThunk -> initialized flips
     // to true when that resolves (fulfilled or rejected).
     initialized: !_persistedToken,
   },
@@ -97,7 +97,7 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // â”€â”€ Login â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // --- Login ---------------------------------------------------------------
       .addCase(loginThunk.fulfilled,(state,action)=>{
 
         state.loading=false
@@ -120,7 +120,7 @@ const authSlice = createSlice({
         state.error = action.payload && typeof action.payload === 'object' ? action.payload.detail : action.payload;
       })
 
-      // â”€â”€ fetchMe â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // --- fetchMe ---------------------------------------------------------------
       .addCase(fetchMeThunk.fulfilled, (state, action) => {
         state.admin       = action.payload
         state.initialized = true
@@ -128,7 +128,7 @@ const authSlice = createSlice({
       .addCase(fetchMeThunk.rejected, (state, action) => {
         state.initialized = true
         if (action.payload?.sessionExpired) {
-          // Token is genuinely invalid/expired â€” clear everything
+          // Token is genuinely invalid/expired -- clear everything
           state.token = null
           state.admin = null
           localStorage.removeItem('admin_token')
@@ -137,12 +137,12 @@ const authSlice = createSlice({
         // and let the next authenticated request retry naturally.
       })
 
-      // â”€â”€ Signup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // --- Signup ----------------------------------------------------------------
       .addCase(signupThunk.pending,   (state)         => { state.loading = true;  state.error = null })
       .addCase(signupThunk.fulfilled, (state)         => { state.loading = false })
       .addCase(signupThunk.rejected,  (state, action) => { state.loading = false; state.error = action.payload })
       
-      // â”€â”€ Logout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // --- Logout ----------------------------------------------------------------
       .addCase(logoutThunk.fulfilled, (state) => { state.loading = false })
   },
 })

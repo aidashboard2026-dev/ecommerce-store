@@ -82,7 +82,7 @@ function EditableRow({ item, onSave, onDelete, isSaving, isDeleting }) {
           )}
           <button
             onClick={startEdit}
-            className="p-1 rounded-md text-muted opacity-0 group-hover:opacity-100 hover:text-app hover:bg-surface transition-all"
+            className="p-1 rounded-md text-muted hover:text-brand-500 hover:bg-brand-500/10 transition-all cursor-pointer"
             aria-label="Rename"
           >
             <Edit2 size={12} />
@@ -91,10 +91,10 @@ function EditableRow({ item, onSave, onDelete, isSaving, isDeleting }) {
             onClick={handleDeleteClick}
             disabled={isDeleting}
             className={clsx(
-              'p-1 rounded-md transition-all',
+              'p-1 rounded-md transition-all cursor-pointer',
               confirming
                 ? 'text-white bg-red-500 opacity-100'
-                : 'text-muted opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-500/10'
+                : 'text-rose-500 hover:text-white hover:bg-red-500'
             )}
             title={confirming ? 'Click again to confirm delete' : 'Delete this category'}
             aria-label="Delete"
@@ -118,6 +118,8 @@ function AddCategoryForm({ onAdd, isAdding, disabled, disabledReason }) {
     onAdd(trimmed, () => setDraft(''))
   }
 
+  const isBtnDisabled = isAdding || disabled || !draft.trim();
+
   return (
     <div
       className="flex items-center gap-2 w-full"
@@ -127,14 +129,19 @@ function AddCategoryForm({ onAdd, isAdding, disabled, disabledReason }) {
         value={draft}
         onChange={e => setDraft(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter' && !disabled) submit() }}
-        placeholder={disabled ? 'Category limit reached' : 'New category name…'}
+        placeholder={disabled ? 'Category limit reached' : 'New category name...'}
         disabled={disabled}
         className="flex-1 min-w-0 text-xs bg-app border border-app rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
       />
       <button
+        type="button"
         onClick={submit}
-        disabled={isAdding || disabled || !draft.trim()}
-        className="btn-primary py-1.5 px-3 text-xs flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+        disabled={isBtnDisabled}
+        className={clsx(
+          "inline-flex min-w-[75px] items-center justify-center gap-1 rounded-md border border-brand-600 bg-brand-500 px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-brand-500/25 transition-all duration-150 whitespace-nowrap",
+          !isBtnDisabled && "hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/35 hover:scale-[1.02] active:scale-[0.98] cursor-pointer",
+          isBtnDisabled && "opacity-40 cursor-not-allowed shadow-none"
+        )}
       >
         {isAdding ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
         Add

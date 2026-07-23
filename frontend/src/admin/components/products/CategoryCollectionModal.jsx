@@ -93,7 +93,7 @@ function EditableRow({ item, onSave, onDelete, isSaving, isDeleting, extra, disa
             <>
               <button
                 onClick={startEdit}
-                className="p-1 rounded-md text-muted opacity-0 group-hover:opacity-100 hover:text-app hover:bg-surface transition-all"
+                className="p-1 rounded-md text-muted hover:text-brand-500 hover:bg-brand-500/10 transition-all cursor-pointer"
                 aria-label="Rename"
               >
                 <Edit2 size={12} />
@@ -102,10 +102,10 @@ function EditableRow({ item, onSave, onDelete, isSaving, isDeleting, extra, disa
                 onClick={handleDeleteClick}
                 disabled={isDeleting}
                 className={clsx(
-                  'p-1 rounded-md transition-all',
+                  'p-1 rounded-md transition-all cursor-pointer',
                   confirming
                     ? 'text-white bg-red-500 opacity-100'
-                    : 'text-muted opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-500/10'
+                    : 'text-rose-500 hover:text-white hover:bg-red-500'
                 )}
                 title={confirming ? 'Click again to confirm delete' : 'Delete'}
                 aria-label="Delete"
@@ -140,6 +140,8 @@ function NewItemForm({ placeholder, onAdd, isAdding, extra, disabled, value, onC
     onAdd(trimmed)
   }
 
+  const isBtnDisabled = isAdding || disabled || !value.trim();
+
   return (
     <div className="flex items-center gap-2 w-full" title={disabled ? "Your current store configuration has reached the maximum allowed limit. Please contact the system administrator if you need additional categories or collections." : ""}>
       <input
@@ -152,9 +154,14 @@ function NewItemForm({ placeholder, onAdd, isAdding, extra, disabled, value, onC
       />
       {extra}
       <button
+        type="button"
         onClick={submit}
-        disabled={isAdding || disabled || !value.trim()}
-        className="btn-primary py-1.5 px-3 text-xs flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+        disabled={isBtnDisabled}
+        className={clsx(
+          "inline-flex min-w-[75px] items-center justify-center gap-1 rounded-md border border-brand-600 bg-brand-500 px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-brand-500/25 transition-all duration-150 whitespace-nowrap",
+          !isBtnDisabled && "hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/35 hover:scale-[1.02] active:scale-[0.98] cursor-pointer",
+          isBtnDisabled && "opacity-40 cursor-not-allowed shadow-none"
+        )}
       >
         {isAdding ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
         Add
@@ -222,19 +229,11 @@ export default function CategoryCollectionModal({ isOpen, onClose }) {
     onClose()
   }, [onClose, qc])
 
-  // Custom Close attempt that guards against unsaved draft changes
   const handleCloseAttempt = useCallback(() => {
-    const hasUnsavedChanges = catDraft.trim() !== '' || colDraft.trim() !== ''
-    if (hasUnsavedChanges) {
-      if (window.confirm("You have unsaved changes. Do you want to discard them?")) {
-        setCatDraft('')
-        setColDraft('')
-        handleClose()
-      }
-    } else {
-      handleClose()
-    }
-  }, [catDraft, colDraft, handleClose])
+    setCatDraft('')
+    setColDraft('')
+    handleClose()
+  }, [handleClose])
 
   // ── Category mutations ──────────────────────────────────────────────────────
 

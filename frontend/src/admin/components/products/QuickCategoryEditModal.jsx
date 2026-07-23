@@ -4,7 +4,7 @@
  * full InlineProductForm just to reassign these two fields.
  */
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'

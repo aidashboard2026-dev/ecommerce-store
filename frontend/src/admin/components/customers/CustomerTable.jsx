@@ -17,6 +17,7 @@ import {
   TableHead
 } from '@/shared/components/ui/Table'
 import { customersAPI } from '@/shared/services/api'
+import { getApiErrorMessage } from '@/shared/utils/productUtils'
 
 // ─── Sort header ──────────────────────────────────────────────────────────────
 function SortHeader({ label, col, sortBy, sortDir, onSort }) {
@@ -127,7 +128,7 @@ export default function CustomerTable({
       qc.invalidateQueries(['customers'])
       toast.success(vars.is_active ? 'Customer activated' : 'Customer deactivated')
     },
-    onError: () => toast.error('Failed to update status'),
+    onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to update status')),
   })
 
   const COLS = [

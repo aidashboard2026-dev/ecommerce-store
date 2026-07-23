@@ -57,9 +57,9 @@ function gray(pdf, size = 7) {
 }
 
 const CURRENCY_SYMBOLS = {
-  INR: '₹',
+  INR: 'Rs.',
   USD: '$',
-  GBP: '£',
+  GBP: 'GBP',
   CAD: 'CA$',
   AUD: 'A$',
   SGD: 'S$',

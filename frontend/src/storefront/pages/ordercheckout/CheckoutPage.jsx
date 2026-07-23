@@ -1056,7 +1056,11 @@ export default function CheckoutPage() {
     };
   };
 
+  const placingOrderLockRef = useRef(false);
+
   const handlePlaceOrder = async () => {
+    if (placingOrderLockRef.current || submitting || placingOrder) return;
+    placingOrderLockRef.current = true;
     logStep("STEP 1: Entered handlePlaceOrder()");
 
     if (paymentMethodsList.length === 0) {
@@ -1486,6 +1490,7 @@ export default function CheckoutPage() {
       toast.error(detail);
       updatePhase(CHECKOUT_PHASE.FAILED);
     } finally {
+      placingOrderLockRef.current = false;
       if (paymentMethod === "COD" || !rzpOrder) {
         if (
           currentLifecyclePhase !== CHECKOUT_PHASE.SUCCESS &&
@@ -1835,7 +1840,7 @@ export default function CheckoutPage() {
             onClick={() => handlePlaceOrder()}
             disabled={submitting || placingOrder || paymentMethodsList.length === 0}
             aria-disabled={submitting || placingOrder || paymentMethodsList.length === 0}
-            className="focus-ring flex h-12 w-full items-center justify-center rounded-md bg-brand-500 px-6 text-sm font-semibold text-white shadow-glow-sm transition-colors hover:bg-brand-600 disabled:opacity-60"
+            className="focus-ring flex h-12 w-full items-center justify-center rounded-md bg-brand-500 px-6 text-sm font-semibold text-white shadow-md shadow-brand-500/20 transition-all duration-150 hover:scale-[1.02] hover:shadow-lg hover:shadow-brand-500/25 hover:bg-brand-600 disabled:opacity-60 disabled:hover:scale-100 disabled:shadow-none"
           >
             {getButtonText()}
           </button>

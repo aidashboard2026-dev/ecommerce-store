@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Eye, EyeOff, Loader2, Lock, LogIn, Mail } from "lucide-react";
@@ -206,13 +206,16 @@ export default function LoginForm() {
   // Email and Password Login
   // =========================================================
 
+  const submittingRef = useRef(false);
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (isSubmitting || loadingType || cooldownTimeLeft > 0) {
+    if (submittingRef.current || isSubmitting || loadingType || cooldownTimeLeft > 0) {
       return;
     }
 
+    submittingRef.current = true;
     const normalizedEmail = email.trim().toLowerCase();
 
     setIsSubmitting(true);
@@ -321,6 +324,7 @@ export default function LoginForm() {
 
       toast.error(errorMessage);
     } finally {
+      submittingRef.current = false;
       setLoadingType(null);
       setIsSubmitting(false);
     }
@@ -627,7 +631,7 @@ export default function LoginForm() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full h-12 flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 text-app font-semibold text-sm rounded-full border transition-colors mt-2"
+            className="w-full h-12 flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 disabled:hover:scale-100 disabled:shadow-none text-app font-semibold text-sm rounded-full border shadow-md shadow-brand-500/20 hover:scale-[1.02] hover:shadow-lg hover:shadow-brand-500/25 transition-all duration-150 mt-2"
           >
             {loadingType === "email" && cooldownTimeLeft <= 0 ? (
               <Loader2

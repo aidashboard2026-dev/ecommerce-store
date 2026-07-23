@@ -624,7 +624,7 @@ export default function VariantFormModal({ isOpen, onClose, productId, product, 
             disabled={mutation.isPending || priceError || (!isEditMode && anyLimitReached)}
             title={disabledTitle}
             variant="addvariant"
-            className="min-w-[100px] whitespace-nowrap hover:bg-sky-400 hover:border-sky-600"
+            className="min-w-[100px] whitespace-nowrap hover:bg-sky-400 hover:border-sky-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none disabled:hover:bg-transparent disabled:hover:border-transparent"
           >
             {mutation.isPending && (
               <Loader2 size={14} className="animate-spin mr-1.5" />

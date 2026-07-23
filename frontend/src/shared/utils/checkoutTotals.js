@@ -60,6 +60,6 @@ export const resolveShippingFeeFromPayments = (
 }
 
 export const formatQuantitySubtotal = (price, quantity, formatPrice) =>
-  `${formatPrice(toNumber(price))} × ${toNumber(quantity || 1)} = ${formatPrice(
+  `${formatPrice(toNumber(price))} x ${toNumber(quantity || 1)} = ${formatPrice(
     calculateLineTotal(price, quantity),
   )}`

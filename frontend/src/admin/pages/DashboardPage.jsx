@@ -1,4 +1,10 @@
-﻿// import React, { useEffect, useState } from "react";
+﻿import React, {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Users,
@@ -26,13 +32,6 @@ import StatCard, {
   LowStockProductsCard,
   SettlementCard,
 } from "@/admin/components/dashboard/StatCard";
-import React, {
-  lazy,
-  Suspense,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
 
 const SalesDashboard = lazy(() =>
   import("@/admin/components/dashboard/SalesDashboard")

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * frontend/src/admin/pages/ContactMessagesPage.jsx
  * 
  * Admin page for managing contact messages.
@@ -7,6 +7,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import ConfirmDialog from '@/admin/components/common/ConfirmDialog';
 import {
   ChevronLeft,
   ChevronRight,
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api, { dashboardAPI } from '@/shared/services/api';
+import { getApiErrorMessage } from '@/shared/utils/productUtils';
 import ContactDetailsDrawer from '@/admin/components/contact/ContactDetailsDrawer';
 import ReplyModal from '@/admin/components/contact/ReplyModal';
 
@@ -28,10 +30,10 @@ const STATUSES = ['All', 'New', 'Pending', 'Replied', 'Closed'];
 
 const StatusBadge = ({ status }) => {
   const statusConfig = {
-    New: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'ðŸ†•' },
-    Pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'â³' },
-    Replied: { bg: 'bg-green-100', text: 'text-green-800', label: 'âœ“' },
-    Closed: { bg: 'bg-surface', text: 'text-muted', label: 'âœ“' },
+    New: { bg: 'bg-blue-100', text: 'text-blue-800', label: '🆕' },
+    Pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: '⏳' },
+    Replied: { bg: 'bg-green-100', text: 'text-green-800', label: '✓' },
+    Closed: { bg: 'bg-surface', text: 'text-muted', label: '✓' },
   };
 
   const config = statusConfig[status] || statusConfig.New;
@@ -117,7 +119,7 @@ export default function ContactMessagesPage() {
       setContactStats(statsResponse.data);
     } catch (error) {
       console.error('Error fetching messages:', error);
-      toast.error('Error loading messages');
+      toast.error(getApiErrorMessage(error, 'Error loading messages'));
     } finally {
       setLoading(false);
     }
@@ -155,26 +157,34 @@ export default function ContactMessagesPage() {
       fetchMessages();
     } catch (error) {
       console.error('Error sending reply:', error);
-      toast.error('Failed to send reply');
+      toast.error(getApiErrorMessage(error, 'Failed to send reply'));
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this message?')) return;
+  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, messageId: null });
+
+  const promptDeleteMessage = (msgId) => {
+    setDeleteConfirm({ isOpen: true, messageId: msgId || selectedMessage?.id });
+  };
+
+  const executeDeleteMessage = async () => {
+    const targetId = deleteConfirm.messageId || selectedMessage?.id;
+    if (!targetId) return;
 
     try {
       setActionLoading(true);
-      await dashboardAPI.deleteContactMessage(selectedMessage.id);
+      await dashboardAPI.deleteContactMessage(targetId);
       toast.success('Message deleted successfully');
       setDrawerOpen(false);
       fetchMessages();
     } catch (error) {
       console.error('Error deleting message:', error);
-      toast.error('Failed to delete message');
+      toast.error(getApiErrorMessage(error, 'Failed to delete message'));
     } finally {
       setActionLoading(false);
+      setDeleteConfirm({ isOpen: false, messageId: null });
     }
   };
 
@@ -240,10 +250,10 @@ export default function ContactMessagesPage() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard label="Total Messages" value={contactStats.total_messages} icon="ðŸ“§" />
-            <StatCard label="Today's Messages" value={contactStats.today_messages} icon="â˜€ï¸" />
-            <StatCard label="Pending Tickets" value={contactStats.pending_count} icon="â³" />
-            <StatCard label="Closed Tickets" value={contactStats.closed_count} icon="âœ“" />
+            <StatCard label="Total Messages" value={contactStats.total_messages} icon="✉️" />
+            <StatCard label="Today's Messages" value={contactStats.today_messages} icon="☀️" />
+            <StatCard label="Pending Tickets" value={contactStats.pending_count} icon="⏳" />
+            <StatCard label="Closed Tickets" value={contactStats.closed_count} icon="✓" />
           </div>
         </div>
 
@@ -291,7 +301,7 @@ export default function ContactMessagesPage() {
               onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
               className="px-4 py-2 border  border-app rounded-lg hover:bg-surface transition"
             >
-              {sortOrder === 'desc' ? 'â†“ Newest' : 'â†‘ Oldest'}
+              {sortOrder === 'desc' ? '↓ Newest' : '↑ Oldest'}
             </button>
           </div>
 
@@ -442,7 +452,7 @@ export default function ContactMessagesPage() {
         }}
         message={selectedMessage}
         onReply={handleReply}
-        onDelete={handleDelete}
+        onDelete={() => promptDeleteMessage(selectedMessage?.id)}
         loading={actionLoading}
       />
 
@@ -455,6 +465,18 @@ export default function ContactMessagesPage() {
         message={selectedMessage}
         onSend={handleSendReply}
         loading={actionLoading}
+      />
+
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        title="Delete Contact Message"
+        message="Are you sure you want to delete this message? This action cannot be undone."
+        confirmText="Delete Message"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={actionLoading}
+        onConfirm={executeDeleteMessage}
+        onCancel={() => setDeleteConfirm({ isOpen: false, messageId: null })}
       />
     </div>
   );

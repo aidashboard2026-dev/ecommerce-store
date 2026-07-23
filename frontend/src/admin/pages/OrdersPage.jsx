@@ -139,13 +139,13 @@ export default function OrdersPage() {
   };
 
   const handleDownloadInvoice = async (order) => {
-    const toastId = toast.loading("Generating invoiceâ€¦");
+    const toastId = toast.loading("Generating invoice...");
     try {
       await generateInvoice(order);
       toast.success("Invoice downloaded!", { id: toastId });
     } catch (err) {
       console.error(err);
-      toast.error("Failed to download invoice", { id: toastId });
+      toast.error(getApiErrorMessage(err, "Failed to download invoice"), { id: toastId });
     }
   };
 
@@ -222,7 +222,7 @@ export default function OrdersPage() {
       );
     } catch (error) {
       console.error(error);
-      toast.error("Status update failed. Please try again.");
+      toast.error(getApiErrorMessage(error, "Status update failed"));
     } finally {
       loadOrders(currentPage, debouncedSearch);
     }

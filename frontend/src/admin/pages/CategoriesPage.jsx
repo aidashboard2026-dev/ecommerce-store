@@ -8,6 +8,8 @@ import { compressImage } from "@/shared/utils/imageCompression";
 import { useTheme } from "@/shared/hooks/useAuth";
 import { getApiErrorMessage, getImageUrl } from "@/shared/utils/productUtils";
 import RoutePicker from "@/shared/components/ui/RoutePicker";
+import useBusinessLimits from "@/shared/hooks/useBusinessLimits";
+import { getLimitMessage } from "@/shared/utils/limitMessages";
 
 const CATEGORY_OPTIONS = [
   { type: "category", id: null, title: "T-Shirts", name: "T-Shirts", slug: "t-shirts", route: "/products?category=t-shirts" },
@@ -113,7 +115,7 @@ function EmptyState({ onAdd }) {
           <button
             type="button"
             onClick={onAdd}
-            className={`inline-flex items-center gap-2 rounded-lg border border-brand-600 bg-brand-500 px-4 py-2 text-xs font-semibold text-white ${BUTTON_INTERACTION_CLASSES}`}
+            className={`inline-flex items-center gap-2 rounded-lg border border-brand-600 bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-brand-500/20 hover:scale-[1.02] hover:shadow-lg hover:shadow-brand-500/25 ${BUTTON_INTERACTION_CLASSES}`}
           >
             <Plus size={15} />
             Add Category
@@ -474,7 +476,7 @@ function CategoryModal({ category, onClose, onSaved }) {
           </button>
           <button
             type="submit"
-            className={`inline-flex items-center gap-2 rounded-lg border border-brand-600 bg-brand-500 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600 ${BUTTON_INTERACTION_CLASSES}`}
+            className={`inline-flex items-center gap-2 rounded-lg border border-brand-600 bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-brand-500/20 hover:scale-[1.02] hover:shadow-lg hover:shadow-brand-500/25 hover:bg-brand-600 ${BUTTON_INTERACTION_CLASSES}`}
             disabled={saving}
             aria-busy={saving}
           >
@@ -566,6 +568,10 @@ export default function CategoriesPage() {
     }
   };
 
+  const { limits } = useBusinessLimits();
+  const maxCategories = limits?.max_homepage_categories || limits?.max_categories || 50;
+  const isCategoryLimitReached = categories.length >= maxCategories;
+
   const showEmptyState = !loading && categories.length === 0;
 
   return (
@@ -587,7 +593,9 @@ export default function CategoriesPage() {
         <button
           type="button"
           onClick={openCreate}
-          className={`inline-flex w-full items-center justify-center gap-2 rounded-lg border border-brand-600 bg-brand-500 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600 sm:w-auto ${BUTTON_INTERACTION_CLASSES}`}
+          disabled={isCategoryLimitReached}
+          title={isCategoryLimitReached ? getLimitMessage('category', maxCategories) : 'Add a new homepage category'}
+          className={`inline-flex w-full items-center justify-center gap-2 rounded-lg border border-brand-600 bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-brand-500/20 hover:scale-[1.02] hover:shadow-lg hover:shadow-brand-500/25 hover:bg-brand-600 sm:w-auto ${BUTTON_INTERACTION_CLASSES} ${isCategoryLimitReached ? "opacity-50 cursor-not-allowed pointer-events-none" : "cursor-pointer"}`}
         >
           <Plus size={15} />
           Add Category

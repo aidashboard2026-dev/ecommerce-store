@@ -10,13 +10,16 @@ export default function Modal({
   children,
   size = "md",
   contentClassName = "",
+  isLoading = false,
+  preventClose = false,
 }) {
-  // Modal open இருக்கும்போது page scroll-ஐ lock செய்யும்
+  const isLocked = isLoading || preventClose;
+
+  // Lock page scroll when Modal is open
   useEffect(() => {
     if (!isOpen) return undefined;
 
     const previousOverflow = document.body.style.overflow;
-
     document.body.style.overflow = "hidden";
 
     return () => {
@@ -24,14 +27,14 @@ export default function Modal({
     };
   }, [isOpen]);
 
-  // Escape key மூலம் modal close செய்யும்
+  // Escape key closes modal unless locked during active saving
   const handleKeyDown = useCallback(
     (event) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !isLocked && onClose) {
         onClose();
       }
     },
-    [onClose],
+    [onClose, isLocked],
   );
 
   useEffect(() => {
@@ -58,7 +61,9 @@ export default function Modal({
       {/* Background overlay */}
       <div
         className="absolute inset-0 animate-fade-in bg-black/50"
-        onClick={onClose}
+        onClick={() => {
+          if (!isLocked && onClose) onClose();
+        }}
         aria-hidden="true"
       />
 
@@ -111,6 +116,7 @@ export default function Modal({
           <button
             type="button"
             onClick={onClose}
+            disabled={isLocked}
             className="
               flex h-8 w-8
               items-center justify-center
@@ -119,6 +125,8 @@ export default function Modal({
               transition-all
               hover:bg-surface
               hover:text-app
+              disabled:opacity-40
+              disabled:cursor-not-allowed
             "
             aria-label="Close modal"
           >

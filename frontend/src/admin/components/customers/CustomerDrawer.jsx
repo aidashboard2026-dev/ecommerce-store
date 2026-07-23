@@ -11,7 +11,7 @@ import Badge from '@/shared/components/ui/Badge'
 import Avatar from '@/shared/components/ui/Avatar'
 import Drawer from '@/shared/components/ui/Drawer'
 import { customersAPI } from '@/shared/services/api'
-import { getImageUrl } from '@/shared/utils/productUtils'
+import { getImageUrl, getApiErrorMessage } from '@/shared/utils/productUtils'
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 function CustomerStatusBadge({ isActive }) {
@@ -59,7 +59,7 @@ function TagsEditor({ customerId, initialTags, onUpdate }) {
       toast.success('Tags updated')
       setEditing(false)
     },
-    onError: () => toast.error('Failed to update tags'),
+    onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to update tags')),
   })
 
   const handleAdd = () => {
@@ -121,7 +121,7 @@ function NotesEditor({ customerId, initialNotes, onUpdate }) {
       toast.success('Notes saved')
       setEditing(false)
     },
-    onError: () => toast.error('Failed to save notes'),
+    onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to save notes')),
   })
 
   return (
@@ -173,7 +173,7 @@ export default function CustomerDrawer({ customerId, onClose, onStatusChange }) 
       toast.success(vars.is_active ? 'Customer activated' : 'Customer deactivated')
       onStatusChange?.()
     },
-    onError: () => toast.error('Failed to update status'),
+    onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to update status')),
   })
 
   const fmt = (n) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n || 0)

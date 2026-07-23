@@ -51,9 +51,9 @@ export function isDuplicateFile(file, existingItems) {
 }
 
 const CURRENCY_SYMBOLS = {
-  INR: '₹',
+  INR: 'Rs.',
   USD: '$',
-  GBP: '£',
+  GBP: 'GBP',
   CAD: 'CA$',
   AUD: 'A$',
   SGD: 'S$',

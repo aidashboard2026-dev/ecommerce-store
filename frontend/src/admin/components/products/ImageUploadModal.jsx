@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import clsx from "clsx";
 
 import Modal from "@/shared/components/ui/Modal";
 import { productsAPI as productsApi } from "@/shared/services/api";
@@ -334,6 +335,7 @@ export default function ImageUploadModal({
   const [deletingIndex, setDeletingIndex] = useState(null);
   const [isSaving, setIsSaving]           = useState(false);
   const [isDeletingThumbnail, setIsDeletingThumbnail] = useState(false);
+  const [hasLocalDeletions, setHasLocalDeletions]     = useState(false);
 
   const isGalleryOnly = mode === "gallery";
   const isLocalFlow   = product && (product.id === null || product.id === undefined);
@@ -363,6 +365,7 @@ export default function ImageUploadModal({
       setDeletingIndex(null);
       setIsSaving(false);
       setIsDeletingThumbnail(false);
+      setHasLocalDeletions(false);
     }
   }, [isOpen, clearThumbnailStaging, clearQueue]);
 
@@ -500,6 +503,8 @@ export default function ImageUploadModal({
   // ── Gallery Image Removal (Server & Queued) ──────────────────────────────
   const handleDeleteServerGalleryImage = useCallback(
     (index) => {
+      setHasLocalDeletions(true);
+
       if (isLocalFlow && onDeleteLocal) {
         onDeleteLocal("gallery", index);
         toast.success("Image removed.");
@@ -546,7 +551,7 @@ export default function ImageUploadModal({
 
   // ── Combined Save Handler ──────────────────────────────────────────────────
   const handleSaveAll = async () => {
-    if (!stagedThumbnailFile && queue.length === 0) {
+    if (!stagedThumbnailFile && queue.length === 0 && !hasLocalDeletions) {
       onClose();
       return;
     }
@@ -630,6 +635,13 @@ export default function ImageUploadModal({
   // ─────────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────────
+
+  const isSaveDisabled =
+    isSaving ||
+    (!stagedThumbnailFile &&
+      queue.length === 0 &&
+      !hasLocalDeletions &&
+      (isLocalFlow || !product?.id));
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="lg">
@@ -770,6 +782,7 @@ export default function ImageUploadModal({
               disabled={isLimitReached_gallery || limitsLoading || !!limitsError}
               maxFileSizeLabel={maxFileSizeLabel}
               multiple
+              title={isLimitReached_gallery ? `Maximum ${galleryLimit} gallery images reached. Remove an existing image before adding another.` : undefined}
             />
           </div>
         </section>
@@ -781,20 +794,19 @@ export default function ImageUploadModal({
           type="button"
           onClick={onClose}
           disabled={isSaving}
-          className="btn-secondary flex-none px-5 disabled:opacity-50"
+          className="rounded-lg border border-app bg-surface px-5 py-2.5 text-xs font-semibold text-app hover:bg-app transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Cancel
         </button>
         <button
           type="button"
           onClick={handleSaveAll}
-          disabled={
-            isSaving ||
-            (!stagedThumbnailFile &&
-              queue.length === 0 &&
-              (isLocalFlow || !product?.id))
-          }
-          className="btn-primary flex flex-1 items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={isSaveDisabled}
+          className={clsx(
+            "inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-brand-600 bg-brand-500 px-5 py-2.5 text-xs font-semibold text-white shadow-md shadow-brand-500/25 transition-all duration-150 whitespace-nowrap",
+            !isSaveDisabled && "hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-500/35 hover:scale-[1.02] active:scale-[0.98] cursor-pointer",
+            isSaveDisabled && "opacity-50 cursor-not-allowed shadow-none transform-none"
+          )}
         >
           {isSaving ? (
             <Loader2 size={14} className="animate-spin" />

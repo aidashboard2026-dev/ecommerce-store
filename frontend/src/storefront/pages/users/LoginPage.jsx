@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { loginThunk, clearError } from '../../store/authSlice'
 import { useTheme } from '../../hooks/useAuth'
@@ -108,7 +108,7 @@ export default function LoginPage() {
                   type={showPwd ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                  placeholder="••••••••"
                   className="input-field pr-11"
                   autoComplete="current-password"
                   required

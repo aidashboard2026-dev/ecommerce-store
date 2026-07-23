@@ -183,11 +183,23 @@
     @apply btn;
     background-color: var(--color-brand);
     color: #ffffff;
+    box-shadow: 0 2px 8px rgba(88, 101, 242, 0.2);
   }
 
-  .btn-primary:hover {
+  .btn-primary:hover:not(:disabled) {
     background-color: var(--color-brand-hover);
-    box-shadow: 0 0 12px rgba(88, 101, 242, 0.25);
+    box-shadow: 0 4px 16px rgba(88, 101, 242, 0.3);
+    transform: scale(1.02);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: scale(0.97);
+    box-shadow: 0 1px 4px rgba(88, 101, 242, 0.15);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   .btn-secondary {
@@ -195,22 +207,45 @@
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
     color: var(--color-text);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   }
 
-  .btn-secondary:hover {
+  .btn-secondary:hover:not(:disabled) {
     background-color: var(--color-bg);
     border-color: var(--color-text-muted);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+
+  .btn-secondary:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  .btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .btn-danger {
     @apply btn;
     background-color: #ef4444;
     color: #ffffff;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
   }
 
-  .btn-danger:hover {
+  .btn-danger:hover:not(:disabled) {
     background-color: #dc2626;
-    box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
+    transform: scale(1.02);
+  }
+
+  .btn-danger:active:not(:disabled) {
+    transform: scale(0.97);
+    box-shadow: 0 1px 4px rgba(239, 68, 68, 0.15);
+  }
+
+  .btn-danger:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   /* Universal Form Fields */

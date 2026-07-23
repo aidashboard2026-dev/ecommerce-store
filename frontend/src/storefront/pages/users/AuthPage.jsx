@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { useLocation, Link } from 'react-router-dom'
 import { KeyRound, Mail, CheckCircle, AlertCircle } from 'lucide-react'
 import { forgotPassword } from '@/firebase/auth'
@@ -12,8 +12,12 @@ function ForgotPasswordForm() {
   const [status, setStatus] = useState('idle') // idle | loading | success | error
   const [errorMsg, setErrorMsg] = useState('')
 
+  const submittingRef = useRef(false)
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (submittingRef.current || status === 'loading') return
+    submittingRef.current = true
     setStatus('loading')
     setErrorMsg('')
 
@@ -28,6 +32,8 @@ function ForgotPasswordForm() {
         'Something went wrong. Please try again.'
       )
       setStatus('error')
+    } finally {
+      submittingRef.current = false
     }
   }
 
@@ -94,7 +100,7 @@ function ForgotPasswordForm() {
           <button
             type="submit"
             disabled={status === 'loading'}
-            className="inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-60 text-white font-semibold text-sm py-3 rounded-full shadow-glow-sm transition-colors mt-2"
+            className="inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-60 disabled:hover:scale-100 disabled:shadow-none text-white font-semibold text-sm py-3 rounded-full shadow-md shadow-brand-500/20 hover:scale-[1.02] hover:shadow-lg hover:shadow-brand-500/25 transition-all duration-150 mt-2"
           >
             {status === 'loading' ? 'Sending…' : 'Send reset link'}
           </button>

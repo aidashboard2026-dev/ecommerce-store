@@ -43,67 +43,48 @@ def _cart_item_payload(
     product = cart_item.product
     variant = cart_item.variant
 
+    if not variant and product and product.variants:
+        variant = product.variants[0]
+
+    selling_price = (
+        variant.selling_price
+        if variant and variant.selling_price is not None
+        else (product.min_price if product else None)
+    )
+
+    original_price = (
+        variant.original_price
+        if variant and variant.original_price is not None
+        else selling_price
+    )
+
     return {
         # Database cart fields
         "id": cart_item.id,
-        "customer_id": (
-            cart_item.customer_id
-        ),
-        "product_id": (
-            cart_item.product_id
-        ),
-        "variant_id": (
-            cart_item.variant_id
-        ),
-        "quantity": (
-            cart_item.quantity
-        ),
+        "customer_id": cart_item.customer_id,
+        "product_id": cart_item.product_id,
+        "variant_id": cart_item.variant_id or (variant.id if variant else None),
+        "quantity": cart_item.quantity,
 
         # Product fields
-        "title": (
-            product.title
-        ),
-        "slug": (
-            product.slug
-        ),
-        "thumbnail": (
-            get_product_image_url(product.thumbnail)
-        ),
+        "title": product.title if product else "",
+        "slug": product.slug if product else "",
+        "thumbnail": get_product_image_url(product.thumbnail) if product else None,
 
         # Variant fields
-        "size": (
-            variant.size
-            if variant
-            else None
-        ),
-        "color": (
-            variant.color
-            if variant
-            else None
-        ),
-        "original_price": (
-            variant.original_price
-            if variant
-            else None
-        ),
-        "selling_price": (
-            variant.selling_price
-            if variant
-            else None
-        ),
+        "size": variant.size if variant else None,
+        "color": variant.color if variant else None,
+        "original_price": original_price,
+        "selling_price": selling_price,
         "stock_quantity": (
             variant.available_stock
             if variant
-            else product.total_stock
+            else (product.total_stock if product else 0)
         ),
 
         # Timestamps
-        "created_at": (
-            cart_item.created_at
-        ),
-        "updated_at": (
-            cart_item.updated_at
-        ),
+        "created_at": cart_item.created_at,
+        "updated_at": cart_item.updated_at,
     }
 
 
@@ -116,19 +97,15 @@ def _get_customer_cart_item(
     cart_item = (
         db.query(CustomerCartItem)
         .filter(
-            CustomerCartItem.id
-            == cart_item_id,
-            CustomerCartItem.customer_id
-            == customer_id,
+            CustomerCartItem.id == cart_item_id,
+            CustomerCartItem.customer_id == customer_id,
         )
         .first()
     )
 
     if not cart_item:
         raise HTTPException(
-            status_code=(
-                status.HTTP_404_NOT_FOUND
-            ),
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Cart item not found.",
         )
 
@@ -141,27 +118,17 @@ def _get_customer_cart_item(
 )
 def get_customer_cart(
     db: Session = Depends(get_db),
-    current_customer: Customer = Depends(
-        get_current_customer
-    ),
+    current_customer: Customer = Depends(get_current_customer),
 ):
 
     items = (
         db.query(CustomerCartItem)
-        .filter(
-            CustomerCartItem.customer_id
-            == current_customer.id
-        )
-        .order_by(
-            CustomerCartItem.created_at.desc()
-        )
+        .filter(CustomerCartItem.customer_id == current_customer.id)
+        .order_by(CustomerCartItem.created_at.desc())
         .all()
     )
 
-    total_items = sum(
-        item.quantity
-        for item in items
-    )
+    total_items = sum(item.quantity for item in items)
 
     return CartResponse(
         items=[_cart_item_payload(item) for item in items],
@@ -177,107 +144,76 @@ def get_customer_cart(
 def add_customer_cart_item(
     body: CartItemCreate,
     db: Session = Depends(get_db),
-    current_customer: Customer = Depends(
-        get_current_customer
-    ),
+    current_customer: Customer = Depends(get_current_customer),
 ):
 
     product = (
         db.query(Product)
-        .filter(
-            Product.id == body.product_id
-        )
+        .filter(Product.id == body.product_id)
         .first()
     )
 
     if not product:
         raise HTTPException(
-            status_code=(
-                status.HTTP_404_NOT_FOUND
-            ),
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Product not found.",
         )
 
-    if body.variant_id is not None:
+    target_variant_id = body.variant_id
+    if target_variant_id is None and product.variants:
+        target_variant_id = product.variants[0].id
 
+    if target_variant_id is not None:
         variant = (
             db.query(ProductVariant)
             .filter(
-                ProductVariant.id
-                == body.variant_id,
-                ProductVariant.product_id
-                == body.product_id,
+                ProductVariant.id == target_variant_id,
+                ProductVariant.product_id == body.product_id,
             )
             .first()
         )
 
         if not variant:
             raise HTTPException(
-                status_code=(
-                    status.HTTP_400_BAD_REQUEST
-                ),
-                detail=(
-                    "The selected variant does "
-                    "not belong to this product."
-                ),
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="The selected variant does not belong to this product.",
             )
 
     existing_item = (
         db.query(CustomerCartItem)
         .filter(
-            CustomerCartItem.customer_id
-            == current_customer.id,
-            CustomerCartItem.product_id
-            == body.product_id,
-            CustomerCartItem.variant_id
-            == body.variant_id,
+            CustomerCartItem.customer_id == current_customer.id,
+            CustomerCartItem.product_id == body.product_id,
+            CustomerCartItem.variant_id == target_variant_id,
         )
         .first()
     )
 
     if existing_item:
-
-        existing_item.quantity += (
-            body.quantity
-        )
+        existing_item.quantity += body.quantity
 
         if existing_item.quantity > 100:
             raise HTTPException(
-                status_code=(
-                    status.HTTP_400_BAD_REQUEST
-                ),
-                detail=(
-                    "Maximum cart quantity "
-                    "is 100."
-                ),
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Maximum cart quantity is 100.",
             )
 
         db.commit()
-
-        db.refresh(
-            existing_item
-        )
-
-        return _cart_item_payload (existing_item)
+        db.refresh(existing_item)
+        return _cart_item_payload(existing_item)
 
     cart_item = CustomerCartItem(
         customer_id=current_customer.id,
         product_id=body.product_id,
-        variant_id=body.variant_id,
+        variant_id=target_variant_id,
         quantity=body.quantity,
     )
 
-    db.add(
-        cart_item
-    )
-
+    db.add(cart_item)
     db.commit()
+    db.refresh(cart_item)
 
-    db.refresh(
-        cart_item
-    )
-
-    return _cart_item_payload (cart_item)
+    return _cart_item_payload(cart_item)
 
 
 @router.patch(

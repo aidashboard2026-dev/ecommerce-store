@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 // import { useDispatch, useSelector } from "react-redux";
 import {
@@ -64,8 +64,12 @@ export default function RegisterForm() {
     return null;
   };
 
+  const submittingRef = useRef(false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (submittingRef.current || loading) return;
 
     if (form.first_name.trim().length < 2) {
       toast.error("First name must be at least 2 characters");
@@ -89,6 +93,7 @@ export default function RegisterForm() {
     }
 
     try {
+      submittingRef.current = true;
       setLoading(true);
 
       // Firebase Signup
@@ -136,6 +141,7 @@ export default function RegisterForm() {
           toast.error(err.message);
       }
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
@@ -283,7 +289,7 @@ export default function RegisterForm() {
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 hover:text-white disabled:opacity-60 text-app font-semibold text-sm py-3 rounded-full border transition-colors mt-2"
+            className="inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 hover:text-white disabled:opacity-60 disabled:hover:scale-100 disabled:shadow-none text-app font-semibold text-sm py-3 rounded-full border shadow-md shadow-brand-500/20 hover:scale-[1.02] hover:shadow-lg hover:shadow-brand-500/25 transition-all duration-150 mt-2"
           >
             <UserPlus size={16} />
             {loading ? "Creating Account..." : "Create Account"}

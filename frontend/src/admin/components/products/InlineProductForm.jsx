@@ -49,14 +49,14 @@ import {
   TableCell,
 } from "@/shared/components/ui/Table";
 
-// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â-€â-€â-€ Constants â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
 
 const STATUS_OPTIONS = ["draft", "published", "archived"];
 const MAX_IMAGES = 7;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "XXL"];
-// COLLECTION_OPTIONS kept from branch â€” used as fallback display labels only;
+// COLLECTION_OPTIONS kept from branch â€- used as fallback display labels only;
 // the actual dropdown is driven by the collections API (FK-based).
 const COLLECTION_OPTIONS = [
   "Oversized",
@@ -69,7 +69,7 @@ const COLLECTION_OPTIONS = [
   "Limited Edition",
 ];
 
-// â”€â”€â”€ Blank variant form (module-level â€” stable ref, no hook needed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â-€â-€â-€ Blank variant form (module-level â€- stable ref, no hook needed) â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
 
 const BLANK_VARIANT_FORM = {
   size: "M",
@@ -86,7 +86,7 @@ const BLANK_VARIANT_FORM = {
 const getErrorMessage = (error, fallback = "Something went wrong") => {
   if (!error) return fallback;
 
-  // Axios error â†’ backend response data
+  // Axios error â†- backend response data
   const data = error?.response?.data ?? error;
 
   // Normal string error
@@ -113,7 +113,7 @@ const getErrorMessage = (error, fallback = "Something went wrong") => {
         }
 
         const field = Array.isArray(item?.loc)
-          ? item.loc.filter((part) => part !== "body").join(" â†’ ")
+          ? item.loc.filter((part) => part !== "body").join(" â†- ")
           : "";
 
         const message =
@@ -149,7 +149,7 @@ const getErrorMessage = (error, fallback = "Something went wrong") => {
   return fallback;
 };
 
-// â”€â”€â”€ Shared primitives â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â-€â-€â-€ Shared primitives â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
 
 function FormField({ label, required, hint, htmlFor, children }) {
   return (
@@ -183,7 +183,7 @@ function StyledSelect({ children, className, ...props }) {
   );
 }
 
-// â”€â”€â”€ Stock badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â-€â-€â-€ Stock badge â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
 
 function StockBadge({ stock }) {
   if (stock === 0) return <Badge label="Out" variant="danger" dot />;
@@ -191,7 +191,7 @@ function StockBadge({ stock }) {
   return <Badge label={`${stock} stock`} variant="success" />;
 }
 
-// â”€â”€â”€ Creatable size selector with suggestions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â-€â-€â-€ Creatable size selector with suggestions â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
 
 function CreatableSizeSelect({ value, onChange, disabled }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -363,7 +363,7 @@ function CreatableColorSelect({ value, onChange, onHexChange, disabled }) {
           onHexChange(res.data.hex)
         }
       } catch {
-        // resolve failed â€” leave hex editable
+        // resolve failed â€- leave hex editable
       } finally {
         setResolving(false)
       }
@@ -447,23 +447,32 @@ function CreatableColorSelect({ value, onChange, onHexChange, disabled }) {
   )
 }
 
-// â”€â”€â”€ Save Progress Overlay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â-€â-€â-€ Save Progress Overlay â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
 
 function SaveProgressOverlay({ steps, onClose }) {
   const hasError = steps.some((s) => s.status === "error");
   const allDone = steps.every(
     (s) => s.status === "done" || s.status === "error",
   );
+
+  useEffect(() => {
+    if (!hasError || !allDone) return
+    const handleEsc = (e) => { if (e.key === "Escape") onClose() }
+    window.addEventListener("keydown", handleEsc)
+    return () => window.removeEventListener("keydown", handleEsc)
+  }, [hasError, allDone, onClose])
+
   return (
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label="Save progress"
+      onClick={hasError && allDone ? onClose : undefined}
     >
       <div className="bg-app border border-app rounded-2xl p-6 w-80 shadow-2xl space-y-4">
         <p className="text-sm font-semibold text-app">
-          {hasError && allDone ? "Completed with issues" : "Saving productâ€¦"}
+          {hasError && allDone ? "Completed with issues" : "Saving product..."}
         </p>
         <div className="space-y-3">
           {steps.map((step) => (
@@ -509,7 +518,7 @@ function SaveProgressOverlay({ steps, onClose }) {
             </div>
           ))}
         </div>
-        {/* Branch: <Button> component; HEAD had raw <button> â€” Button is correct here */}
+        {/* Branch: <Button> component; HEAD had raw <button> â€- Button is correct here */}
         {hasError && allDone && onClose && (
           <Button
             type="button"
@@ -525,7 +534,7 @@ function SaveProgressOverlay({ steps, onClose }) {
   );
 }
 
-// â”€â”€â”€ Local Variant Form (new product only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â-€â-€â-€ Local Variant Form (new product only) â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
 
 function LocalVariantForm({ onAdd, existingVariants = [], limits }) {
   const [form, setForm] = useState(BLANK_VARIANT_FORM);
@@ -542,7 +551,7 @@ function LocalVariantForm({ onAdd, existingVariants = [], limits }) {
 
   const sellNum = parseFloat(form.selling_price || 0);
   const origNum = parseFloat(form.original_price || 0);
-  // HEAD named this `priceErr` â€” branch renamed to `priceError` but forgot to
+  // HEAD named this `priceErr` â€- branch renamed to `priceError` but forgot to
   // update the JSX references, causing a ReferenceError. Keeping `priceErr`.
   const priceErr =
     !isNaN(sellNum) &&
@@ -1082,7 +1091,7 @@ function VariantInlineForm({ productId, product, editingVariantId, onClose, limi
             disabled={mutation.isPending || priceError || (!isEditMode && anyLimitReached)}
             title={disabledTitle}
             variant="addvariant"
-            className="min-w-[100px] whitespace-nowrap hover:bg-sky-400 hover:border-sky-600"
+            className="min-w-[100px] whitespace-nowrap hover:bg-sky-400 hover:border-sky-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none disabled:hover:bg-transparent disabled:hover:border-transparent"
           >
             {mutation.isPending && (
               <Loader2 size={14} className="animate-spin mr-1.5" />
@@ -1177,7 +1186,7 @@ export default function InlineProductForm({
   } = useBusinessLimits();
   const isEdit = !!product;
 
-  // â”€â”€â”€ Blank form ref â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â-€â-€â-€ Blank form ref â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
   const blankForm = useRef({
     title: "",
     description: "",
@@ -1196,10 +1205,10 @@ export default function InlineProductForm({
     seo_description: "",
   });
 
-  // â”€â”€â”€ Form state â€” must be declared BEFORE any hook that reads `form` â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â-€â-€â-€ Form state â€- must be declared BEFORE any hook that reads `form` â-€â-€â-€â-€â-€â-€â-€â-€â-€
   const [form, setForm] = useState(blankForm.current);
 
-  // â”€â”€â”€ BUG-1 FIX: useQuery calls moved here, after `form` is declared â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â-€â-€â-€ BUG-1 FIX: useQuery calls moved here, after `form` is declared â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
   const { data: categories = [] } = useQuery({
     queryKey: ["categories", "admin"],
     queryFn: () => categoriesAPI.list().then((r) => r.data),
@@ -1239,7 +1248,7 @@ export default function InlineProductForm({
     );
   }, [collections, form.category_id, categories]);
 
-  // â”€â”€â”€ Other state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â-€â-€â-€ Other state â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
   const [localImages, setLocalImages] = useState({
     thumbnail: null,
     gallery_images: [],
@@ -1317,7 +1326,7 @@ export default function InlineProductForm({
     setLocalVariants([]);
   }, [product?.id]);
 
-  // â”€â”€â”€ Unsaved-changes guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â-€â-€â-€ Unsaved-changes guard â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
 
   const localImagesCount = useMemo(() => {
     let count = 0;
@@ -1353,16 +1362,11 @@ export default function InlineProductForm({
   }, [hasUnsavedChanges]);
 
   const handleClose = useCallback(() => {
-    if (
-      hasUnsavedChanges &&
-      !window.confirm("You have unsaved changes. Discard?")
-    )
-      return;
     revokeLocalImages(localImages);
     onClose();
-  }, [hasUnsavedChanges, localImages, onClose]);
+  }, [localImages, onClose]);
 
-  // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â-€â-€â-€ Helpers â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -1422,7 +1426,7 @@ export default function InlineProductForm({
     return true;
   };
 
-  // â”€â”€â”€ Edit mutations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â-€â-€â-€ Edit mutations â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
 
   const editMutation = useMutation({
     mutationFn: (data) => productsApi.update(product.id, data),
@@ -1451,7 +1455,7 @@ export default function InlineProductForm({
     },
   });
 
-  // â”€â”€â”€ Variant delete mutation (edit mode) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â-€â-€â-€ Variant delete mutation (edit mode) â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
 
   const deleteVariantMutation = useMutation({
     mutationFn: (variantId) => productsApi.deleteVariant(product.id, variantId),
@@ -1473,7 +1477,7 @@ export default function InlineProductForm({
     },
   });
 
-  // â”€â”€â”€ New product: batch save â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â-€â-€â-€ New product: batch save â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
 
   const batchSave = async (overrideStatus) => {
     if (isSavingRef.current) return;
@@ -1550,7 +1554,7 @@ export default function InlineProductForm({
     let createdProduct = null;
     let hadPartialFailure = false;
 
-    // â”€â”€ Step 1: Create product â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â-€â-€ Step 1: Create product â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
     try {
       updateStep("create-product", { status: "loading" });
       const res = await productsApi.create(data);
@@ -1574,7 +1578,7 @@ export default function InlineProductForm({
       return;
     }
 
-    // â”€â”€ Step 2: Upload images â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â-€â-€ Step 2: Upload images â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
     if (imgCount > 0) {
       updateStep("upload-images", { status: "loading" });
       let imgSucceeded = 0;
@@ -1583,7 +1587,7 @@ export default function InlineProductForm({
       for (let i = 0; i < imagesToUpload.length; i++) {
         const { file, type, setAsPrimary } = imagesToUpload[i];
         try {
-          // BUG-2 FIX: pass file (raw File) â€” api.js builds FormData internally
+          // BUG-2 FIX: pass file (raw File) â€- api.js builds FormData internally
           await productsApi.uploadImage(
             createdProduct.id,
             file,
@@ -1609,17 +1613,17 @@ export default function InlineProductForm({
         });
         toast.error(
           imgSucceeded > 0
-            ? `${imgFailed} image${imgFailed > 1 ? "s" : ""} failed ” add them later`
-            : "Image upload failed ” add images later via Edit",
+            ? `${imgFailed} image${imgFailed > 1 ? "s" : ""} failed - add them later`
+            : "Image upload failed - add images later via Edit",
         );
       }
     }
 
-    // â”€â”€ Step 3: Create variants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â-€â-€ Step 3: Create variants â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
     if (varCount > 0) {
       updateStep("create-variants", { status: "loading" });
       try {
-        // BUG-3 FIX: wrap array in { variants: [...] } â€” matches BulkVariantCreate schema
+        // BUG-3 FIX: wrap array in { variants: [...] } â€- matches BulkVariantCreate schema
         const variantsPayload = localVariants.map(({ _localId, ...v }) => v);
         const bulkRes = await productsApi.bulkCreateVariants(
           createdProduct.id,
@@ -1646,7 +1650,7 @@ export default function InlineProductForm({
             details: `${varSucceeded} created, ${varFailed} failed`,
           });
           toast.error(
-            `${varFailed} variant${varFailed > 1 ? "s" : ""} failed ” add them later via Edit`,
+            `${varFailed} variant${varFailed > 1 ? "s" : ""} failed - add them later via Edit`,
           );
         }
       } catch (e) {
@@ -1665,7 +1669,7 @@ export default function InlineProductForm({
       }
     }
 
-    // â”€â”€ Finish â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â-€â-€ Finish â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
     revokeLocalImages(localImages);
     await new Promise((r) => setTimeout(r, hadPartialFailure ? 1500 : 800));
 
@@ -1693,7 +1697,7 @@ export default function InlineProductForm({
     isCriticalFailureRef.current = false;
   }, [onClose]);
 
-  // â”€â”€â”€ Local image handlers (new product only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â-€â-€â-€ Local image handlers (new product only) â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
 
   const handleUploadLocal = useCallback((type, files) => {
     if (type === "gallery") {
@@ -1763,7 +1767,7 @@ export default function InlineProductForm({
     [],
   );
 
-  // â”€â”€â”€ Derived values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â-€â-€â-€ Derived values â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
 
   const thumbnailUrl = isEdit
     ? getImageUrl(product?.thumbnail)
@@ -1792,7 +1796,7 @@ export default function InlineProductForm({
     };
   }, [localImages]);
 
-  // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â-€â-€â-€ Render â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€â-€
 
   return (
     <>
@@ -1800,7 +1804,7 @@ export default function InlineProductForm({
         <SaveProgressOverlay steps={saveSteps} onClose={handleOverlayClose} />
       )}
 
-      {/* HEAD: card wrapper + shadow; branch: bg-app â€” merged both */}
+      {/* HEAD: card wrapper + shadow; branch: bg-app â€- merged both */}
       <div className="card overflow-hidden mt-6 shadow-md bg-app">
         <form
           className="flex flex-col"
@@ -1855,7 +1859,7 @@ export default function InlineProductForm({
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-8 p-4 sm:p-6">
-            {/* â”€â”€ LEFT: image panel â”€â”€ */}
+            {/* â-€â-€ LEFT: image panel â-€â-€ */}
             <div className="flex flex-col items-center gap-3.5">
               <div
                 className="w-full max-w-[180px] sm:max-w-[220px] md:max-w-none h-40 sm:h-52 md:aspect-square border-2 border-dashed border-brand-500/50 hover:border-brand-500 rounded-2xl bg-app overflow-hidden cursor-pointer flex items-center justify-center transition-all hover:scale-[1.01] mx-auto"
@@ -1888,7 +1892,7 @@ export default function InlineProductForm({
               </Button>
             </div>
 
-            {/* â”€â”€ RIGHT: fields â”€â”€ */}
+            {/* â-€â-€ RIGHT: fields â-€â-€ */}
             <div className="flex flex-col gap-4">
               {/* Product Name */}
               <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
@@ -1946,7 +1950,7 @@ export default function InlineProductForm({
                 </select>
               </div>
 
-              {/* Collection â€” HEAD: FK-based select driven by API (correct); branch had
+              {/* Collection â€- HEAD: FK-based select driven by API (correct); branch had
                   hardcoded COLLECTION_OPTIONS string dropdown which ignores the DB. */}
               <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3 items-center">
                 <label className="text-xs font-bold text-muted">
@@ -2039,7 +2043,7 @@ export default function InlineProductForm({
                     className="input-field py-2.5 text-xs"
                     value={form.tags}
                     onChange={(e) => set("tags", e.target.value)}
-                    placeholder="Black, Whiteâ€¦"
+                    placeholder="Black, White..."
                   />
                 </div>
               </div>
@@ -2054,7 +2058,7 @@ export default function InlineProductForm({
                   className="input-field py-2.5 text-xs resize-none"
                   value={form.short_description}
                   onChange={(e) => set("short_description", e.target.value)}
-                  placeholder="One-liner for product cardsâ€¦"
+                  placeholder="One-liner for product cards..."
                   maxLength={500}
                 />
               </div>
@@ -2089,7 +2093,7 @@ export default function InlineProductForm({
             </div>
           </div>
 
-          {/* â”€â”€ Variants section â”€â”€ */}
+          {/* â-€â-€ Variants section â-€â-€ */}
           <div className="px-6 pt-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-3">
               Variants
@@ -2113,7 +2117,7 @@ export default function InlineProductForm({
                         key={isEdit ? v.id : v._localId}
                         className={isEdit && activeVariantForm === v.id ? "bg-brand-500/10 dark:bg-brand-500/20 border-l-2 border-brand-500 transition-colors" : ""}
                       >
-                        {/* HEAD: Badge component â€” cleaner than branch's oversized text-xl cell */}
+                        {/* HEAD: Badge component â€- cleaner than branch's oversized text-xl cell */}
                         <TableCell>
                           <Badge label={v.size} variant="info" />
                         </TableCell>
@@ -2126,7 +2130,7 @@ export default function InlineProductForm({
                         <TableCell className="font-medium text-amber-600">
                           {v.discount_percentage
                             ? `${parseFloat(v.discount_percentage).toFixed(0)}%`
-                            : "â€”"}
+                            : "â€-"}
                         </TableCell>
                         <TableCell className="font-semibold">
                           {isEdit ? (
@@ -2217,7 +2221,7 @@ export default function InlineProductForm({
             )}
           </div>
 
-          {/* â”€â”€ Description â”€â”€ */}
+          {/* â-€â-€ Description â-€â-€ */}
           <div className="px-6 pt-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-3">
               Description
@@ -2227,7 +2231,7 @@ export default function InlineProductForm({
               rows={3}
               value={form.description}
               onChange={(e) => set("description", e.target.value)}
-              placeholder="Product descriptionâ€¦"
+              placeholder="Product description..."
             />
           </div>
 
@@ -2249,8 +2253,8 @@ export default function InlineProductForm({
             </div>
           )}
 
-          {/* â”€â”€ Action buttons â€” branch color scheme (emerald Save, sky Publish) +
-                HEAD's border-t border-app mt-6 container â”€â”€ */}
+          {/* â-€â-€ Action buttons â€- branch color scheme (emerald Save, sky Publish) +
+                HEAD's border-t border-app mt-6 container â-€â-€ */}
           <div className="grid gap-3 p-6 border-t border-app mt-6">
             <div className="flex gap-3">
               <button

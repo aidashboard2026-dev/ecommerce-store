@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { storefrontAPI } from "@/shared/services/api";
 import { toast } from "react-hot-toast";
 import { FaWhatsapp } from "react-icons/fa";
@@ -55,8 +55,12 @@ const StoreFooterComponent = function StoreFooter() {
   const headingBase =
     "text-[12px] font-semibold uppercase tracking-[3px] text-app";
 
+  const submittingRef = useRef(false);
+
   const handleContactSubmit = async (e) => {
     e.preventDefault();
+    if (submittingRef.current || loading) return;
+    submittingRef.current = true;
     try {
       setLoading(true);
       await storefrontAPI.contact(form);
@@ -67,6 +71,7 @@ const StoreFooterComponent = function StoreFooter() {
       console.error(error);
       toast.error(error?.response?.data?.message || "Failed to send message.");
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };

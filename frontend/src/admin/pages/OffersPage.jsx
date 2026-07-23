@@ -6,6 +6,7 @@ import { BannerPreviewModal } from "./BannerPage";
 import { getApiErrorMessage, getImageUrl } from "@/shared/utils/productUtils";
 import { compressImage } from "@/shared/utils/imageCompression";
 
+import ConfirmDialog from "@/admin/components/common/ConfirmDialog";
 import {
   Search,
   Plus,
@@ -217,7 +218,7 @@ export default function OffersPage() {
 
     if (offer.banner_image) {
       const img = new Image();
-      img.onload = () => setImageDimensions(`${img.width}×${img.height}`);
+      img.onload = () => setImageDimensions(`${img.width}x${img.height}`);
       img.onerror = () => setImageDimensions("");
       img.src = imageUrl;
       setUploadSuccess(true);
@@ -267,7 +268,7 @@ export default function OffersPage() {
     objectUrlRef.current = objectUrl;
 
     const img = new Image();
-    img.onload = () => setImageDimensions(`${img.width}×${img.height}`);
+    img.onload = () => setImageDimensions(`${img.width}x${img.height}`);
     img.onerror = () => setImageDimensions("");
     img.src = objectUrl;
 
@@ -288,9 +289,11 @@ export default function OffersPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // --- Save / publish / delete ----------------------------------------------
+  const savingRef = useRef(false);
+
   const handleSave = async (status = OFFER_STATUS.DRAFT) => {
-    if (!validateOfferForm()) return;
+    if (savingRef.current || saving || publishing || !validateOfferForm()) return;
+    savingRef.current = true;
 
     const isPublishing = status === OFFER_STATUS.PUBLISHED;
     isPublishing ? setPublishing(true) : setSaving(true);
@@ -333,6 +336,7 @@ export default function OffersPage() {
       console.error(error);
       toast.error(getApiErrorMessage(error, "Unable to save offer."));
     } finally {
+      savingRef.current = false;
       setSaving(false);
       setPublishing(false);
     }
@@ -390,8 +394,19 @@ export default function OffersPage() {
     }
   };
 
-  const handleDelete = async (offerId) => {
-    if (!confirm("Are you sure you want to delete this offer?")) return;
+  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, offerId: null, title: "" });
+
+  const promptDeleteOffer = (offer) => {
+    setDeleteConfirm({
+      isOpen: true,
+      offerId: offer.id,
+      title: offer.title || "Untitled Offer",
+    });
+  };
+
+  const executeDeleteOffer = async () => {
+    if (!deleteConfirm.offerId) return;
+    const offerId = deleteConfirm.offerId;
     setActionLoading((prev) => ({ ...prev, [`delete-${offerId}`]: true }));
     try {
       await api.delete(`/offers/admin/${offerId}`);
@@ -402,6 +417,7 @@ export default function OffersPage() {
       toast.error(getApiErrorMessage(error, "Failed to delete offer."));
     } finally {
       setActionLoading((prev) => ({ ...prev, [`delete-${offerId}`]: false }));
+      setDeleteConfirm({ isOpen: false, offerId: null, title: "" });
     }
   };
 
@@ -503,7 +519,7 @@ export default function OffersPage() {
               icon={limitsLoading ? Loader2 : Plus}
               variant={isAtOfferLimit ? "secondary" : "primary"}
               title={offerActionTitle}
-              className={clsx("flex flex-row w-fit whitespace-nowrap", offerActionDisabled && "opacity-50 cursor-not-allowed")}
+              className={clsx("flex flex-row w-fit whitespace-nowrap", offerActionDisabled && "opacity-50 cursor-not-allowed pointer-events-none")}
             >
               <span>{limitsLoading ? "Loading..." : "Create Offer"}</span>
             </Button>
@@ -692,14 +708,14 @@ export default function OffersPage() {
                       </button>
 
                       <button
-                        onClick={() => handleDelete(offer.id)}
+                        onClick={() => promptDeleteOffer(offer)}
                         disabled={
                           actionLoading[`publish-${offer.id}`] ||
                           actionLoading[`unpublish-${offer.id}`] ||
                           actionLoading[`delete-${offer.id}`]
                         }
                         aria-label="Delete offer"
-                        className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg text-[11px] font-bold transition-all bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background active:scale-[0.98] duration-150"
+                        className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg text-[11px] font-bold transition-all bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background active:scale-[0.98] duration-150 cursor-pointer"
                       >
                         {actionLoading[`delete-${offer.id}`] ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -823,7 +839,7 @@ export default function OffersPage() {
                         Choose Image
                       </span>
                       <div className="mt-2 text-[10px] text-muted space-y-0.5 leading-relaxed">
-                        <p>Supported Formats: JPG • PNG • WEBP</p>
+                        <p>Supported Formats: JPG, PNG, WEBP</p>
                         <p>Max Size: 5 MB · Recommended Size: 1600×600 px</p>
                       </div>
                     </div>
@@ -1073,6 +1089,19 @@ export default function OffersPage() {
           type="offer"
         />
       )}
+
+      {/* Offer Delete Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        title="Delete Promotional Offer"
+        message={`Are you sure you want to delete "${deleteConfirm.title}"? This action cannot be undone.`}
+        confirmText="Delete Offer"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={actionLoading[`delete-${deleteConfirm.offerId}`]}
+        onConfirm={executeDeleteOffer}
+        onCancel={() => setDeleteConfirm({ isOpen: false, offerId: null, title: "" })}
+      />
     </div>
   );
 }
