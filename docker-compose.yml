@@ -1,8 +1,7 @@
 services:
   # ─── Local PostgreSQL removed ────────────────────────────────────────────────
-  # The application now connects to Supabase PostgreSQL (db.ebhcfggtfepgromoincc.supabase.co).
-  # No local 'db' container is needed. The backend healthcheck probe and Alembic
-  # both reach Supabase directly over TLS (sslmode=require).
+  # The application now connects to Supabase PostgreSQL.
+  # No local 'db' container is needed.
 
   redis:
     image: redis:7-alpine
@@ -19,6 +18,7 @@ services:
 
     env_file:
       - .env
+
     environment:
       POSTGRES_SERVER: ${POSTGRES_SERVER}
       POSTGRES_PORT: ${POSTGRES_PORT}
@@ -31,6 +31,7 @@ services:
       INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@mail.com}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-admin1234}
       UPLOAD_DIR: /app/uploads
+
       SUPABASE_URL: ${SUPABASE_URL:?Set SUPABASE_URL in your .env file}
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?Set SUPABASE_SERVICE_ROLE_KEY in your .env file}
@@ -38,8 +39,9 @@ services:
       SUPABASE_CUSTOM_PRODUCT_BUCKET: ${SUPABASE_CUSTOM_PRODUCT_BUCKET:-custom-product-images}
       SUPABASE_BANNER_BUCKET: ${SUPABASE_BANNER_BUCKET:-banners}
       SUPABASE_CATEGORY_BUCKET: ${SUPABASE_CATEGORY_BUCKET:-category-images}
+
       REDIS_URL: redis://redis:6379
-      # ── Email ──────────────────────────────────────────────────────────────────
+
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_ENABLED: ${RESEND_ENABLED:-true}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
@@ -48,25 +50,30 @@ services:
       STORE_NAME: ${STORE_NAME:-My Designers}
       STORE_URL: ${STORE_URL:-}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
-      # ── Razorpay ──────────────────────────────────────────────────────────────
+
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
       RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
-      # ── Firebase ──────────────────────────────────────────────────────────────
+
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
       FIREBASE_CREDENTIALS_PATH: ${FIREBASE_CREDENTIALS_PATH:-}
       FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON:-}
+
     ports:
       - "8000:8000"
+
     depends_on:
       redis:
         condition: service_started
+
     volumes:
       - ./backend:/app
       - ./backend/secrets:/app/secrets:ro
       - ./uploads:/app/uploads
+
     networks:
       - admindash_network
+
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
       interval: 15s
@@ -78,6 +85,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+
     restart: unless-stopped
 
     environment:
@@ -99,45 +107,42 @@ services:
       - /app/node_modules
 
     networks:
-    - admindash_network
+      - admindash_network
 
   nginx:
-  image: nginx:alpine
-  restart: unless-stopped
+    image: nginx:alpine
+    restart: unless-stopped
 
-  ports:
-    - "80:80"
-    - "443:443"
+    ports:
+      - "80:80"
+      - "443:443"
 
-  volumes:
-    - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    - /etc/letsencrypt:/etc/letsencrypt:ro
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
 
-  depends_on:
-    backend:
-      condition: service_healthy
-    frontend:
-      condition: service_started
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
 
-  networks:
-    - admindash_network
+    networks:
+      - admindash_network
 
   adminer:
     image: adminer:latest
     restart: unless-stopped
+
     ports:
       - "8080:8080"
 
+    networks:
+      - admindash_network
 
 volumes:
   product_uploads:
-
-# this two line for lochahost only used
-# networks:
-#   admindash_network:
-#     driver: bridge
-
-# this line for deployment stage only used
+#this block is for deploment
 networks:
   admindash_network:
     driver: bridge
