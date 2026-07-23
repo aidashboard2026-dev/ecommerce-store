@@ -85,15 +85,6 @@ const StoreFooterComponent = function StoreFooter() {
                     {description}
                   </p>
                 )}
-
-                {/* {settings?.store_location && (
-                <div className="max-w-sm border-t border-app pt-3 text-[13px] font-light leading-[1.5] text-muted">
-                  <h4 className={headingBase}>Our Store Location</h4>
-                  <p className="mt-2 whitespace-pre-line">
-                    {settings.store_location}
-                  </p>
-                </div>
-              )} */}
               </div>
 
               <div className="flex items-center gap-5">
@@ -185,20 +176,33 @@ const StoreFooterComponent = function StoreFooter() {
 
             <div className="flex h-full flex-col items-start gap-3 lg:justify-between">
               <h4 className={headingBase}>Contact</h4>
-
-              {supportEmail && (
-                <a href={`mailto:${supportEmail}`} className={linkBase}>
-                  {supportEmail}
-                </a>
-              )}
-
-              {displayPhone && (
-                <>
-                  {/* <h4 className={headingBase}>Call</h4> */}
-                  <a href={`tel:${supportPhone}`} className={linkBase}>
-                    {displayPhone}
+              {settings?.store_location && (
+                <div className="max-w-sm text-[13px] flex flex-col font-light leading-[1.5] text-muted">
+                  {/* <h4 className={headingBase}>Our Store Location</h4> */}
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                      settings.store_location,
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={linkBase}
+                  >
+                    {settings.store_location}
                   </a>
-                </>
+                  {supportEmail && (
+                    <a href={`mailto:${supportEmail}`} className={linkBase}>
+                      {supportEmail}
+                    </a>
+                  )}
+
+                  {displayPhone && (
+                    <>
+                      <a href={`tel:${supportPhone}`} className={linkBase}>
+                        {displayPhone}
+                      </a>
+                    </>
+                  )}
+                </div>
               )}
 
               <button
