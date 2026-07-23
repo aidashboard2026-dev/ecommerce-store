@@ -46,11 +46,8 @@ services:
       RESEND_FROM_NAME: ${RESEND_FROM_NAME:-My Designers}
       SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
       STORE_NAME: ${STORE_NAME:-My Designers}
-      ENVIRONMENT: ${ENVIRONMENT:-production}
-      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
-      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-https://mydesigners.store,http://localhost:5173}
-      STORE_URL: ${STORE_URL:-https://mydesigners.store}
-      FRONTEND_URL: ${FRONTEND_URL:-https://mydesigners.store}
+      STORE_URL: ${STORE_URL:-}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       # ── Razorpay ──────────────────────────────────────────────────────────────
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
@@ -109,6 +106,7 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
@@ -123,18 +121,23 @@ services:
     image: adminer:latest
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8080:8080"
+      - "8080:8080"
 
 
-networks:
-  admindash_network:
-    driver: bridge
-  
+volumes:
+  product_uploads:
+
+# this two line for lochahost only used
 # networks:
 #   admindash_network:
 #     driver: bridge
-#     enable_ipv6: true
-#     ipam:
-#       config:
-#         - subnet: 172.19.0.0/16
-#         - subnet: fd00:1234:5678::/64
+
+# this line for deployment stage only used
+networks:
+  admindash_network:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 172.19.0.0/16
+        - subnet: fd00:1234:5678::/64
