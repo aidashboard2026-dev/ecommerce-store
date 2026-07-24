@@ -1,17 +1,74 @@
-FROM node:20-alpine
+# ============================================================
+# Stage 1: Build React/Vite application
+# ============================================================
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
-RUN cp package.json /package-installed.json
+RUN npm ci
 
 COPY . .
 
-COPY entrypoint.sh /entrypoint.sh
-RUN sed -i 's/\r//' /entrypoint.sh && chmod +x /entrypoint.sh
+# ------------------------------------------------------------
+# Vite build-time public configuration
+# These values are compiled into the browser bundle.
+# NEVER add backend/private secrets here.
+# ------------------------------------------------------------
 
-EXPOSE 5173
+ARG VITE_API_URL
+ARG VITE_STORE_NAME
+ARG VITE_STORE_URL
 
-ENTRYPOINT ["/entrypoint.sh"]
-CMD ["npm", "run", "dev"]
+ARG VITE_RAZORPAY_KEY_ID
+
+ARG VITE_WHATSAPP_NUMBER
+ARG VITE_FACEBOOK_URL
+ARG VITE_INSTAGRAM_URL
+
+ARG VITE_FIREBASE_API_KEY
+ARG VITE_FIREBASE_AUTH_DOMAIN
+ARG VITE_FIREBASE_PROJECT_ID
+ARG VITE_FIREBASE_STORAGE_BUCKET
+ARG VITE_FIREBASE_MESSAGING_SENDER_ID
+ARG VITE_FIREBASE_APP_ID
+ARG VITE_FIREBASE_MEASUREMENT_ID
+
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_PUBLISHABLE_KEY
+
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_STORE_NAME=$VITE_STORE_NAME
+ENV VITE_STORE_URL=$VITE_STORE_URL
+
+ENV VITE_RAZORPAY_KEY_ID=$VITE_RAZORPAY_KEY_ID
+
+ENV VITE_WHATSAPP_NUMBER=$VITE_WHATSAPP_NUMBER
+ENV VITE_FACEBOOK_URL=$VITE_FACEBOOK_URL
+ENV VITE_INSTAGRAM_URL=$VITE_INSTAGRAM_URL
+
+ENV VITE_FIREBASE_API_KEY=$VITE_FIREBASE_API_KEY
+ENV VITE_FIREBASE_AUTH_DOMAIN=$VITE_FIREBASE_AUTH_DOMAIN
+ENV VITE_FIREBASE_PROJECT_ID=$VITE_FIREBASE_PROJECT_ID
+ENV VITE_FIREBASE_STORAGE_BUCKET=$VITE_FIREBASE_STORAGE_BUCKET
+ENV VITE_FIREBASE_MESSAGING_SENDER_ID=$VITE_FIREBASE_MESSAGING_SENDER_ID
+ENV VITE_FIREBASE_APP_ID=$VITE_FIREBASE_APP_ID
+ENV VITE_FIREBASE_MEASUREMENT_ID=$VITE_FIREBASE_MEASUREMENT_ID
+
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ENV VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY
+
+RUN npm run build
+
+
+# ============================================================
+# Stage 2: Production Nginx
+# ============================================================
+FROM nginx:alpine
+
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

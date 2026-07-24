@@ -1,8 +1,7 @@
 services:
-  # ─── Local PostgreSQL removed ────────────────────────────────────────────────
-  # The application now connects to Supabase PostgreSQL.
-  # No local 'db' container is needed.
-
+  # ---------------------------------------------------------------------------
+  # Redis
+  # ---------------------------------------------------------------------------
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -10,10 +9,14 @@ services:
     networks:
       - admindash_network
 
+  # ---------------------------------------------------------------------------
+  # Backend - FastAPI
+  # ---------------------------------------------------------------------------
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+
     restart: unless-stopped
 
     env_file:
@@ -25,36 +28,48 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in your .env file}
       ACCESS_TOKEN_EXPIRE_MINUTES: 1440
+
       INITIAL_ADMIN_NAME: ${INITIAL_ADMIN_NAME:-Admin}
       INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@mail.com}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-admin1234}
+
       UPLOAD_DIR: /app/uploads
 
+      # Supabase
       SUPABASE_URL: ${SUPABASE_URL:?Set SUPABASE_URL in your .env file}
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?Set SUPABASE_SERVICE_ROLE_KEY in your .env file}
+
       SUPABASE_PRODUCT_BUCKET: ${SUPABASE_PRODUCT_BUCKET:-product-images}
       SUPABASE_CUSTOM_PRODUCT_BUCKET: ${SUPABASE_CUSTOM_PRODUCT_BUCKET:-custom-product-images}
       SUPABASE_BANNER_BUCKET: ${SUPABASE_BANNER_BUCKET:-banners}
       SUPABASE_CATEGORY_BUCKET: ${SUPABASE_CATEGORY_BUCKET:-category-images}
 
+      # Redis
       REDIS_URL: redis://redis:6379
 
+      # Email
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_ENABLED: ${RESEND_ENABLED:-true}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
       RESEND_FROM_NAME: ${RESEND_FROM_NAME:-My Designers}
+
       SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
+
+      # Store
       STORE_NAME: ${STORE_NAME:-My Designers}
       STORE_URL: ${STORE_URL:-}
-      FRONTEND_URL: ${FRONTEND_URL:-http://mydesigners.store}
+      FRONTEND_URL: ${FRONTEND_URL:-https://mydesigners.store}
 
+      # Razorpay
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
       RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
 
+      # Firebase
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
       FIREBASE_CREDENTIALS_PATH: ${FIREBASE_CREDENTIALS_PATH:-}
       FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON:-}
@@ -75,40 +90,59 @@ services:
       - admindash_network
 
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"
+        ]
       interval: 15s
       timeout: 5s
       retries: 5
       start_period: 60s
 
+  # ---------------------------------------------------------------------------
+  # Frontend - Production React Build
+  # ---------------------------------------------------------------------------
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api/v1}
+        VITE_STORE_NAME: ${VITE_STORE_NAME:-My Designers}
+        VITE_STORE_URL: ${VITE_STORE_URL:-https://mydesigners.store}
+
+        VITE_RAZORPAY_KEY_ID: ${VITE_RAZORPAY_KEY_ID:-}
+
+        VITE_WHATSAPP_NUMBER: ${VITE_WHATSAPP_NUMBER:-}
+        VITE_FACEBOOK_URL: ${VITE_FACEBOOK_URL:-}
+        VITE_INSTAGRAM_URL: ${VITE_INSTAGRAM_URL:-}
+
+        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-}
+        VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN:-}
+        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-}
+        VITE_FIREBASE_STORAGE_BUCKET: ${VITE_FIREBASE_STORAGE_BUCKET:-}
+        VITE_FIREBASE_MESSAGING_SENDER_ID: ${VITE_FIREBASE_MESSAGING_SENDER_ID:-}
+        VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID:-}
+        VITE_FIREBASE_MEASUREMENT_ID: ${VITE_FIREBASE_MEASUREMENT_ID:-}
+
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY:-}
 
     restart: unless-stopped
-
-    environment:
-      - VITE_API_URL=/api/v1
-      - VITE_BACKEND_URL=
-      - DOCKER=true
-      - CHOKIDAR_USEPOLLING=true
-      - WATCHPACK_POLLING=true
-
-    ports:
-      - "5173:5173"
 
     depends_on:
       backend:
         condition: service_healthy
 
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-
     networks:
       - admindash_network
 
+  # ---------------------------------------------------------------------------
+  # Main Nginx - HTTPS Reverse Proxy
+  # ---------------------------------------------------------------------------
   nginx:
     image: nginx:alpine
     restart: unless-stopped
@@ -130,24 +164,30 @@ services:
     networks:
       - admindash_network
 
+  # ---------------------------------------------------------------------------
+  # Adminer
+  # ---------------------------------------------------------------------------
   adminer:
     image: adminer:latest
     restart: unless-stopped
 
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
 
     networks:
       - admindash_network
 
-volumes:
-  product_uploads:
-#this block is for deploment
+
+# -----------------------------------------------------------------------------
+# Docker Network
+# IPv6 is required for the external PostgreSQL connection in this deployment.
+# -----------------------------------------------------------------------------
 networks:
   admindash_network:
     driver: bridge
     enable_ipv4: true
     enable_ipv6: true
+
     ipam:
       config:
         - subnet: 172.20.0.0/16

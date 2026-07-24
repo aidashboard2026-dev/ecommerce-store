@@ -7,7 +7,9 @@ export default defineConfig(({ mode }) => {
 
   const proxyTarget =
     env.VITE_PROXY_TARGET ||
-    (env.DOCKER === "true" ? "http://backend:8000" : "http://localhost:8000");
+    (env.DOCKER === "true"
+      ? "http://backend:8000"
+      : "http://localhost:8000");
 
   return {
     plugins: [react()],
@@ -19,14 +21,8 @@ export default defineConfig(({ mode }) => {
       allowedHosts: [
         "mydesigners.store",
         "www.mydesigners.store",
-        "15.207.163.138",
         "localhost",
       ],
-
-      hmr: {
-        host: "localhost",
-        clientPort: 5173,
-      },
 
       watch: {
         usePolling: true,
