@@ -49,7 +49,7 @@ services:
       SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
       STORE_NAME: ${STORE_NAME:-My Designers}
       STORE_URL: ${STORE_URL:-}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      FRONTEND_URL: ${FRONTEND_URL:-http://mydesigners.store}
 
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
@@ -146,8 +146,9 @@ volumes:
 networks:
   admindash_network:
     driver: bridge
+    enable_ipv4: true
     enable_ipv6: true
     ipam:
       config:
-        - subnet: 172.19.0.0/16
+        - subnet: 172.20.0.0/16
         - subnet: fd00:1234:5678::/64
